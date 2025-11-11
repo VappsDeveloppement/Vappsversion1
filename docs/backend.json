@@ -1,0 +1,431 @@
+{
+  "entities": {
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the VApps Success Hub platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the user."
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the user.",
+          "format": "email"
+        },
+        "role": {
+          "type": "string",
+          "description": "The role of the user (e.g., client, coach, admin)."
+        },
+        "dateCreated": {
+          "type": "string",
+          "description": "The date and time the user account was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "firstName",
+        "lastName",
+        "email",
+        "role",
+        "dateCreated"
+      ]
+    },
+    "Appointment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Appointment",
+      "type": "object",
+      "description": "Represents a scheduled appointment between a coach and a client.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the appointment."
+        },
+        "coachId": {
+          "type": "string",
+          "description": "Reference to User (Coach). (Relationship: User 1:N Appointment)"
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to User (Client). (Relationship: User 1:N Appointment)"
+        },
+        "startTime": {
+          "type": "string",
+          "description": "The start date and time of the appointment.",
+          "format": "date-time"
+        },
+        "endTime": {
+          "type": "string",
+          "description": "The end date and time of the appointment.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the appointment (e.g., scheduled, completed, cancelled)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about the appointment."
+        }
+      },
+      "required": [
+        "id",
+        "coachId",
+        "clientId",
+        "startTime",
+        "endTime",
+        "status"
+      ]
+    },
+    "EmailCampaign": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EmailCampaign",
+      "type": "object",
+      "description": "Represents an email marketing campaign.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the email campaign."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the email campaign."
+        },
+        "subject": {
+          "type": "string",
+          "description": "The subject line of the email campaign."
+        },
+        "body": {
+          "type": "string",
+          "description": "The HTML body of the email campaign."
+        },
+        "segment": {
+          "type": "string",
+          "description": "The user segment this email is targeted towards."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the email campaign (e.g., draft, scheduled, sent)."
+        },
+        "sentDate": {
+          "type": "string",
+          "description": "The date and time the email campaign was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "subject",
+        "body",
+        "segment",
+        "status"
+      ]
+    },
+    "Message": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a message sent between users within the platform.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the message."
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to User (Sender). (Relationship: User 1:N Message)"
+        },
+        "receiverId": {
+          "type": "string",
+          "description": "Reference to User (Receiver). (Relationship: User 1:N Message)"
+        },
+        "content": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the message was sent.",
+          "format": "date-time"
+        },
+        "isRead": {
+          "type": "boolean",
+          "description": "Indicates whether the message has been read by the receiver."
+        }
+      },
+      "required": [
+        "id",
+        "senderId",
+        "receiverId",
+        "content",
+        "timestamp",
+        "isRead"
+      ]
+    },
+    "Invoice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invoice",
+      "type": "object",
+      "description": "Represents an invoice for coaching sessions or services.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the invoice."
+        },
+        "clientId": {
+          "type": "string",
+          "description": "Reference to User (Client). (Relationship: User 1:N Invoice)"
+        },
+        "issueDate": {
+          "type": "string",
+          "description": "The date the invoice was issued.",
+          "format": "date-time"
+        },
+        "dueDate": {
+          "type": "string",
+          "description": "The date the invoice is due.",
+          "format": "date-time"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The total amount of the invoice."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the invoice (e.g., sent, paid, overdue)."
+        },
+        "paymentDate": {
+          "type": "string",
+          "description": "The date the invoice was paid.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "clientId",
+        "issueDate",
+        "dueDate",
+        "amount",
+        "status"
+      ]
+    },
+    "Consent": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Consent",
+      "type": "object",
+      "description": "Represents a user's consent to data collection and processing.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the consent record."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Consent)"
+        },
+        "consentType": {
+          "type": "string",
+          "description": "The type of consent (e.g., marketing, data processing)."
+        },
+        "consentGiven": {
+          "type": "boolean",
+          "description": "Indicates whether consent was given."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The date and time the consent was recorded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "consentType",
+        "consentGiven",
+        "timestamp"
+      ]
+    },
+    "LandingPage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "LandingPage",
+      "type": "object",
+      "description": "Represents a customizable landing page for the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the landing page configuration."
+        },
+        "pageName": {
+          "type": "string",
+          "description": "Name of the landing page."
+        },
+        "pageLayout": {
+          "type": "string",
+          "description": "JSON structure representing the page layout and components."
+        },
+        "lastUpdated": {
+          "type": "string",
+          "description": "Timestamp of the last update to the landing page.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "pageName",
+        "pageLayout",
+        "lastUpdated"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Stores user profile data.  Path-based ownership enforced by {userId}.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/appointments/{appointmentId}",
+        "definition": {
+          "entityName": "Appointment",
+          "schema": {
+            "$ref": "#/backend/entities/Appointment"
+          },
+          "description": "Stores appointment data.  Includes 'coachId' and 'clientId' for direct access control.",
+          "params": [
+            {
+              "name": "appointmentId",
+              "description": "The unique identifier of the appointment."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/email_campaigns/{emailCampaignId}",
+        "definition": {
+          "entityName": "EmailCampaign",
+          "schema": {
+            "$ref": "#/backend/entities/EmailCampaign"
+          },
+          "description": "Stores email campaign data.",
+          "params": [
+            {
+              "name": "emailCampaignId",
+              "description": "The unique identifier of the email campaign."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": {
+            "$ref": "#/backend/entities/Message"
+          },
+          "description": "Stores message data. Includes 'senderId' and 'receiverId' for access control.",
+          "params": [
+            {
+              "name": "messageId",
+              "description": "The unique identifier of the message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Stores invoice data.  Includes 'clientId' for access control.",
+          "params": [
+            {
+              "name": "invoiceId",
+              "description": "The unique identifier of the invoice."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/consents/{consentId}",
+        "definition": {
+          "entityName": "Consent",
+          "schema": {
+            "$ref": "#/backend/entities/Consent"
+          },
+          "description": "Stores consent data. Includes 'userId' for path-based ownership.",
+          "params": [
+            {
+              "name": "consentId",
+              "description": "The unique identifier of the consent record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/landing_pages/{landingPageId}",
+        "definition": {
+          "entityName": "LandingPage",
+          "schema": {
+            "$ref": "#/backend/entities/LandingPage"
+          },
+          "description": "Stores landing page configurations.",
+          "params": [
+            {
+              "name": "landingPageId",
+              "description": "The unique identifier of the landing page configuration."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Indicates admin role for user. Existence of document grants admin privileges.  DO NOT store user data in this document - existence is the indicator.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to support the VApps Success Hub application, emphasizing secure access control, scalability, and maintainability. The design adheres to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters).\n\n*   **Authorization Independence:**  Authorization is enforced using path-based ownership and membership maps. User-owned data (e.g., Appointments, Consents, Invoices, Messages) is stored under `/users/{userId}`, providing clear ownership. Collaborative data (e.g., shared resources) can use membership maps within documents if needed. Denormalization will be used where necessary. For instance, the `/appointments` collection includes `coachId` and `clientId`, enabling direct access control rules without needing to fetch user data.\n*   **Structural Segregation:** Data with different access requirements is separated into different collections. User profiles are stored under `/users/{userId}`, landing pages in the `/landing_pages` collection, messages within `/messages`, appointments in `/appointments`, invoices in `/invoices`, and consents in `/consents`. This segregation simplifies security rules by ensuring consistent authorization needs within each collection.\n*   **Access Modeling:**  Path-based ownership (`/users/{userId}/...`) is employed for private user data. The Membership Map pattern (if required for collaborative features, none currently specified) would involve adding a `members` field to documents, storing user IDs and their roles. Global roles (e.g., admin) are managed via the existence of documents in dedicated collections like `/roles_admin/{uid}`.\n*   **QAPs (Rules are not Filters):** The structure supports secure `list` operations by avoiding the need for filtering data based on user roles or permissions within the rules themselves.  Each collection is designed with clear access patterns, allowing rules to validate requests based on the path and the user's authentication status, rather than complex data filtering.\n\nThis structure promotes robust security rules, simplifies debugging, and ensures scalability by minimizing complex queries and authorization logic."
+  }
+}
