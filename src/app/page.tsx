@@ -10,14 +10,14 @@ import { Footer } from '@/components/landing/footer';
 // Simule les données d'une agence. Dans une application réelle,
 // ces données proviendraient d'une API ou d'une base de données en fonction de l'agence visitée.
 const agencyData = {
-  name: "VApps Success Hub",
+  name: "VApps",
   logo: {
     icon: "Target",
     text: "VApps"
   },
   hero: {
-    title: "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.",
-    subtitle: "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.",
+    title: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
+    subtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
     cta: "Start Your Journey Today"
   },
   features: [
