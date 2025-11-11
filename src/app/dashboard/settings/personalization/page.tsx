@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
-import { Bold, Italic, Underline, AlignCenter, AlignLeft, AlignRight } from "lucide-react";
+import { Bold, Italic, Underline, AlignCenter, AlignLeft, AlignRight, AlignJustify } from "lucide-react";
 import React from "react";
 
 const RichTextToolbar = ({ textareaId }: { textareaId: string }) => {
@@ -35,6 +35,11 @@ const RichTextToolbar = ({ textareaId }: { textareaId: string }) => {
       <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('bold')}><Bold className="h-4 w-4" /></Button>
       <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('italic')}><Italic className="h-4 w-4" /></Button>
       <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('underline')}><Underline className="h-4 w-4" /></Button>
+      <div className="h-6 w-px bg-border mx-1"></div>
+      <Button variant="outline" size="icon" className="h-8 w-8"><AlignLeft className="h-4 w-4" /></Button>
+      <Button variant="outline" size="icon" className="h-8 w-8"><AlignCenter className="h-4 w-4" /></Button>
+      <Button variant="outline" size="icon" className="h-8 w-8"><AlignRight className="h-4 w-4" /></Button>
+      <Button variant="outline" size="icon" className="h-8 w-8"><AlignJustify className="h-4 w-4" /></Button>
     </div>
   )
 }
@@ -53,9 +58,8 @@ export default function PersonalizationPage() {
       </div>
 
       <Tabs defaultValue="info-legales">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
-          <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
           <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
           <TabsTrigger value="paiement">Paiement</TabsTrigger>
@@ -66,140 +70,141 @@ export default function PersonalizationPage() {
         <TabsContent value="info-legales">
           <Card>
             <CardHeader>
-              <CardTitle>Informations Légales</CardTitle>
-              <CardDescription>Gérez les informations légales de votre entreprise. Ces informations seront affichées sur votre page d'accueil et vos documents.</CardDescription>
+              <CardTitle>Informations et Documents Légaux</CardTitle>
+              <CardDescription>Gérez les informations légales de votre entreprise et le contenu de vos documents. Ces informations seront affichées sur votre site.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="company-name">Nom de l'entreprise / agence</Label>
-                  <Input id="company-name" placeholder="Votre Nom Commercial" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="structure-type">Type de structure</Label>
-                  <Input id="structure-type" placeholder="SARL, SAS, Auto-entrepreneur..." />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="capital">Capital</Label>
-                  <Input id="capital" type="number" placeholder="1000" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="siret">SIRET</Label>
-                  <Input id="siret" placeholder="12345678901234" />
-                </div>
-              </div>
+            <CardContent className="space-y-10">
               
-              <div className="space-y-4">
-                <Label>Adresse</Label>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <Input placeholder="Numéro et nom de rue" className="sm:col-span-3"/>
-                  <Input placeholder="Code Postal" />
-                  <Input placeholder="Ville" className="sm:col-span-2"/>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="space-y-2">
-                  <Label htmlFor="email">E-mail</Label>
-                  <Input id="email" type="email" placeholder="contact@exemple.com" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Téléphone</Label>
-                  <Input id="phone" type="tel" placeholder="0123456789" />
-                </div>
-                 <div className="space-y-2">
-                  <Label htmlFor="ape-naf">APE/NAF</Label>
-                  <Input id="ape-naf" placeholder="6201Z" />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="rm">RM (optionnel)</Label>
-                  <Input id="rm" placeholder="Numéro RM" />
-                </div>
-              </div>
-
-              <div>
-                  <h3 className="text-lg font-medium mb-4">Paramètres de TVA</h3>
-                  <div className="space-y-6">
-                    <div className="flex items-center space-x-3">
-                      <Switch id="vat-subject" checked={isVatSubject} onCheckedChange={setIsVatSubject} />
-                      <Label htmlFor="vat-subject">Assujetti à la TVA (non applicable pour le régime micro-entreprise)</Label>
+              {/* Legal Information Section */}
+              <section>
+                <h3 className="text-xl font-semibold mb-6 border-b pb-2">Informations sur l'entreprise</h3>
+                <div className="space-y-8">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                        <Label htmlFor="company-name">Nom de l'entreprise / agence</Label>
+                        <Input id="company-name" placeholder="Votre Nom Commercial" />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="structure-type">Type de structure</Label>
+                        <Input id="structure-type" placeholder="SARL, SAS, Auto-entrepreneur..." />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="capital">Capital</Label>
+                        <Input id="capital" type="number" placeholder="1000" />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="siret">SIRET</Label>
+                        <Input id="siret" placeholder="12345678901234" />
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                        <Label>Adresse</Label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                        <Input placeholder="Numéro et nom de rue" className="sm:col-span-3"/>
+                        <Input placeholder="Code Postal" />
+                        <Input placeholder="Ville" className="sm:col-span-2"/>
+                        </div>
                     </div>
 
-                    {isVatSubject && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-8 border-l ml-2">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                          <Label htmlFor="vat-rate">Taux de TVA (%)</Label>
-                          <Input id="vat-rate" type="number" placeholder="20" />
+                        <Label htmlFor="email">E-mail</Label>
+                        <Input id="email" type="email" placeholder="contact@exemple.com" />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="vat-number">Numéro de TVA Intracommunautaire</Label>
-                          <Input id="vat-number" placeholder="FR12345678901" />
+                        <Label htmlFor="phone">Téléphone</Label>
+                        <Input id="phone" type="tel" placeholder="0123456789" />
                         </div>
-                      </div>
-                    )}
-                  </div>
-              </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="ape-naf">APE/NAF</Label>
+                        <Input id="ape-naf" placeholder="6201Z" />
+                        </div>
+                        <div className="space-y-2">
+                        <Label htmlFor="rm">RM (optionnel)</Label>
+                        <Input id="rm" placeholder="Numéro RM" />
+                        </div>
+                    </div>
 
-               <div>
-                  <h3 className="text-lg font-medium mb-4">Informations optionnelles</h3>
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-2">
-                        <Label htmlFor="rcs">RCS (Numéro et Ville)</Label>
-                        <Input id="rcs" placeholder="Paris B 123 456 789" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="nda">Numéro NDA (Formation)</Label>
-                        <Input id="nda" placeholder="Numéro de déclaration d'activité" />
-                      </div>
-                       <div className="space-y-2 md:col-span-2">
-                        <Label htmlFor="insurance">Police d'assurance</Label>
-                        <Input id="insurance" placeholder="Nom de l'assurance et numéro de contrat" />
-                      </div>
-                   </div>
-              </div>
+                    <div>
+                        <h4 className="text-lg font-medium mb-4">Paramètres de TVA</h4>
+                        <div className="space-y-6">
+                            <div className="flex items-center space-x-3">
+                            <Switch id="vat-subject" checked={isVatSubject} onCheckedChange={setIsVatSubject} />
+                            <Label htmlFor="vat-subject">Assujetti à la TVA (non applicable pour le régime micro-entreprise)</Label>
+                            </div>
+
+                            {isVatSubject && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-8 border-l ml-2">
+                                <div className="space-y-2">
+                                <Label htmlFor="vat-rate">Taux de TVA (%)</Label>
+                                <Input id="vat-rate" type="number" placeholder="20" />
+                                </div>
+                                <div className="space-y-2">
+                                <Label htmlFor="vat-number">Numéro de TVA Intracommunautaire</Label>
+                                <Input id="vat-number" placeholder="FR12345678901" />
+                                </div>
+                            </div>
+                            )}
+                        </div>
+                    </div>
+
+                    <div>
+                        <h4 className="text-lg font-medium mb-4">Informations optionnelles</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="rcs">RCS (Numéro et Ville)</Label>
+                                <Input id="rcs" placeholder="Paris B 123 456 789" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="nda">Numéro NDA (Formation)</Label>
+                                <Input id="nda" placeholder="Numéro de déclaration d'activité" />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <Label htmlFor="insurance">Police d'assurance</Label>
+                                <Input id="insurance" placeholder="Nom de l'assurance et numéro de contrat" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+              </section>
+
+              <div className="border-t"></div>
+
+              {/* Document Editor Section */}
+              <section>
+                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu des documents</h3>
+                 <div className="space-y-8">
+                    <div>
+                        <Label htmlFor="legal-mentions" className="text-lg font-medium">Mentions Légales</Label>
+                        <div className="mt-2">
+                        <RichTextToolbar textareaId="legal-mentions" />
+                        <Textarea id="legal-mentions" placeholder="Rédigez vos mentions légales ici..." className="min-h-[250px] rounded-t-none"/>
+                        </div>
+                    </div>
+
+                    <div>
+                        <Label htmlFor="cgv" className="text-lg font-medium">Conditions Générales de Vente (CGV)</Label>
+                        <div className="mt-2">
+                        <RichTextToolbar textareaId="cgv" />
+                        <Textarea id="cgv" placeholder="Rédigez vos conditions générales de vente ici..." className="min-h-[250px] rounded-t-none"/>
+                        </div>
+                    </div>
+
+                    <div>
+                        <Label htmlFor="privacy-policy" className="text-lg font-medium">Politique de confidentialité</Label>
+                        <div className="mt-2">
+                        <RichTextToolbar textareaId="privacy-policy" />
+                        <Textarea id="privacy-policy" placeholder="Rédigez votre politique de confidentialité ici..." className="min-h-[250px] rounded-t-none"/>
+                        </div>
+                    </div>
+                 </div>
+              </section>
               
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-6 border-t">
                 <Button>Enregistrer les modifications</Button>
               </div>
 
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="documents">
-          <Card>
-            <CardHeader>
-              <CardTitle>Gestion des documents</CardTitle>
-              <CardDescription>Modifiez le contenu de vos pages légales. Ces modifications seront répercutées sur les liens du pied de page.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              <div>
-                <Label htmlFor="legal-mentions" className="text-lg font-medium">Mentions Légales</Label>
-                <div className="mt-2">
-                  <RichTextToolbar textareaId="legal-mentions" />
-                  <Textarea id="legal-mentions" placeholder="Rédigez vos mentions légales ici..." className="min-h-[250px] rounded-t-none"/>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="cgv" className="text-lg font-medium">Conditions Générales de Vente (CGV)</Label>
-                 <div className="mt-2">
-                  <RichTextToolbar textareaId="cgv" />
-                  <Textarea id="cgv" placeholder="Rédigez vos conditions générales de vente ici..." className="min-h-[250px] rounded-t-none"/>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="privacy-policy" className="text-lg font-medium">Politique de confidentialité</Label>
-                 <div className="mt-2">
-                  <RichTextToolbar textareaId="privacy-policy" />
-                  <Textarea id="privacy-policy" placeholder="Rédigez votre politique de confidentialité ici..." className="min-h-[250px] rounded-t-none"/>
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button>Enregistrer les documents</Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -278,5 +283,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
