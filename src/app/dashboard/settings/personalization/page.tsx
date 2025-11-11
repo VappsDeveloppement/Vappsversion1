@@ -7,56 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import { Textarea } from "@/components/ui/textarea";
-import { Bold, Italic, Underline, AlignCenter, AlignLeft, AlignRight, AlignJustify } from "lucide-react";
 import React from "react";
-
-const RichTextToolbar = ({ textareaId, onContentChange }: { textareaId: string, onContentChange: (newContent: string) => void }) => {
-    const applyStyle = (style: 'bold' | 'italic' | 'underline') => {
-    const textarea = document.getElementById(textareaId) as HTMLTextAreaElement;
-    if (textarea) {
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      const selectedText = textarea.value.substring(start, end);
-      if (!selectedText) return;
-
-      let tag;
-      switch (style) {
-        case 'bold': tag = 'b'; break;
-        case 'italic': tag = 'i'; break;
-        case 'underline': tag = 'u'; break;
-      }
-      
-      const newText = `${textarea.value.substring(0, start)}<${tag}>${selectedText}</${tag}>${textarea.value.substring(end)}`;
-      onContentChange(newText);
-      
-      // We need to re-focus and set the selection after the state update
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + `<${tag}>`.length, end + `<${tag}>`.length);
-      }, 0);
-    }
-  };
-
-  // The alignment functionality is more complex as it would require wrapping lines in styled divs,
-  // which is beyond what a simple textarea can render. These are placeholders for now.
-  const applyAlignment = (alignment: string) => {
-    console.log(`Alignment functionality for '${alignment}' would require a true rich text editor component.`);
-  }
-
-  return (
-    <div className="flex items-center gap-1 border rounded-t-md p-2 bg-muted">
-      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('bold')}><Bold className="h-4 w-4" /></Button>
-      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('italic')}><Italic className="h-4 w-4" /></Button>
-      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('underline')}><Underline className="h-4 w-4" /></Button>
-      <div className="h-6 w-px bg-border mx-1"></div>
-      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => applyAlignment('left')}><AlignLeft className="h-4 w-4" /></Button>
-      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => applyAlignment('center')}><AlignCenter className="h-4 w-4" /></Button>
-      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => applyAlignment('right')}><AlignRight className="h-4 w-4" /></Button>
-      <Button type="button" variant="outline" size="icon" className="h-8 w-8" onClick={() => applyAlignment('justify')}><AlignJustify className="h-4 w-4" /></Button>
-    </div>
-  )
-}
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
 
 export default function PersonalizationPage() {
 
@@ -78,7 +30,7 @@ export default function PersonalizationPage() {
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
-          <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
+          <TabsTrigger value="accueil">Page d'accueil</Tabs_Trigger>
           <TabsTrigger value="paiement">Paiement</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="rgpd">Paramètres RGPD</TabsTrigger>
@@ -195,24 +147,33 @@ export default function PersonalizationPage() {
                     <div>
                         <Label htmlFor="legal-mentions" className="text-lg font-medium">Mentions Légales</Label>
                         <div className="mt-2">
-                        <RichTextToolbar textareaId="legal-mentions" onContentChange={setLegalMentions} />
-                        <Textarea id="legal-mentions" placeholder="Rédigez vos mentions légales ici..." className="min-h-[250px] rounded-t-none" value={legalMentions} onChange={(e) => setLegalMentions(e.target.value)} />
+                          <RichTextEditor
+                            content={legalMentions}
+                            onChange={setLegalMentions}
+                            placeholder="Rédigez vos mentions légales ici..."
+                          />
                         </div>
                     </div>
 
                     <div>
                         <Label htmlFor="cgv" className="text-lg font-medium">Conditions Générales de Vente (CGV)</Label>
                         <div className="mt-2">
-                        <RichTextToolbar textareaId="cgv" onContentChange={setCgv} />
-                        <Textarea id="cgv" placeholder="Rédigez vos conditions générales de vente ici..." className="min-h-[250px] rounded-t-none" value={cgv} onChange={(e) => setCgv(e.target.value)} />
+                           <RichTextEditor
+                            content={cgv}
+                            onChange={setCgv}
+                            placeholder="Rédigez vos conditions générales de vente ici..."
+                          />
                         </div>
                     </div>
 
                     <div>
                         <Label htmlFor="privacy-policy" className="text-lg font-medium">Politique de confidentialité</Label>
                         <div className="mt-2">
-                        <RichTextToolbar textareaId="privacy-policy" onContentChange={setPrivacyPolicy} />
-                        <Textarea id="privacy-policy" placeholder="Rédigez votre politique de confidentialité ici..." className="min-h-[250px] rounded-t-none" value={privacyPolicy} onChange={(e) => setPrivacyPolicy(e.target.value)} />
+                          <RichTextEditor
+                            content={privacyPolicy}
+                            onChange={setPrivacyPolicy}
+                            placeholder="Rédigez votre politique de confidentialité ici..."
+                          />
                         </div>
                     </div>
                  </div>
@@ -300,5 +261,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    

@@ -81,4 +81,9 @@
   body {
     @apply bg-background text-foreground;
   }
+  .prose {
+    h2 {
+      @apply text-2xl font-bold mb-4 mt-6;
+    }
+  }
 }
