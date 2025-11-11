@@ -6,7 +6,28 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Briefcase, ExternalLink, GitBranch } from "lucide-react";
 import Link from "next/link";
 
-export function Footer() {
+interface LegalInfoProps {
+  companyName?: string;
+  capital?: number;
+  address?: string;
+  siret?: string;
+  rcs?: string;
+  nafCode?: string;
+  email?: string;
+  phone?: string;
+}
+
+const defaultLegalInfo: LegalInfoProps = {
+    companyName: "SARL au capital de 1000 €",
+    address: "123 Rue de la République, 75001 Paris",
+    siret: "12345678901234",
+    rcs: "Paris B 123 456 789",
+    nafCode: "6201Z",
+    email: "contact@vapps.test",
+    phone: "01 23 45 67 89",
+};
+
+export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfoProps }) {
     return (
         <footer className="bg-gray-900 text-gray-300 py-12">
             <div className="container mx-auto px-4">
@@ -14,15 +35,15 @@ export function Footer() {
                     {/* Left Column */}
                     <div className="md:col-span-4 text-sm">
                         <Logo className="text-white mb-4" />
-                        <p>SARL au capital de 1000 €</p>
-                        <p>123 Rue de la République, 75001 Paris</p>
+                        {legalInfo.companyName && <p>{legalInfo.companyName}</p>}
+                        {legalInfo.address && <p>{legalInfo.address}</p>}
                         <br />
-                        <p>SIRET: 12345678901234</p>
-                        <p>RCS: Paris B 123 456 789</p>
-                        <p>Code NAF: 6201Z</p>
+                        {legalInfo.siret && <p>SIRET: {legalInfo.siret}</p>}
+                        {legalInfo.rcs && <p>RCS: {legalInfo.rcs}</p>}
+                        {legalInfo.nafCode && <p>Code NAF: {legalInfo.nafCode}</p>}
                         <br />
-                        <p>E-mail: contact@vapps.test</p>
-                        <p>Téléphone: 01 23 45 67 89</p>
+                        {legalInfo.email && <p>E-mail: {legalInfo.email}</p>}
+                        {legalInfo.phone && <p>Téléphone: {legalInfo.phone}</p>}
                         <br />
                         <div className="space-y-1">
                             <Link href="#" className="block hover:text-white">Mentions légales</Link>
