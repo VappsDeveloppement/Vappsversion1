@@ -73,7 +73,6 @@ export default function PersonalizationPage() {
   const [appTitle, setAppTitle] = React.useState("VApps");
   const [appSubtitle, setAppSubtitle] = React.useState("Développement");
   const [logoWidth, setLogoWidth] = React.useState(40);
-  const [logoHeight, setLogoHeight] = React.useState(40);
   const [logoDisplay, setLogoDisplay] = React.useState("app-and-logo");
   const [primaryColor, setPrimaryColor] = React.useState("#2ff40a");
   const [secondaryColor, setSecondaryColor] = React.useState("#25d408");
@@ -111,7 +110,6 @@ export default function PersonalizationPage() {
         localStorage.setItem('appSubtitle', appSubtitle);
         localStorage.setItem('logoDisplay', logoDisplay);
         localStorage.setItem('logoWidth', String(logoWidth));
-        localStorage.setItem('logoHeight', String(logoHeight));
         if (logoDataUrl) {
             localStorage.setItem('logoDataUrl', logoDataUrl);
         }
@@ -124,7 +122,7 @@ export default function PersonalizationPage() {
         // Notify other components of the change
         window.dispatchEvent(new Event('storage')); 
     }
-  }, [primaryColor, secondaryColor, bgColor, appTitle, appSubtitle, logoDisplay, logoDataUrl, logoWidth, logoHeight]);
+  }, [primaryColor, secondaryColor, bgColor, appTitle, appSubtitle, logoDisplay, logoDataUrl, logoWidth]);
   
 
   return (
@@ -341,36 +339,20 @@ export default function PersonalizationPage() {
                             <p className="text-xs text-muted-foreground">Formats recommandés : SVG, PNG, JPG.</p>
                         </div>
                          <div className="space-y-4">
-                            <Label>Dimensions du logo (en pixels)</Label>
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor="logo-width" className="flex items-center justify-between">
-                                        <span>Largeur</span>
-                                        <span className="text-sm text-muted-foreground">{logoWidth}px</span>
-                                    </Label>
-                                    <Slider
-                                        id="logo-width"
-                                        min={10}
-                                        max={200}
-                                        step={1}
-                                        value={[logoWidth]}
-                                        onValueChange={(value) => setLogoWidth(value[0])}
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label htmlFor="logo-height" className="flex items-center justify-between">
-                                        <span>Hauteur</span>
-                                        <span className="text-sm text-muted-foreground">{logoHeight}px</span>
-                                    </Label>
-                                     <Slider
-                                        id="logo-height"
-                                        min={10}
-                                        max={200}
-                                        step={1}
-                                        value={[logoHeight]}
-                                        onValueChange={(value) => setLogoHeight(value[0])}
-                                    />
-                                </div>
+                            <Label>Largeur du logo (en pixels)</Label>
+                            <div className="space-y-2">
+                                <Label htmlFor="logo-width" className="flex items-center justify-between">
+                                    <span>Largeur</span>
+                                    <span className="text-sm text-muted-foreground">{logoWidth}px</span>
+                                </Label>
+                                <Slider
+                                    id="logo-width"
+                                    min={10}
+                                    max={200}
+                                    step={1}
+                                    value={[logoWidth]}
+                                    onValueChange={(value) => setLogoWidth(value[0])}
+                                />
                             </div>
                         </div>
                     </div>

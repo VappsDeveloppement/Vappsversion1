@@ -29,7 +29,11 @@ export function Logo({ className }: { className?: string; text?: string; }) {
         if (storedLogoSrc) setLogoSrc(storedLogoSrc);
         if (storedLogoDisplay) setLogoDisplay(storedLogoDisplay);
         if (storedLogoWidth) setLogoWidth(parseInt(storedLogoWidth, 10));
-        if (storedLogoHeight) setLogoHeight(parseInt(storedLogoHeight, 10));
+        if (storedLogoHeight) {
+          setLogoHeight(parseInt(storedLogoHeight, 10))
+        } else {
+          setLogoHeight(parseInt(storedLogoWidth, 10)); // Fallback for proportional height
+        }
     };
 
     // Initial update
@@ -48,7 +52,7 @@ export function Logo({ className }: { className?: string; text?: string; }) {
 
   return (
     <Link href="/" className={cn("flex items-center gap-2", className)}>
-      <Image src={logoSrc} alt="VApps Logo" width={logoWidth} height={logoHeight} />
+      <Image src={logoSrc} alt="VApps Logo" width={logoWidth} height={logoHeight} style={{ height: 'auto' }} />
       {showText && (
         <div className='flex items-baseline gap-2'>
           <span className="text-2xl font-bold font-headline">{logoText}</span>

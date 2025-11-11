@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -86,7 +87,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <div className="flex min-h-screen">
         <Sidebar>
-          <SidebarHeader className={cn(logoDisplay === 'logo-only' && 'flex justify-center')}>
+          <SidebarHeader className={cn(logoDisplay === 'logo-only' && 'justify-center')}>
             <Logo />
           </SidebarHeader>
           <SidebarContent>
