@@ -113,6 +113,18 @@
       "description": "A beautiful waterfall in a lush green forest",
       "imageUrl": "https://images.unsplash.com/photo-1432405972618-c60b0225b8f9?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       "imageHint": "forest waterfall"
+    },
+    {
+      "id": "activity-team-coaching",
+      "description": "City skatepark",
+      "imageUrl": "https://images.unsplash.com/photo-1559923846-58c148c3b3f2?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "skatepark city"
+    },
+    {
+      "id": "activity-manager-training",
+      "description": "Tree lined road leading to a chateau",
+      "imageUrl": "https://images.unsplash.com/photo-1618174823293-c2153cbe9a93?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "road chateau"
     }
   ]
 }
