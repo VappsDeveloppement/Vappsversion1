@@ -1,6 +1,7 @@
 
 
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,7 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -38,6 +39,13 @@ const defaultFooterAboutSettings = {
     { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
   ]
 };
+
+const defaultSocialLinks = [
+    { id: 1, name: 'Facebook', url: '', icon: 'Facebook' },
+    { id: 2, name: 'Twitter', url: '', icon: 'Twitter' },
+    { id: 3, name: 'LinkedIn', url: '', icon: 'Linkedin' },
+    { id: 4, name: 'Instagram', url: '', icon: 'Instagram' },
+];
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -92,6 +100,21 @@ export type AboutLink = {
   icon: string;
 };
 
+export type SocialLink = {
+  id: number;
+  name: string;
+  url: string;
+  icon: string;
+};
+
+const socialIconMap: { [key: string]: React.ComponentType<any> } = {
+    Facebook,
+    Twitter,
+    Linkedin,
+    Instagram,
+};
+
+
 export default function PersonalizationPage() {
 
   const [isVatSubject, setIsVatSubject] = React.useState(false);
@@ -117,6 +140,9 @@ export default function PersonalizationPage() {
   const [footerAboutText, setFooterAboutText] = useState(defaultFooterAboutSettings.text);
   const [footerAboutLinks, setFooterAboutLinks] = useState<AboutLink[]>(defaultFooterAboutSettings.links);
 
+  // State for Social Links
+  const [footerSocialLinks, setFooterSocialLinks] = useState<SocialLink[]>(defaultSocialLinks);
+
 
   const handleAppearanceSave = () => {
     // This function remains to potentially save all settings to a backend later.
@@ -137,6 +163,7 @@ export default function PersonalizationPage() {
         localStorage.setItem('footerAboutTitle', footerAboutTitle);
         localStorage.setItem('footerAboutText', footerAboutText);
         localStorage.setItem('footerAboutLinks', JSON.stringify(footerAboutLinks));
+        localStorage.setItem('footerSocialLinks', JSON.stringify(footerSocialLinks));
 
         window.dispatchEvent(new Event('storage')); 
     }
@@ -157,6 +184,7 @@ export default function PersonalizationPage() {
       setFooterAboutTitle(defaultFooterAboutSettings.title);
       setFooterAboutText(defaultFooterAboutSettings.text);
       setFooterAboutLinks(defaultFooterAboutSettings.links);
+      setFooterSocialLinks(defaultSocialLinks);
       
       // Also reset localStorage to defaults
       if (typeof window !== 'undefined') {
@@ -170,6 +198,7 @@ export default function PersonalizationPage() {
         localStorage.setItem('footerAboutTitle', defaultFooterAboutSettings.title);
         localStorage.setItem('footerAboutText', defaultFooterAboutSettings.text);
         localStorage.setItem('footerAboutLinks', JSON.stringify(defaultFooterAboutSettings.links));
+        localStorage.setItem('footerSocialLinks', JSON.stringify(defaultSocialLinks));
 
         window.dispatchEvent(new Event('storage'));
       }
@@ -205,6 +234,12 @@ export default function PersonalizationPage() {
   const removeLink = (index: number) => {
     const newLinks = footerAboutLinks.filter((_, i) => i !== index);
     setFooterAboutLinks(newLinks);
+  };
+
+  const handleSocialLinkChange = (index: number, url: string) => {
+    const newLinks = [...footerSocialLinks];
+    newLinks[index].url = url;
+    setFooterSocialLinks(newLinks);
   };
 
   useEffect(() => {
@@ -552,6 +587,32 @@ export default function PersonalizationPage() {
                     </div>
                 </div>
 
+                <div className="border-t -mx-6"></div>
+
+                <div className="space-y-6">
+                    <h3 className="text-lg font-medium">Pied de page - Réseaux Sociaux</h3>
+                    <div className="space-y-4">
+                        {footerSocialLinks.map((link, index) => {
+                            const Icon = socialIconMap[link.icon];
+                            return (
+                                <div key={link.id} className="flex items-center gap-4">
+                                    <Icon className="h-6 w-6 text-muted-foreground" />
+                                    <div className="flex-1">
+                                        <Label htmlFor={`social-link-${link.name}`}>{link.name}</Label>
+                                        <Input
+                                            id={`social-link-${link.name}`}
+                                            placeholder={`URL de votre page ${link.name}`}
+                                            value={link.url}
+                                            onChange={(e) => handleSocialLinkChange(index, e.target.value)}
+                                        />
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+
+
                  <div className="flex justify-start pt-6 border-t gap-2">
                     <Button onClick={handleAppearanceSave} style={{backgroundColor: primaryColor}}>Sauvegarder les changements</Button>
                     <Button variant="outline" onClick={handleResetAppearance}>Réinitialiser</Button>
@@ -620,5 +681,7 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    
 
     

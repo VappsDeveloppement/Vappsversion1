@@ -6,10 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Briefcase, ExternalLink, GitBranch } from "lucide-react";
+import { Briefcase, ExternalLink, GitBranch, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
-import type { AboutLink } from "@/app/dashboard/settings/personalization/page";
+import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
 
 interface LegalInfoProps {
   companyName?: string;
@@ -37,6 +37,13 @@ const iconMap: { [key: string]: React.ComponentType<any> } = {
     Briefcase,
 };
 
+const socialIconMap: { [key: string]: React.ComponentType<any> } = {
+    Facebook,
+    Twitter,
+    Linkedin,
+    Instagram,
+};
+
 export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfoProps }) {
     
     const [aboutTitle, setAboutTitle] = useState("À propos");
@@ -45,12 +52,15 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
         { id: 1, text: "Notre mission", url: "#", icon: "GitBranch" },
         { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
     ]);
+    const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+
 
     useEffect(() => {
         const updateFooterContent = () => {
             const storedTitle = localStorage.getItem('footerAboutTitle');
             const storedText = localStorage.getItem('footerAboutText');
             const storedLinks = localStorage.getItem('footerAboutLinks');
+            const storedSocialLinks = localStorage.getItem('footerSocialLinks');
 
             if (storedTitle) setAboutTitle(storedTitle);
             if (storedText) setAboutText(storedText);
@@ -59,6 +69,13 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                     setAboutLinks(JSON.parse(storedLinks));
                 } catch (e) {
                     console.error("Failed to parse footer links from localStorage", e);
+                }
+            }
+             if (storedSocialLinks) {
+                try {
+                    setSocialLinks(JSON.parse(storedSocialLinks));
+                } catch (e) {
+                    console.error("Failed to parse social links from localStorage", e);
                 }
             }
         };
@@ -138,6 +155,20 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                                 );
                             })}
                         </ul>
+                        <div className="mt-8">
+                            <h4 className="font-bold text-white text-lg mb-4">Suivez-nous</h4>
+                            <div className="flex items-center gap-4">
+                                {socialLinks.filter(link => link.url).map(link => {
+                                    const Icon = socialIconMap[link.icon];
+                                    return (
+                                        <Link key={link.id} href={link.url} target="_blank" rel="noopener noreferrer" className="text-gray-400 hover:text-white">
+                                            <Icon className="h-6 w-6" />
+                                            <span className="sr-only">{link.name}</span>
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     </div>
                 </div>
 
