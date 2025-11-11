@@ -32,20 +32,20 @@ export default function SettingsPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name</Label>
-                  <Input id="firstName" defaultValue="User" />
+                  <Input id="firstName" placeholder="Your first name" />
                 </div>
                 <div className="space-y-2">
                   <Label htmlFor="lastName">Last Name</Label>
-                  <Input id="lastName" defaultValue="Name" />
+                  <Input id="lastName" placeholder="Your last name" />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" defaultValue="user@vapps.com" />
+                <Input id="email" type="email" placeholder="Your email address" disabled />
               </div>
                <div className="space-y-2">
                 <Label htmlFor="jobTitle">Job Title</Label>
-                <Input id="jobTitle" defaultValue="Software Engineer" />
+                <Input id="jobTitle" placeholder="Your job title" />
               </div>
               <div className="flex justify-end">
                 <Button>Save Changes</Button>

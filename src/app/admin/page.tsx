@@ -16,8 +16,8 @@ export default function AdminDashboardPage() {
                         <Users className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">1,257</div>
-                        <p className="text-xs text-muted-foreground">+52 since last month</p>
+                        <div className="text-2xl font-bold">0</div>
+                        <p className="text-xs text-muted-foreground">No users yet</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -26,8 +26,8 @@ export default function AdminDashboardPage() {
                         <DollarSign className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">$12,450</div>
-                        <p className="text-xs text-muted-foreground">+8% from last month</p>
+                        <div className="text-2xl font-bold">$0</div>
+                        <p className="text-xs text-muted-foreground">No revenue this month</p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -36,7 +36,7 @@ export default function AdminDashboardPage() {
                         <Activity className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">312</div>
+                        <div className="text-2xl font-bold">0</div>
                         <p className="text-xs text-muted-foreground">currently active</p>
                     </CardContent>
                 </Card>
@@ -46,7 +46,7 @@ export default function AdminDashboardPage() {
                         <Mail className="h-4 w-4 text-muted-foreground" />
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">5,678</div>
+                        <div className="text-2xl font-bold">0</div>
                         <p className="text-xs text-muted-foreground">in the last 7 days</p>
                     </CardContent>
                 </Card>
@@ -57,7 +57,7 @@ export default function AdminDashboardPage() {
                     <CardTitle>Recent Activity</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">Activity feed will be displayed here.</p>
+                    <p className="text-muted-foreground text-center p-8">No recent activity.</p>
                 </CardContent>
             </Card>
         </div>

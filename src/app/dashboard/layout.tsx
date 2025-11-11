@@ -26,6 +26,8 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/firebase";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
@@ -45,6 +47,11 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const { user, isUserLoading } = useUser();
+
+  const getInitials = (email?: string | null) => {
+    return email ? email.charAt(0).toUpperCase() : 'U';
+  }
 
   return (
     <SidebarProvider>
@@ -80,12 +87,21 @@ export default function DashboardLayout({
           <SidebarFooter>
             <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">
               <Avatar>
-                <AvatarImage src="https://picsum.photos/seed/user-avatar/40/40" data-ai-hint="user avatar" />
-                <AvatarFallback>U</AvatarFallback>
+                <AvatarImage src={user?.photoURL ?? undefined} />
+                <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
-                <p className="font-semibold text-sm truncate">User Name</p>
-                <p className="text-xs text-muted-foreground truncate">user@vapps.com</p>
+                {isUserLoading ? (
+                  <div className="space-y-1">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-3 w-32" />
+                  </div>
+                ) : (
+                  <>
+                    <p className="font-semibold text-sm truncate">{user?.displayName || "User"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email || "No email"}</p>
+                  </>
+                )}
               </div>
               <Link href="/">
                 <Button variant="ghost" size="icon">

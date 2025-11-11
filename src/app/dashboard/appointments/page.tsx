@@ -1,18 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { PlusCircle } from "lucide-react";
-
-const upcomingAppointments = [
-    { date: "2024-07-29", time: "10:00 AM", coach: "Dr. Evelyn Reed", topic: "Career Goals Review", status: "Confirmed" },
-    { date: "2024-08-05", time: "02:00 PM", coach: "John Carter", topic: "Leadership Skills Workshop", status: "Confirmed" },
-];
-
-const pastAppointments = [
-    { date: "2024-07-22", time: "10:00 AM", coach: "Dr. Evelyn Reed", topic: "Initial Consultation", status: "Completed" },
-    { date: "2024-07-18", time: "11:00 AM", coach: "Samantha Blue", topic: "Project Planning", status: "Completed" },
-];
 
 export default function AppointmentsPage() {
     return (
@@ -34,23 +23,8 @@ export default function AppointmentsPage() {
                             <CardTitle>Upcoming Appointments</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                {upcomingAppointments.map((appt, i) => (
-                                    <div key={i} className="p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                                        <div>
-                                            <p className="font-semibold">{appt.topic}</p>
-                                            <p className="text-sm text-muted-foreground">with {appt.coach}</p>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                            <p>{new Date(appt.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                            <p>{appt.time}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant={appt.status === "Confirmed" ? "default" : "secondary"}>{appt.status}</Badge>
-                                            <Button variant="outline" size="sm">Details</Button>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="text-center text-muted-foreground p-12">
+                                <p>No upcoming appointments found.</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -59,23 +33,8 @@ export default function AppointmentsPage() {
                             <CardTitle>Past Appointments</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <div className="space-y-4">
-                                {pastAppointments.map((appt, i) => (
-                                    <div key={i} className="p-4 border rounded-lg flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 opacity-70">
-                                        <div>
-                                            <p className="font-semibold">{appt.topic}</p>
-                                            <p className="text-sm text-muted-foreground">with {appt.coach}</p>
-                                        </div>
-                                        <div className="text-sm text-muted-foreground">
-                                            <p>{new Date(appt.date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-                                            <p>{appt.time}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                            <Badge variant="secondary">{appt.status}</Badge>
-                                            <Button variant="outline" size="sm">View Notes</Button>
-                                        </div>
-                                    </div>
-                                ))}
+                            <div className="text-center text-muted-foreground p-12">
+                                <p>You have no past appointments.</p>
                             </div>
                         </CardContent>
                     </Card>
