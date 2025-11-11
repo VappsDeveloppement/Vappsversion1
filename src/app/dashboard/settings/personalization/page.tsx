@@ -19,6 +19,32 @@ export default function PersonalizationPage() {
   const [legalMentions, setLegalMentions] = React.useState("");
   const [cgv, setCgv] = React.useState("");
   const [privacyPolicy, setPrivacyPolicy] = React.useState("");
+  
+  // State for "Apparence" tab
+  const [appTitle, setAppTitle] = React.useState("VApps");
+  const [appSubtitle, setAppSubtitle] = React.useState("Développement");
+  const [logoWidth, setLogoWidth] = React.useState("40");
+  const [logoHeight, setLogoHeight] = React.useState("40");
+  const [logoDisplay, setLogoDisplay] = React.useState("app-and-logo");
+  const [primaryColor, setPrimaryColor] = React.useState("#2ff40a");
+  const [secondaryColor, setSecondaryColor] = React.useState("#25d408");
+  const [bgColor, setBgColor] = React.useState("#ffffff");
+
+
+  const handleAppearanceSave = () => {
+    const appearanceSettings = {
+      appTitle,
+      appSubtitle,
+      logoWidth,
+      logoHeight,
+      logoDisplay,
+      primaryColor,
+      secondaryColor,
+      bgColor,
+    };
+    console.log("Appearance Settings Saved:", appearanceSettings);
+    // Here you would typically send this data to your backend/database
+  };
 
   return (
     <div className="space-y-8">
@@ -200,11 +226,11 @@ export default function PersonalizationPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                       <Label htmlFor="app-title">Titre de l'application</Label>
-                      <Input id="app-title" placeholder="VApps" />
+                      <Input id="app-title" value={appTitle} onChange={(e) => setAppTitle(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="app-subtitle">Sous-titre de l'application</Label>
-                      <Input id="app-subtitle" placeholder="Développement" />
+                      <Input id="app-subtitle" value={appSubtitle} onChange={(e) => setAppSubtitle(e.target.value)} />
                   </div>
                 </div>
 
@@ -231,18 +257,18 @@ export default function PersonalizationPage() {
                             <div className="flex items-center gap-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="logo-width">Largeur</Label>
-                                    <Input id="logo-width" defaultValue="40" />
+                                    <Input id="logo-width" value={logoWidth} onChange={(e) => setLogoWidth(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="logo-height">Hauteur</Label>
-                                    <Input id="logo-height" defaultValue="40" />
+                                    <Input id="logo-height" value={logoHeight} onChange={(e) => setLogoHeight(e.target.value)} />
                                 </div>
                             </div>
                         </div>
                     </div>
                      <div>
                         <Label className="mb-3 block">Affichage</Label>
-                        <RadioGroup defaultValue="app-and-logo" className="space-y-2">
+                        <RadioGroup value={logoDisplay} onValueChange={setLogoDisplay} className="space-y-2">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="app-and-logo" id="app-and-logo" />
                                 <Label htmlFor="app-and-logo">Nom de l'application et logo</Label>
@@ -263,28 +289,28 @@ export default function PersonalizationPage() {
                         <div className="space-y-2">
                             <Label htmlFor="primary-color">Couleur Primaire</Label>
                             <div className="flex items-center gap-2">
-                                <Input type="color" defaultValue="#2ff40a" className="w-10 h-10 p-1"/>
-                                <Input id="primary-color" defaultValue="#2ff40a" />
+                                <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-10 h-10 p-1"/>
+                                <Input id="primary-color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
                             </div>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="secondary-color">Couleur Secondaire</Label>
                             <div className="flex items-center gap-2">
-                                <Input type="color" defaultValue="#25d408" className="w-10 h-10 p-1"/>
-                                <Input id="secondary-color" defaultValue="#25d408" />
+                                <Input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-10 h-10 p-1"/>
+                                <Input id="secondary-color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
                             </div>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="bg-color">Couleur de Fond</Label>
                             <div className="flex items-center gap-2">
-                                <Input type="color" defaultValue="#ffffff" className="w-10 h-10 p-1"/>
-                                <Input id="bg-color" defaultValue="#ffffff" />
+                                <Input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-10 h-10 p-1"/>
+                                <Input id="bg-color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
                             </div>
                         </div>
                     </div>
                 </div>
                  <div className="flex justify-start pt-6 border-t">
-                    <Button style={{backgroundColor: '#2ff40a', color: 'black'}}>Sauvegarder les changements</Button>
+                    <Button onClick={handleAppearanceSave} style={{backgroundColor: primaryColor, color: 'black'}}>Sauvegarder les changements</Button>
                 </div>
             </CardContent>
           </Card>
