@@ -1,7 +1,18 @@
+
+'use client'
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import React from "react";
 
 export default function PersonalizationPage() {
+
+  const [isVatSubject, setIsVatSubject] = React.useState(false);
+
   return (
     <div className="space-y-8">
       <div>
@@ -25,12 +36,101 @@ export default function PersonalizationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Informations Légales</CardTitle>
-              <CardDescription>Gérez les informations légales de votre entreprise.</CardDescription>
+              <CardDescription>Gérez les informations légales de votre entreprise. Ces informations seront affichées sur votre page d'accueil et vos documents.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">Le contenu des informations légales est vide.</p>
+            <CardContent className="space-y-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label htmlFor="company-name">Nom de l'entreprise / agence</Label>
+                  <Input id="company-name" placeholder="Votre Nom Commercial" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="structure-type">Type de structure</Label>
+                  <Input id="structure-type" placeholder="SARL, SAS, Auto-entrepreneur..." />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="capital">Capital</Label>
+                  <Input id="capital" type="number" placeholder="1000" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="siret">SIRET</Label>
+                  <Input id="siret" placeholder="12345678901234" />
+                </div>
               </div>
+              
+              <div className="space-y-4">
+                <Label>Adresse</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <Input placeholder="Numéro et nom de rue" className="sm:col-span-3"/>
+                  <Input placeholder="Code Postal" />
+                  <Input placeholder="Ville" className="sm:col-span-2"/>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                 <div className="space-y-2">
+                  <Label htmlFor="email">E-mail</Label>
+                  <Input id="email" type="email" placeholder="contact@exemple.com" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Téléphone</Label>
+                  <Input id="phone" type="tel" placeholder="0123456789" />
+                </div>
+                 <div className="space-y-2">
+                  <Label htmlFor="ape-naf">APE/NAF</Label>
+                  <Input id="ape-naf" placeholder="6201Z" />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="rm">RM (optionnel)</Label>
+                  <Input id="rm" placeholder="Numéro RM" />
+                </div>
+              </div>
+
+              <div>
+                  <h3 className="text-lg font-medium mb-4">Paramètres de TVA</h3>
+                  <div className="space-y-6">
+                    <div className="flex items-center space-x-3">
+                      <Switch id="vat-subject" checked={isVatSubject} onCheckedChange={setIsVatSubject} />
+                      <Label htmlFor="vat-subject">Assujetti à la TVA (non applicable pour le régime micro-entreprise)</Label>
+                    </div>
+
+                    {isVatSubject && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-8 border-l ml-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="vat-rate">Taux de TVA (%)</Label>
+                          <Input id="vat-rate" type="number" placeholder="20" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="vat-number">Numéro de TVA Intracommunautaire</Label>
+                          <Input id="vat-number" placeholder="FR12345678901" />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+              </div>
+
+               <div>
+                  <h3 className="text-lg font-medium mb-4">Informations optionnelles</h3>
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label htmlFor="rcs">RCS (Numéro et Ville)</Label>
+                        <Input id="rcs" placeholder="Paris B 123 456 789" />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="nada">Numéro NADA (Formation)</Label>
+                        <Input id="nada" placeholder="Numéro de déclaration d'activité" />
+                      </div>
+                       <div className="space-y-2 md:col-span-2">
+                        <Label htmlFor="insurance">Police d'assurance</Label>
+                        <Input id="insurance" placeholder="Nom de l'assurance et numéro de contrat" />
+                      </div>
+                   </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button>Enregistrer les modifications</Button>
+              </div>
+
             </CardContent>
           </Card>
         </TabsContent>
