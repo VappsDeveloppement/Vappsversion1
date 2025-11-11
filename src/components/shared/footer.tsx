@@ -11,6 +11,8 @@ import { Briefcase, ExternalLink, GitBranch, Facebook, Twitter, Linkedin, Instag
 import Link from "next/link";
 import React, { useState, useEffect } from "react";
 import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface LegalInfoProps {
   companyName?: string;
@@ -61,6 +63,10 @@ export function Footer() {
     const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
     const [copyrightText, setCopyrightText] = useState("Vapps.");
     const [copyrightUrl, setCopyrightUrl] = useState("/");
+    
+    const [legalMentions, setLegalMentions] = useState("");
+    const [cgv, setCgv] = useState("");
+    const [privacyPolicy, setPrivacyPolicy] = useState("");
 
 
     useEffect(() => {
@@ -71,6 +77,9 @@ export function Footer() {
                     try {
                         const parsedInfo = JSON.parse(storedLegalInfo);
                         setLegalInfo(parsedInfo);
+                        setLegalMentions(parsedInfo.legalMentions || "");
+                        setCgv(parsedInfo.cgv || "");
+                        setPrivacyPolicy(parsedInfo.privacyPolicy || "");
                     } catch (e) {
                         console.error("Failed to parse legal info from localStorage", e);
                     }
@@ -111,6 +120,25 @@ export function Footer() {
 
     const fullAddress = [legalInfo.addressStreet, legalInfo.addressZip, legalInfo.addressCity].filter(Boolean).join(', ');
 
+    const LegalDocumentDialog = ({ title, content }: { title: string, content: string }) => (
+      <Dialog>
+        <DialogTrigger asChild>
+          <button className="block hover:text-white text-secondary text-left">{title}</button>
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-[625px]">
+          <DialogHeader>
+            <DialogTitle>{title}</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="h-[70vh] w-full">
+             <div
+                className="prose dark:prose-invert prose-sm sm:prose-base max-w-none p-4"
+                dangerouslySetInnerHTML={{ __html: content || "<p>Contenu non disponible.</p>" }}
+              />
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    );
+
     return (
         <footer className="bg-gray-900 text-gray-300 py-12">
             <div className="container mx-auto px-4">
@@ -129,9 +157,9 @@ export function Footer() {
                         {legalInfo.phone && <p>Téléphone: {legalInfo.phone}</p>}
                         <br />
                         <div className="space-y-1">
-                            <Link href="#" className="block hover:text-white text-secondary">Mentions légales</Link>
-                            <Link href="#" className="block hover:text-white text-secondary">Politique de confidentialité</Link>
-                            <Link href="#" className="block hover:text-white text-secondary">Conditions Générales de Vente</Link>
+                            <LegalDocumentDialog title="Mentions légales" content={legalMentions} />
+                            <LegalDocumentDialog title="Politique de confidentialité" content={privacyPolicy} />
+                            <LegalDocumentDialog title="Conditions Générales de Vente" content={cgv} />
                         </div>
                     </div>
 
