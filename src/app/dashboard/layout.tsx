@@ -74,42 +74,49 @@ export default function DashboardLayout({
 
   if (!isMounted) {
     return (
-        <div className="flex">
-            <div className="w-64 border-r p-2 space-y-2">
-                <div className="h-10 px-2 flex items-center">
-                    <Skeleton className="h-8 w-32" />
-                </div>
-                <div className="flex-1 p-2 space-y-1">
-                    {[...Array(4)].map((_, i) => (
-                        <Skeleton key={i} className="h-8 w-full" />
-                    ))}
-                    <Skeleton className="h-8 w-full mt-2" />
-                    <div className="pl-4 space-y-1 pt-1">
-                         <Skeleton className="h-7 w-[calc(100%-1rem)]" />
-                         <Skeleton className="h-7 w-[calc(100%-1rem)]" />
-                         <Skeleton className="h-7 w-[calc(100%-1rem)]" />
-                    </div>
-                </div>
-                 <div className="p-2 mt-auto">
-                    <Skeleton className="h-8 w-full" />
-                </div>
-                 <div className="p-2">
-                    <Skeleton className="h-12 w-full" />
-                </div>
+        <SidebarProvider>
+            <div className="flex">
+                <Sidebar>
+                     <SidebarHeader>
+                        <Skeleton className="h-8 w-32" />
+                    </SidebarHeader>
+                    <SidebarContent>
+                        <div className="flex-1 p-2 space-y-1">
+                            {[...Array(4)].map((_, i) => (
+                                <Skeleton key={i} className="h-8 w-full" />
+                            ))}
+                            <Skeleton className="h-8 w-full mt-2" />
+                            <div className="pl-4 space-y-1 pt-1">
+                                <Skeleton className="h-7 w-[calc(100%-1rem)]" />
+                                <Skeleton className="h-7 w-[calc(100%-1rem)]" />
+                                <Skeleton className="h-7 w-[calc(100%-1rem)]" />
+                            </div>
+                        </div>
+                    </SidebarContent>
+                    <SidebarFooter>
+                        <div className="p-2 mt-auto">
+                            <Skeleton className="h-8 w-full" />
+                        </div>
+                        <div className="p-2">
+                            <Skeleton className="h-12 w-full" />
+                        </div>
+                    </SidebarFooter>
+                </Sidebar>
+                <SidebarInset>
+                    <header className="p-4 border-b h-14"></header>
+                    <main className="p-8">
+                        <Skeleton className="h-96 w-full" />
+                    </main>
+                </SidebarInset>
             </div>
-            <div className="flex-1">
-                <header className="p-4 border-b h-14"></header>
-                <main className="p-8">
-                    <Skeleton className="h-96 w-full" />
-                </main>
-            </div>
-        </div>
+        </SidebarProvider>
     );
   }
 
+
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen">
+      <div className="flex">
         <Sidebar>
           <SidebarHeader>
             <Logo />
@@ -140,12 +147,14 @@ export default function DashboardLayout({
                         <SidebarMenuSub>
                             {settingsMenuItems.map((item) => (
                                 <SidebarMenuItem key={item.href}>
-                                  <SidebarMenuSubButton isActive={pathname === item.href}>
-                                      <Link href={item.href}>
-                                        {item.icon}
-                                        <span>{item.label}</span>
-                                      </Link>
-                                    </SidebarMenuSubButton>
+                                    <Link href={item.href} passHref>
+                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                                          <>
+                                            {item.icon}
+                                            <span>{item.label}</span>
+                                          </>
+                                        </SidebarMenuSubButton>
+                                    </Link>
                                 </SidebarMenuItem>
                             ))}
                         </SidebarMenuSub>
