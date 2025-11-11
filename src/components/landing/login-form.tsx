@@ -12,19 +12,19 @@ export function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
 
     return (
-        <Card className="w-full max-w-sm bg-card/90 backdrop-blur-sm">
+        <Card className="w-full max-w-sm bg-background/90 backdrop-blur-sm">
             <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Connexion</CardTitle>
-                <CardDescription>Accédez à votre espace personnel.</CardDescription>
+                <CardTitle className="text-2xl text-foreground">Connexion</CardTitle>
+                <CardDescription className="text-muted-foreground">Accédez à votre espace personnel.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form className="space-y-4">
                     <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="email" className="text-foreground">Email</Label>
                         <Input id="email" type="email" placeholder="votre@email.com" required />
                     </div>
                     <div className="space-y-2">
-                        <Label htmlFor="password">Mot de passe</Label>
+                        <Label htmlFor="password" className="text-foreground">Mot de passe</Label>
                         <div className="relative">
                             <Input id="password" type={showPassword ? "text" : "password"} required />
                             <Button
