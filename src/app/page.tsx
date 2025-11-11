@@ -8,6 +8,7 @@ import { VideoSection } from '@/components/shared/video-section';
 import { ShopSection } from '@/components/shared/shop-section';
 import { ServicesSection } from '@/components/shared/services-section';
 import { OtherActivitiesSection } from '@/components/shared/other-activities-section';
+import { CtaSection } from '@/components/shared/cta-section';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
@@ -51,10 +52,12 @@ export default function Home() {
       </div>
       <AboutSection />
       <ParcoursSection />
+      <CtaSection />
       <VideoSection />
       <ShopSection />
       <ServicesSection />
       <OtherActivitiesSection />
+      <CtaSection />
     </div>
   );
 }
