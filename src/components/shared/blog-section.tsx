@@ -53,7 +53,7 @@ export function BlogSection() {
                                 <CardContent className="p-6 flex-1 flex flex-col">
                                     <h3 className="font-bold text-xl mb-2">{article.title}</h3>
                                     <p className="text-muted-foreground text-sm mb-4">{article.description}</p>
-                                    <Link href="#" className="text-green-600 font-semibold text-sm mt-auto flex items-center gap-1 group-hover:underline">
+                                    <Link href="#" className="text-secondary font-semibold text-sm mt-auto flex items-center gap-1 group-hover:underline">
                                         Lire la suite
                                         <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                                     </Link>
@@ -64,7 +64,7 @@ export function BlogSection() {
                 </div>
                 
                 <div className="text-center">
-                    <Button size="lg" className="bg-lime-500 hover:bg-lime-600 text-black font-bold">
+                    <Button size="lg" className="font-bold">
                         Plus d'articles
                     </Button>
                 </div>

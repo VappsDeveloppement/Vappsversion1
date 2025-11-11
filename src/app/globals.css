@@ -87,6 +87,6 @@
     }
   }
   a {
-    @apply text-secondary-foreground;
+    @apply text-secondary;
   }
 }

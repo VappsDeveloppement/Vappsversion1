@@ -8,7 +8,7 @@ export function CtaSection() {
                 <p className="text-muted-foreground max-w-2xl mx-auto mb-8">
                     Rejoignez notre communauté de bêta-testeurs et découvrez des applications innovantes avant tout le monde.
                 </p>
-                <Button size="lg" className="bg-lime-500 hover:bg-lime-600 text-black font-bold">
+                <Button size="lg" className="font-bold">
                     Devenir bêta-testeur
                 </Button>
             </div>

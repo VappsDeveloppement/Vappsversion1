@@ -111,7 +111,7 @@ export function LoginForm() {
                                 </FormItem>
                             )}
                         />
-                        <Button type="submit" className="w-full bg-[#32cd32] hover:bg-[#28a428] text-white font-bold text-lg h-12" disabled={isLoading}>
+                        <Button type="submit" className="w-full font-bold text-lg h-12" disabled={isLoading}>
                             {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Se connecter'}
                         </Button>
                         <div className="text-center">

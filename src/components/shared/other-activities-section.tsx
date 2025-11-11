@@ -63,7 +63,7 @@ export function OtherActivitiesSection() {
                                             <CardContent className="p-6 sm:w-2/3 flex flex-col justify-center">
                                                 <h3 className="font-bold text-xl mb-2">{activity.title}</h3>
                                                 <p className="text-muted-foreground mb-3">{activity.description}</p>
-                                                <Link href="#" className="text-green-600 font-semibold text-sm hover:underline">
+                                                <Link href="#" className="text-secondary font-semibold text-sm hover:underline">
                                                     En savoir plus
                                                 </Link>
                                             </CardContent>
@@ -77,14 +77,14 @@ export function OtherActivitiesSection() {
                         <Card>
                             <CardContent className="p-6">
                                 <div className="flex items-center gap-3 mb-4">
-                                    <Calendar className="h-6 w-6 text-green-600" />
+                                    <Calendar className="h-6 w-6 text-primary" />
                                     <h3 className="font-bold text-xl">Prochains Événements</h3>
                                 </div>
                                 <div className="space-y-3">
                                     {events.map((event, index) => (
                                         <div key={index} className="flex justify-between items-center text-sm">
                                             <p className="font-medium">{event.title}</p>
-                                            <p className="text-green-600 font-semibold">{event.date}</p>
+                                            <p className="text-primary font-semibold">{event.date}</p>
                                         </div>
                                     ))}
                                 </div>
@@ -100,7 +100,7 @@ export function OtherActivitiesSection() {
                                     <Input placeholder="Prénom et Nom" />
                                     <Input type="email" placeholder="votre.email@example.com" />
                                     <Textarea placeholder="Quelques mots sur votre situation..." />
-                                    <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-bold">
+                                    <Button className="w-full font-bold">
                                         <Send className="mr-2 h-4 w-4 transform -rotate-45" />
                                         Envoyer ma demande
                                     </Button>

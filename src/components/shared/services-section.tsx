@@ -26,7 +26,7 @@ export function ServicesSection() {
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold">Nos Accompagnements</h2>
-                    <p className="text-lg text-green-500 font-semibold mt-2">Construisons ensemble votre avenir</p>
+                    <p className="text-lg text-primary font-semibold mt-2">Construisons ensemble votre avenir</p>
                     <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">
                         Que vous soyez en quête de sens, en reconversion ou désireux d'évoluer, nous avons une solution pour vous.
                     </p>

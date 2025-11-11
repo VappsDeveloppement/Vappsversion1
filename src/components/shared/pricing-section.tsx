@@ -70,7 +70,7 @@ export function PricingSection() {
                                 <CardTitle className="text-2xl">{tier.name}</CardTitle>
                                 <CardDescription>{tier.description}</CardDescription>
                                 <div>
-                                    <span className="text-4xl font-bold">{tier.price}</span>
+                                    <span className="text-4xl font-bold text-primary">{tier.price}</span>
                                     <span className="text-muted-foreground">{tier.period}</span>
                                 </div>
                             </CardHeader>
@@ -85,7 +85,7 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button className={cn("w-full", !tier.featured && "bg-secondary hover:bg-secondary/80 text-secondary-foreground")}>
+                                <Button className={cn("w-full", !tier.featured && "variant-secondary")}>
                                     {tier.cta}
                                 </Button>
                             </CardFooter>

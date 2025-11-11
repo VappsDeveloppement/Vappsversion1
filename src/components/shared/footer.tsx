@@ -46,9 +46,9 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                         {legalInfo.phone && <p>Téléphone: {legalInfo.phone}</p>}
                         <br />
                         <div className="space-y-1">
-                            <Link href="#" className="block hover:text-white">Mentions légales</Link>
-                            <Link href="#" className="block hover:text-white">Politique de confidentialité</Link>
-                            <Link href="#" className="block hover:text-white">Conditions Générales de Vente</Link>
+                            <Link href="#" className="block hover:text-white text-secondary">Mentions légales</Link>
+                            <Link href="#" className="block hover:text-white text-secondary">Politique de confidentialité</Link>
+                            <Link href="#" className="block hover:text-white text-secondary">Conditions Générales de Vente</Link>
                         </div>
                     </div>
 
@@ -75,7 +75,7 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                                 placeholder="Votre message..." 
                                 className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 min-h-[100px]" 
                             />
-                            <Button className="bg-lime-500 hover:bg-lime-600 text-black font-bold">
+                            <Button className="font-bold">
                                 Envoyer
                             </Button>
                         </form>
@@ -89,13 +89,13 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                         </p>
                         <ul className="space-y-3">
                             <li>
-                                <Link href="#" className="flex items-center gap-2 hover:text-white">
+                                <Link href="#" className="flex items-center gap-2 hover:text-white text-secondary">
                                     <GitBranch className="h-4 w-4" />
                                     <span>Notre mission</span>
                                 </Link>
                             </li>
                             <li>
-                                <Link href="#" className="flex items-center gap-2 hover:text-white">
+                                <Link href="#" className="flex items-center gap-2 hover:text-white text-secondary">
                                     <Briefcase className="h-4 w-4" />
                                     <span>Carrières</span>
                                 </Link>

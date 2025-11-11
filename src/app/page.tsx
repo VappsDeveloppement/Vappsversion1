@@ -41,7 +41,7 @@ export default function Home() {
                 Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.
               </h1>
               <div>
-                <h2 className="text-xl font-bold">Vapps Accompagnement</h2>
+                <h2 className="text-xl font-bold text-primary">Vapps Accompagnement</h2>
                 <p className="text-lg text-white/80 mt-2">
                   Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.
                 </p>
