@@ -44,7 +44,7 @@ export default function AdminLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen">
+      <div className="flex">
         <Sidebar>
           <SidebarHeader>
             <div className="flex justify-between items-center">
@@ -101,7 +101,7 @@ export default function AdminLayout({
                 </div>
                 <SidebarTrigger className="md:hidden" />
             </header>
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-muted/30">
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
                 {children}
             </main>
         </SidebarInset>

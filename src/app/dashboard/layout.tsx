@@ -85,7 +85,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen">
+      <div className="flex">
         <Sidebar>
           <SidebarHeader className={cn(logoDisplay === 'logo-only' && 'justify-center')}>
             <Logo />
@@ -97,7 +97,7 @@ export default function DashboardLayout({
                   <Link href={item.href}>
                     <SidebarMenuButton isActive={pathname === item.href}>
                       {item.icon}
-                      <span>{item.label}</span>
+                      <span className="text-black">{item.label}</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
