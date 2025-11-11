@@ -7,11 +7,48 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import React from "react";
+import React, { useEffect } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload } from "lucide-react";
 import Image from "next/image";
+
+// Helper function to convert hex to HSL
+const hexToHsl = (hex: string): string => {
+  if (!/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+    return '0 0% 0%'; // fallback for invalid hex
+  }
+
+  let c = hex.substring(1).split('');
+  if (c.length === 3) {
+    c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+  }
+  const num = parseInt(c.join(''), 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  
+  const r_ = r / 255, g_ = g / 255, b_ = b / 255;
+  const max = Math.max(r_, g_, b_), min = Math.min(r_, g_, b_);
+  let h = 0, s = 0, l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r_: h = (g_ - b_) / d + (g_ < b_ ? 6 : 0); break;
+      case g_: h = (b_ - r_) / d + 2; break;
+      case b_: h = (r_ - g_) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  h = Math.round(h * 360);
+  s = Math.round(s * 100);
+  l = Math.round(l * 100);
+
+  return `${h} ${s}% ${l}%`;
+};
 
 export default function PersonalizationPage() {
 
@@ -43,8 +80,28 @@ export default function PersonalizationPage() {
       bgColor,
     };
     console.log("Appearance Settings Saved:", appearanceSettings);
-    // Here you would typically send this data to your backend/database
+    // In a real app, this would send data to a backend.
+    // For now, we update CSS variables dynamically.
+    if (typeof window !== 'undefined') {
+        document.documentElement.style.setProperty('--primary', hexToHsl(primaryColor));
+        document.documentElement.style.setProperty('--secondary', hexToHsl(secondaryColor));
+        document.documentElement.style.setProperty('--background', hexToHsl(bgColor));
+    }
   };
+
+  useEffect(() => {
+    // This effect will run on the client side after the component mounts
+    // and whenever the color values change.
+    handleAppearanceSave();
+  }, [primaryColor, secondaryColor, bgColor]);
+  
+  useEffect(() => {
+    // This effect updates the logo title in the localStorage to be read by the Logo component.
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('appTitle', appTitle);
+        window.dispatchEvent(new Event('storage')); // Notify other components of the change
+    }
+  }, [appTitle]);
 
   return (
     <div className="space-y-8">
