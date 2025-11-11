@@ -30,11 +30,11 @@ import { useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const menuItems = [
-  { href: "/dashboard", label: "Dashboard", icon: <LayoutDashboard /> },
-  { href: "/dashboard/appointments", label: "Appointments", icon: <CalendarDays /> },
-  { href: "/dashboard/messages", label: "Messages", icon: <MessageSquare /> },
-  { href: "/dashboard/billing", label: "Billing", icon: <CreditCard /> },
-  { href: "/dashboard/settings", label: "Settings", icon: <Settings /> },
+  { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
+  { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
+  { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
+  { href: "/dashboard/billing", label: "Facturation", icon: <CreditCard /> },
+  { href: "/dashboard/settings", label: "Paramètres", icon: <Settings /> },
 ];
 
 const adminMenuItems = [
