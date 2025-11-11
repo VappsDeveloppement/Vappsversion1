@@ -23,6 +23,54 @@
       "description": "Avatar for third testimonial",
       "imageUrl": "https://images.unsplash.com/photo-1583195763986-0231686dcd43?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwb3J0cmFpdCUyMG1hbnxlbnwwfHx8fDE3NjI3NzQzNTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "portrait man"
+    },
+    {
+      "id": "about-way",
+      "description": "Woman riding a bike on a road at sunset",
+      "imageUrl": "https://images.unsplash.com/photo-1689228152473-a999972a4bbb?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHx3b21hbiUyMGJpa2V8ZW58MHx8fHwxNzYyODcxODYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman bike"
+    },
+    {
+      "id": "pillar-method",
+      "description": "Close up of a smartphone",
+      "imageUrl": "https://images.unsplash.com/photo-1754762372302-7e6a3d79a666?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxzbWFydHBob25lJTIwY2xvc2V1cHxlbnwwfHx8fDE3NjI4NDcwODl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "smartphone closeup"
+    },
+    {
+      "id": "pillar-tools",
+      "description": "Beautiful coastline view from a cliff",
+      "imageUrl": "https://images.unsplash.com/photo-1557843961-b589ce207737?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxjb2FzdGxpbmUlMjBjbGlmZnxlbnwwfHx8fDE3NjI4MDA3MTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "coastline cliff"
+    },
+    {
+      "id": "pillar-community",
+      "description": "Busy city street with people",
+      "imageUrl": "https://images.unsplash.com/photo-1620004071518-52531ff9162c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxjaXR5JTIwc3RyZWV0fGVufDB8fHx8MTc2Mjg0ODg3NXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city street"
+    },
+    {
+      "id": "expertise-tech",
+      "description": "A coyote in the wild",
+      "imageUrl": "https://images.unsplash.com/photo-1546904307-ad25ac938b0a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxjb3lvdGUlMjB3aWxkfGVufDB8fHx8MTc2Mjg3MTg2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "coyote wild"
+    },
+    {
+      "id": "expertise-health",
+      "description": "Person sitting and looking at a city skyline",
+      "imageUrl": "https://images.unsplash.com/photo-1641383058174-31e0636cf4ff?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHxwZXJzb24lMjBza3lsaW5lfGVufDB8fHx8MTc2Mjg3MTg2M3ww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "person skyline"
+    },
+    {
+      "id": "expertise-entrepreneurship",
+      "description": "Sun rising over a field with a house",
+      "imageUrl": "https://images.unsplash.com/photo-1643226505340-793438e5ea87?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzdW5yaXNlJTIwZmllbGR8ZW58MHx8fHwxNzYyODcxODYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sunrise field"
+    },
+    {
+      "id": "expertise-management",
+      "description": "Sunset over a forest",
+      "imageUrl": "https://images.unsplash.com/photo-1641244231617-0aaaed3d4b8f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzdW5zZXQlMjBmb3Jlc3R8ZW58MHx8fHwxNzYyODcxODYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sunset forest"
     }
   ]
 }
