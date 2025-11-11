@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -7,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import React, { useEffect } from "react";
+import React, { useEffect, useRef } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload } from "lucide-react";
@@ -67,6 +68,9 @@ export default function PersonalizationPage() {
   const [secondaryColor, setSecondaryColor] = React.useState("#25d408");
   const [bgColor, setBgColor] = React.useState("#ffffff");
 
+  const [logoPreview, setLogoPreview] = React.useState("/vapps.png");
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const handleAppearanceSave = () => {
     const appearanceSettings = {
@@ -86,6 +90,17 @@ export default function PersonalizationPage() {
         document.documentElement.style.setProperty('--primary', hexToHsl(primaryColor));
         document.documentElement.style.setProperty('--secondary', hexToHsl(secondaryColor));
         document.documentElement.style.setProperty('--background', hexToHsl(bgColor));
+    }
+  };
+
+  const handleLogoUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setLogoPreview(URL.createObjectURL(file));
     }
   };
 
@@ -301,9 +316,16 @@ export default function PersonalizationPage() {
                             <Label>Fichier du logo</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted relative">
-                                    <Image src="/vapps.png" alt="VApps Logo" width={60} height={60} objectFit="contain" />
+                                    <Image src={logoPreview} alt="Aperçu du logo" layout="fill" objectFit="contain" />
                                 </div>
-                                <Button variant="outline">
+                                <input
+                                    type="file"
+                                    ref={fileInputRef}
+                                    onChange={handleFileChange}
+                                    className="hidden"
+                                    accept="image/png, image/jpeg, image/svg+xml"
+                                />
+                                <Button variant="outline" onClick={handleLogoUploadClick}>
                                     <Upload className="mr-2 h-4 w-4" />
                                     Uploader
                                 </Button>
