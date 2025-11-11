@@ -14,21 +14,25 @@ import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personaliza
 
 interface LegalInfoProps {
   companyName?: string;
-  capital?: number;
-  address?: string;
+  addressStreet?: string;
+  addressZip?: string;
+  addressCity?: string;
   siret?: string;
   rcs?: string;
-  nafCode?: string;
+  apeNaf?: string;
   email?: string;
   phone?: string;
+  capital?: string;
 }
 
 const defaultLegalInfo: LegalInfoProps = {
     companyName: "SARL au capital de 1000 €",
-    address: "123 Rue de la République, 75001 Paris",
+    addressStreet: "123 Rue de la République",
+    addressZip: "75001",
+    addressCity: "Paris",
     siret: "12345678901234",
     rcs: "Paris B 123 456 789",
-    nafCode: "6201Z",
+    apeNaf: "6201Z",
     email: "contact@vapps.test",
     phone: "01 23 45 67 89",
 };
@@ -45,8 +49,9 @@ const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Instagram,
 };
 
-export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfoProps }) {
+export function Footer() {
     
+    const [legalInfo, setLegalInfo] = useState<LegalInfoProps>(defaultLegalInfo);
     const [aboutTitle, setAboutTitle] = useState("À propos");
     const [aboutText, setAboutText] = useState("HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.");
     const [aboutLinks, setAboutLinks] = useState<AboutLink[]>([
@@ -59,38 +64,52 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
 
 
     useEffect(() => {
-        const updateFooterContent = () => {
-            const storedTitle = localStorage.getItem('footerAboutTitle');
-            const storedText = localStorage.getItem('footerAboutText');
-            const storedLinks = localStorage.getItem('footerAboutLinks');
-            const storedSocialLinks = localStorage.getItem('footerSocialLinks');
-            const storedCopyrightText = localStorage.getItem('copyrightText');
-            const storedCopyrightUrl = localStorage.getItem('copyrightUrl');
+        const updateContent = () => {
+            if (typeof window !== 'undefined') {
+                const storedLegalInfo = localStorage.getItem('legalInfo');
+                if (storedLegalInfo) {
+                    try {
+                        const parsedInfo = JSON.parse(storedLegalInfo);
+                        setLegalInfo(parsedInfo);
+                    } catch (e) {
+                        console.error("Failed to parse legal info from localStorage", e);
+                    }
+                }
 
-            if (storedTitle) setAboutTitle(storedTitle);
-            if (storedText) setAboutText(storedText);
-            if (storedLinks) {
-                try {
-                    setAboutLinks(JSON.parse(storedLinks));
-                } catch (e) {
-                    console.error("Failed to parse footer links from localStorage", e);
+                const storedTitle = localStorage.getItem('footerAboutTitle');
+                const storedText = localStorage.getItem('footerAboutText');
+                const storedLinks = localStorage.getItem('footerAboutLinks');
+                const storedSocialLinks = localStorage.getItem('footerSocialLinks');
+                const storedCopyrightText = localStorage.getItem('copyrightText');
+                const storedCopyrightUrl = localStorage.getItem('copyrightUrl');
+
+                if (storedTitle) setAboutTitle(storedTitle);
+                if (storedText) setAboutText(storedText);
+                if (storedLinks) {
+                    try {
+                        setAboutLinks(JSON.parse(storedLinks));
+                    } catch (e) {
+                        console.error("Failed to parse footer links from localStorage", e);
+                    }
                 }
-            }
-             if (storedSocialLinks) {
-                try {
-                    setSocialLinks(JSON.parse(storedSocialLinks));
-                } catch (e) {
-                    console.error("Failed to parse social links from localStorage", e);
+                if (storedSocialLinks) {
+                    try {
+                        setSocialLinks(JSON.parse(storedSocialLinks));
+                    } catch (e) {
+                        console.error("Failed to parse social links from localStorage", e);
+                    }
                 }
+                if (storedCopyrightText) setCopyrightText(storedCopyrightText);
+                if (storedCopyrightUrl) setCopyrightUrl(storedCopyrightUrl);
             }
-            if (storedCopyrightText) setCopyrightText(storedCopyrightText);
-            if (storedCopyrightUrl) setCopyrightUrl(storedCopyrightUrl);
         };
 
-        updateFooterContent();
-        window.addEventListener('storage', updateFooterContent);
-        return () => window.removeEventListener('storage', updateFooterContent);
+        updateContent();
+        window.addEventListener('storage', updateContent);
+        return () => window.removeEventListener('storage', updateContent);
     }, []);
+
+    const fullAddress = [legalInfo.addressStreet, legalInfo.addressZip, legalInfo.addressCity].filter(Boolean).join(', ');
 
     return (
         <footer className="bg-gray-900 text-gray-300 py-12">
@@ -99,12 +118,12 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                     {/* Left Column */}
                     <div className="md:col-span-4 text-sm">
                         <Logo className="text-white mb-4" />
-                        {legalInfo.companyName && <p>{legalInfo.companyName}</p>}
-                        {legalInfo.address && <p>{legalInfo.address}</p>}
+                        {legalInfo.companyName && <p>{legalInfo.companyName}{legalInfo.capital && ` au capital de ${legalInfo.capital} €`}</p>}
+                        {fullAddress && <p>{fullAddress}</p>}
                         <br />
                         {legalInfo.siret && <p>SIRET: {legalInfo.siret}</p>}
                         {legalInfo.rcs && <p>RCS: {legalInfo.rcs}</p>}
-                        {legalInfo.nafCode && <p>Code NAF: {legalInfo.nafCode}</p>}
+                        {legalInfo.apeNaf && <p>Code NAF: {legalInfo.apeNaf}</p>}
                         <br />
                         {legalInfo.email && <p>E-mail: {legalInfo.email}</p>}
                         {legalInfo.phone && <p>Téléphone: {legalInfo.phone}</p>}
@@ -186,5 +205,3 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
         </footer>
     );
 }
-
-    
