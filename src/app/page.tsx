@@ -5,6 +5,7 @@ import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { AboutSection } from '@/components/shared/about-section';
 import { ParcoursSection } from '@/components/shared/parcours-section';
 import { VideoSection } from '@/components/shared/video-section';
+import { ShopSection } from '@/components/shared/shop-section';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
@@ -49,6 +50,7 @@ export default function Home() {
       <AboutSection />
       <ParcoursSection />
       <VideoSection />
+      <ShopSection />
     </div>
   );
 }

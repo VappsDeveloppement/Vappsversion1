@@ -71,6 +71,30 @@
       "description": "Sunset over a forest",
       "imageUrl": "https://images.unsplash.com/photo-1641244231617-0aaaed3d4b8f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxzdW5zZXQlMjBmb3Jlc3R8ZW58MHx8fHwxNzYyODcxODYzfDA&ixlib=rb-4.1.0&q=80&w=1080",
       "imageHint": "sunset forest"
+    },
+    {
+      "id": "shop-featured-product",
+      "description": "Person working on a laptop",
+      "imageUrl": "https://images.unsplash.com/photo-1579389083046-e3df9c2b3325?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxsYXB0b3AlMjB3b3JrfGVufDB8fHx8MTc2Mjc1NjY2MHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "laptop work"
+    },
+    {
+      "id": "shop-product-1",
+      "description": "Blue misty mountains for Pack de Contrats",
+      "imageUrl": "https://images.unsplash.com/photo-1444790925621-0342dd3ca58d?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxibHVlJTIwbW91bnRhaW5zfGVufDB8fHx8MTc2Mjg3MjMzNnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "blue mountains"
+    },
+    {
+      "id": "shop-product-2",
+      "description": "Foggy forest for Stratégies Marketing",
+      "imageUrl": "https://images.unsplash.com/photo-1486707471592-8e7eb7e36f78?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwyfHxmb2dneSUyMGZvcmVzdHxlbnwwfHx8fDE3NjI4NzIzMzZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "foggy forest"
+    },
+    {
+      "id": "shop-product-3",
+      "description": "Clear night sky for Modèles de Facturation",
+      "imageUrl": "https://images.unsplash.com/photo-1477840539360-4a1d23071046?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxuaWdodCUyMHNreXxlbnwwfHx8fDE3NjI4MzIxOTZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "night sky"
     }
   ]
 }
