@@ -9,7 +9,11 @@ import {
   LogOut,
   MessageSquare,
   Settings,
-  Users
+  Users,
+  Shield,
+  FileText,
+  Paintbrush,
+  ChevronDown
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -28,18 +32,22 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
+import React from "react";
 
 const menuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
   { href: "/dashboard/billing", label: "Facturation", icon: <CreditCard /> },
-  { href: "/dashboard/settings", label: "Paramètres", icon: <Settings /> },
 ];
 
-const adminMenuItems = [
-    { href: "/admin", label: "Admin Dashboard", icon: <LayoutDashboard /> },
-];
+const settingsMenuItems = [
+    { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
+    { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
+    { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
+]
 
 export default function DashboardLayout({
   children,
@@ -48,6 +56,7 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
 
   const getInitials = (email?: string | null) => {
     return email ? email.charAt(0).toUpperCase() : 'U';
@@ -72,6 +81,31 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
+                <Collapsible open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                    <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/settings")}>
+                                <Shield />
+                                <span>Administration</span>
+                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isSettingsOpen && "rotate-180")} />
+                            </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                    </SidebarMenuItem>
+                    <CollapsibleContent>
+                        <SidebarMenuSub>
+                            {settingsMenuItems.map((item) => (
+                                <SidebarMenuItem key={item.href}>
+                                    <Link href={item.href}>
+                                        <SidebarMenuSubButton isActive={pathname === item.href}>
+                                            {item.icon}
+                                            <span>{item.label}</span>
+                                        </SidebarMenuSubButton>
+                                    </Link>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenuSub>
+                    </CollapsibleContent>
+                </Collapsible>
             </SidebarMenu>
              <SidebarMenu className="mt-auto">
                 <SidebarMenuItem>
