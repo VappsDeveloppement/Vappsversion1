@@ -3,13 +3,14 @@ import Image from 'next/image';
 import { Logo } from '@/components/shared/logo';
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { AboutSection } from '@/components/shared/about-section';
+import { ParcoursSection } from '@/components/shared/parcours-section';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
 
   return (
     <div className="min-h-dvh flex flex-col overflow-hidden">
-      <div className="relative bg-gray-900 text-white">
+      <div className="relative bg-background text-foreground">
         {heroImage && (
           <Image
             src={heroImage.imageUrl}
@@ -23,7 +24,7 @@ export default function Home() {
         
         <main className="relative z-20 container mx-auto px-4 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <div className="flex flex-col gap-8 text-center md:text-left">
+            <div className="flex flex-col gap-8 text-center text-white">
               <div className="flex justify-center md:justify-start">
                 <Logo className="text-white" />
               </div>
@@ -45,6 +46,7 @@ export default function Home() {
         </main>
       </div>
       <AboutSection />
+      <ParcoursSection />
     </div>
   );
 }
