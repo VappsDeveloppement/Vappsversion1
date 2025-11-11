@@ -400,7 +400,7 @@ export default function PersonalizationPage() {
                     </div>
                 </div>
                  <div className="flex justify-start pt-6 border-t">
-                    <Button onClick={handleAppearanceSave} style={{backgroundColor: primaryColor, color: 'black'}}>Sauvegarder les changements</Button>
+                    <Button onClick={handleAppearanceSave} style={{backgroundColor: primaryColor}}>Sauvegarder les changements</Button>
                 </div>
             </CardContent>
           </Card>

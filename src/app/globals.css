@@ -86,4 +86,7 @@
       @apply text-2xl font-bold mb-4 mt-6;
     }
   }
+  a {
+    @apply text-secondary-foreground;
+  }
 }
