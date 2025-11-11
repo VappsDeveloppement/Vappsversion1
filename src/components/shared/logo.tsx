@@ -8,13 +8,18 @@ import React, { useState, useEffect } from 'react';
 
 export function Logo({ className }: { className?: string; text?: string; }) {
   const [logoText, setLogoText] = useState("VApps");
+  const [logoSubtitle, setLogoSubtitle] = useState("Développement");
 
   useEffect(() => {
     // This function will run on the client side
     const updateLogoText = () => {
         const storedTitle = localStorage.getItem('appTitle');
+        const storedSubtitle = localStorage.getItem('appSubtitle');
         if (storedTitle) {
             setLogoText(storedTitle);
+        }
+        if (storedSubtitle) {
+            setLogoSubtitle(storedSubtitle);
         }
     };
 
@@ -33,7 +38,10 @@ export function Logo({ className }: { className?: string; text?: string; }) {
   return (
     <Link href="/" className={cn("flex items-center gap-2", className)}>
       <Image src="/vapps.png" alt="VApps Logo" width={28} height={28} />
-      <span className="text-2xl font-bold font-headline">{logoText}</span>
+      <div className='flex items-baseline gap-2'>
+        <span className="text-2xl font-bold font-headline">{logoText}</span>
+        <span className="text-sm text-muted-foreground">{logoSubtitle}</span>
+      </div>
     </Link>
   );
 }

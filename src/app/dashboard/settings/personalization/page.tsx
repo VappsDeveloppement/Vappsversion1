@@ -99,9 +99,10 @@ export default function PersonalizationPage() {
     // This effect updates the logo title in the localStorage to be read by the Logo component.
     if (typeof window !== 'undefined') {
         localStorage.setItem('appTitle', appTitle);
+        localStorage.setItem('appSubtitle', appSubtitle);
         window.dispatchEvent(new Event('storage')); // Notify other components of the change
     }
-  }, [appTitle]);
+  }, [appTitle, appSubtitle]);
 
   return (
     <div className="space-y-8">
