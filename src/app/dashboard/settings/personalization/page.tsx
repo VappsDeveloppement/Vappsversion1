@@ -2,6 +2,7 @@
 
 
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,6 +47,11 @@ const defaultSocialLinks = [
     { id: 3, name: 'LinkedIn', url: '', icon: 'Linkedin' },
     { id: 4, name: 'Instagram', url: '', icon: 'Instagram' },
 ];
+
+const defaultCopyrightSettings = {
+    text: "Vapps.",
+    url: "/",
+};
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -143,6 +149,10 @@ export default function PersonalizationPage() {
   // State for Social Links
   const [footerSocialLinks, setFooterSocialLinks] = useState<SocialLink[]>(defaultSocialLinks);
 
+  // State for Copyright
+  const [copyrightText, setCopyrightText] = useState(defaultCopyrightSettings.text);
+  const [copyrightUrl, setCopyrightUrl] = useState(defaultCopyrightSettings.url);
+
 
   const handleAppearanceSave = () => {
     // This function remains to potentially save all settings to a backend later.
@@ -164,6 +174,8 @@ export default function PersonalizationPage() {
         localStorage.setItem('footerAboutText', footerAboutText);
         localStorage.setItem('footerAboutLinks', JSON.stringify(footerAboutLinks));
         localStorage.setItem('footerSocialLinks', JSON.stringify(footerSocialLinks));
+        localStorage.setItem('copyrightText', copyrightText);
+        localStorage.setItem('copyrightUrl', copyrightUrl);
 
         window.dispatchEvent(new Event('storage')); 
     }
@@ -185,6 +197,8 @@ export default function PersonalizationPage() {
       setFooterAboutText(defaultFooterAboutSettings.text);
       setFooterAboutLinks(defaultFooterAboutSettings.links);
       setFooterSocialLinks(defaultSocialLinks);
+      setCopyrightText(defaultCopyrightSettings.text);
+      setCopyrightUrl(defaultCopyrightSettings.url);
       
       // Also reset localStorage to defaults
       if (typeof window !== 'undefined') {
@@ -199,6 +213,9 @@ export default function PersonalizationPage() {
         localStorage.setItem('footerAboutText', defaultFooterAboutSettings.text);
         localStorage.setItem('footerAboutLinks', JSON.stringify(defaultFooterAboutSettings.links));
         localStorage.setItem('footerSocialLinks', JSON.stringify(defaultSocialLinks));
+        localStorage.setItem('copyrightText', defaultCopyrightSettings.text);
+        localStorage.setItem('copyrightUrl', defaultCopyrightSettings.url);
+
 
         window.dispatchEvent(new Event('storage'));
       }
@@ -609,6 +626,22 @@ export default function PersonalizationPage() {
                                 </div>
                             );
                         })}
+                    </div>
+                </div>
+
+                <div className="border-t -mx-6"></div>
+                
+                <div className="space-y-6">
+                    <h3 className="text-lg font-medium">Pied de page - Copyright</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                         <div className="space-y-2">
+                            <Label htmlFor="copyright-text">Texte du Copyright</Label>
+                            <Input id="copyright-text" value={copyrightText} onChange={(e) => setCopyrightText(e.target.value)} placeholder="Votre Nom d'Entreprise" />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="copyright-url">URL du lien Copyright</Label>
+                            <Input id="copyright-url" value={copyrightUrl} onChange={(e) => setCopyrightUrl(e.target.value)} placeholder="/"/>
+                        </div>
                     </div>
                 </div>
 

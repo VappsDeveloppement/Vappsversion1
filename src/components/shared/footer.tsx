@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Logo } from "./logo";
@@ -53,6 +54,8 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
         { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
     ]);
     const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
+    const [copyrightText, setCopyrightText] = useState("Vapps.");
+    const [copyrightUrl, setCopyrightUrl] = useState("/");
 
 
     useEffect(() => {
@@ -61,6 +64,8 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
             const storedText = localStorage.getItem('footerAboutText');
             const storedLinks = localStorage.getItem('footerAboutLinks');
             const storedSocialLinks = localStorage.getItem('footerSocialLinks');
+            const storedCopyrightText = localStorage.getItem('copyrightText');
+            const storedCopyrightUrl = localStorage.getItem('copyrightUrl');
 
             if (storedTitle) setAboutTitle(storedTitle);
             if (storedText) setAboutText(storedText);
@@ -78,6 +83,8 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                     console.error("Failed to parse social links from localStorage", e);
                 }
             }
+            if (storedCopyrightText) setCopyrightText(storedCopyrightText);
+            if (storedCopyrightUrl) setCopyrightUrl(storedCopyrightUrl);
         };
 
         updateFooterContent();
@@ -173,7 +180,7 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                 </div>
 
                 <div className="border-t border-gray-700 mt-12 pt-6 text-center text-sm">
-                    <p>© {new Date().getFullYear()} - Vapps.</p>
+                    <p>© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:text-white">{copyrightText}</Link></p>
                 </div>
             </div>
         </footer>
