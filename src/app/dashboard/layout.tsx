@@ -62,32 +62,56 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
-
-  // State to manage logo display mode
-  const [logoDisplay, setLogoDisplay] = React.useState('app-and-logo');
+  const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
-    const updateLogoDisplay = () => {
-      const storedDisplay = localStorage.getItem('logoDisplay');
-      if (storedDisplay) {
-        setLogoDisplay(storedDisplay);
-      }
-    };
-    updateLogoDisplay();
-    window.addEventListener('storage', updateLogoDisplay);
-    return () => window.removeEventListener('storage', updateLogoDisplay);
+    setIsMounted(true);
   }, []);
-
 
   const getInitials = (email?: string | null) => {
     return email ? email.charAt(0).toUpperCase() : 'U';
   }
 
+  if (!isMounted) {
+    return (
+        <div className="flex">
+            <div className="w-64 border-r p-2 space-y-2">
+                <div className="h-10 px-2 flex items-center">
+                    <Skeleton className="h-8 w-32" />
+                </div>
+                <div className="flex-1 p-2 space-y-1">
+                    {[...Array(4)].map((_, i) => (
+                        <Skeleton key={i} className="h-8 w-full" />
+                    ))}
+                    <Skeleton className="h-8 w-full mt-2" />
+                    <div className="pl-4 space-y-1 pt-1">
+                         <Skeleton className="h-7 w-[calc(100%-1rem)]" />
+                         <Skeleton className="h-7 w-[calc(100%-1rem)]" />
+                         <Skeleton className="h-7 w-[calc(100%-1rem)]" />
+                    </div>
+                </div>
+                 <div className="p-2 mt-auto">
+                    <Skeleton className="h-8 w-full" />
+                </div>
+                 <div className="p-2">
+                    <Skeleton className="h-12 w-full" />
+                </div>
+            </div>
+            <div className="flex-1">
+                <header className="p-4 border-b h-14"></header>
+                <main className="p-8">
+                    <Skeleton className="h-96 w-full" />
+                </main>
+            </div>
+        </div>
+    );
+  }
+
   return (
     <SidebarProvider>
-      <div className="flex">
+      <div className="flex min-h-screen">
         <Sidebar>
-          <SidebarHeader className={cn(logoDisplay === 'logo-only' && 'justify-center')}>
+          <SidebarHeader>
             <Logo />
           </SidebarHeader>
           <SidebarContent>
@@ -116,14 +140,12 @@ export default function DashboardLayout({
                         <SidebarMenuSub>
                             {settingsMenuItems.map((item) => (
                                 <SidebarMenuItem key={item.href}>
-                                    <Link href={item.href} passHref>
-                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
-                                            <>
-                                                {item.icon}
-                                                <span>{item.label}</span>
-                                            </>
-                                        </SidebarMenuSubButton>
-                                    </Link>
+                                  <Link href={item.href} passHref legacyBehavior>
+                                    <SidebarMenuSubButton isActive={pathname === item.href}>
+                                      {item.icon}
+                                      <span>{item.label}</span>
+                                    </SidebarMenuSubButton>
+                                  </Link>
                                 </SidebarMenuItem>
                             ))}
                         </SidebarMenuSub>
