@@ -22,8 +22,8 @@ export default function Home() {
       
       <main className="relative z-20 container mx-auto px-4 py-16">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-          <div className="flex flex-col gap-8 text-center md:text-left">
-            <div className="flex justify-center md:justify-start">
+          <div className="flex flex-col gap-8 text-center">
+            <div className="flex justify-center">
               <Logo className="text-white" />
             </div>
             <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
