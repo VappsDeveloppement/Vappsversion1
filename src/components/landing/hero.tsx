@@ -3,6 +3,7 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { ArrowRight } from "lucide-react";
+import { LoginForm } from "./login-form";
 
 interface HeroProps {
   title: string;
@@ -13,7 +14,7 @@ export function Hero({ title, subtitle }: HeroProps) {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
 
   return (
-    <section className="relative w-full min-h-[70vh] flex items-center justify-center text-center">
+    <section className="relative w-full">
       {heroImage && (
         <Image
           src={heroImage.imageUrl}
@@ -25,8 +26,8 @@ export function Hero({ title, subtitle }: HeroProps) {
         />
       )}
       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-black/30"></div>
-      <div className="relative container z-10 flex flex-col items-center text-center px-4 md:px-6">
-        <div className="space-y-6 max-w-3xl">
+      <div className="relative container z-10 grid md:grid-cols-2 gap-8 items-center min-h-[70vh] py-16">
+        <div className="space-y-6 text-center md:text-left">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl text-white drop-shadow-md">
             {title}
           </h1>
@@ -34,14 +35,8 @@ export function Hero({ title, subtitle }: HeroProps) {
             {subtitle}
           </p>
         </div>
-        <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" variant="outline" className="bg-primary/90 border-primary text-primary-foreground hover:bg-primary">
-                Découvrir mes services
-                <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button size="lg">
-                Prendre rendez-vous
-            </Button>
+        <div className="flex justify-center md:justify-end">
+            <LoginForm />
         </div>
       </div>
     </section>

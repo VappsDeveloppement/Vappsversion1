@@ -7,10 +7,10 @@ import { Menu } from "lucide-react";
 import { Logo } from "@/components/shared/logo";
 
 const navLinks = [
-  { href: "#features", label: "Approche" },
-  { href: "#how-it-works", label: "Parcours" },
-  { href: "#pricing", label: "Formules" },
-  { href: "#faq", label: "Contact" },
+  { href: "#features", label: "Features" },
+  { href: "#how-it-works", label: "How It Works" },
+  { href: "#pricing", label: "Pricing" },
+  { href: "#faq", label: "FAQ" },
 ];
 
 export function Header({ agencyName }: { agencyName: string }) {
