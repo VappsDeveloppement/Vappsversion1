@@ -16,8 +16,8 @@ const agencyData = {
     text: "VApps"
   },
   hero: {
-    title: "Unlock Your Full Potential",
-    subtitle: "VApps provides expert coaching and powerful tools to accelerate your personal and professional growth.",
+    title: "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.",
+    subtitle: "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.",
     cta: "Start Your Journey Today"
   },
   features: [
@@ -89,7 +89,6 @@ export default function Home() {
         <Hero 
           title={agencyData.hero.title}
           subtitle={agencyData.hero.subtitle}
-          cta={agencyData.hero.cta}
         />
         <Features features={agencyData.features} />
         <HowItWorks />

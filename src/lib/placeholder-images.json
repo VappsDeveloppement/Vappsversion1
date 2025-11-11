@@ -2,9 +2,9 @@
   "placeholderImages": [
     {
       "id": "hero-background",
-      "description": "Abstract green background for hero section",
-      "imageUrl": "https://images.unsplash.com/photo-1698728877137-963bca5b5310?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGdyZWVufGVufDB8fHx8MTc2Mjg3MDY3NHww&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "abstract green"
+      "description": "Abstract dark background with clouds for hero section",
+      "imageUrl": "https://images.unsplash.com/photo-1534088568595-a066f410bcda?q=80&w=1951&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "dark clouds"
     },
     {
       "id": "testimonial-avatar-1",
