@@ -1,5 +1,6 @@
 
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -8,12 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Upload } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 
 const defaultAppearanceSettings = {
     appTitle: "VApps",
@@ -27,6 +30,14 @@ const defaultAppearanceSettings = {
     logoDataUrl: null as string | null,
 };
 
+const defaultFooterAboutSettings = {
+  title: "À propos",
+  text: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
+  links: [
+    { id: 1, text: "Notre mission", url: "#", icon: "GitBranch" },
+    { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
+  ]
+};
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -74,6 +85,12 @@ const toBase64 = (file: File): Promise<string> =>
     reader.onerror = (error) => reject(error);
 });
 
+export type AboutLink = {
+  id: number;
+  text: string;
+  url: string;
+  icon: string;
+};
 
 export default function PersonalizationPage() {
 
@@ -95,10 +112,15 @@ export default function PersonalizationPage() {
   const [logoDataUrl, setLogoDataUrl] = React.useState<string | null>(defaultAppearanceSettings.logoDataUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // State for Footer "À Propos" section
+  const [footerAboutTitle, setFooterAboutTitle] = useState(defaultFooterAboutSettings.title);
+  const [footerAboutText, setFooterAboutText] = useState(defaultFooterAboutSettings.text);
+  const [footerAboutLinks, setFooterAboutLinks] = useState<AboutLink[]>(defaultFooterAboutSettings.links);
+
 
   const handleAppearanceSave = () => {
     // This function remains to potentially save all settings to a backend later.
-    // For now, client-side updates are handled by useEffect.
+    // For now, client-side updates are handled by useEffect and localStorage.
     console.log("Appearance Settings Saved (or would be saved to backend).");
     if (typeof window !== 'undefined') {
         localStorage.setItem('appTitle', appTitle);
@@ -110,6 +132,12 @@ export default function PersonalizationPage() {
         } else {
             localStorage.removeItem('logoDataUrl');
         }
+        
+        // Save footer settings
+        localStorage.setItem('footerAboutTitle', footerAboutTitle);
+        localStorage.setItem('footerAboutText', footerAboutText);
+        localStorage.setItem('footerAboutLinks', JSON.stringify(footerAboutLinks));
+
         window.dispatchEvent(new Event('storage')); 
     }
   };
@@ -124,6 +152,11 @@ export default function PersonalizationPage() {
       setBgColor(defaultAppearanceSettings.bgColor);
       setLogoPreview(defaultAppearanceSettings.logoPreview);
       setLogoDataUrl(defaultAppearanceSettings.logoDataUrl);
+
+      // Reset footer settings
+      setFooterAboutTitle(defaultFooterAboutSettings.title);
+      setFooterAboutText(defaultFooterAboutSettings.text);
+      setFooterAboutLinks(defaultFooterAboutSettings.links);
       
       // Also reset localStorage to defaults
       if (typeof window !== 'undefined') {
@@ -132,6 +165,12 @@ export default function PersonalizationPage() {
         localStorage.setItem('logoDisplay', defaultAppearanceSettings.logoDisplay);
         localStorage.setItem('logoWidth', String(defaultAppearanceSettings.logoWidth));
         localStorage.removeItem('logoDataUrl'); // Remove custom logo
+
+        // Reset footer in localStorage
+        localStorage.setItem('footerAboutTitle', defaultFooterAboutSettings.title);
+        localStorage.setItem('footerAboutText', defaultFooterAboutSettings.text);
+        localStorage.setItem('footerAboutLinks', JSON.stringify(defaultFooterAboutSettings.links));
+
         window.dispatchEvent(new Event('storage'));
       }
   };
@@ -148,6 +187,24 @@ export default function PersonalizationPage() {
       const base64 = await toBase64(file);
       setLogoDataUrl(base64);
     }
+  };
+
+  const handleLinkChange = (index: number, field: keyof AboutLink, value: string) => {
+    const newLinks = [...footerAboutLinks];
+    (newLinks[index] as any)[field] = value;
+    setFooterAboutLinks(newLinks);
+  };
+
+  const addLink = () => {
+    setFooterAboutLinks([
+      ...footerAboutLinks,
+      { id: Date.now(), text: 'Nouveau lien', url: '#', icon: 'GitBranch' },
+    ]);
+  };
+
+  const removeLink = (index: number) => {
+    const newLinks = footerAboutLinks.filter((_, i) => i !== index);
+    setFooterAboutLinks(newLinks);
   };
 
   useEffect(() => {
@@ -435,6 +492,66 @@ export default function PersonalizationPage() {
                         </div>
                     </div>
                 </div>
+
+                 <div className="border-t -mx-6"></div>
+
+                <div className="space-y-6">
+                    <h3 className="text-lg font-medium">Pied de page - Section "À propos"</h3>
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="footer-about-title">Titre de la section</Label>
+                            <Input id="footer-about-title" value={footerAboutTitle} onChange={(e) => setFooterAboutTitle(e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="footer-about-text">Texte de description</Label>
+                            <Textarea id="footer-about-text" value={footerAboutText} onChange={(e) => setFooterAboutText(e.target.value)} />
+                        </div>
+                        <div>
+                            <Label>Liens personnalisés</Label>
+                            <div className="space-y-4 mt-2">
+                                {footerAboutLinks.map((link, index) => (
+                                    <div key={link.id} className="grid grid-cols-12 gap-2 items-center">
+                                        <div className="col-span-4">
+                                            <Input 
+                                                placeholder="Texte du lien"
+                                                value={link.text}
+                                                onChange={(e) => handleLinkChange(index, 'text', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-span-4">
+                                            <Input 
+                                                placeholder="URL (ex: /contact)"
+                                                value={link.url}
+                                                onChange={(e) => handleLinkChange(index, 'url', e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-span-3">
+                                            <Select value={link.icon} onValueChange={(value) => handleLinkChange(index, 'icon', value)}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Icône" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="GitBranch">Branche</SelectItem>
+                                                    <SelectItem value="Briefcase">Mallette</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="col-span-1">
+                                            <Button variant="ghost" size="icon" onClick={() => removeLink(index)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button variant="outline" size="sm" onClick={addLink}>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Ajouter un lien
+                                </Button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                  <div className="flex justify-start pt-6 border-t gap-2">
                     <Button onClick={handleAppearanceSave} style={{backgroundColor: primaryColor}}>Sauvegarder les changements</Button>
                     <Button variant="outline" onClick={handleResetAppearance}>Réinitialiser</Button>
@@ -503,3 +620,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    

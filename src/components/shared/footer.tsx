@@ -1,3 +1,6 @@
+
+'use client';
+
 import { Logo } from "./logo";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -5,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Briefcase, ExternalLink, GitBranch } from "lucide-react";
 import Link from "next/link";
+import React, { useState, useEffect } from "react";
+import type { AboutLink } from "@/app/dashboard/settings/personalization/page";
 
 interface LegalInfoProps {
   companyName?: string;
@@ -27,7 +32,42 @@ const defaultLegalInfo: LegalInfoProps = {
     phone: "01 23 45 67 89",
 };
 
+const iconMap: { [key: string]: React.ComponentType<any> } = {
+    GitBranch,
+    Briefcase,
+};
+
 export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfoProps }) {
+    
+    const [aboutTitle, setAboutTitle] = useState("À propos");
+    const [aboutText, setAboutText] = useState("HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.");
+    const [aboutLinks, setAboutLinks] = useState<AboutLink[]>([
+        { id: 1, text: "Notre mission", url: "#", icon: "GitBranch" },
+        { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
+    ]);
+
+    useEffect(() => {
+        const updateFooterContent = () => {
+            const storedTitle = localStorage.getItem('footerAboutTitle');
+            const storedText = localStorage.getItem('footerAboutText');
+            const storedLinks = localStorage.getItem('footerAboutLinks');
+
+            if (storedTitle) setAboutTitle(storedTitle);
+            if (storedText) setAboutText(storedText);
+            if (storedLinks) {
+                try {
+                    setAboutLinks(JSON.parse(storedLinks));
+                } catch (e) {
+                    console.error("Failed to parse footer links from localStorage", e);
+                }
+            }
+        };
+
+        updateFooterContent();
+        window.addEventListener('storage', updateFooterContent);
+        return () => window.removeEventListener('storage', updateFooterContent);
+    }, []);
+
     return (
         <footer className="bg-gray-900 text-gray-300 py-12">
             <div className="container mx-auto px-4">
@@ -75,7 +115,7 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
                                 placeholder="Votre message..." 
                                 className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 min-h-[100px]" 
                             />
-                            <Button className="font-bold">
+                            <Button>
                                 Envoyer
                             </Button>
                         </form>
@@ -83,23 +123,20 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
 
                     {/* Right Column */}
                     <div className="md:col-span-4">
-                        <h3 className="font-bold text-white text-lg mb-4">À propos</h3>
-                        <p className="text-sm mb-6">
-                            HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.
-                        </p>
+                        <h3 className="font-bold text-white text-lg mb-4">{aboutTitle}</h3>
+                        <p className="text-sm mb-6">{aboutText}</p>
                         <ul className="space-y-3">
-                            <li>
-                                <Link href="#" className="flex items-center gap-2 hover:text-white text-secondary">
-                                    <GitBranch className="h-4 w-4" />
-                                    <span>Notre mission</span>
-                                </Link>
-                            </li>
-                            <li>
-                                <Link href="#" className="flex items-center gap-2 hover:text-white text-secondary">
-                                    <Briefcase className="h-4 w-4" />
-                                    <span>Carrières</span>
-                                </Link>
-                            </li>
+                            {aboutLinks.map(link => {
+                                const Icon = iconMap[link.icon] || ExternalLink;
+                                return (
+                                    <li key={link.id}>
+                                        <Link href={link.url} className="flex items-center gap-2 hover:text-white text-secondary">
+                                            <Icon className="h-4 w-4" />
+                                            <span>{link.text}</span>
+                                        </Link>
+                                    </li>
+                                );
+                            })}
                         </ul>
                     </div>
                 </div>
@@ -111,3 +148,5 @@ export function Footer({ legalInfo = defaultLegalInfo }: { legalInfo?: LegalInfo
         </footer>
     );
 }
+
+    
