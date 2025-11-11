@@ -1,9 +1,4 @@
 
-
-
-
-
-
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,6 +15,7 @@ import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useToast } from "@/hooks/use-toast";
 
 const defaultAppearanceSettings = {
     appTitle: "VApps",
@@ -123,8 +119,26 @@ const socialIconMap: { [key: string]: React.ComponentType<any> } = {
 
 
 export default function PersonalizationPage() {
+  const { toast } = useToast();
 
+  // State for "Infos Légales"
+  const [companyName, setCompanyName] = useState("");
+  const [structureType, setStructureType] = useState("");
+  const [capital, setCapital] = useState("");
+  const [siret, setSiret] = useState("");
+  const [addressStreet, setAddressStreet] = useState("");
+  const [addressZip, setAddressZip] = useState("");
+  const [addressCity, setAddressCity] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [apeNaf, setApeNaf] = useState("");
+  const [rm, setRm] = useState("");
+  const [rcs, setRcs] = useState("");
+  const [nda, setNda] = useState("");
+  const [insurance, setInsurance] = useState("");
   const [isVatSubject, setIsVatSubject] = React.useState(false);
+  const [vatRate, setVatRate] = useState("");
+  const [vatNumber, setVatNumber] = useState("");
   const [legalMentions, setLegalMentions] = React.useState("");
   const [cgv, setCgv] = React.useState("");
   const [privacyPolicy, setPrivacyPolicy] = React.useState("");
@@ -157,11 +171,21 @@ export default function PersonalizationPage() {
   // State for Home Page
   const [homePageVersion, setHomePageVersion] = React.useState('tunnel');
 
+  const handleSaveLegalInfo = () => {
+    if (typeof window !== 'undefined') {
+        const legalInfo = {
+            companyName, structureType, capital, siret, addressStreet, addressZip, addressCity,
+            email, phone, apeNaf, rm, rcs, nda, insurance, isVatSubject, vatRate, vatNumber,
+            legalMentions, cgv, privacyPolicy
+        };
+        localStorage.setItem('legalInfo', JSON.stringify(legalInfo));
+        toast({ title: "Informations légales enregistrées", description: "Vos informations légales ont été sauvegardées." });
+    }
+  };
 
   const handleAppearanceSave = () => {
     // This function remains to potentially save all settings to a backend later.
     // For now, client-side updates are handled by useEffect and localStorage.
-    console.log("Appearance Settings Saved (or would be saved to backend).");
     if (typeof window !== 'undefined') {
         localStorage.setItem('appTitle', appTitle);
         localStorage.setItem('appSubtitle', appSubtitle);
@@ -185,6 +209,7 @@ export default function PersonalizationPage() {
         localStorage.setItem('homePageVersion', homePageVersion);
 
         window.dispatchEvent(new Event('storage')); 
+        toast({ title: "Apparence enregistrée", description: "Vos paramètres d'apparence ont été sauvegardés." });
     }
   };
 
@@ -228,9 +253,38 @@ export default function PersonalizationPage() {
 
 
         window.dispatchEvent(new Event('storage'));
+        toast({ title: "Réinitialisation", description: "Les paramètres d'apparence ont été réinitialisés." });
       }
   };
 
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+        const savedLegalInfo = localStorage.getItem('legalInfo');
+        if (savedLegalInfo) {
+            const info = JSON.parse(savedLegalInfo);
+            setCompanyName(info.companyName || "");
+            setStructureType(info.structureType || "");
+            setCapital(info.capital || "");
+            setSiret(info.siret || "");
+            setAddressStreet(info.addressStreet || "");
+            setAddressZip(info.addressZip || "");
+            setAddressCity(info.addressCity || "");
+            setEmail(info.email || "");
+            setPhone(info.phone || "");
+            setApeNaf(info.apeNaf || "");
+            setRm(info.rm || "");
+            setRcs(info.rcs || "");
+            setNda(info.nda || "");
+            setInsurance(info.insurance || "");
+            setIsVatSubject(info.isVatSubject || false);
+            setVatRate(info.vatRate || "");
+            setVatNumber(info.vatNumber || "");
+            setLegalMentions(info.legalMentions || "");
+            setCgv(info.cgv || "");
+            setPrivacyPolicy(info.privacyPolicy || "");
+        }
+    }
+  }, []);
 
   const handleLogoUploadClick = () => {
     fileInputRef.current?.click();
@@ -314,47 +368,47 @@ export default function PersonalizationPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                         <Label htmlFor="company-name">Nom de l'entreprise / agence</Label>
-                        <Input id="company-name" placeholder="Votre Nom Commercial" />
+                        <Input id="company-name" placeholder="Votre Nom Commercial" value={companyName} onChange={e => setCompanyName(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="structure-type">Type de structure</Label>
-                        <Input id="structure-type" placeholder="SARL, SAS, Auto-entrepreneur..." />
+                        <Input id="structure-type" placeholder="SARL, SAS, Auto-entrepreneur..." value={structureType} onChange={e => setStructureType(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="capital">Capital</Label>
-                        <Input id="capital" type="number" placeholder="1000" />
+                        <Input id="capital" type="number" placeholder="1000" value={capital} onChange={e => setCapital(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="siret">SIRET</Label>
-                        <Input id="siret" placeholder="12345678901234" />
+                        <Input id="siret" placeholder="12345678901234" value={siret} onChange={e => setSiret(e.target.value)} />
                         </div>
                     </div>
                     
                     <div className="space-y-4">
                         <Label>Adresse</Label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Input placeholder="Numéro et nom de rue" className="sm:col-span-3"/>
-                        <Input placeholder="Code Postal" />
-                        <Input placeholder="Ville" className="sm:col-span-2"/>
+                        <Input placeholder="Numéro et nom de rue" className="sm:col-span-3" value={addressStreet} onChange={e => setAddressStreet(e.target.value)} />
+                        <Input placeholder="Code Postal" value={addressZip} onChange={e => setAddressZip(e.target.value)} />
+                        <Input placeholder="Ville" className="sm:col-span-2" value={addressCity} onChange={e => setAddressCity(e.target.value)} />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                         <Label htmlFor="email">E-mail</Label>
-                        <Input id="email" type="email" placeholder="contact@exemple.com" />
+                        <Input id="email" type="email" placeholder="contact@exemple.com" value={email} onChange={e => setEmail(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="phone">Téléphone</Label>
-                        <Input id="phone" type="tel" placeholder="0123456789" />
+                        <Input id="phone" type="tel" placeholder="0123456789" value={phone} onChange={e => setPhone(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="ape-naf">APE/NAF</Label>
-                        <Input id="ape-naf" placeholder="6201Z" />
+                        <Input id="ape-naf" placeholder="6201Z" value={apeNaf} onChange={e => setApeNaf(e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="rm">RM (optionnel)</Label>
-                        <Input id="rm" placeholder="Numéro RM" />
+                        <Input id="rm" placeholder="Numéro RM" value={rm} onChange={e => setRm(e.target.value)} />
                         </div>
                     </div>
 
@@ -370,11 +424,11 @@ export default function PersonalizationPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-8 border-l ml-2">
                                 <div className="space-y-2">
                                 <Label htmlFor="vat-rate">Taux de TVA (%)</Label>
-                                <Input id="vat-rate" type="number" placeholder="20" />
+                                <Input id="vat-rate" type="number" placeholder="20" value={vatRate} onChange={e => setVatRate(e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                 <Label htmlFor="vat-number">Numéro de TVA Intracommunautaire</Label>
-                                <Input id="vat-number" placeholder="FR12345678901" />
+                                <Input id="vat-number" placeholder="FR12345678901" value={vatNumber} onChange={e => setVatNumber(e.target.value)} />
                                 </div>
                             </div>
                             )}
@@ -386,15 +440,15 @@ export default function PersonalizationPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="rcs">RCS (Numéro et Ville)</Label>
-                                <Input id="rcs" placeholder="Paris B 123 456 789" />
+                                <Input id="rcs" placeholder="Paris B 123 456 789" value={rcs} onChange={e => setRcs(e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="nda">Numéro NDA (Formation)</Label>
-                                <Input id="nda" placeholder="Numéro de déclaration d'activité" />
+                                <Input id="nda" placeholder="Numéro de déclaration d'activité" value={nda} onChange={e => setNda(e.target.value)} />
                             </div>
                             <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="insurance">Police d'assurance</Label>
-                                <Input id="insurance" placeholder="Nom de l'assurance et numéro de contrat" />
+                                <Input id="insurance" placeholder="Nom de l'assurance et numéro de contrat" value={insurance} onChange={e => setInsurance(e.target.value)} />
                             </div>
                         </div>
                     </div>
@@ -443,7 +497,7 @@ export default function PersonalizationPage() {
               </section>
               
               <div className="flex justify-end pt-6 border-t">
-                <Button>Enregistrer les modifications</Button>
+                <Button onClick={handleSaveLegalInfo}>Enregistrer les modifications</Button>
               </div>
 
             </CardContent>
@@ -751,6 +805,3 @@ export default function PersonalizationPage() {
 }
 
     
-
-    
-
