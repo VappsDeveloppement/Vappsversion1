@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -51,6 +50,16 @@ const hexToHsl = (hex: string): string => {
   return `${h} ${s}% ${l}%`;
 };
 
+// Helper to convert file to Base64
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+});
+
+
 export default function PersonalizationPage() {
 
   const [isVatSubject, setIsVatSubject] = React.useState(false);
@@ -69,6 +78,7 @@ export default function PersonalizationPage() {
   const [bgColor, setBgColor] = React.useState("#ffffff");
 
   const [logoPreview, setLogoPreview] = React.useState("/vapps.png");
+  const [logoDataUrl, setLogoDataUrl] = React.useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -82,14 +92,25 @@ export default function PersonalizationPage() {
       primaryColor,
       secondaryColor,
       bgColor,
+      logoDataUrl,
     };
     console.log("Appearance Settings Saved:", appearanceSettings);
-    // In a real app, this would send data to a backend.
-    // For now, we update CSS variables dynamically.
+    
+    // Save to localStorage
     if (typeof window !== 'undefined') {
+        localStorage.setItem('appTitle', appTitle);
+        localStorage.setItem('appSubtitle', appSubtitle);
+        localStorage.setItem('logoDisplay', logoDisplay);
+        if (logoDataUrl) {
+            localStorage.setItem('logoDataUrl', logoDataUrl);
+        }
+
         document.documentElement.style.setProperty('--primary', hexToHsl(primaryColor));
         document.documentElement.style.setProperty('--secondary', hexToHsl(secondaryColor));
         document.documentElement.style.setProperty('--background', hexToHsl(bgColor));
+        
+        // Notify other components of the change
+        window.dispatchEvent(new Event('storage')); 
     }
   };
 
@@ -97,10 +118,12 @@ export default function PersonalizationPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
       setLogoPreview(URL.createObjectURL(file));
+      const base64 = await toBase64(file);
+      setLogoDataUrl(base64);
     }
   };
 
@@ -108,16 +131,8 @@ export default function PersonalizationPage() {
     // This effect will run on the client side after the component mounts
     // and whenever the color values change.
     handleAppearanceSave();
-  }, [primaryColor, secondaryColor, bgColor]);
+  }, [primaryColor, secondaryColor, bgColor, appTitle, appSubtitle, logoDisplay, logoDataUrl]);
   
-  useEffect(() => {
-    // This effect updates the logo title in the localStorage to be read by the Logo component.
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('appTitle', appTitle);
-        localStorage.setItem('appSubtitle', appSubtitle);
-        window.dispatchEvent(new Event('storage')); // Notify other components of the change
-    }
-  }, [appTitle, appSubtitle]);
 
   return (
     <div className="space-y-8">

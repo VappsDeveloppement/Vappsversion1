@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -61,6 +62,22 @@ export default function DashboardLayout({
   const { user, isUserLoading } = useUser();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
 
+  // State to manage logo display mode
+  const [logoDisplay, setLogoDisplay] = React.useState('app-and-logo');
+
+  React.useEffect(() => {
+    const updateLogoDisplay = () => {
+      const storedDisplay = localStorage.getItem('logoDisplay');
+      if (storedDisplay) {
+        setLogoDisplay(storedDisplay);
+      }
+    };
+    updateLogoDisplay();
+    window.addEventListener('storage', updateLogoDisplay);
+    return () => window.removeEventListener('storage', updateLogoDisplay);
+  }, []);
+
+
   const getInitials = (email?: string | null) => {
     return email ? email.charAt(0).toUpperCase() : 'U';
   }
@@ -69,7 +86,7 @@ export default function DashboardLayout({
     <SidebarProvider>
       <div className="flex min-h-screen">
         <Sidebar>
-          <SidebarHeader>
+          <SidebarHeader className={cn(logoDisplay === 'logo-only' && 'flex justify-center')}>
             <Logo />
           </SidebarHeader>
           <SidebarContent>
