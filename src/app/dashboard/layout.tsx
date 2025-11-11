@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -10,7 +9,6 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
-  Settings,
   Users,
   Shield,
   FileText,
@@ -149,10 +147,10 @@ export default function DashboardLayout({
                                 <SidebarMenuItem key={item.href}>
                                     <Link href={item.href} passHref>
                                         <SidebarMenuSubButton asChild isActive={pathname === item.href}>
-                                          <>
+                                          <span>
                                             {item.icon}
                                             <span>{item.label}</span>
-                                          </>
+                                          </span>
                                         </SidebarMenuSubButton>
                                     </Link>
                                 </SidebarMenuItem>
@@ -206,7 +204,7 @@ export default function DashboardLayout({
                 </div>
                 <SidebarTrigger className="md:hidden" />
             </header>
-            <main className="p-4 sm:p-6 lg:p-8">
+            <main className="flex-1 p-4 sm:p-6 lg:p-8">
                 {children}
             </main>
         </SidebarInset>

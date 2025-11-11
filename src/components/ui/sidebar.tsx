@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -706,14 +707,14 @@ const SidebarMenuSubItem = React.forwardRef<
 SidebarMenuSubItem.displayName = "SidebarMenuSubItem"
 
 const SidebarMenuSubButton = React.forwardRef<
-  HTMLAnchorElement,
-  React.ComponentProps<"a"> & {
+  HTMLDivElement,
+  React.ComponentProps<"div"> & {
     size?: "sm" | "md"
     isActive?: boolean,
     asChild?: boolean,
   }
 >(({ size = "md", isActive, className, asChild, ...props }, ref) => {
-  const Comp = asChild ? Slot : "a";
+  const Comp = asChild ? Slot : "div";
   return (
     <Comp
       ref={ref}
