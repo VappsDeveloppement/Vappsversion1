@@ -85,7 +85,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen">
+      <div className="min-h-screen">
         <Sidebar>
           <SidebarHeader className={cn(logoDisplay === 'logo-only' && 'justify-center')}>
             <Logo />
@@ -116,10 +116,12 @@ export default function DashboardLayout({
                         <SidebarMenuSub>
                             {settingsMenuItems.map((item) => (
                                 <SidebarMenuItem key={item.href}>
-                                    <Link href={item.href}>
-                                        <SidebarMenuSubButton isActive={pathname === item.href}>
-                                            {item.icon}
-                                            <span>{item.label}</span>
+                                    <Link href={item.href} passHref>
+                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                                            <>
+                                                {item.icon}
+                                                <span>{item.label}</span>
+                                            </>
                                         </SidebarMenuSubButton>
                                     </Link>
                                 </SidebarMenuItem>
@@ -173,7 +175,7 @@ export default function DashboardLayout({
                 </div>
                 <SidebarTrigger className="md:hidden" />
             </header>
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto">
+            <main className="p-4 sm:p-6 lg:p-8">
                 {children}
             </main>
         </SidebarInset>
