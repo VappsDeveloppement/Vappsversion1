@@ -61,7 +61,7 @@ export function AboutSection() {
                                 src={aboutImage.imageUrl}
                                 alt={aboutImage.description}
                                 fill
-                                className="object-cover"
+                                className="object-cover transition-transform duration-300 ease-in-out hover:scale-105"
                                 data-ai-hint={aboutImage.imageHint}
                             />
                         )}
@@ -79,14 +79,14 @@ export function AboutSection() {
                     {pillars.map((pillar) => {
                         const image = PlaceHolderImages.find(p => p.id === pillar.id);
                         return (
-                            <Card key={pillar.id} className="overflow-hidden">
-                                <div className="h-48 relative">
+                            <Card key={pillar.id} className="overflow-hidden group">
+                                <div className="h-48 relative overflow-hidden">
                                     {image && (
                                         <Image
                                             src={image.imageUrl}
                                             alt={image.description}
                                             fill
-                                            className="object-cover"
+                                            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
                                             data-ai-hint={image.imageHint}
                                         />
                                     )}
@@ -108,14 +108,14 @@ export function AboutSection() {
                     {expertises.map((expertise) => {
                          const image = PlaceHolderImages.find(p => p.id === expertise.id);
                         return (
-                            <Card key={expertise.id} className="overflow-hidden">
-                               <div className="h-48 relative">
+                            <Card key={expertise.id} className="overflow-hidden group">
+                               <div className="h-48 relative overflow-hidden">
                                     {image && (
                                         <Image
                                             src={image.imageUrl}
                                             alt={image.description}
                                             fill
-                                            className="object-cover"
+                                            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
                                             data-ai-hint={image.imageHint}
                                         />
                                     )}
