@@ -1,8 +1,165 @@
+/**
+ * @fileOverview Firestore Security Rules for VApps Success Hub.
+ *
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model for all data nested under `/users/{userId}`.
+ * Only the authenticated user matching the `userId` path segment can read or write to these collections.
+ * For top-level collections like `/landing_pages` and `/email_campaigns`, access is restricted to authenticated users (administrators), but this will need to be implemented in the next iteration.
+ *
+ * Data Structure:
+ * - /users/{userId}: Stores user profiles.
+ * - /users/{userId}/appointments/{appointmentId}: Stores appointment data, owned by the user.
+ * - /users/{userId}/messages/{messageId}: Stores messages, owned by the user.
+ * - /users/{userId}/invoices/{invoiceId}: Stores invoices, owned by the user.
+ * - /users/{userId}/consents/{consentId}: Stores user consent records, owned by the user.
+ * - /landing_pages/{landingPageId}: Stores landing pages (Admin role required for write).
+ * - /email_campaigns/{emailCampaignId}: Stores email campaigns (Admin role required for write).
+ *
+ * Key Security Decisions:
+ * - User data is private and only accessible to the authenticated user.
+ * - Listing of users is not allowed (to prevent enumeration).
+ * - Landing pages and email campaigns should have admin-only write access; this is a TODO.
+ *
+ * Denormalization for Authorization:
+ * The rules leverage path-based ownership (e.g., `/users/{userId}/...`) to avoid costly `get()` calls. The `userId` in the path is directly compared to `request.auth.uid`.
+ */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if false;
+
+    /**
+     * @description Checks if the user is signed in.
+     * @returns {boolean} True if the user is signed in, false otherwise.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * @description Checks if the authenticated user ID matches the provided user ID.
+     * @param {string} userId The user ID to compare against.
+     * @returns {boolean} True if the user ID matches, false otherwise.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Checks if the authenticated user is the owner of an existing document.
+     * @param {string} userId The user ID to compare against.
+     * @returns {boolean} True if the user is the owner and the document exists, false otherwise.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
+    }
+
+    /**
+     * @description Rules for the /users/{userId} collection.
+     * @path /users/{userId}
+     * @allow (create) User with ID 'user123' can create their profile: request.auth.uid == 'user123'
+     * @deny (create) User with ID 'user456' cannot create a profile with ID 'user123': request.auth.uid != 'user123'
+     * @allow (get) User with ID 'user123' can read their profile: request.auth.uid == 'user123'
+     * @deny (get) User with ID 'user456' cannot read profile with ID 'user123': request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes and reads.
+     */
+    match /users/{userId} {
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/appointments/{appointmentId} collection.
+     * @path /users/{userId}/appointments/{appointmentId}
+     * @allow (create) User with ID 'user123' can create an appointment: request.auth.uid == 'user123'
+     * @deny (create) User with ID 'user456' cannot create an appointment for 'user123': request.auth.uid != 'user123'
+     * @allow (get) User with ID 'user123' can read their appointment: request.auth.uid == 'user123'
+     * @deny (get) User with ID 'user456' cannot read appointment for 'user123': request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes and reads.
+     */
+    match /users/{userId}/appointments/{appointmentId} {
+      allow create: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/messages/{messageId} collection.
+     * @path /users/{userId}/messages/{messageId}
+     * @allow (create) User with ID 'user123' can create a message: request.auth.uid == 'user123'
+     * @deny (create) User with ID 'user456' cannot create a message for 'user123': request.auth.uid != 'user123'
+     * @allow (get) User with ID 'user123' can read their message: request.auth.uid == 'user123'
+     * @deny (get) User with ID 'user456' cannot read message for 'user123': request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes and reads.
+     */
+    match /users/{userId}/messages/{messageId} {
+      allow create: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/invoices/{invoiceId} collection.
+     * @path /users/{userId}/invoices/{invoiceId}
+     * @allow (create) User with ID 'user123' can create an invoice: request.auth.uid == 'user123'
+     * @deny (create) User with ID 'user456' cannot create an invoice for 'user123': request.auth.uid != 'user123'
+     * @allow (get) User with ID 'user123' can read their invoice: request.auth.uid == 'user123'
+     * @deny (get) User with ID 'user456' cannot read invoice for 'user123': request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes and reads.
+     */
+    match /users/{userId}/invoices/{invoiceId} {
+      allow create: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /users/{userId}/consents/{consentId} collection.
+     * @path /users/{userId}/consents/{consentId}
+     * @allow (create) User with ID 'user123' can create a consent: request.auth.uid == 'user123'
+     * @deny (create) User with ID 'user456' cannot create a consent for 'user123': request.auth.uid != 'user123'
+     * @allow (get) User with ID 'user123' can read their consent: request.auth.uid == 'user123'
+     * @deny (get) User with ID 'user456' cannot read consent for 'user123': request.auth.uid != 'user123'
+     * @principle Enforces document ownership for writes and reads.
+     */
+    match /users/{userId}/consents/{consentId} {
+      allow create: if isOwner(userId);
+      allow get: if isOwner(userId);
+      allow list: if isOwner(userId);
+      allow update: if isExistingOwner(userId);
+      allow delete: if isExistingOwner(userId);
+    }
+
+    /**
+     * @description Rules for the /landing_pages/{landingPageId} collection.
+     * @path /landing_pages/{landingPageId}
+     * @allow (get) Anyone can read landing pages.
+     * @deny (create) Only authenticated admins can create landing pages (TODO: Implement admin check).
+     * @principle Public read, admin-only write (TODO).
+     */
+    match /landing_pages/{landingPageId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation once the schema is updated with an ownership field.
+    }
+
+    /**
+     * @description Rules for the /email_campaigns/{emailCampaignId} collection.
+     * @path /email_campaigns/{emailCampaignId}
+     * @allow (get) Anyone can read email campaigns.
+     * @deny (create) Only authenticated admins can create email campaigns (TODO: Implement admin check).
+     * @principle Public read, admin-only write (TODO).
+     */
+    match /email_campaigns/{emailCampaignId} {
+      allow get, list: if true;
+      allow create, update, delete: if false; // TODO: Add admin validation once the schema is updated with an ownership field.
     }
   }
 }
