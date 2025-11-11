@@ -30,7 +30,7 @@ export default function PersonalizationPage() {
         <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
-          <TabsTrigger value="accueil">Page d'accueil</Tabs_Trigger>
+          <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
           <TabsTrigger value="paiement">Paiement</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="rgpd">Paramètres RGPD</TabsTrigger>
