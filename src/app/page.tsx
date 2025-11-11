@@ -8,8 +8,8 @@ export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
 
   return (
-    <div className="min-h-dvh flex flex-col text-white overflow-hidden bg-background">
-      <div className="relative">
+    <div className="min-h-dvh flex flex-col overflow-hidden">
+      <div className="relative bg-gray-900 text-white">
         {heroImage && (
           <Image
             src={heroImage.imageUrl}
