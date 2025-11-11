@@ -131,6 +131,24 @@
       "description": "Ornate bridge architecture from below, for white label section",
       "imageUrl": "https://images.unsplash.com/photo-1545194514-734a62208630?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       "imageHint": "bridge architecture"
+    },
+    {
+      "id": "blog-article-1",
+      "description": "An open book on a wooden desk with a wallet",
+      "imageUrl": "https://images.unsplash.com/photo-1495446815901-a7297e633e8d?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "book desk"
+    },
+    {
+      "id": "blog-article-2",
+      "description": "Snow covered mountains under a cloudy sky",
+      "imageUrl": "https://images.unsplash.com/photo-1483728642387-6c351b4d1cb6?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "snowy mountains"
+    },
+    {
+      "id": "blog-article-3",
+      "description": "A city street corner with bicycles parked",
+      "imageUrl": "https://images.unsplash.com/photo-1559348349-86f1f65817fe?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "city street"
     }
   ]
 }

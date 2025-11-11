@@ -11,6 +11,7 @@ import { OtherActivitiesSection } from '@/components/shared/other-activities-sec
 import { CtaSection } from '@/components/shared/cta-section';
 import { PricingSection } from '@/components/shared/pricing-section';
 import { WhiteLabelSection } from '@/components/shared/white-label-section';
+import { BlogSection } from '@/components/shared/blog-section';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
@@ -59,9 +60,12 @@ export default function Home() {
       <ShopSection />
       <ServicesSection />
       <OtherActivitiesSection />
+      <BlogSection />
       <WhiteLabelSection />
       <PricingSection />
       <CtaSection />
     </div>
   );
 }
+
+    
