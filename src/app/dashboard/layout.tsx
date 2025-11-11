@@ -140,12 +140,12 @@ export default function DashboardLayout({
                         <SidebarMenuSub>
                             {settingsMenuItems.map((item) => (
                                 <SidebarMenuItem key={item.href}>
-                                  <Link href={item.href} passHref legacyBehavior>
-                                    <SidebarMenuSubButton isActive={pathname === item.href}>
-                                      {item.icon}
-                                      <span>{item.label}</span>
+                                  <SidebarMenuSubButton isActive={pathname === item.href}>
+                                      <Link href={item.href}>
+                                        {item.icon}
+                                        <span>{item.label}</span>
+                                      </Link>
                                     </SidebarMenuSubButton>
-                                  </Link>
                                 </SidebarMenuItem>
                             ))}
                         </SidebarMenuSub>
