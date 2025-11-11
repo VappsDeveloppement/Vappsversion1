@@ -7,7 +7,37 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Bold, Italic, Underline, AlignCenter, AlignLeft, AlignRight } from "lucide-react";
 import React from "react";
+
+const RichTextToolbar = ({ textareaId }: { textareaId: string }) => {
+  const applyStyle = (style: 'bold' | 'italic' | 'underline') => {
+    const textarea = document.getElementById(textareaId) as HTMLTextAreaElement;
+    if (textarea) {
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      const selectedText = textarea.value.substring(start, end);
+      let tag;
+      switch (style) {
+        case 'bold': tag = 'b'; break;
+        case 'italic': tag = 'i'; break;
+        case 'underline': tag = 'u'; break;
+      }
+      const newText = `${textarea.value.substring(0, start)}<${tag}>${selectedText}</${tag}>${textarea.value.substring(end)}`;
+      // This is a simplified example. A real implementation would need to handle state and more complex logic.
+      console.log(`Applying ${style} to ${selectedText}`);
+    }
+  };
+
+  return (
+    <div className="flex items-center gap-1 border rounded-t-md p-2 bg-muted">
+      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('bold')}><Bold className="h-4 w-4" /></Button>
+      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('italic')}><Italic className="h-4 w-4" /></Button>
+      <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => applyStyle('underline')}><Underline className="h-4 w-4" /></Button>
+    </div>
+  )
+}
 
 export default function PersonalizationPage() {
 
@@ -23,8 +53,9 @@ export default function PersonalizationPage() {
       </div>
 
       <Tabs defaultValue="info-legales">
-        <TabsList>
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
+          <TabsTrigger value="documents">Documents</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
           <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
           <TabsTrigger value="paiement">Paiement</TabsTrigger>
@@ -135,6 +166,44 @@ export default function PersonalizationPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="documents">
+          <Card>
+            <CardHeader>
+              <CardTitle>Gestion des documents</CardTitle>
+              <CardDescription>Modifiez le contenu de vos pages légales. Ces modifications seront répercutées sur les liens du pied de page.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <div>
+                <Label htmlFor="legal-mentions" className="text-lg font-medium">Mentions Légales</Label>
+                <div className="mt-2">
+                  <RichTextToolbar textareaId="legal-mentions" />
+                  <Textarea id="legal-mentions" placeholder="Rédigez vos mentions légales ici..." className="min-h-[250px] rounded-t-none"/>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="cgv" className="text-lg font-medium">Conditions Générales de Vente (CGV)</Label>
+                 <div className="mt-2">
+                  <RichTextToolbar textareaId="cgv" />
+                  <Textarea id="cgv" placeholder="Rédigez vos conditions générales de vente ici..." className="min-h-[250px] rounded-t-none"/>
+                </div>
+              </div>
+
+              <div>
+                <Label htmlFor="privacy-policy" className="text-lg font-medium">Politique de confidentialité</Label>
+                 <div className="mt-2">
+                  <RichTextToolbar textareaId="privacy-policy" />
+                  <Textarea id="privacy-policy" placeholder="Rédigez votre politique de confidentialité ici..." className="min-h-[250px] rounded-t-none"/>
+                </div>
+              </div>
+              
+              <div className="flex justify-end">
+                <Button>Enregistrer les documents</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="apparence">
           <Card>
             <CardHeader>
@@ -209,3 +278,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    
