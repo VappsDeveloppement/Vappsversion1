@@ -125,6 +125,12 @@
       "description": "Tree lined road leading to a chateau",
       "imageUrl": "https://images.unsplash.com/photo-1618174823293-c2153cbe9a93?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       "imageHint": "road chateau"
+    },
+    {
+      "id": "white-label-license",
+      "description": "Ornate bridge architecture from below, for white label section",
+      "imageUrl": "https://images.unsplash.com/photo-1545194514-734a62208630?q=80&w=1974&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "bridge architecture"
     }
   ]
 }

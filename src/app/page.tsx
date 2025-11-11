@@ -10,12 +10,13 @@ import { ServicesSection } from '@/components/shared/services-section';
 import { OtherActivitiesSection } from '@/components/shared/other-activities-section';
 import { CtaSection } from '@/components/shared/cta-section';
 import { PricingSection } from '@/components/shared/pricing-section';
+import { WhiteLabelSection } from '@/components/shared/white-label-section';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
 
   return (
-    <div className="min-h-dvh flex flex-col overflow-hidden">
+    <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
       <div className="relative bg-background text-foreground">
         {heroImage && (
           <Image
@@ -58,6 +59,7 @@ export default function Home() {
       <ShopSection />
       <ServicesSection />
       <OtherActivitiesSection />
+      <WhiteLabelSection />
       <PricingSection />
       <CtaSection />
     </div>
