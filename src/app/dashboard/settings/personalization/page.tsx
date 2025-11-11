@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -198,9 +197,15 @@ export default function PersonalizationPage() {
               <CardDescription>Modifiez les couleurs, le logo et l'apparence générale de votre espace.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
-                <div className="space-y-2">
-                    <Label htmlFor="app-subtitle">Sous-titre de l'application</Label>
-                    <Input id="app-subtitle" placeholder="Développement" />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                      <Label htmlFor="app-title">Titre de l'application</Label>
+                      <Input id="app-title" placeholder="VApps" />
+                  </div>
+                  <div className="space-y-2">
+                      <Label htmlFor="app-subtitle">Sous-titre de l'application</Label>
+                      <Input id="app-subtitle" placeholder="Développement" />
+                  </div>
                 </div>
 
                 <div className="border-t -mx-6"></div>
@@ -345,5 +350,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
