@@ -15,6 +15,19 @@ import { Upload } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 
+const defaultAppearanceSettings = {
+    appTitle: "VApps",
+    appSubtitle: "Développement",
+    logoWidth: 40,
+    logoDisplay: "app-and-logo",
+    primaryColor: "#2ff40a",
+    secondaryColor: "#25d408",
+    bgColor: "#ffffff",
+    logoPreview: "/vapps.png",
+    logoDataUrl: null as string | null,
+};
+
+
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
   if (!/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
@@ -70,16 +83,16 @@ export default function PersonalizationPage() {
   const [privacyPolicy, setPrivacyPolicy] = React.useState("");
   
   // State for "Apparence" tab
-  const [appTitle, setAppTitle] = React.useState("VApps");
-  const [appSubtitle, setAppSubtitle] = React.useState("Développement");
-  const [logoWidth, setLogoWidth] = React.useState(40);
-  const [logoDisplay, setLogoDisplay] = React.useState("app-and-logo");
-  const [primaryColor, setPrimaryColor] = React.useState("#2ff40a");
-  const [secondaryColor, setSecondaryColor] = React.useState("#25d408");
-  const [bgColor, setBgColor] = React.useState("#ffffff");
+  const [appTitle, setAppTitle] = React.useState(defaultAppearanceSettings.appTitle);
+  const [appSubtitle, setAppSubtitle] = React.useState(defaultAppearanceSettings.appSubtitle);
+  const [logoWidth, setLogoWidth] = React.useState(defaultAppearanceSettings.logoWidth);
+  const [logoDisplay, setLogoDisplay] = React.useState(defaultAppearanceSettings.logoDisplay);
+  const [primaryColor, setPrimaryColor] = React.useState(defaultAppearanceSettings.primaryColor);
+  const [secondaryColor, setSecondaryColor] = React.useState(defaultAppearanceSettings.secondaryColor);
+  const [bgColor, setBgColor] = React.useState(defaultAppearanceSettings.bgColor);
 
-  const [logoPreview, setLogoPreview] = React.useState("/vapps.png");
-  const [logoDataUrl, setLogoDataUrl] = React.useState<string | null>(null);
+  const [logoPreview, setLogoPreview] = React.useState(defaultAppearanceSettings.logoPreview);
+  const [logoDataUrl, setLogoDataUrl] = React.useState<string | null>(defaultAppearanceSettings.logoDataUrl);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -87,7 +100,42 @@ export default function PersonalizationPage() {
     // This function remains to potentially save all settings to a backend later.
     // For now, client-side updates are handled by useEffect.
     console.log("Appearance Settings Saved (or would be saved to backend).");
+    if (typeof window !== 'undefined') {
+        localStorage.setItem('appTitle', appTitle);
+        localStorage.setItem('appSubtitle', appSubtitle);
+        localStorage.setItem('logoDisplay', logoDisplay);
+        localStorage.setItem('logoWidth', String(logoWidth));
+        if (logoDataUrl) {
+            localStorage.setItem('logoDataUrl', logoDataUrl);
+        } else {
+            localStorage.removeItem('logoDataUrl');
+        }
+        window.dispatchEvent(new Event('storage')); 
+    }
   };
+
+  const handleResetAppearance = () => {
+      setAppTitle(defaultAppearanceSettings.appTitle);
+      setAppSubtitle(defaultAppearanceSettings.appSubtitle);
+      setLogoWidth(defaultAppearanceSettings.logoWidth);
+      setLogoDisplay(defaultAppearanceSettings.logoDisplay);
+      setPrimaryColor(defaultAppearanceSettings.primaryColor);
+      setSecondaryColor(defaultAppearanceSettings.secondaryColor);
+      setBgColor(defaultAppearanceSettings.bgColor);
+      setLogoPreview(defaultAppearanceSettings.logoPreview);
+      setLogoDataUrl(defaultAppearanceSettings.logoDataUrl);
+      
+      // Also reset localStorage to defaults
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('appTitle', defaultAppearanceSettings.appTitle);
+        localStorage.setItem('appSubtitle', defaultAppearanceSettings.appSubtitle);
+        localStorage.setItem('logoDisplay', defaultAppearanceSettings.logoDisplay);
+        localStorage.setItem('logoWidth', String(defaultAppearanceSettings.logoWidth));
+        localStorage.removeItem('logoDataUrl'); // Remove custom logo
+        window.dispatchEvent(new Event('storage'));
+      }
+  };
+
 
   const handleLogoUploadClick = () => {
     fileInputRef.current?.click();
@@ -103,26 +151,14 @@ export default function PersonalizationPage() {
   };
 
   useEffect(() => {
-    // This effect runs on the client to persist and apply settings
+    // This effect runs on the client to apply color changes dynamically
     if (typeof window !== 'undefined') {
-        // Save to localStorage
-        localStorage.setItem('appTitle', appTitle);
-        localStorage.setItem('appSubtitle', appSubtitle);
-        localStorage.setItem('logoDisplay', logoDisplay);
-        localStorage.setItem('logoWidth', String(logoWidth));
-        if (logoDataUrl) {
-            localStorage.setItem('logoDataUrl', logoDataUrl);
-        }
-
         // Apply colors
         document.documentElement.style.setProperty('--primary', hexToHsl(primaryColor));
         document.documentElement.style.setProperty('--secondary', hexToHsl(secondaryColor));
         document.documentElement.style.setProperty('--background', hexToHsl(bgColor));
-        
-        // Notify other components of the change
-        window.dispatchEvent(new Event('storage')); 
     }
-  }, [primaryColor, secondaryColor, bgColor, appTitle, appSubtitle, logoDisplay, logoDataUrl, logoWidth]);
+  }, [primaryColor, secondaryColor, bgColor]);
   
 
   return (
@@ -399,8 +435,9 @@ export default function PersonalizationPage() {
                         </div>
                     </div>
                 </div>
-                 <div className="flex justify-start pt-6 border-t">
+                 <div className="flex justify-start pt-6 border-t gap-2">
                     <Button onClick={handleAppearanceSave} style={{backgroundColor: primaryColor}}>Sauvegarder les changements</Button>
+                    <Button variant="outline" onClick={handleResetAppearance}>Réinitialiser</Button>
                 </div>
             </CardContent>
           </Card>
