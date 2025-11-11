@@ -3,15 +3,15 @@ import { Logo } from "@/components/shared/logo";
 import { Facebook, Twitter, Linkedin } from "lucide-react";
 import { Button } from "../ui/button";
 
-export function Footer() {
+export function Footer({ agencyName }: { agencyName: string }) {
   return (
     <footer className="border-t">
       <div className="container py-12">
         <div className="grid gap-8 md:grid-cols-3">
           <div className="space-y-4">
-            <Logo />
+            <Logo text={agencyName} />
             <p className="text-sm text-muted-foreground">
-              Unlock your full potential with VApps professional and personal development coaching.
+              Unlock your full potential with professional and personal development coaching.
             </p>
           </div>
           <div className="grid grid-cols-2 md:col-span-2 gap-8">
@@ -36,7 +36,7 @@ export function Footer() {
         </div>
         <div className="mt-8 pt-8 border-t flex flex-col sm:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} VApps Success Hub. All rights reserved.
+            &copy; {new Date().getFullYear()} {agencyName}. All rights reserved.
           </p>
           <div className="flex gap-2">
             <Button variant="ghost" size="icon" asChild>

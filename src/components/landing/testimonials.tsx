@@ -4,28 +4,18 @@ import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 
-const testimonials = [
-  {
-    name: "Sarah L.",
-    title: "Marketing Director",
-    quote: "VApps has been a game-changer for my career. The coaching sessions are insightful, and the platform makes it so easy to stay organized and focused on my goals.",
-    avatarId: "testimonial-avatar-1",
-  },
-  {
-    name: "Michael B.",
-    title: "Software Engineer",
-    quote: "The personalized feedback and action plans helped me overcome major roadblocks in my professional development. I've seen a tangible improvement in my skills.",
-    avatarId: "testimonial-avatar-2",
-  },
-  {
-    name: "Jessica P.",
-    title: "Freelance Designer",
-    quote: "As a freelancer, managing my own growth is tough. VApps gave me the structure and accountability I needed to take my business to the next level. Highly recommended!",
-    avatarId: "testimonial-avatar-3",
-  },
-];
+type Testimonial = {
+  name: string;
+  title: string;
+  quote: string;
+  avatarId: string;
+};
 
-export function Testimonials() {
+interface TestimonialsProps {
+  testimonials: Testimonial[];
+}
+
+export function Testimonials({ testimonials }: TestimonialsProps) {
   const getImage = (id: string) => PlaceHolderImages.find(p => p.id === id);
 
   return (
@@ -34,7 +24,7 @@ export function Testimonials() {
         <div className="text-center space-y-4 mb-12">
           <h2 className="text-3xl font-bold tracking-tight md:text-4xl font-headline">Trusted by Professionals Worldwide</h2>
           <p className="text-lg text-muted-foreground">
-            Hear what our clients have to say about their journey with VApps.
+            Hear what our clients have to say about their journey.
           </p>
         </div>
         <Carousel

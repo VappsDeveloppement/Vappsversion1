@@ -13,11 +13,11 @@ const navLinks = [
   { href: "#faq", label: "FAQ" },
 ];
 
-export function Header() {
+export function Header({ agencyName }: { agencyName: string }) {
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center">
-        <Logo />
+        <Logo text={agencyName} />
         <nav className="hidden md:flex md:items-center md:gap-6 md:ml-10 text-sm font-medium">
           {navLinks.map((link) => (
             <Link key={link.href} href={link.href} className="text-muted-foreground transition-colors hover:text-foreground">
@@ -40,7 +40,7 @@ export function Header() {
               </Button>
             </SheetTrigger>
             <SheetContent side="left">
-              <Logo className="mb-8" />
+              <Logo text={agencyName} className="mb-8" />
               <nav className="grid gap-6 text-lg font-medium">
                 {navLinks.map((link) => (
                   <Link key={link.href} href={link.href} className="text-muted-foreground hover:text-foreground">
