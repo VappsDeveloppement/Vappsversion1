@@ -117,8 +117,8 @@ export default function PersonalizationPage() {
                         <Input id="rcs" placeholder="Paris B 123 456 789" />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="nada">Numéro NADA (Formation)</Label>
-                        <Input id="nada" placeholder="Numéro de déclaration d'activité" />
+                        <Label htmlFor="nda">Numéro NDA (Formation)</Label>
+                        <Input id="nda" placeholder="Numéro de déclaration d'activité" />
                       </div>
                        <div className="space-y-2 md:col-span-2">
                         <Label htmlFor="insurance">Police d'assurance</Label>
