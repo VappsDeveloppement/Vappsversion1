@@ -1,3 +1,28 @@
 {
-  "placeholderImages": []
+  "placeholderImages": [
+    {
+      "id": "hero-background",
+      "description": "Abstract green background for hero section",
+      "imageUrl": "https://images.unsplash.com/photo-1698728877137-963bca5b5310?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxhYnN0cmFjdCUyMGdyZWVufGVufDB8fHx8MTc2Mjg3MDY3NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract green"
+    },
+    {
+      "id": "testimonial-avatar-1",
+      "description": "Avatar for first testimonial",
+      "imageUrl": "https://images.unsplash.com/photo-1560250097-0b93528c311a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxwb3J0cmFpdCUyMHByb2Zlc3Npb25hbHxlbnwwfHx8fDE3NjI3ODYxNjl8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "portrait professional"
+    },
+    {
+      "id": "testimonial-avatar-2",
+      "description": "Avatar for second testimonial",
+      "imageUrl": "https://images.unsplash.com/photo-1526510747491-58f928ec870f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8cG9ydHJhaXQlMjB3b21hbnxlbnwwfHx8fDE3NjI4NjE1NjV8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "portrait woman"
+    },
+    {
+      "id": "testimonial-avatar-3",
+      "description": "Avatar for third testimonial",
+      "imageUrl": "https://images.unsplash.com/photo-1583195763986-0231686dcd43?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxwb3J0cmFpdCUyMG1hbnxlbnwwfHx8fDE3NjI3NzQzNTd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "portrait man"
+    }
+  ]
 }
