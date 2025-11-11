@@ -3,6 +3,7 @@
 
 
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -14,7 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -152,6 +153,9 @@ export default function PersonalizationPage() {
   // State for Copyright
   const [copyrightText, setCopyrightText] = useState(defaultCopyrightSettings.text);
   const [copyrightUrl, setCopyrightUrl] = useState(defaultCopyrightSettings.url);
+  
+  // State for Home Page
+  const [homePageVersion, setHomePageVersion] = React.useState('tunnel');
 
 
   const handleAppearanceSave = () => {
@@ -176,6 +180,9 @@ export default function PersonalizationPage() {
         localStorage.setItem('footerSocialLinks', JSON.stringify(footerSocialLinks));
         localStorage.setItem('copyrightText', copyrightText);
         localStorage.setItem('copyrightUrl', copyrightUrl);
+
+        // Save home page settings
+        localStorage.setItem('homePageVersion', homePageVersion);
 
         window.dispatchEvent(new Event('storage')); 
     }
@@ -215,6 +222,9 @@ export default function PersonalizationPage() {
         localStorage.setItem('footerSocialLinks', JSON.stringify(defaultSocialLinks));
         localStorage.setItem('copyrightText', defaultCopyrightSettings.text);
         localStorage.setItem('copyrightUrl', defaultCopyrightSettings.url);
+        
+        // Reset home page version
+        localStorage.setItem('homePageVersion', 'tunnel');
 
 
         window.dispatchEvent(new Event('storage'));
@@ -660,10 +670,35 @@ export default function PersonalizationPage() {
               <CardTitle>Page d'accueil</CardTitle>
               <CardDescription>Configurez le contenu de votre page d'accueil.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">Le contenu de la page d'accueil est vide.</p>
-              </div>
+            <CardContent className="space-y-8">
+              <section>
+                <h3 className="text-lg font-medium mb-4">Version de la page d'accueil</h3>
+                 <RadioGroup value={homePageVersion} onValueChange={setHomePageVersion} className="space-y-2">
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="tunnel" id="tunnel" />
+                        <Label htmlFor="tunnel">Version Tunnel de vente</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground ml-6">Une page complète avec plusieurs sections, conçue pour présenter l'offre et convertir les visiteurs.</p>
+                    <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="application" id="application" />
+                        <Label htmlFor="application">Version Application</Label>
+                    </div>
+                    <p className="text-sm text-muted-foreground ml-6">Une page simple avec un formulaire de connexion, pour un accès direct à l'application.</p>
+                </RadioGroup>
+              </section>
+              <div className="border-t -mx-6"></div>
+              <section>
+                 <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
+                 <p className="text-sm text-muted-foreground mb-6">Faites glisser les sections pour les réorganiser sur la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
+                 <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96 bg-muted/50">
+                        <LayoutTemplate className="h-16 w-16 text-muted-foreground mb-4" />
+                        <h3 className="text-xl font-semibold">Gestionnaire de sections</h3>
+                        <p className="text-muted-foreground mt-2 max-w-2xl">L'interface pour réorganiser et personnaliser les sections de la page d'accueil sera disponible ici.</p>
+                    </div>
+              </section>
+                <div className="flex justify-end pt-6 border-t">
+                    <Button onClick={handleAppearanceSave}>Enregistrer les modifications</Button>
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -718,3 +753,4 @@ export default function PersonalizationPage() {
     
 
     
+
