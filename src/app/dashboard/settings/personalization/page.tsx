@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +13,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Upload } from "lucide-react";
 import Image from "next/image";
+import { Slider } from "@/components/ui/slider";
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -70,8 +72,8 @@ export default function PersonalizationPage() {
   // State for "Apparence" tab
   const [appTitle, setAppTitle] = React.useState("VApps");
   const [appSubtitle, setAppSubtitle] = React.useState("Développement");
-  const [logoWidth, setLogoWidth] = React.useState("40");
-  const [logoHeight, setLogoHeight] = React.useState("40");
+  const [logoWidth, setLogoWidth] = React.useState(40);
+  const [logoHeight, setLogoHeight] = React.useState(40);
   const [logoDisplay, setLogoDisplay] = React.useState("app-and-logo");
   const [primaryColor, setPrimaryColor] = React.useState("#2ff40a");
   const [secondaryColor, setSecondaryColor] = React.useState("#25d408");
@@ -83,35 +85,9 @@ export default function PersonalizationPage() {
 
 
   const handleAppearanceSave = () => {
-    const appearanceSettings = {
-      appTitle,
-      appSubtitle,
-      logoWidth,
-      logoHeight,
-      logoDisplay,
-      primaryColor,
-      secondaryColor,
-      bgColor,
-      logoDataUrl,
-    };
-    console.log("Appearance Settings Saved:", appearanceSettings);
-    
-    // Save to localStorage
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('appTitle', appTitle);
-        localStorage.setItem('appSubtitle', appSubtitle);
-        localStorage.setItem('logoDisplay', logoDisplay);
-        if (logoDataUrl) {
-            localStorage.setItem('logoDataUrl', logoDataUrl);
-        }
-
-        document.documentElement.style.setProperty('--primary', hexToHsl(primaryColor));
-        document.documentElement.style.setProperty('--secondary', hexToHsl(secondaryColor));
-        document.documentElement.style.setProperty('--background', hexToHsl(bgColor));
-        
-        // Notify other components of the change
-        window.dispatchEvent(new Event('storage')); 
-    }
+    // This function remains to potentially save all settings to a backend later.
+    // For now, client-side updates are handled by useEffect.
+    console.log("Appearance Settings Saved (or would be saved to backend).");
   };
 
   const handleLogoUploadClick = () => {
@@ -128,10 +104,27 @@ export default function PersonalizationPage() {
   };
 
   useEffect(() => {
-    // This effect will run on the client side after the component mounts
-    // and whenever the color values change.
-    handleAppearanceSave();
-  }, [primaryColor, secondaryColor, bgColor, appTitle, appSubtitle, logoDisplay, logoDataUrl]);
+    // This effect runs on the client to persist and apply settings
+    if (typeof window !== 'undefined') {
+        // Save to localStorage
+        localStorage.setItem('appTitle', appTitle);
+        localStorage.setItem('appSubtitle', appSubtitle);
+        localStorage.setItem('logoDisplay', logoDisplay);
+        localStorage.setItem('logoWidth', String(logoWidth));
+        localStorage.setItem('logoHeight', String(logoHeight));
+        if (logoDataUrl) {
+            localStorage.setItem('logoDataUrl', logoDataUrl);
+        }
+
+        // Apply colors
+        document.documentElement.style.setProperty('--primary', hexToHsl(primaryColor));
+        document.documentElement.style.setProperty('--secondary', hexToHsl(secondaryColor));
+        document.documentElement.style.setProperty('--background', hexToHsl(bgColor));
+        
+        // Notify other components of the change
+        window.dispatchEvent(new Event('storage')); 
+    }
+  }, [primaryColor, secondaryColor, bgColor, appTitle, appSubtitle, logoDisplay, logoDataUrl, logoWidth, logoHeight]);
   
 
   return (
@@ -349,14 +342,34 @@ export default function PersonalizationPage() {
                         </div>
                          <div className="space-y-4">
                             <Label>Dimensions du logo (en pixels)</Label>
-                            <div className="flex items-center gap-4">
+                            <div className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="logo-width">Largeur</Label>
-                                    <Input id="logo-width" value={logoWidth} onChange={(e) => setLogoWidth(e.target.value)} />
+                                    <Label htmlFor="logo-width" className="flex items-center justify-between">
+                                        <span>Largeur</span>
+                                        <span className="text-sm text-muted-foreground">{logoWidth}px</span>
+                                    </Label>
+                                    <Slider
+                                        id="logo-width"
+                                        min={10}
+                                        max={200}
+                                        step={1}
+                                        value={[logoWidth]}
+                                        onValueChange={(value) => setLogoWidth(value[0])}
+                                    />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="logo-height">Hauteur</Label>
-                                    <Input id="logo-height" value={logoHeight} onChange={(e) => setLogoHeight(e.target.value)} />
+                                    <Label htmlFor="logo-height" className="flex items-center justify-between">
+                                        <span>Hauteur</span>
+                                        <span className="text-sm text-muted-foreground">{logoHeight}px</span>
+                                    </Label>
+                                     <Slider
+                                        id="logo-height"
+                                        min={10}
+                                        max={200}
+                                        step={1}
+                                        value={[logoHeight]}
+                                        onValueChange={(value) => setLogoHeight(value[0])}
+                                    />
                                 </div>
                             </div>
                         </div>
