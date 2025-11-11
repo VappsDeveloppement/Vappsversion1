@@ -13,7 +13,8 @@ import {
   Shield,
   FileText,
   Paintbrush,
-  ChevronDown
+  ChevronDown,
+  Home
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -26,6 +27,8 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarInset,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
