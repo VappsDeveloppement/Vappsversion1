@@ -2,34 +2,34 @@
   "entities": {
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "User",
+      "title": "Utilisateur",
       "type": "object",
-      "description": "Represents a user of the VApps Success Hub platform.",
+      "description": "Représente un utilisateur de la plateforme VApps Success Hub.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the user."
+          "description": "Identifiant unique de l'utilisateur."
         },
         "firstName": {
           "type": "string",
-          "description": "The first name of the user."
+          "description": "Le prénom de l'utilisateur."
         },
         "lastName": {
           "type": "string",
-          "description": "The last name of the user."
+          "description": "Le nom de famille de l'utilisateur."
         },
         "email": {
           "type": "string",
-          "description": "The email address of the user.",
+          "description": "L'adresse e-mail de l'utilisateur.",
           "format": "email"
         },
         "role": {
           "type": "string",
-          "description": "The role of the user (e.g., client, coach, admin)."
+          "description": "Le rôle de l'utilisateur (par exemple, client, coach, admin)."
         },
         "dateCreated": {
           "type": "string",
-          "description": "The date and time the user account was created.",
+          "description": "La date et l'heure de création du compte utilisateur.",
           "format": "date-time"
         }
       },
@@ -44,39 +44,39 @@
     },
     "Appointment": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Appointment",
+      "title": "Rendez-vous",
       "type": "object",
-      "description": "Represents a scheduled appointment between a coach and a client.",
+      "description": "Représente un rendez-vous programmé entre un coach et un client.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the appointment."
+          "description": "Identifiant unique du rendez-vous."
         },
         "coachId": {
           "type": "string",
-          "description": "Reference to User (Coach). (Relationship: User 1:N Appointment)"
+          "description": "Référence à l'Utilisateur (Coach). (Relation : Utilisateur 1:N Rendez-vous)"
         },
         "clientId": {
           "type": "string",
-          "description": "Reference to User (Client). (Relationship: User 1:N Appointment)"
+          "description": "Référence à l'Utilisateur (Client). (Relation : Utilisateur 1:N Rendez-vous)"
         },
         "startTime": {
           "type": "string",
-          "description": "The start date and time of the appointment.",
+          "description": "La date et l'heure de début du rendez-vous.",
           "format": "date-time"
         },
         "endTime": {
           "type": "string",
-          "description": "The end date and time of the appointment.",
+          "description": "La date et l'heure de fin du rendez-vous.",
           "format": "date-time"
         },
         "status": {
           "type": "string",
-          "description": "The status of the appointment (e.g., scheduled, completed, cancelled)."
+          "description": "Le statut du rendez-vous (par exemple, programmé, terminé, annulé)."
         },
         "notes": {
           "type": "string",
-          "description": "Notes about the appointment."
+          "description": "Notes concernant le rendez-vous."
         }
       },
       "required": [
@@ -90,37 +90,37 @@
     },
     "EmailCampaign": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "EmailCampaign",
+      "title": "CampagneEmail",
       "type": "object",
-      "description": "Represents an email marketing campaign.",
+      "description": "Représente une campagne de marketing par e-mail.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the email campaign."
+          "description": "Identifiant unique de la campagne e-mail."
         },
         "name": {
           "type": "string",
-          "description": "The name of the email campaign."
+          "description": "Le nom de la campagne e-mail."
         },
         "subject": {
           "type": "string",
-          "description": "The subject line of the email campaign."
+          "description": "La ligne d'objet de la campagne e-mail."
         },
         "body": {
           "type": "string",
-          "description": "The HTML body of the email campaign."
+          "description": "Le corps HTML de la campagne e-mail."
         },
         "segment": {
           "type": "string",
-          "description": "The user segment this email is targeted towards."
+          "description": "Le segment d'utilisateurs ciblé par cet e-mail."
         },
         "status": {
           "type": "string",
-          "description": "The status of the email campaign (e.g., draft, scheduled, sent)."
+          "description": "Le statut de la campagne e-mail (par exemple, brouillon, planifiée, envoyée)."
         },
         "sentDate": {
           "type": "string",
-          "description": "The date and time the email campaign was sent.",
+          "description": "La date et l'heure d'envoi de la campagne e-mail.",
           "format": "date-time"
         }
       },
@@ -137,32 +137,32 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Message",
       "type": "object",
-      "description": "Represents a message sent between users within the platform.",
+      "description": "Représente un message envoyé entre utilisateurs au sein de la plateforme.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the message."
+          "description": "Identifiant unique du message."
         },
         "senderId": {
           "type": "string",
-          "description": "Reference to User (Sender). (Relationship: User 1:N Message)"
+          "description": "Référence à l'Utilisateur (Expéditeur). (Relation : Utilisateur 1:N Message)"
         },
         "receiverId": {
           "type": "string",
-          "description": "Reference to User (Receiver). (Relationship: User 1:N Message)"
+          "description": "Référence à l'Utilisateur (Destinataire). (Relation : Utilisateur 1:N Message)"
         },
         "content": {
           "type": "string",
-          "description": "The content of the message."
+          "description": "Le contenu du message."
         },
         "timestamp": {
           "type": "string",
-          "description": "The date and time the message was sent.",
+          "description": "La date et l'heure d'envoi du message.",
           "format": "date-time"
         },
         "isRead": {
           "type": "boolean",
-          "description": "Indicates whether the message has been read by the receiver."
+          "description": "Indique si le message a été lu par le destinataire."
         }
       },
       "required": [
@@ -176,39 +176,39 @@
     },
     "Invoice": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Invoice",
+      "title": "Facture",
       "type": "object",
-      "description": "Represents an invoice for coaching sessions or services.",
+      "description": "Représente une facture pour des sessions de coaching ou des services.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the invoice."
+          "description": "Identifiant unique de la facture."
         },
         "clientId": {
           "type": "string",
-          "description": "Reference to User (Client). (Relationship: User 1:N Invoice)"
+          "description": "Référence à l'Utilisateur (Client). (Relation : Utilisateur 1:N Facture)"
         },
         "issueDate": {
           "type": "string",
-          "description": "The date the invoice was issued.",
+          "description": "La date d'émission de la facture.",
           "format": "date-time"
         },
         "dueDate": {
           "type": "string",
-          "description": "The date the invoice is due.",
+          "description": "La date d'échéance de la facture.",
           "format": "date-time"
         },
         "amount": {
           "type": "number",
-          "description": "The total amount of the invoice."
+          "description": "Le montant total de la facture."
         },
         "status": {
           "type": "string",
-          "description": "The status of the invoice (e.g., sent, paid, overdue)."
+          "description": "Le statut de la facture (par exemple, envoyée, payée, en retard)."
         },
         "paymentDate": {
           "type": "string",
-          "description": "The date the invoice was paid.",
+          "description": "La date de paiement de la facture.",
           "format": "date-time"
         }
       },
@@ -223,29 +223,29 @@
     },
     "Consent": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Consent",
+      "title": "Consentement",
       "type": "object",
-      "description": "Represents a user's consent to data collection and processing.",
+      "description": "Représente le consentement d'un utilisateur à la collecte et au traitement des données.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the consent record."
+          "description": "Identifiant unique de l'enregistrement de consentement."
         },
         "userId": {
           "type": "string",
-          "description": "Reference to User. (Relationship: User 1:N Consent)"
+          "description": "Référence à l'Utilisateur. (Relation : Utilisateur 1:N Consentement)"
         },
         "consentType": {
           "type": "string",
-          "description": "The type of consent (e.g., marketing, data processing)."
+          "description": "Le type de consentement (par exemple, marketing, traitement des données)."
         },
         "consentGiven": {
           "type": "boolean",
-          "description": "Indicates whether consent was given."
+          "description": "Indique si le consentement a été donné."
         },
         "timestamp": {
           "type": "string",
-          "description": "The date and time the consent was recorded.",
+          "description": "La date et l'heure d'enregistrement du consentement.",
           "format": "date-time"
         }
       },
@@ -259,25 +259,25 @@
     },
     "LandingPage": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "LandingPage",
+      "title": "PageDAccueil",
       "type": "object",
-      "description": "Represents a customizable landing page for the application.",
+      "description": "Représente une page d'accueil personnalisable pour l'application.",
       "properties": {
         "id": {
           "type": "string",
-          "description": "Unique identifier for the landing page configuration."
+          "description": "Identifiant unique de la configuration de la page d'accueil."
         },
         "pageName": {
           "type": "string",
-          "description": "Name of the landing page."
+          "description": "Nom de la page d'accueil."
         },
         "pageLayout": {
           "type": "string",
-          "description": "JSON structure representing the page layout and components."
+          "description": "Structure JSON représentant la mise en page et les composants."
         },
         "lastUpdated": {
           "type": "string",
-          "description": "Timestamp of the last update to the landing page.",
+          "description": "Horodatage de la dernière mise à jour de la page d'accueil.",
           "format": "date-time"
         }
       },
@@ -304,11 +304,11 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profile data.  Path-based ownership enforced by {userId}.",
+          "description": "Stocke les données du profil utilisateur. La propriété basée sur le chemin est appliquée par {userId}.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier of the user."
+              "description": "L'identifiant unique de l'utilisateur."
             }
           ]
         }
@@ -320,11 +320,11 @@
           "schema": {
             "$ref": "#/backend/entities/Appointment"
           },
-          "description": "Stores appointment data.  Includes 'coachId' and 'clientId' for direct access control.",
+          "description": "Stocke les données des rendez-vous. Inclut 'coachId' et 'clientId' pour un contrôle d'accès direct.",
           "params": [
             {
               "name": "appointmentId",
-              "description": "The unique identifier of the appointment."
+              "description": "L'identifiant unique du rendez-vous."
             }
           ]
         }
@@ -336,11 +336,11 @@
           "schema": {
             "$ref": "#/backend/entities/EmailCampaign"
           },
-          "description": "Stores email campaign data.",
+          "description": "Stocke les données des campagnes e-mail.",
           "params": [
             {
               "name": "emailCampaignId",
-              "description": "The unique identifier of the email campaign."
+              "description": "L'identifiant unique de la campagne e-mail."
             }
           ]
         }
@@ -352,11 +352,11 @@
           "schema": {
             "$ref": "#/backend/entities/Message"
           },
-          "description": "Stores message data. Includes 'senderId' and 'receiverId' for access control.",
+          "description": "Stocke les données des messages. Inclut 'senderId' et 'receiverId' pour le contrôle d'accès.",
           "params": [
             {
               "name": "messageId",
-              "description": "The unique identifier of the message."
+              "description": "L'identifiant unique du message."
             }
           ]
         }
@@ -368,11 +368,11 @@
           "schema": {
             "$ref": "#/backend/entities/Invoice"
           },
-          "description": "Stores invoice data.  Includes 'clientId' for access control.",
+          "description": "Stocke les données des factures. Inclut 'clientId' pour le contrôle d'accès.",
           "params": [
             {
               "name": "invoiceId",
-              "description": "The unique identifier of the invoice."
+              "description": "L'identifiant unique de la facture."
             }
           ]
         }
@@ -384,11 +384,11 @@
           "schema": {
             "$ref": "#/backend/entities/Consent"
           },
-          "description": "Stores consent data. Includes 'userId' for path-based ownership.",
+          "description": "Stocke les données de consentement. Inclut 'userId' pour la propriété basée sur le chemin.",
           "params": [
             {
               "name": "consentId",
-              "description": "The unique identifier of the consent record."
+              "description": "L'identifiant unique de l'enregistrement de consentement."
             }
           ]
         }
@@ -400,11 +400,11 @@
           "schema": {
             "$ref": "#/backend/entities/LandingPage"
           },
-          "description": "Stores landing page configurations.",
+          "description": "Stocke les configurations des pages d'accueil.",
           "params": [
             {
               "name": "landingPageId",
-              "description": "The unique identifier of the landing page configuration."
+              "description": "L'identifiant unique de la configuration de la page d'accueil."
             }
           ]
         }
@@ -416,16 +416,18 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Indicates admin role for user. Existence of document grants admin privileges.  DO NOT store user data in this document - existence is the indicator.",
+          "description": "Indique le rôle d'administrateur pour l'utilisateur. L'existence du document accorde des privilèges d'administrateur. NE PAS stocker de données utilisateur dans ce document - l'existence est l'indicateur.",
           "params": [
             {
               "name": "userId",
-              "description": "The unique identifier of the user."
+              "description": "L'identifiant unique de l'utilisateur."
             }
           ]
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to support the VApps Success Hub application, emphasizing secure access control, scalability, and maintainability. The design adheres to the principles of Authorization Independence, Clarity of Intent, DBAC (Database-Based Access Control), and QAPs (Rules are not Filters).\n\n*   **Authorization Independence:**  Authorization is enforced using path-based ownership and membership maps. User-owned data (e.g., Appointments, Consents, Invoices, Messages) is stored under `/users/{userId}`, providing clear ownership. Collaborative data (e.g., shared resources) can use membership maps within documents if needed. Denormalization will be used where necessary. For instance, the `/appointments` collection includes `coachId` and `clientId`, enabling direct access control rules without needing to fetch user data.\n*   **Structural Segregation:** Data with different access requirements is separated into different collections. User profiles are stored under `/users/{userId}`, landing pages in the `/landing_pages` collection, messages within `/messages`, appointments in `/appointments`, invoices in `/invoices`, and consents in `/consents`. This segregation simplifies security rules by ensuring consistent authorization needs within each collection.\n*   **Access Modeling:**  Path-based ownership (`/users/{userId}/...`) is employed for private user data. The Membership Map pattern (if required for collaborative features, none currently specified) would involve adding a `members` field to documents, storing user IDs and their roles. Global roles (e.g., admin) are managed via the existence of documents in dedicated collections like `/roles_admin/{uid}`.\n*   **QAPs (Rules are not Filters):** The structure supports secure `list` operations by avoiding the need for filtering data based on user roles or permissions within the rules themselves.  Each collection is designed with clear access patterns, allowing rules to validate requests based on the path and the user's authentication status, rather than complex data filtering.\n\nThis structure promotes robust security rules, simplifies debugging, and ensures scalability by minimizing complex queries and authorization logic."
+    "reasoning": "La structure Firestore est conçue pour prendre en charge l'application VApps Success Hub, en mettant l'accent sur un contrôle d'accès sécurisé, l'évolutivité et la maintenabilité. La conception adhère aux principes d'indépendance de l'autorisation, de clarté de l'intention, de DBAC (Database-Based Access Control) et de QAP (les règles ne sont pas des filtres).\n\n*   **Indépendance de l'autorisation :** L'autorisation est appliquée à l'aide de la propriété basée sur le chemin et des cartes d'adhésion. Les données appartenant à l'utilisateur (par exemple, Rendez-vous, Consentements, Factures, Messages) sont stockées sous `/users/{userId}`, offrant une propriété claire. Les données collaboratives (par exemple, les ressources partagées) peuvent utiliser des cartes d'adhésion dans les documents si nécessaire. La dénormalisation sera utilisée si nécessaire. Par exemple, la collection `/appointments` inclut `coachId` et `clientId`, permettant des règles de contrôle d'accès direct sans avoir besoin de récupérer les données utilisateur.\n*   **Ségrégation structurelle :** Les données avec des exigences d'accès différentes sont séparées dans des collections différentes. Les profils utilisateur sont stockés sous `/users/{userId}`, les pages d'accueil dans la collection `/landing_pages`, les messages dans `/messages`, les rendez-vous dans `/appointments`, les factures dans `/invoices` et les consentements dans `/consents`. Cette ségrégation simplifie les règles de sécurité en garantissant des besoins d'autorisation cohérents au sein de chaque collection.\n*   **Modélisation de l'accès :** La propriété basée sur le chemin (`/users/{userId}/...`) est utilisée pour les données utilisateur privées. Le modèle de carte d'adhésion (si nécessaire pour les fonctionnalités collaboratives, aucune n'est actuellement spécifiée) impliquerait l'ajout d'un champ `members` aux documents, stockant les ID utilisateur et leurs rôles. Les rôles globaux (par exemple, administrateur) sont gérés via l'existence de documents dans des collections dédiées comme `/roles_admin/{uid}`.\n*   **QAP (Les règles ne sont pas des filtres) :** La structure prend en charge les opérations `list` sécurisées en évitant le besoin de filtrer les données en fonction des rôles ou des autorisations des utilisateurs dans les règles elles-mêmes. Chaque collection est conçue avec des modèles d'accès clairs, permettant aux règles de valider les demandes en fonction du chemin et du statut d'authentification de l'utilisateur, plutôt que d'un filtrage de données complexe.\n\nCette structure favorise des règles de sécurité robustes, simplifie le débogage et garantit l'évolutivité en minimisant les requêtes complexes et la logique d'autorisation."
   }
 }
+
+    
