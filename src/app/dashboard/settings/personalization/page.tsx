@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import React from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Upload } from "lucide-react";
+import Image from "next/image";
 
 export default function PersonalizationPage() {
 
@@ -193,10 +196,94 @@ export default function PersonalizationPage() {
               <CardTitle>Apparence</CardTitle>
               <CardDescription>Modifiez les couleurs, le logo et l'apparence générale de votre espace.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">Le contenu de l'apparence est vide.</p>
-              </div>
+            <CardContent className="space-y-8">
+                <div className="space-y-2">
+                    <Label htmlFor="app-subtitle">Sous-titre de l'application</Label>
+                    <Input id="app-subtitle" placeholder="Développement" />
+                </div>
+
+                <div className="border-t -mx-6"></div>
+
+                <div className="space-y-6">
+                    <h3 className="text-lg font-medium">Logo</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4">
+                            <Label>Fichier du logo</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted">
+                                    <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M16 0L31.5 9.5V21.5L16 32L0.5 21.5V9.5L16 0Z" fill="#2ff40a"/>
+                                        <path d="M16 4.5L28.5 12V19.5L16 27.5L3.5 19.5V12L16 4.5Z" fill="white"/>
+                                        <path d="M16 6.5L25.5 12.25V18.75L16 24.5L6.5 18.75V12.25L16 6.5Z" fill="#2ff40a"/>
+                                    </svg>
+                                </div>
+                                <Button variant="outline">
+                                    <Upload className="mr-2 h-4 w-4" />
+                                    Uploader
+                                </Button>
+                            </div>
+                            <p className="text-xs text-muted-foreground">Formats recommandés : SVG, PNG, JPG.</p>
+                        </div>
+                         <div className="space-y-4">
+                            <Label>Dimensions du logo (en pixels)</Label>
+                            <div className="flex items-center gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="logo-width">Largeur</Label>
+                                    <Input id="logo-width" defaultValue="40" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="logo-height">Hauteur</Label>
+                                    <Input id="logo-height" defaultValue="40" />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                     <div>
+                        <Label className="mb-3 block">Affichage</Label>
+                        <RadioGroup defaultValue="app-and-logo" className="space-y-2">
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="app-and-logo" id="app-and-logo" />
+                                <Label htmlFor="app-and-logo">Nom de l'application et logo</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="logo-only" id="logo-only" />
+                                <Label htmlFor="logo-only">Logo uniquement</Label>
+                            </div>
+                        </RadioGroup>
+                    </div>
+                </div>
+
+                <div className="border-t -mx-6"></div>
+
+                <div className="space-y-6">
+                    <h3 className="text-lg font-medium">Couleurs du thème</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="primary-color">Couleur Primaire</Label>
+                            <div className="flex items-center gap-2">
+                                <Input type="color" defaultValue="#2ff40a" className="w-10 h-10 p-1"/>
+                                <Input id="primary-color" defaultValue="#2ff40a" />
+                            </div>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="secondary-color">Couleur Secondaire</Label>
+                            <div className="flex items-center gap-2">
+                                <Input type="color" defaultValue="#25d408" className="w-10 h-10 p-1"/>
+                                <Input id="secondary-color" defaultValue="#25d408" />
+                            </div>
+                        </div>
+                         <div className="space-y-2">
+                            <Label htmlFor="bg-color">Couleur de Fond</Label>
+                            <div className="flex items-center gap-2">
+                                <Input type="color" defaultValue="#ffffff" className="w-10 h-10 p-1"/>
+                                <Input id="bg-color" defaultValue="#ffffff" />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                 <div className="flex justify-start pt-6 border-t">
+                    <Button style={{backgroundColor: '#2ff40a', color: 'black'}}>Sauvegarder les changements</Button>
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
