@@ -90,11 +90,12 @@ export default function Home() {
           title={agencyData.hero.title}
           subtitle={agencyData.hero.subtitle}
         />
-        <Features features={agencyData.features} />
+        {/* Les sections ci-dessous sont pour l'agence fille et seront masquées pour l'agence mère si nécessaire */}
+        {/* <Features features={agencyData.features} />
         <HowItWorks />
         <Testimonials testimonials={agencyData.testimonials} />
         <Pricing />
-        <Faq />
+        <Faq /> */}
       </main>
       <Footer agencyName={agencyData.name} />
     </div>
