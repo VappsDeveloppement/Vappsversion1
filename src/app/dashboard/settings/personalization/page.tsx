@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -210,12 +211,8 @@ export default function PersonalizationPage() {
                         <div className="space-y-4">
                             <Label>Fichier du logo</Label>
                             <div className="flex items-center gap-4">
-                                <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted">
-                                    <svg width="40" height="40" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                        <path d="M16 0L31.5 9.5V21.5L16 32L0.5 21.5V9.5L16 0Z" fill="#2ff40a"/>
-                                        <path d="M16 4.5L28.5 12V19.5L16 27.5L3.5 19.5V12L16 4.5Z" fill="white"/>
-                                        <path d="M16 6.5L25.5 12.25V18.75L16 24.5L6.5 18.75V12.25L16 6.5Z" fill="#2ff40a"/>
-                                    </svg>
+                                <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted relative">
+                                    <Image src="/vapps.png" alt="VApps Logo" width={60} height={60} objectFit="contain" />
                                 </div>
                                 <Button variant="outline">
                                     <Upload className="mr-2 h-4 w-4" />
@@ -348,3 +345,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    
