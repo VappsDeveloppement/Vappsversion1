@@ -12,21 +12,21 @@ export function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
 
     return (
-        <Card className="w-full max-w-sm bg-background text-foreground">
-            <CardHeader className="text-center">
-                <CardTitle className="text-2xl">Connexion</CardTitle>
+        <Card className="w-full max-w-sm bg-card/80 backdrop-blur-sm border-white/20 text-card-foreground">
+            <CardHeader className="text-left">
+                <CardTitle className="text-2xl font-bold">Connexion</CardTitle>
                 <CardDescription>Accédez à votre espace personnel.</CardDescription>
             </CardHeader>
             <CardContent>
                 <form className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
-                        <Input id="email" type="email" placeholder="votre@email.com" required />
+                        <Input id="email" type="email" placeholder="votre@email.com" required className="bg-white text-black" />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="password">Mot de passe</Label>
                         <div className="relative">
-                            <Input id="password" type={showPassword ? "text" : "password"} required />
+                            <Input id="password" type={showPassword ? "text" : "password"} required className="bg-white text-black" />
                             <Button
                                 type="button"
                                 variant="ghost"
@@ -39,10 +39,10 @@ export function LoginForm() {
                             </Button>
                         </div>
                     </div>
-                    <Button type="submit" className="w-full !mt-6 bg-lime-400 text-black hover:bg-lime-500">
+                    <Button type="submit" className="w-full !mt-6 bg-primary text-primary-foreground hover:bg-primary/90">
                         Se connecter
                     </Button>
-                    <div className="text-center">
+                    <div className="text-center pt-2">
                          <Link href="#" className="text-sm text-muted-foreground hover:underline">
                             Mot de passe oublié?
                         </Link>
