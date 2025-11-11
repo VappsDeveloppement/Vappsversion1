@@ -4,6 +4,7 @@ import { Logo } from '@/components/shared/logo';
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { AboutSection } from '@/components/shared/about-section';
 import { ParcoursSection } from '@/components/shared/parcours-section';
+import { VideoSection } from '@/components/shared/video-section';
 
 export default function Home() {
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
@@ -25,7 +26,7 @@ export default function Home() {
         <main className="relative z-20 container mx-auto px-4 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
             <div className="flex flex-col gap-8 text-center text-white">
-              <div className="flex justify-center md:justify-start">
+              <div className="flex justify-center">
                 <Logo className="text-white" />
               </div>
               <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
@@ -47,6 +48,7 @@ export default function Home() {
       </div>
       <AboutSection />
       <ParcoursSection />
+      <VideoSection />
     </div>
   );
 }
