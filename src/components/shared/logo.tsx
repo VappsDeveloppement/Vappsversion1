@@ -55,7 +55,7 @@ export function Logo({ className }: { className?: string; text?: string; }) {
       <Image src={logoSrc} alt="VApps Logo" width={logoWidth} height={logoHeight} style={{ height: 'auto' }} />
       {showText && (
         <div className='flex items-baseline gap-2'>
-          <span className="text-2xl font-bold font-headline">{logoText}</span>
+          <span className="text-2xl font-bold font-headline text-black">{logoText}</span>
           <span className="text-sm text-muted-foreground">{logoSubtitle}</span>
         </div>
       )}
