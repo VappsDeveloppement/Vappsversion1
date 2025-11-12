@@ -90,14 +90,19 @@ const defaultAgency: Agency = {
 };
 
 export const AgencyProvider = ({ children }: AgencyProviderProps) => {
-    const { firestore } = useFirebase();
-    const [agency, setAgency] = useState<Agency | null>(null);
+    const { firestore, isUserLoading } = useFirebase();
+    const [agency, setAgency] = useState<Agency | null>(defaultAgency);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
-    const [isDefaultAgency, setIsDefaultAgency] = useState(false);
+    const [isDefaultAgency, setIsDefaultAgency] = useState(true);
     const agencyId = 'vapps-agency'; // Hardcode the agency ID
 
     useEffect(() => {
+        // Wait until firebase auth state is resolved before doing anything
+        if (isUserLoading) {
+            return;
+        }
+
         if (!firestore) {
             setAgency(defaultAgency);
             setIsDefaultAgency(true);
@@ -131,22 +136,14 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
             }
             setIsLoading(false);
         }, (err: FirestoreError) => {
-            const contextualError = new FirestorePermissionError({
-                path: agencyDocRef.path,
-                operation: 'get',
-            });
-
-            setError(contextualError);
-            setAgency(defaultAgency); // Fallback to default on error
-            setIsDefaultAgency(true); // Treat errors as a "default" state to trigger onboarding
+            console.warn("Could not read agency document. Using default. Error:", err.message);
+            setAgency(defaultAgency);
+            setIsDefaultAgency(true);
             setIsLoading(false);
-            
-            // Emit the contextual error for the global listener
-            errorEmitter.emit('permission-error', contextualError);
         });
 
         return () => unsubscribe();
-    }, [firestore]);
+    }, [firestore, isUserLoading]);
 
     const personalization = useMemo(() => {
         if (!agency) return defaultPersonalization;

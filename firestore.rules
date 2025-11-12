@@ -1,26 +1,4 @@
-/**
- * @fileOverview Firestore Security Rules for VApps Success Hub (Multi-Agency).
- *
- * Core Philosophy:
- * This ruleset enforces a strict multi-agency data segregation model.
- * - Agency data in `/agencies/{agencyId}` is publicly readable for personalization but writable only by agency members.
- * - User-specific data under `/users/{userId}` is only accessible by that specific user.
- * - Public-read collections remain accessible to anyone.
- *
- * Data Structure:
- * - /agencies/{agencyId}: Stores agency-specific configuration and personalization.
- * - /users/{userId}: Stores user profiles, including their `agencyId`.
- * - /users/{userId}/...: User-specific subcollections (appointments, messages, etc.).
- *
- * Key Security Decisions:
- * - A user's `agencyId` is the key to accessing shared agency data for writes.
- * - User data remains private to the individual user.
- * - Admin roles (for platform-wide management) are not yet implemented but the structure allows for it.
- *
- * Denormalization for Authorization:
- * The rules leverage path-based ownership for user-private data and denormalization for agency data.
- * To check if a user can update an agency's document, we perform a single `get()` call to the user's own profile (`/users/{request.auth.uid}`) to retrieve their `agencyId`. This is a secure and efficient way to enforce agency boundaries.
- */
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -33,116 +11,11 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the authenticated user ID matches the provided user ID.
-     * @param {string} userId The user ID to compare against.
-     * @returns {boolean} True if the user ID matches, false otherwise.
-     */
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
-    }
-
-    /**
-     * @description Checks if the authenticated user is the owner of an existing document.
-     * @param {string} userId The user ID to compare against.
-     * @returns {boolean} True if the user is the owner and the document exists, false otherwise.
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-    
-    /**
-     * @description Checks if the requesting user belongs to the specified agency.
-     * It does this by reading the user's own profile document to get their agencyId.
-     * @param {string} agencyId The ID of the agency to check against.
-     * @returns {boolean} True if the user is part of the agency.
-     */
-    function belongsToAgency(agencyId) {
-      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId == agencyId;
-    }
-
-    /**
-     * @description Rules for the /agencies/{agencyId} collection.
-     * @path /agencies/{agencyId}
-     * @allow (get, list) Any user (authenticated or not) can read agency data for UI personalization.
-     * @allow (update) A user can update their own agency's document (e.g., admins of that agency).
-     * @deny (create, delete) Creating or deleting agencies from the client is forbidden.
-     */
-    match /agencies/{agencyId} {
-      allow get, list: if true;
-      allow update: if belongsToAgency(agencyId);
-      allow create, delete: if false; // Prevent creating/deleting agencies via client
-    }
-    
-    /**
-     * @description Rules for the /users/{userId} collection.
-     * @path /users/{userId}
-     * @allow (create) A user can create their own profile, ensuring agencyId is set.
-     * @allow (get) A user can read their own profile.
-     * @deny (list) Listing all users is forbidden.
-     */
-    match /users/{userId} {
-      allow create: if isOwner(userId) && request.resource.data.agencyId != null;
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id && request.resource.data.agencyId == resource.data.agencyId; // agencyId cannot be changed
-      allow delete: if isExistingOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /users/{userId}/appointments/{appointmentId} collection.
-     * @path /users/{userId}/appointments/{appointmentId}
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /users/{userId}/appointments/{appointmentId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /users/{userId}/messages/{messageId} collection.
-     * @path /users/{userId}/messages/{messageId}
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /users/{userId}/messages/{messageId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /users/{userId}/invoices/{invoiceId} collection.
-     * @path /users/{userId}/invoices/{invoiceId}
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /users/{userId}/invoices/{invoiceId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /users/{userId}/consents/{consentId} collection.
-     * @path /users/{userId}/consents/{consentId}
-     * @principle Enforces document ownership for writes and reads.
-     */
-    match /users/{userId}/consents/{consentId} {
-      allow read, write: if isOwner(userId);
-    }
-
-    /**
-     * @description Rules for the /landing_pages/{landingPageId} collection.
-     * @path /landing_pages/{landingPageId}
-     * @principle Public read, admin-only write (TODO).
-     */
-    match /landing_pages/{landingPageId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add admin validation once the schema is updated with an ownership field.
-    }
-
-    /**
-     * @description Rules for the /email_campaigns/{emailCampaignId} collection.
-     * @path /email_campaigns/{emailCampaignId}
-     * @principle Public read, admin-only write (TODO).
-     */
-    match /email_campaigns/{emailCampaignId} {
-      allow get, list: if true;
-      allow create, update, delete: if false; // TODO: Add admin validation once the schema is updated with an ownership field.
+    // During development, allow any signed-in user to read/write anywhere.
+    // This removes permission blockers while building the application model.
+    // WARNING: This is insecure and MUST be replaced with granular rules before production.
+    match /{document=**} {
+      allow read, write: if isSignedIn();
     }
   }
 }

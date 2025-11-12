@@ -43,10 +43,6 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
 
-  if (pathname === "/admin/onboarding") {
-    return <>{children}</>;
-  }
-
   return (
     <SidebarProvider>
       <div className="flex">

@@ -134,17 +134,8 @@ function ApplicationHomePage() {
 
 export function HomePageSelector() {
   const { agency, isLoading, isDefaultAgency } = useAgency();
-  const router = useRouter();
 
-  useEffect(() => {
-    // Si ce n'est pas en cours de chargement et que c'est l'agence par défaut
-    // (ce qui signifie qu'elle n'a pas été trouvée dans la BDD), on redirige.
-    if (!isLoading && isDefaultAgency) {
-      router.replace('/admin/onboarding');
-    }
-  }, [isLoading, isDefaultAgency, router]);
-
-  if (isLoading || isDefaultAgency) {
+  if (isLoading) {
     return (
         <div className="flex items-center justify-center h-screen bg-muted/30">
             <div className="space-y-4 p-8 w-full max-w-4xl">
