@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -33,6 +34,7 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
 };
 
 const defaultSections: Section[] = [
+  { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
@@ -43,18 +45,63 @@ const defaultSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
 ];
+
+function HeroSection() {
+    const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
+    return (
+        <div className="relative bg-background text-foreground">
+            {heroImage && (
+                <Image
+                    src={heroImage.imageUrl}
+                    alt={heroImage.description}
+                    fill
+                    className="object-cover object-center z-0"
+                    data-ai-hint={heroImage.imageHint}
+                />
+            )}
+            <div className="absolute inset-0 bg-black/50 z-10"></div>
+
+            <div className="relative z-20 container mx-auto px-4 py-16">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
+                    <div className="flex flex-col gap-8 text-center text-white">
+                        <div className="flex justify-center">
+                            <Logo className="text-white" />
+                        </div>
+                        <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
+                            Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.
+                        </h1>
+                        <div>
+                            <h2 className="text-xl font-bold text-primary">Vapps Accompagnement</h2>
+                            <p className="text-lg text-white/80 mt-2">
+                                Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.
+                            </p>
+                        </div>
+                    </div>
+                    <div>
+                        <LoginForm />
+                    </div>
+                </div>
+            </div>
+        </div>
+    )
+}
 
 
 function TunnelHomePage() {
-  const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
   const [sections, setSections] = useState<Section[]>(defaultSections);
 
   useEffect(() => {
     const storedSections = localStorage.getItem('homePageSections');
     if (storedSections) {
       try {
-        setSections(JSON.parse(storedSections));
+        const parsedSections = JSON.parse(storedSections);
+        const updatedSections = defaultSections.map(defaultSection => {
+            const found = parsedSections.find((s: Section) => s.id === defaultSection.id);
+            return found ? { ...defaultSection, ...found } : defaultSection;
+        }).sort((a, b) => parsedSections.findIndex((s:Section) => s.id === a.id) - parsedSections.findIndex((s:Section) => s.id === b.id));
+        setSections(updatedSections);
       } catch (e) {
         console.error("Failed to parse sections from localStorage", e);
         setSections(defaultSections);
@@ -65,7 +112,12 @@ function TunnelHomePage() {
       const newStoredSections = localStorage.getItem('homePageSections');
        if (newStoredSections) {
         try {
-          setSections(JSON.parse(newStoredSections));
+          const parsedSections = JSON.parse(newStoredSections);
+           const updatedSections = defaultSections.map(defaultSection => {
+                const found = parsedSections.find((s: Section) => s.id === defaultSection.id);
+                return found ? { ...defaultSection, ...found } : defaultSection;
+            }).sort((a, b) => parsedSections.findIndex((s:Section) => s.id === a.id) - parsedSections.findIndex((s:Section) => s.id === b.id));
+          setSections(updatedSections);
         } catch (e) {
           console.error("Failed to parse sections from localStorage on update", e);
         }
@@ -77,49 +129,20 @@ function TunnelHomePage() {
 
   }, []);
 
+  const heroSection = sections.find(s => s.id === 'hero');
+  const footerSection = sections.find(s => s.id === 'footer');
+
   return (
     <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
-      <div className="relative bg-background text-foreground">
-        {heroImage && (
-          <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
-            fill
-            className="object-cover object-center z-0"
-            data-ai-hint={heroImage.imageHint}
-          />
-        )}
-        <div className="absolute inset-0 bg-black/50 z-10"></div>
-        
-        <main className="relative z-20 container mx-auto px-4 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-            <div className="flex flex-col gap-8 text-center text-white">
-              <div className="flex justify-center">
-                <Logo className="text-white" />
-              </div>
-              <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
-                Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.
-              </h1>
-              <div>
-                <h2 className="text-xl font-bold text-primary">Vapps Accompagnement</h2>
-                <p className="text-lg text-white/80 mt-2">
-                  Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.
-                </p>
-              </div>
-            </div>
-            
-            <div>
-              <LoginForm />
-            </div>
-          </div>
-        </main>
-      </div>
-      {sections.map(section => {
-        if (!section.enabled) return null;
-        const SectionComponent = sectionComponents[section.id];
-        return SectionComponent ? <SectionComponent key={section.id} /> : null;
-      })}
-      <Footer />
+      <main>
+          {heroSection?.enabled && <HeroSection />}
+          {sections.map(section => {
+            if (!section.enabled || section.id === 'hero' || section.id === 'footer') return null;
+            const SectionComponent = sectionComponents[section.id];
+            return SectionComponent ? <SectionComponent key={section.id} /> : null;
+          })}
+      </main>
+      {footerSection?.enabled && <Footer />}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,13 +11,12 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, GripVertical } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
 
 
 const defaultAppearanceSettings = {
@@ -124,9 +124,11 @@ export type Section = {
   id: string;
   label: string;
   enabled: boolean;
+  isLocked?: boolean; // To prevent moving certain sections like hero/footer
 };
 
 const defaultHomePageSections: Section[] = [
+  { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
@@ -137,6 +139,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
 ];
 
 
@@ -310,7 +313,13 @@ export default function PersonalizationPage() {
       const storedSections = localStorage.getItem('homePageSections');
       if (storedSections) {
         try {
-          setHomePageSections(JSON.parse(storedSections));
+          const parsedSections = JSON.parse(storedSections);
+          // Ensure all default sections are present
+          const updatedSections = defaultHomePageSections.map(defaultSection => {
+            const found = parsedSections.find((s: Section) => s.id === defaultSection.id);
+            return found ? { ...defaultSection, ...found } : defaultSection;
+          });
+          setHomePageSections(updatedSections);
         } catch (e) {
           setHomePageSections(defaultHomePageSections);
         }
@@ -356,17 +365,17 @@ export default function PersonalizationPage() {
     setFooterSocialLinks(newLinks);
   };
   
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) {
-      return;
-    }
-    const items = Array.from(homePageSections);
-    const [reorderedItem] = items.splice(result.source.index, 1);
-    items.splice(result.destination.index, 0, reorderedItem);
+  const moveSection = (index: number, direction: 'up' | 'down') => {
+    const newSections = [...homePageSections];
+    const newIndex = direction === 'up' ? index - 1 : index + 1;
 
-    setHomePageSections(items);
-    localStorage.setItem('homePageSections', JSON.stringify(items));
-    window.dispatchEvent(new Event('storage'));
+    if (newIndex >= 0 && newIndex < newSections.length) {
+      // Simple swap
+      [newSections[index], newSections[newIndex]] = [newSections[newIndex], newSections[index]];
+      setHomePageSections(newSections);
+      localStorage.setItem('homePageSections', JSON.stringify(newSections));
+      window.dispatchEvent(new Event('storage'));
+    }
   };
 
   const handleSectionToggle = (id: string, enabled: boolean) => {
@@ -810,42 +819,46 @@ export default function PersonalizationPage() {
               <div className="border-t -mx-6"></div>
               <section>
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
-                 <p className="text-sm text-muted-foreground mb-6">Faites glisser les sections pour les réorganiser sur la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
+                 <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
                  
-                <DragDropContext onDragEnd={onDragEnd}>
-                    <Droppable droppableId="sections">
-                    {(provided) => (
-                        <div
-                        {...provided.droppableProps}
-                        ref={provided.innerRef}
-                        className="space-y-3"
-                        >
-                        {homePageSections.map((section, index) => (
-                            <Draggable key={section.id} draggableId={section.id} index={index}>
-                            {(provided) => (
-                                <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className="flex items-center gap-4 p-3 border rounded-lg bg-background"
-                                >
-                                    <GripVertical className="h-5 w-5 text-muted-foreground" />
-                                    <div className="flex-1">
-                                        <p className="font-medium">{section.label}</p>
-                                    </div>
-                                    <Switch
-                                        checked={section.enabled}
-                                        onCheckedChange={(checked) => handleSectionToggle(section.id, checked)}
-                                    />
-                                </div>
-                            )}
-                            </Draggable>
-                        ))}
-                        {provided.placeholder}
+                <div className="space-y-3">
+                  {homePageSections.map((section, index) => (
+                    <div
+                      key={section.id}
+                      className="flex items-center gap-4 p-3 border rounded-lg bg-background"
+                    >
+                      <div className="flex-1">
+                          <p className="font-medium">{section.label}</p>
+                      </div>
+                      
+                      {!section.isLocked && (
+                        <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => moveSection(index, 'up')}
+                            disabled={index === 0 || homePageSections[index - 1].isLocked}
+                          >
+                            <ArrowUp className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => moveSection(index, 'down')}
+                            disabled={index === homePageSections.length - 1 || homePageSections[index + 1].isLocked}
+                          >
+                            <ArrowDown className="h-4 w-4" />
+                          </Button>
                         </div>
-                    )}
-                    </Droppable>
-                </DragDropContext>
+                      )}
+
+                      <Switch
+                          checked={section.enabled}
+                          onCheckedChange={(checked) => handleSectionToggle(section.id, checked)}
+                      />
+                    </div>
+                  ))}
+                </div>
 
               </section>
                 <div className="flex justify-end pt-6 border-t">
