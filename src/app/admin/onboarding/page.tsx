@@ -10,11 +10,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Eye, EyeOff, Building, User } from 'lucide-react';
+import { Loader2, Eye, EyeOff, Building, User as UserIcon } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Logo } from '@/components/shared/logo';
 import { setDoc, doc } from 'firebase/firestore';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, type User } from 'firebase/auth';
 import { useFirebase } from '@/firebase';
 
 const onboardingSchema = z.object({
@@ -47,22 +47,55 @@ export default function OnboardingPage() {
 
     async function onSubmit(data: OnboardingValues) {
         setIsLoading(true);
-        try {
-            // 1. Create the Firebase Auth user
-            const userCredential = await createUserWithEmailAndPassword(auth, data.adminEmail, data.adminPassword);
-            const user = userCredential.user;
+        let user: User;
 
+        try {
+            // 1. Try to create the Firebase Auth user
+            const userCredential = await createUserWithEmailAndPassword(auth, data.adminEmail, data.adminPassword);
+            user = userCredential.user;
+        } catch (error: any) {
+            // If user already exists, sign them in instead
+            if (error.code === 'auth/email-already-in-use') {
+                try {
+                    const userCredential = await signInWithEmailAndPassword(auth, data.adminEmail, data.adminPassword);
+                    user = userCredential.user;
+                } catch (signInError: any) {
+                     let errorMessage = "Une erreur inconnue est survenue lors de la connexion.";
+                     if (signInError.code === 'auth/wrong-password' || signInError.code === 'auth/invalid-credential') {
+                         errorMessage = "Cet email existe déjà mais le mot de passe est incorrect.";
+                     }
+                     toast({
+                         variant: 'destructive',
+                         title: "Erreur de connexion",
+                         description: errorMessage,
+                     });
+                     setIsLoading(false);
+                     return;
+                }
+            } else {
+                // Handle other creation errors
+                console.error("Onboarding Error:", error);
+                toast({
+                    variant: 'destructive',
+                    title: "Erreur d'installation",
+                    description: "Une erreur inconnue est survenue lors de la création du compte.",
+                });
+                setIsLoading(false);
+                return;
+            }
+        }
+
+        try {
             const agencyId = 'vapps-agency';
 
-            // 2. Create the Agency document
+            // 2. Create or update the Agency document
             const agencyRef = doc(firestore, 'agencies', agencyId);
             await setDoc(agencyRef, {
                 id: agencyId,
                 name: data.agencyName,
-                // Personalization will be set to default by the provider later
-            });
+            }, { merge: true });
 
-            // 3. Create the User document
+            // 3. Create or update the User document
             const userRef = doc(firestore, 'users', user.uid);
             await setDoc(userRef, {
                 id: user.uid,
@@ -72,7 +105,7 @@ export default function OnboardingPage() {
                 role: 'superadmin',
                 agencyId: agencyId,
                 dateJoined: new Date().toISOString(),
-            });
+            }, { merge: true });
 
             toast({
                 title: "Installation terminée !",
@@ -81,16 +114,12 @@ export default function OnboardingPage() {
 
             router.push('/dashboard');
 
-        } catch (error: any) {
-            console.error("Onboarding Error:", error);
-            let errorMessage = "Une erreur inconnue est survenue.";
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = "Cette adresse email est déjà utilisée.";
-            }
+        } catch (dbError: any) {
+            console.error("Firestore Error during onboarding:", dbError);
             toast({
                 variant: 'destructive',
-                title: "Erreur d'installation",
-                description: errorMessage,
+                title: "Erreur de base de données",
+                description: "Impossible de sauvegarder les informations de l'agence ou de l'utilisateur.",
             });
         } finally {
             setIsLoading(false);
@@ -130,7 +159,7 @@ export default function OnboardingPage() {
                             </div>
 
                              <div className="space-y-4 p-4 border rounded-md">
-                                <h3 className="text-lg font-medium flex items-center gap-2"><User className='w-5 h-5'/> Compte Super-Administrateur</h3>
+                                <h3 className="text-lg font-medium flex items-center gap-2"><UserIcon className='w-5 h-5'/> Compte Super-Administrateur</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                      <FormField
                                         control={form.control}
