@@ -69,7 +69,8 @@ service cloud.firestore {
      * @deny (get) A user cannot read another agency's document.
      */
     match /agencies/{agencyId} {
-      allow get, list, update: if belongsToAgency(agencyId);
+      allow get: if isSignedIn();
+      allow list, update: if belongsToAgency(agencyId);
       allow create, delete: if false; // Prevent creating/deleting agencies via client
     }
     
@@ -145,5 +146,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
