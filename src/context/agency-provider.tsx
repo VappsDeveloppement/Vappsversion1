@@ -3,7 +3,11 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { Firestore } from 'firebase/firestore';
+import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -85,15 +89,39 @@ const defaultAgency: Agency = {
     personalization: defaultPersonalization
 };
 
+
+const ensureUserDocument = async (firestore: Firestore, user: User) => {
+    const userRef = doc(firestore, 'users', user.uid);
+    const userSnap = await getDoc(userRef);
+
+    if (!userSnap.exists()) {
+        console.log(`User document for ${user.uid} not found. Creating it...`);
+        const agencyId = 'vapps-agency';
+        const userData = {
+            id: user.uid,
+            email: user.email,
+            firstName: user.displayName?.split(' ')[0] || 'Admin',
+            lastName: user.displayName?.split(' ')[1] || 'User',
+            role: 'admin', // First user is always admin
+            agencyId: agencyId,
+            dateJoined: new Date().toISOString(),
+        };
+        // Use the non-blocking update with proper error handling
+        setDocumentNonBlocking(userRef, userData, { merge: true });
+    }
+};
+
+
 export const AgencyProvider = ({ children }: AgencyProviderProps) => {
-    const { firestore } = useFirebase();
-    const [agency, setAgency] = useState<Agency | null>(defaultAgency);
+    const { firestore, auth } = useFirebase();
+    const [agency, setAgency] = useState<Agency | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const agencyId = 'vapps-agency'; // Hardcode the agency ID
 
     useEffect(() => {
         if (!firestore) {
+            setAgency(defaultAgency);
             setIsLoading(false);
             return;
         }
@@ -118,9 +146,7 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
 
                 setAgency(agencyData);
             } else {
-                // If doc doesn't exist, we continue using the defaultAgency state.
-                // We can also trigger a creation here if needed.
-                console.log("Agency document not found, using default. It can be created from the personalization page.");
+                console.log("Agency document not found, using default.");
                 setAgency(defaultAgency);
             }
             setIsLoading(false);
@@ -133,6 +159,28 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
 
         return () => unsubscribe();
     }, [firestore]);
+
+
+    // Effect to subscribe to Firebase auth state changes
+      useEffect(() => {
+        if (!auth || !firestore) {
+          return;
+        }
+
+        const unsubscribe = onAuthStateChanged(
+          auth,
+          async (firebaseUser) => {
+            if (firebaseUser) {
+                await ensureUserDocument(firestore, firebaseUser);
+            }
+          },
+          (error) => {
+            console.error("FirebaseProvider: onAuthStateChanged error:", error);
+          }
+        );
+        return () => unsubscribe();
+      }, [auth, firestore]);
+
 
     const personalization = useMemo(() => {
         if (!agency) return defaultPersonalization;
@@ -157,4 +205,3 @@ export const useAgency = (): AgencyContextType => {
     }
     return context;
 };
-
