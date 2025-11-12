@@ -6,8 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAgency } from "@/context/agency-provider";
 import { useCollection, useFirebase } from "@/firebase";
 import React, { useMemo, useState } from "react";
-import { collection, query, where, doc, setDoc } from "firebase/firestore";
-import { useFirestore } from "@/firebase/provider";
+import { collection, query, where } from "firebase/firestore";
+import { useFirestore }veuillez utiliser à la place./provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -20,8 +20,8 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { createUserWithEmailAndPassword } from "firebase/auth";
 import { PlusCircle, Loader2 } from "lucide-react";
+import { createUser } from "@/app/actions/user";
 
 type User = {
   id: string;
@@ -142,44 +142,29 @@ export default function UsersPage() {
   });
 
   async function onSubmit(values: z.infer<typeof adminFormSchema>) {
-    if (!auth || !agency) {
-        toast({ title: "Erreur", description: "Services non disponibles.", variant: "destructive" });
+    if (!agency) {
+        toast({ title: "Erreur", description: "L'agence n'a pas été trouvée.", variant: "destructive" });
         return;
     }
     setIsSubmitting(true);
     try {
-      // Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+        const result = await createUser({ ...values, agencyId: agency.id });
 
-      // Create user document in Firestore
-      await setDoc(doc(firestore, "users", user.uid), {
-        id: user.uid,
-        firstName: values.firstName,
-        lastName: values.lastName,
-        email: values.email,
-        phone: values.phone || '',
-        role: values.role,
-        agencyId: agency.id,
-        dateJoined: new Date().toISOString(),
-      });
-      
-      toast({ title: "Succès", description: "L'administrateur a été ajouté." });
-      form.reset();
-      setIsFormOpen(false);
-    } catch (error: any) {
-        console.error("Error creating admin:", error);
-        let description = "Une erreur inconnue est survenue.";
-        if (error.code === 'auth/email-already-in-use') {
-            description = "Cette adresse email est déjà utilisée.";
-        } else if (error.code === 'auth/weak-password') {
-            description = "Le mot de passe est trop faible.";
+        if (result.success) {
+            toast({ title: "Succès", description: "L'administrateur a été ajouté." });
+            form.reset();
+            setIsFormOpen(false);
+        } else {
+            toast({ title: "Erreur de création", description: result.error, variant: "destructive" });
         }
-        toast({ title: "Erreur de création", description, variant: "destructive" });
+    } catch (error) {
+        console.error("Error creating admin:", error);
+        toast({ title: "Erreur inattendue", description: "Une erreur inattendue est survenue.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
-  }
+}
+
 
   const filterUsers = (data: User[] | null, role: string[], searchTerm: string): User[] => {
     if (!data) return [];
