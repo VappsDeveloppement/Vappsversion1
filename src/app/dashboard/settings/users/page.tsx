@@ -39,8 +39,13 @@ const adminFormSchema = z.object({
   email: z.string().email("L'adresse email n'est pas valide."),
   phone: z.string().optional(),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
+  confirmPassword: z.string(),
   role: z.enum(['admin', 'superadmin'], { required_error: "Le rôle est requis." }),
+}).refine((data) => data.password === data.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas.",
+    path: ["confirmPassword"],
 });
+
 
 // Component to render the user table
 const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoading: boolean, emptyMessage: string }) => {
@@ -138,6 +143,7 @@ export default function UsersPage() {
       email: "",
       phone: "",
       password: "",
+      confirmPassword: "",
       role: "admin",
     },
   });
@@ -223,7 +229,7 @@ export default function UsersPage() {
                                 Ajouter un Admin
                             </Button>
                         </DialogTrigger>
-                        <DialogContent className="sm:max-w-[425px]">
+                        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                                 <DialogTitle>Ajouter un administrateur</DialogTitle>
                                 <DialogDescription>
@@ -231,7 +237,7 @@ export default function UsersPage() {
                                 </DialogDescription>
                             </DialogHeader>
                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-1">
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormField control={form.control} name="firstName" render={({ field }) => (
                                             <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input placeholder="Jean" {...field} /></FormControl><FormMessage /></FormItem>
@@ -249,6 +255,9 @@ export default function UsersPage() {
                                     <FormField control={form.control} name="password" render={({ field }) => (
                                         <FormItem><FormLabel>Mot de passe</FormLabel><FormControl><Input type="password" placeholder="********" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
+                                    <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                                        <FormItem><FormLabel>Confirmer le mot de passe</FormLabel><FormControl><Input type="password" placeholder="********" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
                                     <FormField control={form.control} name="role" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Rôle</FormLabel>
@@ -262,7 +271,7 @@ export default function UsersPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    <DialogFooter>
+                                    <DialogFooter className="pt-4">
                                         <Button type="submit" disabled={isSubmitting}>
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                             Créer l'utilisateur
