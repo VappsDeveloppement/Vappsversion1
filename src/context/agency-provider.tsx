@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -79,101 +79,76 @@ const defaultPersonalization = {
     }
 };
 
+const ensureAgencyDocument = async (firestore: any, agencyId: string) => {
+    const agencyRef = doc(firestore, 'agencies', agencyId);
+    const agencySnap = await getDoc(agencyRef);
+    if (!agencySnap.exists()) {
+        console.log(`Agency document for ${agencyId} not found. Creating it...`);
+        try {
+            await setDoc(agencyRef, {
+                id: agencyId,
+                name: 'VApps Agency',
+                personalization: defaultPersonalization
+            });
+            console.log(`Agency document created for ${agencyId}`);
+        } catch (error) {
+            console.error("Error creating agency document:", error);
+        }
+    }
+};
+
 export const AgencyProvider = ({ children }: AgencyProviderProps) => {
     const { user, firestore, isUserLoading } = useFirebase();
     const [agency, setAgency] = useState<Agency | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
+    const agencyId = 'vapps-agency'; // Hardcode the agency ID
 
     useEffect(() => {
-        if (isUserLoading) {
-            setIsLoading(true);
-            return;
-        }
-
-        if (!user) {
+        if (!firestore) {
             setIsLoading(false);
-            setAgency(null);
             return;
         }
 
-        const fetchAgencyId = async () => {
-            try {
-                const userDocRef = doc(firestore, 'users', user.uid);
-                const userDocSnap = await getDoc(userDocRef);
-                if (userDocSnap.exists()) {
-                    return userDocSnap.data().agencyId;
-                } else {
-                    // This is a fallback/temporary solution for existing users without an agencyId.
-                    // In a real app, you'd have a user creation flow that ensures agencyId is set.
-                    console.warn(`User document ${user.uid} does not exist. Cannot determine agency.`);
-                    return 'vapps-agency'; // Fallback to a default agency for demo purposes
-                }
-            } catch (e) {
-                console.error("Error fetching user document:", e);
-                setError(e as Error);
-                return null;
-            }
-        };
+        // Ensure the default agency document exists
+        ensureAgencyDocument(firestore, agencyId);
 
-        const subscribeToAgency = async () => {
-            setIsLoading(true);
-            const agencyId = await fetchAgencyId();
+        const agencyDocRef = doc(firestore, 'agencies', agencyId);
+        const unsubscribe = onSnapshot(agencyDocRef, (docSnap) => {
+            if (docSnap.exists()) {
+                const agencyData = { id: docSnap.id, ...docSnap.data() } as Agency;
+                
+                // Merge with defaults to ensure all keys are present
+                const mergedPersonalization = {
+                    ...defaultPersonalization,
+                    ...agencyData.personalization,
+                    legalInfo: {
+                        ...defaultPersonalization.legalInfo,
+                        ...(agencyData.personalization?.legalInfo || {})
+                    },
+                    homePageSections: agencyData.personalization?.homePageSections?.length ? agencyData.personalization.homePageSections : defaultPersonalization.homePageSections
+                };
+                agencyData.personalization = mergedPersonalization;
 
-            if (!agencyId) {
-                setIsLoading(false);
+                setAgency(agencyData);
+            } else {
+                // The document is being created, it will trigger another snapshot
                 setAgency(null);
-                setError(new Error("Could not determine agency ID for the user."));
-                return;
             }
+            setIsLoading(false);
+        }, (err) => {
+            console.error("Error listening to agency document:", err);
+            setError(err);
+            setIsLoading(false);
+        });
 
-            const agencyDocRef = doc(firestore, 'agencies', agencyId);
-            const unsubscribe = onSnapshot(agencyDocRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const agencyData = { id: docSnap.id, ...docSnap.data() } as Agency;
-                    
-                    // Merge with defaults to ensure all keys are present
-                    const mergedPersonalization = {
-                        ...defaultPersonalization,
-                        ...agencyData.personalization,
-                        legalInfo: {
-                            ...defaultPersonalization.legalInfo,
-                            ...(agencyData.personalization?.legalInfo || {})
-                        },
-                        homePageSections: agencyData.personalization?.homePageSections?.length ? agencyData.personalization.homePageSections : defaultPersonalization.homePageSections
-                    };
-                    agencyData.personalization = mergedPersonalization;
-
-                    setAgency(agencyData);
-                } else {
-                    setAgency(null);
-                    setError(new Error(`Agency document with ID ${agencyId} not found.`));
-                }
-                setIsLoading(false);
-            }, (err) => {
-                console.error("Error listening to agency document:", err);
-                setError(err);
-                setIsLoading(false);
-            });
-
-            return unsubscribe;
-        };
-
-        const unsubscribePromise = subscribeToAgency();
-
-        return () => {
-            unsubscribePromise.then(unsubscribe => {
-                if (unsubscribe) {
-                    unsubscribe();
-                }
-            });
-        };
-    }, [user, firestore, isUserLoading]);
+        return () => unsubscribe();
+    }, [firestore, agencyId]);
 
     const personalization = useMemo(() => {
-        if (!agency) return defaultPersonalization;
+        if (isLoading || !agency) return defaultPersonalization;
         return agency.personalization;
-    }, [agency]);
+    }, [agency, isLoading]);
 
     const value = {
         agency,
@@ -193,5 +168,3 @@ export const useAgency = (): AgencyContextType => {
     }
     return context;
 };
-
-    
