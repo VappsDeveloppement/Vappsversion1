@@ -4,14 +4,24 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection } from "@/firebase";
+import { useCollection, useFirebase } from "@/firebase";
 import React, { useMemo, useState } from "react";
-import { collection, query, where } from "firebase/firestore";
+import { collection, query, where, doc, setDoc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useToast } from "@/hooks/use-toast";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { PlusCircle, Loader2 } from "lucide-react";
 
 type User = {
   id: string;
@@ -21,6 +31,15 @@ type User = {
   role: 'admin' | 'superadmin' | 'conseiller' | 'membre' | 'prospect';
   dateJoined: string;
 };
+
+const adminFormSchema = z.object({
+  firstName: z.string().min(1, "Le prénom est requis."),
+  lastName: z.string().min(1, "Le nom est requis."),
+  email: z.string().email("L'adresse email n'est pas valide."),
+  phone: z.string().optional(),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
+  role: z.enum(['admin', 'superadmin'], { required_error: "Le rôle est requis." }),
+});
 
 // Component to render the user table
 const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoading: boolean, emptyMessage: string }) => {
@@ -91,11 +110,15 @@ const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoadin
 export default function UsersPage() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
+  const { auth } = useFirebase();
+  const { toast } = useToast();
 
   const [adminSearch, setAdminSearch] = useState('');
   const [conseillerSearch, setConseillerSearch] = useState('');
   const [membreSearch, setMembreSearch] = useState('');
   const [prospectSearch, setProspectSearch] = useState('');
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const usersQuery = useMemo(() => {
     if (!agency) return null;
@@ -105,6 +128,58 @@ export default function UsersPage() {
   const { data: users, isLoading: areUsersLoading } = useCollection(usersQuery);
 
   const isLoading = isAgencyLoading || areUsersLoading;
+
+  const form = useForm<z.infer<typeof adminFormSchema>>({
+    resolver: zodResolver(adminFormSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      password: "",
+      role: "admin",
+    },
+  });
+
+  async function onSubmit(values: z.infer<typeof adminFormSchema>) {
+    if (!auth || !agency) {
+        toast({ title: "Erreur", description: "Services non disponibles.", variant: "destructive" });
+        return;
+    }
+    setIsSubmitting(true);
+    try {
+      // Create user in Firebase Auth
+      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
+      const user = userCredential.user;
+
+      // Create user document in Firestore
+      await setDoc(doc(firestore, "users", user.uid), {
+        id: user.uid,
+        firstName: values.firstName,
+        lastName: values.lastName,
+        email: values.email,
+        phone: values.phone || '',
+        role: values.role,
+        agencyId: agency.id,
+        dateJoined: new Date().toISOString(),
+      });
+      
+      toast({ title: "Succès", description: "L'administrateur a été ajouté." });
+      form.reset();
+      setIsFormOpen(false);
+    } catch (error: any) {
+        console.error("Error creating admin:", error);
+        let description = "Une erreur inconnue est survenue.";
+        if (error.code === 'auth/email-already-in-use') {
+            description = "Cette adresse email est déjà utilisée.";
+        } else if (error.code === 'auth/weak-password') {
+            description = "Le mot de passe est trop faible.";
+        }
+        toast({ title: "Erreur de création", description, variant: "destructive" });
+    } finally {
+        setIsSubmitting(false);
+    }
+  }
 
   const filterUsers = (data: User[] | null, role: string[], searchTerm: string): User[] => {
     if (!data) return [];
@@ -148,11 +223,70 @@ export default function UsersPage() {
 
             <TabsContent value="admins">
               <div className="space-y-4 pt-4">
-                <Input 
-                  placeholder="Rechercher un admin..."
-                  value={adminSearch}
-                  onChange={(e) => setAdminSearch(e.target.value)}
-                />
+                <div className="flex justify-between items-center">
+                    <Input 
+                        placeholder="Rechercher un admin..."
+                        value={adminSearch}
+                        onChange={(e) => setAdminSearch(e.target.value)}
+                        className="max-w-sm"
+                    />
+                    <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                        <DialogTrigger asChild>
+                            <Button>
+                                <PlusCircle className="mr-2 h-4 w-4" />
+                                Ajouter un Admin
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[425px]">
+                            <DialogHeader>
+                                <DialogTitle>Ajouter un administrateur</DialogTitle>
+                                <DialogDescription>
+                                    Créez un nouvel utilisateur avec un rôle d'administrateur.
+                                </DialogDescription>
+                            </DialogHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="firstName" render={({ field }) => (
+                                            <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input placeholder="Jean" {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={form.control} name="lastName" render={({ field }) => (
+                                            <FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Dupont" {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                    </div>
+                                    <FormField control={form.control} name="email" render={({ field }) => (
+                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="phone" render={({ field }) => (
+                                        <FormItem><FormLabel>Téléphone (Optionnel)</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="password" render={({ field }) => (
+                                        <FormItem><FormLabel>Mot de passe</FormLabel><FormControl><Input type="password" placeholder="********" {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="role" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Rôle</FormLabel>
+                                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <FormControl><SelectTrigger><SelectValue placeholder="Sélectionnez un rôle" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    <SelectItem value="admin">Admin</SelectItem>
+                                                    <SelectItem value="superadmin">Super Admin</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <DialogFooter>
+                                        <Button type="submit" disabled={isSubmitting}>
+                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            Créer l'utilisateur
+                                        </Button>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                        </DialogContent>
+                    </Dialog>
+                </div>
                 <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin trouvé." />
               </div>
             </TabsContent>
