@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { useAgency } from "@/context/agency-provider";
 import { useCollection, useFirebase } from "@/firebase";
 import React, { useMemo, useState } from "react";
 import { collection, query, where } from "firebase/firestore";
-import { useFirestore }veuillez utiliser à la place./provider";
+import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
