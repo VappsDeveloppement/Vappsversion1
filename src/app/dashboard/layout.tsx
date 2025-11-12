@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -14,7 +15,8 @@ import {
   FileText,
   Paintbrush,
   ChevronDown,
-  Home
+  Home,
+  DatabaseZap,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -52,6 +54,10 @@ const settingsMenuItems = [
     { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
 ]
 
+const apiMenuItems = [
+    { href: "/dashboard/api/agency", label: "Agence", icon: <DatabaseZap /> },
+]
+
 export default function DashboardLayout({
   children,
 }: {
@@ -60,6 +66,7 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
+  const [isApiOpen, setIsApiOpen] = React.useState(pathname.startsWith('/dashboard/api'));
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -144,6 +151,33 @@ export default function DashboardLayout({
                     <CollapsibleContent>
                         <SidebarMenuSub>
                             {settingsMenuItems.map((item) => (
+                                <SidebarMenuItem key={item.href}>
+                                    <Link href={item.href} passHref>
+                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                                          <span>
+                                            {item.icon}
+                                            <span>{item.label}</span>
+                                          </span>
+                                        </SidebarMenuSubButton>
+                                    </Link>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenuSub>
+                    </CollapsibleContent>
+                </Collapsible>
+                 <Collapsible open={isApiOpen} onOpenChange={setIsApiOpen}>
+                    <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/api")}>
+                                <DatabaseZap />
+                                <span>GESTION API</span>
+                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isApiOpen && "rotate-180")} />
+                            </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                    </SidebarMenuItem>
+                    <CollapsibleContent>
+                        <SidebarMenuSub>
+                            {apiMenuItems.map((item) => (
                                 <SidebarMenuItem key={item.href}>
                                     <Link href={item.href} passHref>
                                         <SidebarMenuSubButton asChild isActive={pathname === item.href}>
