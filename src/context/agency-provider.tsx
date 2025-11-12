@@ -3,11 +3,12 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, onSnapshot } from 'firebase/firestore';
-import { Firestore } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -146,15 +147,23 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
 
                 setAgency(agencyData);
             } else {
-                console.log("Agency document not found, using default.");
+                console.log("Agency document not found, creating it.");
+                setDocumentNonBlocking(agencyDocRef, defaultAgency, { merge: true });
                 setAgency(defaultAgency);
             }
             setIsLoading(false);
-        }, (err) => {
-            console.error("Error listening to agency document:", err);
-            setError(err);
+        }, (err: FirestoreError) => {
+            const contextualError = new FirestorePermissionError({
+                path: agencyDocRef.path,
+                operation: 'get',
+            });
+
+            setError(contextualError);
             setAgency(defaultAgency); // Fallback to default on error
             setIsLoading(false);
+            
+            // Emit the contextual error for the global listener
+            errorEmitter.emit('permission-error', contextualError);
         });
 
         return () => unsubscribe();
