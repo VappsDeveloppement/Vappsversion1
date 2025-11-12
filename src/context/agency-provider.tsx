@@ -3,10 +3,8 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useFirebase } from '@/firebase/provider';
-import { doc, getDoc, onSnapshot, Firestore, FirestoreError, setDoc } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
-import { setDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
@@ -28,6 +26,7 @@ interface AgencyContextType {
     personalization: Personalization | null;
     isLoading: boolean;
     error: Error | null;
+    isDefaultAgency: boolean;
 }
 
 // Create the context with a default value
@@ -91,15 +90,17 @@ const defaultAgency: Agency = {
 };
 
 export const AgencyProvider = ({ children }: AgencyProviderProps) => {
-    const { firestore, auth } = useFirebase();
+    const { firestore } = useFirebase();
     const [agency, setAgency] = useState<Agency | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
+    const [isDefaultAgency, setIsDefaultAgency] = useState(false);
     const agencyId = 'vapps-agency'; // Hardcode the agency ID
 
     useEffect(() => {
         if (!firestore) {
             setAgency(defaultAgency);
+            setIsDefaultAgency(true);
             setIsLoading(false);
             return;
         }
@@ -123,9 +124,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                 agencyData.personalization = mergedPersonalization;
 
                 setAgency(agencyData);
+                setIsDefaultAgency(false);
             } else {
-                console.log("Agency document not found, using default. It can be created via the onboarding page.");
                 setAgency(defaultAgency);
+                setIsDefaultAgency(true);
             }
             setIsLoading(false);
         }, (err: FirestoreError) => {
@@ -136,6 +138,7 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
 
             setError(contextualError);
             setAgency(defaultAgency); // Fallback to default on error
+            setIsDefaultAgency(true); // Treat errors as a "default" state to trigger onboarding
             setIsLoading(false);
             
             // Emit the contextual error for the global listener
@@ -155,6 +158,7 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
         personalization,
         isLoading,
         error,
+        isDefaultAgency,
     };
 
     return <AgencyContext.Provider value={value}>{children}</AgencyContext.Provider>;

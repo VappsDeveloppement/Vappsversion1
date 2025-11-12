@@ -2,7 +2,8 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/components/shared/login-form';
 import Image from 'next/image';
 import { Logo } from '@/components/shared/logo';
@@ -132,19 +133,29 @@ function ApplicationHomePage() {
 
 
 export function HomePageSelector() {
-  const { personalization, isLoading } = useAgency();
+  const { agency, isLoading, isDefaultAgency } = useAgency();
+  const router = useRouter();
 
-  if (isLoading) {
+  useEffect(() => {
+    // Si ce n'est pas en cours de chargement et que c'est l'agence par défaut
+    // (ce qui signifie qu'elle n'a pas été trouvée dans la BDD), on redirige.
+    if (!isLoading && isDefaultAgency) {
+      router.replace('/admin/onboarding');
+    }
+  }, [isLoading, isDefaultAgency, router]);
+
+  if (isLoading || isDefaultAgency) {
     return (
-        <div className="space-y-4 p-8">
-            <Skeleton className="h-[400px] w-full" />
-            <Skeleton className="h-[200px] w-full" />
-            <Skeleton className="h-[200px] w-full" />
+        <div className="flex items-center justify-center h-screen bg-muted/30">
+            <div className="space-y-4 p-8 w-full max-w-4xl">
+                <Skeleton className="h-[400px] w-full" />
+                <Skeleton className="h-[200px] w-full" />
+            </div>
         </div>
     )
   }
 
-  const homePageVersion = personalization?.homePageVersion || 'tunnel';
+  const homePageVersion = agency?.personalization?.homePageVersion || 'tunnel';
 
   if (homePageVersion === 'application') {
     return <ApplicationHomePage />;
@@ -152,5 +163,3 @@ export function HomePageSelector() {
 
   return <TunnelHomePage />;
 }
-
-    
