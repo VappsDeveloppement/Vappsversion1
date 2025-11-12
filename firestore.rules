@@ -3,7 +3,7 @@
  *
  * Core Philosophy:
  * This ruleset enforces a strict multi-agency data segregation model.
- * - Agency data in `/agencies/{agencyId}` is only accessible by users belonging to that agency.
+ * - Agency data in `/agencies/{agencyId}` is publicly readable for personalization but writable only by agency members.
  * - User-specific data under `/users/{userId}` is only accessible by that specific user.
  * - Public-read collections remain accessible to anyone.
  *
@@ -13,13 +13,13 @@
  * - /users/{userId}/...: User-specific subcollections (appointments, messages, etc.).
  *
  * Key Security Decisions:
- * - A user's `agencyId` is the key to accessing shared agency data.
+ * - A user's `agencyId` is the key to accessing shared agency data for writes.
  * - User data remains private to the individual user.
  * - Admin roles (for platform-wide management) are not yet implemented but the structure allows for it.
  *
  * Denormalization for Authorization:
  * The rules leverage path-based ownership for user-private data and denormalization for agency data.
- * To check if a user can access an agency's document, we perform a single `get()` call to the user's own profile (`/users/{request.auth.uid}`) to retrieve their `agencyId`. This is a secure and efficient way to enforce agency boundaries.
+ * To check if a user can update an agency's document, we perform a single `get()` call to the user's own profile (`/users/{request.auth.uid}`) to retrieve their `agencyId`. This is a secure and efficient way to enforce agency boundaries.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -64,13 +64,13 @@ service cloud.firestore {
     /**
      * @description Rules for the /agencies/{agencyId} collection.
      * @path /agencies/{agencyId}
-     * @allow (get, list) A user can read their own agency's document.
+     * @allow (get, list) Any user (authenticated or not) can read agency data for UI personalization.
      * @allow (update) A user can update their own agency's document (e.g., admins of that agency).
-     * @deny (get) A user cannot read another agency's document.
+     * @deny (create, delete) Creating or deleting agencies from the client is forbidden.
      */
     match /agencies/{agencyId} {
-      allow get: if isSignedIn();
-      allow list, update: if belongsToAgency(agencyId);
+      allow get, list: if true;
+      allow update: if belongsToAgency(agencyId);
       allow create, delete: if false; // Prevent creating/deleting agencies via client
     }
     
