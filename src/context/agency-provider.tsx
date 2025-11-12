@@ -79,27 +79,15 @@ const defaultPersonalization = {
     }
 };
 
-const ensureAgencyDocument = async (firestore: any, agencyId: string) => {
-    const agencyRef = doc(firestore, 'agencies', agencyId);
-    const agencySnap = await getDoc(agencyRef);
-    if (!agencySnap.exists()) {
-        console.log(`Agency document for ${agencyId} not found. Creating it...`);
-        try {
-            await setDoc(agencyRef, {
-                id: agencyId,
-                name: 'VApps Agency',
-                personalization: defaultPersonalization
-            });
-            console.log(`Agency document created for ${agencyId}`);
-        } catch (error) {
-            console.error("Error creating agency document:", error);
-        }
-    }
+const defaultAgency: Agency = {
+    id: 'vapps-agency',
+    name: 'VApps Agency',
+    personalization: defaultPersonalization
 };
 
 export const AgencyProvider = ({ children }: AgencyProviderProps) => {
-    const { user, firestore, isUserLoading } = useFirebase();
-    const [agency, setAgency] = useState<Agency | null>(null);
+    const { firestore } = useFirebase();
+    const [agency, setAgency] = useState<Agency | null>(defaultAgency);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const agencyId = 'vapps-agency'; // Hardcode the agency ID
@@ -110,18 +98,16 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
             return;
         }
 
-        // Ensure the default agency document exists
-        ensureAgencyDocument(firestore, agencyId);
-
+        setIsLoading(true);
         const agencyDocRef = doc(firestore, 'agencies', agencyId);
+        
         const unsubscribe = onSnapshot(agencyDocRef, (docSnap) => {
             if (docSnap.exists()) {
                 const agencyData = { id: docSnap.id, ...docSnap.data() } as Agency;
                 
-                // Merge with defaults to ensure all keys are present
                 const mergedPersonalization = {
                     ...defaultPersonalization,
-                    ...agencyData.personalization,
+                    ...(agencyData.personalization || {}),
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
@@ -132,28 +118,31 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
 
                 setAgency(agencyData);
             } else {
-                // The document is being created, it will trigger another snapshot
-                setAgency(null);
+                // If doc doesn't exist, we continue using the defaultAgency state.
+                // We can also trigger a creation here if needed.
+                console.log("Agency document not found, using default. It can be created from the personalization page.");
+                setAgency(defaultAgency);
             }
             setIsLoading(false);
         }, (err) => {
             console.error("Error listening to agency document:", err);
             setError(err);
+            setAgency(defaultAgency); // Fallback to default on error
             setIsLoading(false);
         });
 
         return () => unsubscribe();
-    }, [firestore, agencyId]);
+    }, [firestore]);
 
     const personalization = useMemo(() => {
-        if (isLoading || !agency) return defaultPersonalization;
+        if (!agency) return defaultPersonalization;
         return agency.personalization;
-    }, [agency, isLoading]);
+    }, [agency]);
 
     const value = {
         agency,
         personalization,
-        isLoading: isLoading || isUserLoading,
+        isLoading,
         error,
     };
 
@@ -168,3 +157,4 @@ export const useAgency = (): AgencyContextType => {
     }
     return context;
 };
+

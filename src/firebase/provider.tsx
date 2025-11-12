@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -104,7 +105,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       async (firebaseUser) => { // Auth state determined
         if (firebaseUser) {
-            await ensureUserDocument(firestore, firebaseUser);
+            // This logic is now handled by the server action `createUser` for more robustness
+            // await ensureUserDocument(firestore, firebaseUser);
         }
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
@@ -201,3 +203,4 @@ export const useUser = (): UserHookResult => { // Renamed from useAuthUser
   const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
   return { user, isUserLoading, userError };
 };
+
