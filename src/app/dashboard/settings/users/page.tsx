@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +20,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2 } from "lucide-react";
+import { PlusCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { createUser } from "@/app/actions/user";
 
 type User = {
@@ -125,6 +124,8 @@ export default function UsersPage() {
   const [prospectSearch, setProspectSearch] = useState('');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const usersQuery = useMemo(() => {
     if (!agency) return null;
@@ -253,10 +254,30 @@ export default function UsersPage() {
                                         <FormItem><FormLabel>Téléphone (Optionnel)</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={form.control} name="password" render={({ field }) => (
-                                        <FormItem><FormLabel>Mot de passe</FormLabel><FormControl><Input type="password" placeholder="********" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Mot de passe</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                                                    <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
                                     )} />
                                     <FormField control={form.control} name="confirmPassword" render={({ field }) => (
-                                        <FormItem><FormLabel>Confirmer le mot de passe</FormLabel><FormControl><Input type="password" placeholder="********" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Confirmer le mot de passe</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                                                    <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
                                     )} />
                                     <FormField control={form.control} name="role" render={({ field }) => (
                                         <FormItem>
@@ -324,3 +345,5 @@ export default function UsersPage() {
     </div>
   );
 }
+
+    
