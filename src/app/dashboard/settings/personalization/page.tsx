@@ -10,17 +10,20 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, GripVertical } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { DragDropContext, Droppable, Draggable, DropResult } from 'react-beautiful-dnd';
+
 
 const defaultAppearanceSettings = {
     appTitle: "VApps",
     appSubtitle: "Développement",
     logoWidth: 40,
+    logoHeight: 40,
     logoDisplay: "app-and-logo",
     primaryColor: "#2ff40a",
     secondaryColor: "#25d408",
@@ -117,6 +120,25 @@ const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Instagram,
 };
 
+export type Section = {
+  id: string;
+  label: string;
+  enabled: boolean;
+};
+
+const defaultHomePageSections: Section[] = [
+  { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
+  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
+  { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
+  { id: 'video', label: 'Vidéo', enabled: true },
+  { id: 'shop', label: 'Boutique', enabled: true },
+  { id: 'services', label: 'Accompagnements', enabled: true },
+  { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
+  { id: 'blog', label: 'Blog', enabled: true },
+  { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
+  { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+];
+
 
 export default function PersonalizationPage() {
   const { toast } = useToast();
@@ -147,6 +169,7 @@ export default function PersonalizationPage() {
   const [appTitle, setAppTitle] = React.useState(defaultAppearanceSettings.appTitle);
   const [appSubtitle, setAppSubtitle] = React.useState(defaultAppearanceSettings.appSubtitle);
   const [logoWidth, setLogoWidth] = React.useState(defaultAppearanceSettings.logoWidth);
+  const [logoHeight, setLogoHeight] = React.useState(defaultAppearanceSettings.logoHeight);
   const [logoDisplay, setLogoDisplay] = React.useState(defaultAppearanceSettings.logoDisplay);
   const [primaryColor, setPrimaryColor] = React.useState(defaultAppearanceSettings.primaryColor);
   const [secondaryColor, setSecondaryColor] = React.useState(defaultAppearanceSettings.secondaryColor);
@@ -170,6 +193,7 @@ export default function PersonalizationPage() {
   
   // State for Home Page
   const [homePageVersion, setHomePageVersion] = React.useState('tunnel');
+  const [homePageSections, setHomePageSections] = useState<Section[]>(defaultHomePageSections);
 
   const handleSaveLegalInfo = () => {
     if (typeof window !== 'undefined') {
@@ -180,24 +204,23 @@ export default function PersonalizationPage() {
         };
         localStorage.setItem('legalInfo', JSON.stringify(legalInfo));
         toast({ title: "Informations légales enregistrées", description: "Vos informations légales ont été sauvegardées." });
+        window.dispatchEvent(new Event('storage'));
     }
   };
 
   const handleAppearanceSave = () => {
-    // This function remains to potentially save all settings to a backend later.
-    // For now, client-side updates are handled by useEffect and localStorage.
     if (typeof window !== 'undefined') {
         localStorage.setItem('appTitle', appTitle);
         localStorage.setItem('appSubtitle', appSubtitle);
         localStorage.setItem('logoDisplay', logoDisplay);
         localStorage.setItem('logoWidth', String(logoWidth));
+        localStorage.setItem('logoHeight', String(logoHeight));
         if (logoDataUrl) {
             localStorage.setItem('logoDataUrl', logoDataUrl);
         } else {
             localStorage.removeItem('logoDataUrl');
         }
         
-        // Save footer settings
         localStorage.setItem('footerAboutTitle', footerAboutTitle);
         localStorage.setItem('footerAboutText', footerAboutText);
         localStorage.setItem('footerAboutLinks', JSON.stringify(footerAboutLinks));
@@ -205,11 +228,10 @@ export default function PersonalizationPage() {
         localStorage.setItem('copyrightText', copyrightText);
         localStorage.setItem('copyrightUrl', copyrightUrl);
 
-        // Save home page settings
         localStorage.setItem('homePageVersion', homePageVersion);
 
         window.dispatchEvent(new Event('storage')); 
-        toast({ title: "Apparence enregistrée", description: "Vos paramètres d'apparence ont été sauvegardés." });
+        toast({ title: "Paramètres enregistrés", description: "Vos paramètres d'apparence et de page d'accueil ont été sauvegardés." });
     }
   };
 
@@ -217,6 +239,7 @@ export default function PersonalizationPage() {
       setAppTitle(defaultAppearanceSettings.appTitle);
       setAppSubtitle(defaultAppearanceSettings.appSubtitle);
       setLogoWidth(defaultAppearanceSettings.logoWidth);
+      setLogoHeight(defaultAppearanceSettings.logoHeight);
       setLogoDisplay(defaultAppearanceSettings.logoDisplay);
       setPrimaryColor(defaultAppearanceSettings.primaryColor);
       setSecondaryColor(defaultAppearanceSettings.secondaryColor);
@@ -224,7 +247,6 @@ export default function PersonalizationPage() {
       setLogoPreview(defaultAppearanceSettings.logoPreview);
       setLogoDataUrl(defaultAppearanceSettings.logoDataUrl);
 
-      // Reset footer settings
       setFooterAboutTitle(defaultFooterAboutSettings.title);
       setFooterAboutText(defaultFooterAboutSettings.text);
       setFooterAboutLinks(defaultFooterAboutSettings.links);
@@ -232,15 +254,14 @@ export default function PersonalizationPage() {
       setCopyrightText(defaultCopyrightSettings.text);
       setCopyrightUrl(defaultCopyrightSettings.url);
       
-      // Also reset localStorage to defaults
       if (typeof window !== 'undefined') {
         localStorage.setItem('appTitle', defaultAppearanceSettings.appTitle);
         localStorage.setItem('appSubtitle', defaultAppearanceSettings.appSubtitle);
         localStorage.setItem('logoDisplay', defaultAppearanceSettings.logoDisplay);
         localStorage.setItem('logoWidth', String(defaultAppearanceSettings.logoWidth));
-        localStorage.removeItem('logoDataUrl'); // Remove custom logo
+        localStorage.setItem('logoHeight', String(defaultAppearanceSettings.logoHeight));
+        localStorage.removeItem('logoDataUrl');
 
-        // Reset footer in localStorage
         localStorage.setItem('footerAboutTitle', defaultFooterAboutSettings.title);
         localStorage.setItem('footerAboutText', defaultFooterAboutSettings.text);
         localStorage.setItem('footerAboutLinks', JSON.stringify(defaultFooterAboutSettings.links));
@@ -248,9 +269,7 @@ export default function PersonalizationPage() {
         localStorage.setItem('copyrightText', defaultCopyrightSettings.text);
         localStorage.setItem('copyrightUrl', defaultCopyrightSettings.url);
         
-        // Reset home page version
         localStorage.setItem('homePageVersion', 'tunnel');
-
 
         window.dispatchEvent(new Event('storage'));
         toast({ title: "Réinitialisation", description: "Les paramètres d'apparence ont été réinitialisés." });
@@ -285,6 +304,20 @@ export default function PersonalizationPage() {
         }
     }
   }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedSections = localStorage.getItem('homePageSections');
+      if (storedSections) {
+        try {
+          setHomePageSections(JSON.parse(storedSections));
+        } catch (e) {
+          setHomePageSections(defaultHomePageSections);
+        }
+      }
+    }
+  }, []);
+
 
   const handleLogoUploadClick = () => {
     fileInputRef.current?.click();
@@ -321,6 +354,28 @@ export default function PersonalizationPage() {
     const newLinks = [...footerSocialLinks];
     newLinks[index].url = url;
     setFooterSocialLinks(newLinks);
+  };
+  
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) {
+      return;
+    }
+    const items = Array.from(homePageSections);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+
+    setHomePageSections(items);
+    localStorage.setItem('homePageSections', JSON.stringify(items));
+    window.dispatchEvent(new Event('storage'));
+  };
+
+  const handleSectionToggle = (id: string, enabled: boolean) => {
+    const newSections = homePageSections.map(section => 
+      section.id === id ? { ...section, enabled } : section
+    );
+    setHomePageSections(newSections);
+    localStorage.setItem('homePageSections', JSON.stringify(newSections));
+    window.dispatchEvent(new Event('storage'));
   };
 
   useEffect(() => {
@@ -361,7 +416,6 @@ export default function PersonalizationPage() {
             </CardHeader>
             <CardContent className="space-y-10">
               
-              {/* Legal Information Section */}
               <section>
                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Informations sur l'entreprise</h3>
                 <div className="space-y-8">
@@ -457,7 +511,6 @@ export default function PersonalizationPage() {
 
               <div className="border-t"></div>
 
-              {/* Document Editor Section */}
               <section>
                  <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu des documents</h3>
                  <div className="space-y-8">
@@ -531,7 +584,7 @@ export default function PersonalizationPage() {
                             <Label>Fichier du logo</Label>
                             <div className="flex items-center gap-4">
                                 <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted relative">
-                                    <Image src={logoPreview} alt="Aperçu du logo" layout="fill" objectFit="contain" />
+                                    {logoPreview && <Image src={logoPreview} alt="Aperçu du logo" layout="fill" objectFit="contain" />}
                                 </div>
                                 <input
                                     type="file"
@@ -548,7 +601,7 @@ export default function PersonalizationPage() {
                             <p className="text-xs text-muted-foreground">Formats recommandés : SVG, PNG, JPG.</p>
                         </div>
                          <div className="space-y-4">
-                            <Label>Largeur du logo (en pixels)</Label>
+                            <Label>Dimensions du logo (en pixels)</Label>
                             <div className="space-y-2">
                                 <Label htmlFor="logo-width" className="flex items-center justify-between">
                                     <span>Largeur</span>
@@ -561,6 +614,20 @@ export default function PersonalizationPage() {
                                     step={1}
                                     value={[logoWidth]}
                                     onValueChange={(value) => setLogoWidth(value[0])}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="logo-height" className="flex items-center justify-between">
+                                    <span>Hauteur</span>
+                                    <span className="text-sm text-muted-foreground">{logoHeight}px</span>
+                                </Label>
+                                <Slider
+                                    id="logo-height"
+                                    min={10}
+                                    max={200}
+                                    step={1}
+                                    value={[logoHeight]}
+                                    onValueChange={(value) => setLogoHeight(value[0])}
                                 />
                             </div>
                         </div>
@@ -744,11 +811,42 @@ export default function PersonalizationPage() {
               <section>
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
                  <p className="text-sm text-muted-foreground mb-6">Faites glisser les sections pour les réorganiser sur la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
-                 <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96 bg-muted/50">
-                        <LayoutTemplate className="h-16 w-16 text-muted-foreground mb-4" />
-                        <h3 className="text-xl font-semibold">Gestionnaire de sections</h3>
-                        <p className="text-muted-foreground mt-2 max-w-2xl">L'interface pour réorganiser et personnaliser les sections de la page d'accueil sera disponible ici.</p>
-                    </div>
+                 
+                <DragDropContext onDragEnd={onDragEnd}>
+                    <Droppable droppableId="sections">
+                    {(provided) => (
+                        <div
+                        {...provided.droppableProps}
+                        ref={provided.innerRef}
+                        className="space-y-3"
+                        >
+                        {homePageSections.map((section, index) => (
+                            <Draggable key={section.id} draggableId={section.id} index={index}>
+                            {(provided) => (
+                                <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className="flex items-center gap-4 p-3 border rounded-lg bg-background"
+                                >
+                                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                    <div className="flex-1">
+                                        <p className="font-medium">{section.label}</p>
+                                    </div>
+                                    <Switch
+                                        checked={section.enabled}
+                                        onCheckedChange={(checked) => handleSectionToggle(section.id, checked)}
+                                    />
+                                </div>
+                            )}
+                            </Draggable>
+                        ))}
+                        {provided.placeholder}
+                        </div>
+                    )}
+                    </Droppable>
+                </DragDropContext>
+
               </section>
                 <div className="flex justify-end pt-6 border-t">
                     <Button onClick={handleAppearanceSave}>Enregistrer les modifications</Button>
