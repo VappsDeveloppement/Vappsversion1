@@ -11,18 +11,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // During development, allow any signed-in user to read/write anywhere.
-    // This removes permission blockers while building the application model.
-    // WARNING: This is insecure and MUST be replaced with granular rules before production.
+    // WARNING: DEVELOPMENT ONLY
+    // These rules are insecure and allow any authenticated user to read/write anywhere.
+    // This is to facilitate rapid development of the application model.
+    // These rules MUST be replaced with granular, secure rules before production.
     match /{document=**} {
       allow read, write: if isSignedIn();
-    }
-
-    // Exception for the agency document, which needs to be public for personalization
-    // even for non-authenticated users.
-    match /agencies/{agencyId} {
-      allow get: if true;
-      allow list, write: if isSignedIn();
     }
   }
 }

@@ -7,46 +7,52 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import type { Section } from '@/app/dashboard/settings/personalization/page';
 
 // Define the shape of the personalization settings object
 interface Personalization {
+    appTitle: string;
+    appSubtitle: string;
+    logoDataUrl: string | null;
+    logoWidth: number;
+    logoHeight: number;
+    logoDisplay: string;
+    primaryColor: string;
+    secondaryColor: string;
+    bgColor: string;
+    footerAboutTitle: string;
+    footerAboutText: string;
+    footerAboutLinks: any[];
+    footerSocialLinks: any[];
+    copyrightText: string;
+    copyrightUrl: string;
+    homePageVersion: string;
+    homePageSections: Section[];
+    legalInfo: any;
     [key: string]: any;
-}
-
-// Define the shape of an agency document
-interface Agency {
-    id: string;
-    name: string;
-    personalization: Personalization;
 }
 
 // Define the context value
 interface AgencyContextType {
-    agency: Agency | null;
-    personalization: Personalization | null;
+    personalization: Personalization;
     isLoading: boolean;
     error: Error | null;
-    isDefaultAgency: boolean;
 }
 
 // Create the context with a default value
 const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 
-// Define the provider component
-interface AgencyProviderProps {
-    children: ReactNode;
-}
 
-const defaultPersonalization = {
+const defaultPersonalization: Personalization = {
     appTitle: "VApps",
     appSubtitle: "Développement",
+    logoDataUrl: null,
     logoWidth: 40,
     logoHeight: 40,
     logoDisplay: "app-and-logo",
     primaryColor: "#2ff40a",
     secondaryColor: "#25d408",
     bgColor: "#ffffff",
-    logoDataUrl: null as string | null,
     footerAboutTitle: "À propos",
     footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
     footerAboutLinks: [
@@ -83,25 +89,26 @@ const defaultPersonalization = {
     }
 };
 
-const defaultAgency: Agency = {
+const defaultAgency: {id: string, name: string, personalization: Personalization} = {
     id: 'vapps-agency',
     name: 'VApps Agency',
     personalization: defaultPersonalization
 };
 
-export const AgencyProvider = ({ children }: AgencyProviderProps) => {
-    const { firestore, isUserLoading, user } = useFirebase();
-    const [agency, setAgency] = useState<Agency | null>(defaultAgency);
+
+export const AgencyProvider = ({ children }: { children: ReactNode }) => {
+    const { firestore, user } = useFirebase();
+    const [personalization, setPersonalization] = useState<Personalization>(defaultPersonalization);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
-    const [isDefaultAgency, setIsDefaultAgency] = useState(true);
-    const agencyId = 'vapps-agency'; // Hardcode the agency ID
+
+    // This is the single source of truth for the model application.
+    const agencyId = 'vapps-agency'; 
 
     useEffect(() => {
-        // We no longer wait for the user, we display default data right away if needed.
-        if (!firestore) {
-            setAgency(defaultAgency);
-            setIsDefaultAgency(true);
+        if (!firestore || !user) {
+            // If there's no user or firestore, use defaults. App works offline/unauthenticated.
+            setPersonalization(defaultPersonalization);
             setIsLoading(false);
             return;
         }
@@ -111,7 +118,7 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
         
         const unsubscribe = onSnapshot(agencyDocRef, (docSnap) => {
             if (docSnap.exists()) {
-                const agencyData = { id: docSnap.id, ...docSnap.data() } as Agency;
+                const agencyData = docSnap.data();
                 
                 const mergedPersonalization = {
                     ...defaultPersonalization,
@@ -120,55 +127,54 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
                     },
-                    homePageSections: agencyData.personalization?.homePageSections?.length ? agencyData.personalization.homePageSections : defaultPersonalization.homePageSections
+                    homePageSections: agencyData.personalization?.homePageSections?.length 
+                        ? agencyData.personalization.homePageSections 
+                        : defaultPersonalization.homePageSections
                 };
-                agencyData.personalization = mergedPersonalization;
-
-                setAgency(agencyData);
-                setIsDefaultAgency(false);
+                setPersonalization(mergedPersonalization);
             } else {
-                setAgency(defaultAgency);
-                setIsDefaultAgency(true);
+                // If doc doesn't exist in DB, use defaults. App still works.
+                setPersonalization(defaultPersonalization);
             }
             setIsLoading(false);
+            setError(null);
         }, (err: FirestoreError) => {
-             const contextualError = new FirestorePermissionError({
+            console.warn("Firestore read error in AgencyProvider:", err.message);
+            // On error (e.g. permissions on first run), still provide default data.
+            setPersonalization(defaultPersonalization);
+            setIsLoading(false);
+            setError(err);
+            
+            // This will trigger the global error listener for debugging if needed
+            const contextualError = new FirestorePermissionError({
                 path: agencyDocRef.path,
                 operation: 'get',
             });
-            console.warn("Could not read agency document. Using default. Error:", err.message);
-            // Even if there's an error, we provide the default agency data so the app doesn't crash.
-            setAgency(defaultAgency);
-            setIsDefaultAgency(true);
-            setIsLoading(false);
-            setError(contextualError);
             errorEmitter.emit('permission-error', contextualError);
         });
 
         return () => unsubscribe();
-    }, [firestore]);
-
-    const personalization = useMemo(() => {
-        if (!agency) return defaultPersonalization;
-        return agency.personalization;
-    }, [agency]);
+    }, [firestore, user]); // Re-run when user authenticates
 
     const value = {
-        agency,
+        // We no longer expose the whole 'agency' object, just what's needed.
         personalization,
         isLoading,
         error,
-        isDefaultAgency,
+        // The concepts of isDefaultAgency and the agency object itself are gone.
+        // We provide a dummy agency object for components that might still use it temporarily.
+        agency: { id: agencyId, name: 'VApps Model', personalization }
     };
 
     return <AgencyContext.Provider value={value}>{children}</AgencyContext.Provider>;
 };
 
 // Create a custom hook to use the agency context
-export const useAgency = (): AgencyContextType => {
+export const useAgency = (): AgencyContextType & { agency: {id: string, name: string, personalization: Personalization} | null } => {
     const context = useContext(AgencyContext);
     if (context === undefined) {
         throw new Error('useAgency must be used within an AgencyProvider');
     }
-    return context;
+    // We add the dummy agency object here for backward compatibility during the refactor.
+    return { ...context, agency: { id: 'vapps-agency', name: 'VApps Model', personalization: context.personalization } };
 };
