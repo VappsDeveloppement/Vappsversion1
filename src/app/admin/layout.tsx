@@ -1,3 +1,4 @@
+
 "use client";
 
 import Link from "next/link";
@@ -41,6 +42,10 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+
+  if (pathname === "/admin/onboarding") {
+    return <>{children}</>;
+  }
 
   return (
     <SidebarProvider>
