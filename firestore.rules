@@ -1,27 +1,25 @@
 /**
- * @fileOverview Firestore Security Rules for VApps Success Hub.
+ * @fileOverview Firestore Security Rules for VApps Success Hub (Multi-Agency).
  *
  * Core Philosophy:
- * This ruleset enforces a strict user-ownership model for all data nested under `/users/{userId}`.
- * Only the authenticated user matching the `userId` path segment can read or write to these collections.
- * For top-level collections like `/landing_pages` and `/email_campaigns`, access is restricted to authenticated users (administrators), but this will need to be implemented in the next iteration.
+ * This ruleset enforces a strict multi-agency data segregation model.
+ * - Agency data in `/agencies/{agencyId}` is only accessible by users belonging to that agency.
+ * - User-specific data under `/users/{userId}` is only accessible by that specific user.
+ * - Public-read collections remain accessible to anyone.
  *
  * Data Structure:
- * - /users/{userId}: Stores user profiles.
- * - /users/{userId}/appointments/{appointmentId}: Stores appointment data, owned by the user.
- * - /users/{userId}/messages/{messageId}: Stores messages, owned by the user.
- * - /users/{userId}/invoices/{invoiceId}: Stores invoices, owned by the user.
- * - /users/{userId}/consents/{consentId}: Stores user consent records, owned by the user.
- * - /landing_pages/{landingPageId}: Stores landing pages (Admin role required for write).
- * - /email_campaigns/{emailCampaignId}: Stores email campaigns (Admin role required for write).
+ * - /agencies/{agencyId}: Stores agency-specific configuration and personalization.
+ * - /users/{userId}: Stores user profiles, including their `agencyId`.
+ * - /users/{userId}/...: User-specific subcollections (appointments, messages, etc.).
  *
  * Key Security Decisions:
- * - User data is private and only accessible to the authenticated user.
- * - Listing of users is not allowed (to prevent enumeration).
- * - Landing pages and email campaigns should have admin-only write access; this is a TODO.
+ * - A user's `agencyId` is the key to accessing shared agency data.
+ * - User data remains private to the individual user.
+ * - Admin roles (for platform-wide management) are not yet implemented but the structure allows for it.
  *
  * Denormalization for Authorization:
- * The rules leverage path-based ownership (e.g., `/users/{userId}/...`) to avoid costly `get()` calls. The `userId` in the path is directly compared to `request.auth.uid`.
+ * The rules leverage path-based ownership for user-private data and denormalization for agency data.
+ * To check if a user can access an agency's document, we perform a single `get()` call to the user's own profile (`/users/{request.auth.uid}`) to retrieve their `agencyId`. This is a secure and efficient way to enforce agency boundaries.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -52,97 +50,83 @@ service cloud.firestore {
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
+    
+    /**
+     * @description Checks if the requesting user belongs to the specified agency.
+     * It does this by reading the user's own profile document to get their agencyId.
+     * @param {string} agencyId The ID of the agency to check against.
+     * @returns {boolean} True if the user is part of the agency.
+     */
+    function belongsToAgency(agencyId) {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId == agencyId;
+    }
 
+    /**
+     * @description Rules for the /agencies/{agencyId} collection.
+     * @path /agencies/{agencyId}
+     * @allow (get, list) A user can read their own agency's document.
+     * @allow (update) A user can update their own agency's document (e.g., admins of that agency).
+     * @deny (get) A user cannot read another agency's document.
+     */
+    match /agencies/{agencyId} {
+      allow get, list, update: if belongsToAgency(agencyId);
+      allow create, delete: if false; // Prevent creating/deleting agencies via client
+    }
+    
     /**
      * @description Rules for the /users/{userId} collection.
      * @path /users/{userId}
-     * @allow (create) User with ID 'user123' can create their profile: request.auth.uid == 'user123'
-     * @deny (create) User with ID 'user456' cannot create a profile with ID 'user123': request.auth.uid != 'user123'
-     * @allow (get) User with ID 'user123' can read their profile: request.auth.uid == 'user123'
-     * @deny (get) User with ID 'user456' cannot read profile with ID 'user123': request.auth.uid != 'user123'
-     * @principle Enforces document ownership for writes and reads.
+     * @allow (create) A user can create their own profile, ensuring agencyId is set.
+     * @allow (get) A user can read their own profile.
+     * @deny (list) Listing all users is forbidden.
      */
     match /users/{userId} {
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow create: if isOwner(userId) && request.resource.data.agencyId != null;
       allow get: if isOwner(userId);
       allow list: if false;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id && request.resource.data.agencyId == resource.data.agencyId; // agencyId cannot be changed
       allow delete: if isExistingOwner(userId);
     }
 
     /**
      * @description Rules for the /users/{userId}/appointments/{appointmentId} collection.
      * @path /users/{userId}/appointments/{appointmentId}
-     * @allow (create) User with ID 'user123' can create an appointment: request.auth.uid == 'user123'
-     * @deny (create) User with ID 'user456' cannot create an appointment for 'user123': request.auth.uid != 'user123'
-     * @allow (get) User with ID 'user123' can read their appointment: request.auth.uid == 'user123'
-     * @deny (get) User with ID 'user456' cannot read appointment for 'user123': request.auth.uid != 'user123'
      * @principle Enforces document ownership for writes and reads.
      */
     match /users/{userId}/appointments/{appointmentId} {
-      allow create: if isOwner(userId);
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
     /**
      * @description Rules for the /users/{userId}/messages/{messageId} collection.
      * @path /users/{userId}/messages/{messageId}
-     * @allow (create) User with ID 'user123' can create a message: request.auth.uid == 'user123'
-     * @deny (create) User with ID 'user456' cannot create a message for 'user123': request.auth.uid != 'user123'
-     * @allow (get) User with ID 'user123' can read their message: request.auth.uid == 'user123'
-     * @deny (get) User with ID 'user456' cannot read message for 'user123': request.auth.uid != 'user123'
      * @principle Enforces document ownership for writes and reads.
      */
     match /users/{userId}/messages/{messageId} {
-      allow create: if isOwner(userId);
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
     /**
      * @description Rules for the /users/{userId}/invoices/{invoiceId} collection.
      * @path /users/{userId}/invoices/{invoiceId}
-     * @allow (create) User with ID 'user123' can create an invoice: request.auth.uid == 'user123'
-     * @deny (create) User with ID 'user456' cannot create an invoice for 'user123': request.auth.uid != 'user123'
-     * @allow (get) User with ID 'user123' can read their invoice: request.auth.uid == 'user123'
-     * @deny (get) User with ID 'user456' cannot read invoice for 'user123': request.auth.uid != 'user123'
      * @principle Enforces document ownership for writes and reads.
      */
     match /users/{userId}/invoices/{invoiceId} {
-      allow create: if isOwner(userId);
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
     /**
      * @description Rules for the /users/{userId}/consents/{consentId} collection.
      * @path /users/{userId}/consents/{consentId}
-     * @allow (create) User with ID 'user123' can create a consent: request.auth.uid == 'user123'
-     * @deny (create) User with ID 'user456' cannot create a consent for 'user123': request.auth.uid != 'user123'
-     * @allow (get) User with ID 'user123' can read their consent: request.auth.uid == 'user123'
-     * @deny (get) User with ID 'user456' cannot read consent for 'user123': request.auth.uid != 'user123'
      * @principle Enforces document ownership for writes and reads.
      */
     match /users/{userId}/consents/{consentId} {
-      allow create: if isOwner(userId);
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if isOwner(userId);
     }
 
     /**
      * @description Rules for the /landing_pages/{landingPageId} collection.
      * @path /landing_pages/{landingPageId}
-     * @allow (get) Anyone can read landing pages.
-     * @deny (create) Only authenticated admins can create landing pages (TODO: Implement admin check).
      * @principle Public read, admin-only write (TODO).
      */
     match /landing_pages/{landingPageId} {
@@ -153,8 +137,6 @@ service cloud.firestore {
     /**
      * @description Rules for the /email_campaigns/{emailCampaignId} collection.
      * @path /email_campaigns/{emailCampaignId}
-     * @allow (get) Anyone can read email campaigns.
-     * @deny (create) Only authenticated admins can create email campaigns (TODO: Implement admin check).
      * @principle Public read, admin-only write (TODO).
      */
     match /email_campaigns/{emailCampaignId} {
@@ -163,3 +145,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

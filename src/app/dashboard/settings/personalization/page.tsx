@@ -1,5 +1,4 @@
 
-
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -11,51 +10,21 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, GripVertical, ArrowUp, ArrowDown } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-
-
-const defaultAppearanceSettings = {
-    appTitle: "VApps",
-    appSubtitle: "Développement",
-    logoWidth: 40,
-    logoHeight: 40,
-    logoDisplay: "app-and-logo",
-    primaryColor: "#2ff40a",
-    secondaryColor: "#25d408",
-    bgColor: "#ffffff",
-    logoPreview: "/vapps.png",
-    logoDataUrl: null as string | null,
-};
-
-const defaultFooterAboutSettings = {
-  title: "À propos",
-  text: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
-  links: [
-    { id: 1, text: "Notre mission", url: "#", icon: "GitBranch" },
-    { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
-  ]
-};
-
-const defaultSocialLinks = [
-    { id: 1, name: 'Facebook', url: '', icon: 'Facebook' },
-    { id: 2, name: 'Twitter', url: '', icon: 'Twitter' },
-    { id: 3, name: 'LinkedIn', url: '', icon: 'Linkedin' },
-    { id: 4, name: 'Instagram', url: '', icon: 'Instagram' },
-];
-
-const defaultCopyrightSettings = {
-    text: "Vapps.",
-    url: "/",
-};
+import { useAgency } from "@/context/agency-provider";
+import { updateDocumentNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
+import { useFirestore } from "@/firebase/provider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
-  if (!/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+  if (!hex || !/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
     return '0 0% 0%'; // fallback for invalid hex
   }
 
@@ -127,6 +96,7 @@ export type Section = {
   isLocked?: boolean; // To prevent moving certain sections like hero/footer
 };
 
+
 const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
@@ -142,190 +112,99 @@ const defaultHomePageSections: Section[] = [
   { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
 ];
 
+const defaultPersonalization = {
+    appTitle: "VApps",
+    appSubtitle: "Développement",
+    logoWidth: 40,
+    logoHeight: 40,
+    logoDisplay: "app-and-logo",
+    primaryColor: "#2ff40a",
+    secondaryColor: "#25d408",
+    bgColor: "#ffffff",
+    logoDataUrl: null as string | null,
+    footerAboutTitle: "À propos",
+    footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
+    footerAboutLinks: [
+      { id: 1, text: "Notre mission", url: "#", icon: "GitBranch" },
+      { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
+    ],
+    footerSocialLinks: [
+      { id: 1, name: 'Facebook', url: '', icon: 'Facebook' },
+      { id: 2, name: 'Twitter', url: '', icon: 'Twitter' },
+      { id: 3, name: 'LinkedIn', url: '', icon: 'Linkedin' },
+      { id: 4, name: 'Instagram', url: '', icon: 'Instagram' },
+    ],
+    copyrightText: "Vapps.",
+    copyrightUrl: "/",
+    homePageVersion: 'tunnel',
+    homePageSections: defaultHomePageSections,
+    legalInfo: {
+        companyName: "", structureType: "", capital: "", siret: "", addressStreet: "", addressZip: "", addressCity: "",
+        email: "", phone: "", apeNaf: "", rm: "", rcs: "", nda: "", insurance: "", isVatSubject: false, vatRate: "", vatNumber: "",
+        legalMentions: "", cgv: "", privacyPolicy: ""
+    }
+};
 
 export default function PersonalizationPage() {
   const { toast } = useToast();
+  const { agency, personalization, isLoading: isAgencyLoading } = useAgency();
+  const firestore = useFirestore();
 
-  // State for "Infos Légales"
-  const [companyName, setCompanyName] = useState("");
-  const [structureType, setStructureType] = useState("");
-  const [capital, setCapital] = useState("");
-  const [siret, setSiret] = useState("");
-  const [addressStreet, setAddressStreet] = useState("");
-  const [addressZip, setAddressZip] = useState("");
-  const [addressCity, setAddressCity] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [apeNaf, setApeNaf] = useState("");
-  const [rm, setRm] = useState("");
-  const [rcs, setRcs] = useState("");
-  const [nda, setNda] = useState("");
-  const [insurance, setInsurance] = useState("");
-  const [isVatSubject, setIsVatSubject] = React.useState(false);
-  const [vatRate, setVatRate] = useState("");
-  const [vatNumber, setVatNumber] = useState("");
-  const [legalMentions, setLegalMentions] = React.useState("");
-  const [cgv, setCgv] = React.useState("");
-  const [privacyPolicy, setPrivacyPolicy] = React.useState("");
-  
-  // State for "Apparence" tab
-  const [appTitle, setAppTitle] = React.useState(defaultAppearanceSettings.appTitle);
-  const [appSubtitle, setAppSubtitle] = React.useState(defaultAppearanceSettings.appSubtitle);
-  const [logoWidth, setLogoWidth] = React.useState(defaultAppearanceSettings.logoWidth);
-  const [logoHeight, setLogoHeight] = React.useState(defaultAppearanceSettings.logoHeight);
-  const [logoDisplay, setLogoDisplay] = React.useState(defaultAppearanceSettings.logoDisplay);
-  const [primaryColor, setPrimaryColor] = React.useState(defaultAppearanceSettings.primaryColor);
-  const [secondaryColor, setSecondaryColor] = React.useState(defaultAppearanceSettings.secondaryColor);
-  const [bgColor, setBgColor] = React.useState(defaultAppearanceSettings.bgColor);
-
-  const [logoPreview, setLogoPreview] = React.useState(defaultAppearanceSettings.logoPreview);
-  const [logoDataUrl, setLogoDataUrl] = React.useState<string | null>(defaultAppearanceSettings.logoDataUrl);
+  const [settings, setSettings] = useState(personalization || defaultPersonalization);
+  const [logoPreview, setLogoPreview] = React.useState(personalization?.logoDataUrl || "/vapps.png");
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // State for Footer "À Propos" section
-  const [footerAboutTitle, setFooterAboutTitle] = useState(defaultFooterAboutSettings.title);
-  const [footerAboutText, setFooterAboutText] = useState(defaultFooterAboutSettings.text);
-  const [footerAboutLinks, setFooterAboutLinks] = useState<AboutLink[]>(defaultFooterAboutSettings.links);
-
-  // State for Social Links
-  const [footerSocialLinks, setFooterSocialLinks] = useState<SocialLink[]>(defaultSocialLinks);
-
-  // State for Copyright
-  const [copyrightText, setCopyrightText] = useState(defaultCopyrightSettings.text);
-  const [copyrightUrl, setCopyrightUrl] = useState(defaultCopyrightSettings.url);
   
-  // State for Home Page
-  const [homePageVersion, setHomePageVersion] = React.useState('tunnel');
-  const [homePageSections, setHomePageSections] = useState<Section[]>(defaultHomePageSections);
-
-  const handleSaveLegalInfo = () => {
-    if (typeof window !== 'undefined') {
-        const legalInfo = {
-            companyName, structureType, capital, siret, addressStreet, addressZip, addressCity,
-            email, phone, apeNaf, rm, rcs, nda, insurance, isVatSubject, vatRate, vatNumber,
-            legalMentions, cgv, privacyPolicy
-        };
-        localStorage.setItem('legalInfo', JSON.stringify(legalInfo));
-        toast({ title: "Informations légales enregistrées", description: "Vos informations légales ont été sauvegardées." });
-        window.dispatchEvent(new Event('storage'));
+  useEffect(() => {
+    if (personalization) {
+      setSettings(prev => ({
+        ...defaultPersonalization,
+        ...prev,
+        ...personalization,
+        homePageSections: personalization.homePageSections || defaultHomePageSections,
+      }));
+      if (personalization.logoDataUrl) {
+          setLogoPreview(personalization.logoDataUrl);
+      }
     }
-  };
+  }, [personalization]);
 
-  const handleAppearanceSave = () => {
-    if (typeof window !== 'undefined') {
-        localStorage.setItem('appTitle', appTitle);
-        localStorage.setItem('appSubtitle', appSubtitle);
-        localStorage.setItem('logoDisplay', logoDisplay);
-        localStorage.setItem('logoWidth', String(logoWidth));
-        localStorage.setItem('logoHeight', String(logoHeight));
-        if (logoDataUrl) {
-            localStorage.setItem('logoDataUrl', logoDataUrl);
-        } else {
-            localStorage.removeItem('logoDataUrl');
+  const handleFieldChange = (field: string, value: any) => {
+    setSettings(prev => ({ ...prev, [field]: value }));
+  };
+  
+  const handleLegalInfoChange = (field: string, value: any) => {
+    setSettings(prev => ({
+        ...prev,
+        legalInfo: {
+            ...prev.legalInfo,
+            [field]: value
         }
-        
-        localStorage.setItem('footerAboutTitle', footerAboutTitle);
-        localStorage.setItem('footerAboutText', footerAboutText);
-        localStorage.setItem('footerAboutLinks', JSON.stringify(footerAboutLinks));
-        localStorage.setItem('footerSocialLinks', JSON.stringify(footerSocialLinks));
-        localStorage.setItem('copyrightText', copyrightText);
-        localStorage.setItem('copyrightUrl', copyrightUrl);
+    }))
+  }
 
-        localStorage.setItem('homePageVersion', homePageVersion);
-
-        window.dispatchEvent(new Event('storage')); 
-        toast({ title: "Paramètres enregistrés", description: "Vos paramètres d'apparence et de page d'accueil ont été sauvegardés." });
+  const handleSave = () => {
+    if (!agency) {
+      toast({ title: "Erreur", description: "Agence non trouvée.", variant: "destructive" });
+      return;
     }
+    const agencyRef = doc(firestore, 'agencies', agency.id);
+    updateDocumentNonBlocking(agencyRef, { personalization: settings });
+    toast({ title: "Paramètres enregistrés", description: "Vos paramètres ont été sauvegardés." });
   };
-
+  
   const handleResetAppearance = () => {
-      setAppTitle(defaultAppearanceSettings.appTitle);
-      setAppSubtitle(defaultAppearanceSettings.appSubtitle);
-      setLogoWidth(defaultAppearanceSettings.logoWidth);
-      setLogoHeight(defaultAppearanceSettings.logoHeight);
-      setLogoDisplay(defaultAppearanceSettings.logoDisplay);
-      setPrimaryColor(defaultAppearanceSettings.primaryColor);
-      setSecondaryColor(defaultAppearanceSettings.secondaryColor);
-      setBgColor(defaultAppearanceSettings.bgColor);
-      setLogoPreview(defaultAppearanceSettings.logoPreview);
-      setLogoDataUrl(defaultAppearanceSettings.logoDataUrl);
+      const resetSettings = {
+        ...settings,
+        ...defaultPersonalization
+      };
+      setSettings(resetSettings);
+      setLogoPreview(defaultPersonalization.logoDataUrl || "/vapps.png");
 
-      setFooterAboutTitle(defaultFooterAboutSettings.title);
-      setFooterAboutText(defaultFooterAboutSettings.text);
-      setFooterAboutLinks(defaultFooterAboutSettings.links);
-      setFooterSocialLinks(defaultSocialLinks);
-      setCopyrightText(defaultCopyrightSettings.text);
-      setCopyrightUrl(defaultCopyrightSettings.url);
-      
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('appTitle', defaultAppearanceSettings.appTitle);
-        localStorage.setItem('appSubtitle', defaultAppearanceSettings.appSubtitle);
-        localStorage.setItem('logoDisplay', defaultAppearanceSettings.logoDisplay);
-        localStorage.setItem('logoWidth', String(defaultAppearanceSettings.logoWidth));
-        localStorage.setItem('logoHeight', String(defaultAppearanceSettings.logoHeight));
-        localStorage.removeItem('logoDataUrl');
-
-        localStorage.setItem('footerAboutTitle', defaultFooterAboutSettings.title);
-        localStorage.setItem('footerAboutText', defaultFooterAboutSettings.text);
-        localStorage.setItem('footerAboutLinks', JSON.stringify(defaultFooterAboutSettings.links));
-        localStorage.setItem('footerSocialLinks', JSON.stringify(defaultSocialLinks));
-        localStorage.setItem('copyrightText', defaultCopyrightSettings.text);
-        localStorage.setItem('copyrightUrl', defaultCopyrightSettings.url);
-        
-        localStorage.setItem('homePageVersion', 'tunnel');
-
-        window.dispatchEvent(new Event('storage'));
-        toast({ title: "Réinitialisation", description: "Les paramètres d'apparence ont été réinitialisés." });
-      }
+      if (!agency) return;
+      const agencyRef = doc(firestore, 'agencies', agency.id);
+      updateDocumentNonBlocking(agencyRef, { personalization: resetSettings });
+      toast({ title: "Réinitialisation", description: "Les paramètres d'apparence ont été réinitialisés." });
   };
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-        const savedLegalInfo = localStorage.getItem('legalInfo');
-        if (savedLegalInfo) {
-            const info = JSON.parse(savedLegalInfo);
-            setCompanyName(info.companyName || "");
-            setStructureType(info.structureType || "");
-            setCapital(info.capital || "");
-            setSiret(info.siret || "");
-            setAddressStreet(info.addressStreet || "");
-            setAddressZip(info.addressZip || "");
-            setAddressCity(info.addressCity || "");
-            setEmail(info.email || "");
-            setPhone(info.phone || "");
-            setApeNaf(info.apeNaf || "");
-            setRm(info.rm || "");
-            setRcs(info.rcs || "");
-            setNda(info.nda || "");
-            setInsurance(info.insurance || "");
-            setIsVatSubject(info.isVatSubject || false);
-            setVatRate(info.vatRate || "");
-            setVatNumber(info.vatNumber || "");
-            setLegalMentions(info.legalMentions || "");
-            setCgv(info.cgv || "");
-            setPrivacyPolicy(info.privacyPolicy || "");
-        }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const storedSections = localStorage.getItem('homePageSections');
-      if (storedSections) {
-        try {
-          const parsedSections = JSON.parse(storedSections);
-          // Ensure all default sections are present
-          const updatedSections = defaultHomePageSections.map(defaultSection => {
-            const found = parsedSections.find((s: Section) => s.id === defaultSection.id);
-            return found ? { ...defaultSection, ...found } : defaultSection;
-          });
-          setHomePageSections(updatedSections);
-        } catch (e) {
-          setHomePageSections(defaultHomePageSections);
-        }
-      }
-    }
-  }, []);
 
 
   const handleLogoUploadClick = () => {
@@ -337,73 +216,84 @@ export default function PersonalizationPage() {
     if (file) {
       setLogoPreview(URL.createObjectURL(file));
       const base64 = await toBase64(file);
-      setLogoDataUrl(base64);
+      handleFieldChange('logoDataUrl', base64);
     }
   };
 
   const handleLinkChange = (index: number, field: keyof AboutLink, value: string) => {
-    const newLinks = [...footerAboutLinks];
+    const newLinks = [...(settings.footerAboutLinks || [])];
     (newLinks[index] as any)[field] = value;
-    setFooterAboutLinks(newLinks);
+    handleFieldChange('footerAboutLinks', newLinks);
   };
 
   const addLink = () => {
-    setFooterAboutLinks([
-      ...footerAboutLinks,
+    const newLinks = [
+      ...(settings.footerAboutLinks || []),
       { id: Date.now(), text: 'Nouveau lien', url: '#', icon: 'GitBranch' },
-    ]);
+    ];
+    handleFieldChange('footerAboutLinks', newLinks);
   };
 
   const removeLink = (index: number) => {
-    const newLinks = footerAboutLinks.filter((_, i) => i !== index);
-    setFooterAboutLinks(newLinks);
+    const newLinks = (settings.footerAboutLinks || []).filter((_, i) => i !== index);
+    handleFieldChange('footerAboutLinks', newLinks);
   };
 
   const handleSocialLinkChange = (index: number, url: string) => {
-    const newLinks = [...footerSocialLinks];
+    const newLinks = [...(settings.footerSocialLinks || [])];
     newLinks[index].url = url;
-    setFooterSocialLinks(newLinks);
+    handleFieldChange('footerSocialLinks', newLinks);
   };
   
   const moveSection = (index: number, direction: 'up' | 'down') => {
-    const newSections = [...homePageSections];
+    const newSections = [...(settings.homePageSections || [])];
     const newIndex = direction === 'up' ? index - 1 : index + 1;
 
     if (newIndex >= 0 && newIndex < newSections.length) {
-      // Simple swap
       [newSections[index], newSections[newIndex]] = [newSections[newIndex], newSections[index]];
-      setHomePageSections(newSections);
-      localStorage.setItem('homePageSections', JSON.stringify(newSections));
-      window.dispatchEvent(new Event('storage'));
+      handleFieldChange('homePageSections', newSections);
     }
   };
 
   const handleSectionToggle = (id: string, enabled: boolean) => {
-    const newSections = homePageSections.map(section => 
+    const newSections = (settings.homePageSections || []).map(section => 
       section.id === id ? { ...section, enabled } : section
     );
-    setHomePageSections(newSections);
-    localStorage.setItem('homePageSections', JSON.stringify(newSections));
-    window.dispatchEvent(new Event('storage'));
+    handleFieldChange('homePageSections', newSections);
   };
 
   useEffect(() => {
-    // This effect runs on the client to apply color changes dynamically
-    if (typeof window !== 'undefined') {
-        // Apply colors
-        document.documentElement.style.setProperty('--primary', hexToHsl(primaryColor));
-        document.documentElement.style.setProperty('--secondary', hexToHsl(secondaryColor));
-        document.documentElement.style.setProperty('--background', hexToHsl(bgColor));
+    if (typeof window !== 'undefined' && settings) {
+        document.documentElement.style.setProperty('--primary', hexToHsl(settings.primaryColor));
+        document.documentElement.style.setProperty('--secondary', hexToHsl(settings.secondaryColor));
+        document.documentElement.style.setProperty('--background', hexToHsl(settings.bgColor));
     }
-  }, [primaryColor, secondaryColor, bgColor]);
+  }, [settings?.primaryColor, settings?.secondaryColor, settings?.bgColor]);
   
+  if (isAgencyLoading) {
+    return (
+        <div className="space-y-8">
+            <h1 className="text-3xl font-bold font-headline">Personnalisation</h1>
+            <Skeleton className="h-10 w-full" />
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-1/3" />
+                    <Skeleton className="h-4 w-2/3" />
+                </CardHeader>
+                <CardContent>
+                    <Skeleton className="h-64 w-full" />
+                </CardContent>
+            </Card>
+        </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold font-headline">Personnalisation</h1>
         <p className="text-muted-foreground">
-          Gérez la personnalisation de la plateforme.
+          Gérez la personnalisation de la plateforme pour votre agence : **{agency?.name || '...'}**
         </p>
       </div>
 
@@ -431,47 +321,47 @@ export default function PersonalizationPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                         <Label htmlFor="company-name">Nom de l'entreprise / agence</Label>
-                        <Input id="company-name" placeholder="Votre Nom Commercial" value={companyName} onChange={e => setCompanyName(e.target.value)} />
+                        <Input id="company-name" placeholder="Votre Nom Commercial" value={settings.legalInfo?.companyName} onChange={e => handleLegalInfoChange('companyName', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="structure-type">Type de structure</Label>
-                        <Input id="structure-type" placeholder="SARL, SAS, Auto-entrepreneur..." value={structureType} onChange={e => setStructureType(e.target.value)} />
+                        <Input id="structure-type" placeholder="SARL, SAS, Auto-entrepreneur..." value={settings.legalInfo?.structureType} onChange={e => handleLegalInfoChange('structureType', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="capital">Capital</Label>
-                        <Input id="capital" type="number" placeholder="1000" value={capital} onChange={e => setCapital(e.target.value)} />
+                        <Input id="capital" type="number" placeholder="1000" value={settings.legalInfo?.capital} onChange={e => handleLegalInfoChange('capital', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="siret">SIRET</Label>
-                        <Input id="siret" placeholder="12345678901234" value={siret} onChange={e => setSiret(e.target.value)} />
+                        <Input id="siret" placeholder="12345678901234" value={settings.legalInfo?.siret} onChange={e => handleLegalInfoChange('siret', e.target.value)} />
                         </div>
                     </div>
                     
                     <div className="space-y-4">
                         <Label>Adresse</Label>
                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <Input placeholder="Numéro et nom de rue" className="sm:col-span-3" value={addressStreet} onChange={e => setAddressStreet(e.target.value)} />
-                        <Input placeholder="Code Postal" value={addressZip} onChange={e => setAddressZip(e.target.value)} />
-                        <Input placeholder="Ville" className="sm:col-span-2" value={addressCity} onChange={e => setAddressCity(e.target.value)} />
+                        <Input placeholder="Numéro et nom de rue" className="sm:col-span-3" value={settings.legalInfo?.addressStreet} onChange={e => handleLegalInfoChange('addressStreet', e.target.value)} />
+                        <Input placeholder="Code Postal" value={settings.legalInfo?.addressZip} onChange={e => handleLegalInfoChange('addressZip', e.target.value)} />
+                        <Input placeholder="Ville" className="sm:col-span-2" value={settings.legalInfo?.addressCity} onChange={e => handleLegalInfoChange('addressCity', e.target.value)} />
                         </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
                         <Label htmlFor="email">E-mail</Label>
-                        <Input id="email" type="email" placeholder="contact@exemple.com" value={email} onChange={e => setEmail(e.target.value)} />
+                        <Input id="email" type="email" placeholder="contact@exemple.com" value={settings.legalInfo?.email} onChange={e => handleLegalInfoChange('email', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="phone">Téléphone</Label>
-                        <Input id="phone" type="tel" placeholder="0123456789" value={phone} onChange={e => setPhone(e.target.value)} />
+                        <Input id="phone" type="tel" placeholder="0123456789" value={settings.legalInfo?.phone} onChange={e => handleLegalInfoChange('phone', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="ape-naf">APE/NAF</Label>
-                        <Input id="ape-naf" placeholder="6201Z" value={apeNaf} onChange={e => setApeNaf(e.target.value)} />
+                        <Input id="ape-naf" placeholder="6201Z" value={settings.legalInfo?.apeNaf} onChange={e => handleLegalInfoChange('apeNaf', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                         <Label htmlFor="rm">RM (optionnel)</Label>
-                        <Input id="rm" placeholder="Numéro RM" value={rm} onChange={e => setRm(e.target.value)} />
+                        <Input id="rm" placeholder="Numéro RM" value={settings.legalInfo?.rm} onChange={e => handleLegalInfoChange('rm', e.target.value)} />
                         </div>
                     </div>
 
@@ -479,19 +369,19 @@ export default function PersonalizationPage() {
                         <h4 className="text-lg font-medium mb-4">Paramètres de TVA</h4>
                         <div className="space-y-6">
                             <div className="flex items-center space-x-3">
-                            <Switch id="vat-subject" checked={isVatSubject} onCheckedChange={setIsVatSubject} />
+                            <Switch id="vat-subject" checked={settings.legalInfo?.isVatSubject} onCheckedChange={checked => handleLegalInfoChange('isVatSubject', checked)} />
                             <Label htmlFor="vat-subject">Assujetti à la TVA (non applicable pour le régime micro-entreprise)</Label>
                             </div>
 
-                            {isVatSubject && (
+                            {settings.legalInfo?.isVatSubject && (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-8 border-l ml-2">
                                 <div className="space-y-2">
                                 <Label htmlFor="vat-rate">Taux de TVA (%)</Label>
-                                <Input id="vat-rate" type="number" placeholder="20" value={vatRate} onChange={e => setVatRate(e.target.value)} />
+                                <Input id="vat-rate" type="number" placeholder="20" value={settings.legalInfo.vatRate} onChange={e => handleLegalInfoChange('vatRate', e.target.value)} />
                                 </div>
                                 <div className="space-y-2">
                                 <Label htmlFor="vat-number">Numéro de TVA Intracommunautaire</Label>
-                                <Input id="vat-number" placeholder="FR12345678901" value={vatNumber} onChange={e => setVatNumber(e.target.value)} />
+                                <Input id="vat-number" placeholder="FR12345678901" value={settings.legalInfo.vatNumber} onChange={e => handleLegalInfoChange('vatNumber', e.target.value)} />
                                 </div>
                             </div>
                             )}
@@ -503,15 +393,15 @@ export default function PersonalizationPage() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                                 <Label htmlFor="rcs">RCS (Numéro et Ville)</Label>
-                                <Input id="rcs" placeholder="Paris B 123 456 789" value={rcs} onChange={e => setRcs(e.target.value)} />
+                                <Input id="rcs" placeholder="Paris B 123 456 789" value={settings.legalInfo?.rcs} onChange={e => handleLegalInfoChange('rcs', e.target.value)} />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="nda">Numéro NDA (Formation)</Label>
-                                <Input id="nda" placeholder="Numéro de déclaration d'activité" value={nda} onChange={e => setNda(e.target.value)} />
+                                <Input id="nda" placeholder="Numéro de déclaration d'activité" value={settings.legalInfo?.nda} onChange={e => handleLegalInfoChange('nda', e.target.value)} />
                             </div>
                             <div className="space-y-2 md:col-span-2">
                                 <Label htmlFor="insurance">Police d'assurance</Label>
-                                <Input id="insurance" placeholder="Nom de l'assurance et numéro de contrat" value={insurance} onChange={e => setInsurance(e.target.value)} />
+                                <Input id="insurance" placeholder="Nom de l'assurance et numéro de contrat" value={settings.legalInfo?.insurance} onChange={e => handleLegalInfoChange('insurance', e.target.value)} />
                             </div>
                         </div>
                     </div>
@@ -527,8 +417,8 @@ export default function PersonalizationPage() {
                         <Label htmlFor="legal-mentions" className="text-lg font-medium">Mentions Légales</Label>
                         <div className="mt-2">
                           <RichTextEditor
-                            content={legalMentions}
-                            onChange={setLegalMentions}
+                            content={settings.legalInfo?.legalMentions || ''}
+                            onChange={content => handleLegalInfoChange('legalMentions', content)}
                             placeholder="Rédigez vos mentions légales ici..."
                           />
                         </div>
@@ -538,8 +428,8 @@ export default function PersonalizationPage() {
                         <Label htmlFor="cgv" className="text-lg font-medium">Conditions Générales de Vente (CGV)</Label>
                         <div className="mt-2">
                            <RichTextEditor
-                            content={cgv}
-                            onChange={setCgv}
+                            content={settings.legalInfo?.cgv || ''}
+                            onChange={content => handleLegalInfoChange('cgv', content)}
                             placeholder="Rédigez vos conditions générales de vente ici..."
                           />
                         </div>
@@ -549,8 +439,8 @@ export default function PersonalizationPage() {
                         <Label htmlFor="privacy-policy" className="text-lg font-medium">Politique de confidentialité</Label>
                         <div className="mt-2">
                           <RichTextEditor
-                            content={privacyPolicy}
-                            onChange={setPrivacyPolicy}
+                            content={settings.legalInfo?.privacyPolicy || ''}
+                            onChange={content => handleLegalInfoChange('privacyPolicy', content)}
                             placeholder="Rédigez votre politique de confidentialité ici..."
                           />
                         </div>
@@ -559,7 +449,7 @@ export default function PersonalizationPage() {
               </section>
               
               <div className="flex justify-end pt-6 border-t">
-                <Button onClick={handleSaveLegalInfo}>Enregistrer les modifications</Button>
+                <Button onClick={handleSave}>Enregistrer les modifications</Button>
               </div>
 
             </CardContent>
@@ -576,11 +466,11 @@ export default function PersonalizationPage() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                       <Label htmlFor="app-title">Titre de l'application</Label>
-                      <Input id="app-title" value={appTitle} onChange={(e) => setAppTitle(e.target.value)} />
+                      <Input id="app-title" value={settings.appTitle} onChange={(e) => handleFieldChange('appTitle', e.target.value)} />
                   </div>
                   <div className="space-y-2">
                       <Label htmlFor="app-subtitle">Sous-titre de l'application</Label>
-                      <Input id="app-subtitle" value={appSubtitle} onChange={(e) => setAppSubtitle(e.target.value)} />
+                      <Input id="app-subtitle" value={settings.appSubtitle} onChange={(e) => handleFieldChange('appSubtitle', e.target.value)} />
                   </div>
                 </div>
 
@@ -610,40 +500,26 @@ export default function PersonalizationPage() {
                             <p className="text-xs text-muted-foreground">Formats recommandés : SVG, PNG, JPG.</p>
                         </div>
                          <div className="space-y-4">
-                            <Label>Dimensions du logo (en pixels)</Label>
+                            <Label>Largeur du logo (en pixels)</Label>
                             <div className="space-y-2">
                                 <Label htmlFor="logo-width" className="flex items-center justify-between">
                                     <span>Largeur</span>
-                                    <span className="text-sm text-muted-foreground">{logoWidth}px</span>
+                                    <span className="text-sm text-muted-foreground">{settings.logoWidth}px</span>
                                 </Label>
                                 <Slider
                                     id="logo-width"
                                     min={10}
                                     max={200}
                                     step={1}
-                                    value={[logoWidth]}
-                                    onValueChange={(value) => setLogoWidth(value[0])}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="logo-height" className="flex items-center justify-between">
-                                    <span>Hauteur</span>
-                                    <span className="text-sm text-muted-foreground">{logoHeight}px</span>
-                                </Label>
-                                <Slider
-                                    id="logo-height"
-                                    min={10}
-                                    max={200}
-                                    step={1}
-                                    value={[logoHeight]}
-                                    onValueChange={(value) => setLogoHeight(value[0])}
+                                    value={[settings.logoWidth || 40]}
+                                    onValueChange={(value) => handleFieldChange('logoWidth', value[0])}
                                 />
                             </div>
                         </div>
                     </div>
                      <div>
                         <Label className="mb-3 block">Affichage</Label>
-                        <RadioGroup value={logoDisplay} onValueChange={setLogoDisplay} className="space-y-2">
+                        <RadioGroup value={settings.logoDisplay} onValueChange={(value) => handleFieldChange('logoDisplay', value)} className="space-y-2">
                             <div className="flex items-center space-x-2">
                                 <RadioGroupItem value="app-and-logo" id="app-and-logo" />
                                 <Label htmlFor="app-and-logo">Nom de l'application et logo</Label>
@@ -664,22 +540,22 @@ export default function PersonalizationPage() {
                         <div className="space-y-2">
                             <Label htmlFor="primary-color">Couleur Primaire</Label>
                             <div className="flex items-center gap-2">
-                                <Input type="color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} className="w-10 h-10 p-1"/>
-                                <Input id="primary-color" value={primaryColor} onChange={(e) => setPrimaryColor(e.target.value)} />
+                                <Input type="color" value={settings.primaryColor} onChange={(e) => handleFieldChange('primaryColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                <Input id="primary-color" value={settings.primaryColor} onChange={(e) => handleFieldChange('primaryColor', e.target.value)} />
                             </div>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="secondary-color">Couleur Secondaire</Label>
                             <div className="flex items-center gap-2">
-                                <Input type="color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} className="w-10 h-10 p-1"/>
-                                <Input id="secondary-color" value={secondaryColor} onChange={(e) => setSecondaryColor(e.target.value)} />
+                                <Input type="color" value={settings.secondaryColor} onChange={(e) => handleFieldChange('secondaryColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                <Input id="secondary-color" value={settings.secondaryColor} onChange={(e) => handleFieldChange('secondaryColor', e.target.value)} />
                             </div>
                         </div>
                          <div className="space-y-2">
                             <Label htmlFor="bg-color">Couleur de Fond</Label>
                             <div className="flex items-center gap-2">
-                                <Input type="color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} className="w-10 h-10 p-1"/>
-                                <Input id="bg-color" value={bgColor} onChange={(e) => setBgColor(e.target.value)} />
+                                <Input type="color" value={settings.bgColor} onChange={(e) => handleFieldChange('bgColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                <Input id="bg-color" value={settings.bgColor} onChange={(e) => handleFieldChange('bgColor', e.target.value)} />
                             </div>
                         </div>
                     </div>
@@ -692,16 +568,16 @@ export default function PersonalizationPage() {
                     <div className="space-y-4">
                         <div className="space-y-2">
                             <Label htmlFor="footer-about-title">Titre de la section</Label>
-                            <Input id="footer-about-title" value={footerAboutTitle} onChange={(e) => setFooterAboutTitle(e.target.value)} />
+                            <Input id="footer-about-title" value={settings.footerAboutTitle} onChange={(e) => handleFieldChange('footerAboutTitle', e.target.value)} />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="footer-about-text">Texte de description</Label>
-                            <Textarea id="footer-about-text" value={footerAboutText} onChange={(e) => setFooterAboutText(e.target.value)} />
+                            <Textarea id="footer-about-text" value={settings.footerAboutText} onChange={(e) => handleFieldChange('footerAboutText', e.target.value)} />
                         </div>
                         <div>
                             <Label>Liens personnalisés</Label>
                             <div className="space-y-4 mt-2">
-                                {footerAboutLinks.map((link, index) => (
+                                {settings.footerAboutLinks.map((link, index) => (
                                     <div key={link.id} className="grid grid-cols-12 gap-2 items-center">
                                         <div className="col-span-4">
                                             <Input 
@@ -749,7 +625,7 @@ export default function PersonalizationPage() {
                 <div className="space-y-6">
                     <h3 className="text-lg font-medium">Pied de page - Réseaux Sociaux</h3>
                     <div className="space-y-4">
-                        {footerSocialLinks.map((link, index) => {
+                        {settings.footerSocialLinks.map((link, index) => {
                             const Icon = socialIconMap[link.icon];
                             return (
                                 <div key={link.id} className="flex items-center gap-4">
@@ -776,18 +652,18 @@ export default function PersonalizationPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                          <div className="space-y-2">
                             <Label htmlFor="copyright-text">Texte du Copyright</Label>
-                            <Input id="copyright-text" value={copyrightText} onChange={(e) => setCopyrightText(e.target.value)} placeholder="Votre Nom d'Entreprise" />
+                            <Input id="copyright-text" value={settings.copyrightText} onChange={(e) => handleFieldChange('copyrightText', e.target.value)} placeholder="Votre Nom d'Entreprise" />
                         </div>
                         <div className="space-y-2">
                             <Label htmlFor="copyright-url">URL du lien Copyright</Label>
-                            <Input id="copyright-url" value={copyrightUrl} onChange={(e) => setCopyrightUrl(e.target.value)} placeholder="/"/>
+                            <Input id="copyright-url" value={settings.copyrightUrl} onChange={(e) => handleFieldChange('copyrightUrl', e.target.value)} placeholder="/"/>
                         </div>
                     </div>
                 </div>
 
 
                  <div className="flex justify-start pt-6 border-t gap-2">
-                    <Button onClick={handleAppearanceSave} style={{backgroundColor: primaryColor}}>Sauvegarder les changements</Button>
+                    <Button onClick={handleSave} style={{backgroundColor: settings.primaryColor}}>Sauvegarder les changements</Button>
                     <Button variant="outline" onClick={handleResetAppearance}>Réinitialiser</Button>
                 </div>
             </CardContent>
@@ -803,7 +679,7 @@ export default function PersonalizationPage() {
             <CardContent className="space-y-8">
               <section>
                 <h3 className="text-lg font-medium mb-4">Version de la page d'accueil</h3>
-                 <RadioGroup value={homePageVersion} onValueChange={setHomePageVersion} className="space-y-2">
+                 <RadioGroup value={settings.homePageVersion} onValueChange={(value) => handleFieldChange('homePageVersion', value)} className="space-y-2">
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="tunnel" id="tunnel" />
                         <Label htmlFor="tunnel">Version Tunnel de vente</Label>
@@ -822,7 +698,7 @@ export default function PersonalizationPage() {
                  <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
                  
                 <div className="space-y-3">
-                  {homePageSections.map((section, index) => (
+                  {settings.homePageSections.map((section, index) => (
                     <div
                       key={section.id}
                       className="flex items-center gap-4 p-3 border rounded-lg bg-background"
@@ -837,7 +713,7 @@ export default function PersonalizationPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => moveSection(index, 'up')}
-                            disabled={index === 0 || homePageSections[index - 1].isLocked}
+                            disabled={index === 0 || settings.homePageSections[index - 1].isLocked}
                           >
                             <ArrowUp className="h-4 w-4" />
                           </Button>
@@ -845,7 +721,7 @@ export default function PersonalizationPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => moveSection(index, 'down')}
-                            disabled={index === homePageSections.length - 1 || homePageSections[index + 1].isLocked}
+                            disabled={index === settings.homePageSections.length - 1 || settings.homePageSections[index + 1].isLocked}
                           >
                             <ArrowDown className="h-4 w-4" />
                           </Button>
@@ -862,7 +738,7 @@ export default function PersonalizationPage() {
 
               </section>
                 <div className="flex justify-end pt-6 border-t">
-                    <Button onClick={handleAppearanceSave}>Enregistrer les modifications</Button>
+                    <Button onClick={handleSave}>Enregistrer les modifications</Button>
                 </div>
             </CardContent>
           </Card>

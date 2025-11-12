@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Logo } from "./logo";
@@ -9,35 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Briefcase, ExternalLink, GitBranch, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import Link from "next/link";
-import React, { useState, useEffect } from "react";
-import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
+import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-
-interface LegalInfoProps {
-  companyName?: string;
-  addressStreet?: string;
-  addressZip?: string;
-  addressCity?: string;
-  siret?: string;
-  rcs?: string;
-  apeNaf?: string;
-  email?: string;
-  phone?: string;
-  capital?: string;
-}
-
-const defaultLegalInfo: LegalInfoProps = {
-    companyName: "SARL au capital de 1000 €",
-    addressStreet: "123 Rue de la République",
-    addressZip: "75001",
-    addressCity: "Paris",
-    siret: "12345678901234",
-    rcs: "Paris B 123 456 789",
-    apeNaf: "6201Z",
-    email: "contact@vapps.test",
-    phone: "01 23 45 67 89",
-};
+import { useAgency } from "@/context/agency-provider";
+import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
 
 const iconMap: { [key: string]: React.ComponentType<any> } = {
     GitBranch,
@@ -52,71 +27,19 @@ const socialIconMap: { [key: string]: React.ComponentType<any> } = {
 };
 
 export function Footer() {
+    const { personalization } = useAgency();
+
+    const legalInfo = personalization?.legalInfo || {};
+    const aboutTitle = personalization?.footerAboutTitle || "À propos";
+    const aboutText = personalization?.footerAboutText || "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.";
+    const aboutLinks = personalization?.footerAboutLinks as AboutLink[] || [];
+    const socialLinks = personalization?.footerSocialLinks as SocialLink[] || [];
+    const copyrightText = personalization?.copyrightText || "Vapps.";
+    const copyrightUrl = personalization?.copyrightUrl || "/";
     
-    const [legalInfo, setLegalInfo] = useState<LegalInfoProps>(defaultLegalInfo);
-    const [aboutTitle, setAboutTitle] = useState("À propos");
-    const [aboutText, setAboutText] = useState("HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.");
-    const [aboutLinks, setAboutLinks] = useState<AboutLink[]>([
-        { id: 1, text: "Notre mission", url: "#", icon: "GitBranch" },
-        { id: 2, text: "Carrières", url: "#", icon: "Briefcase" },
-    ]);
-    const [socialLinks, setSocialLinks] = useState<SocialLink[]>([]);
-    const [copyrightText, setCopyrightText] = useState("Vapps.");
-    const [copyrightUrl, setCopyrightUrl] = useState("/");
-    
-    const [legalMentions, setLegalMentions] = useState("");
-    const [cgv, setCgv] = useState("");
-    const [privacyPolicy, setPrivacyPolicy] = useState("");
-
-
-    useEffect(() => {
-        const updateContent = () => {
-            if (typeof window !== 'undefined') {
-                const storedLegalInfo = localStorage.getItem('legalInfo');
-                if (storedLegalInfo) {
-                    try {
-                        const parsedInfo = JSON.parse(storedLegalInfo);
-                        setLegalInfo(parsedInfo);
-                        setLegalMentions(parsedInfo.legalMentions || "");
-                        setCgv(parsedInfo.cgv || "");
-                        setPrivacyPolicy(parsedInfo.privacyPolicy || "");
-                    } catch (e) {
-                        console.error("Failed to parse legal info from localStorage", e);
-                    }
-                }
-
-                const storedTitle = localStorage.getItem('footerAboutTitle');
-                const storedText = localStorage.getItem('footerAboutText');
-                const storedLinks = localStorage.getItem('footerAboutLinks');
-                const storedSocialLinks = localStorage.getItem('footerSocialLinks');
-                const storedCopyrightText = localStorage.getItem('copyrightText');
-                const storedCopyrightUrl = localStorage.getItem('copyrightUrl');
-
-                if (storedTitle) setAboutTitle(storedTitle);
-                if (storedText) setAboutText(storedText);
-                if (storedLinks) {
-                    try {
-                        setAboutLinks(JSON.parse(storedLinks));
-                    } catch (e) {
-                        console.error("Failed to parse footer links from localStorage", e);
-                    }
-                }
-                if (storedSocialLinks) {
-                    try {
-                        setSocialLinks(JSON.parse(storedSocialLinks));
-                    } catch (e) {
-                        console.error("Failed to parse social links from localStorage", e);
-                    }
-                }
-                if (storedCopyrightText) setCopyrightText(storedCopyrightText);
-                if (storedCopyrightUrl) setCopyrightUrl(storedCopyrightUrl);
-            }
-        };
-
-        updateContent();
-        window.addEventListener('storage', updateContent);
-        return () => window.removeEventListener('storage', updateContent);
-    }, []);
+    const legalMentions = legalInfo?.legalMentions || "";
+    const cgv = legalInfo?.cgv || "";
+    const privacyPolicy = legalInfo?.privacyPolicy || "";
 
     const fullAddress = [legalInfo.addressStreet, legalInfo.addressZip, legalInfo.addressCity].filter(Boolean).join(', ');
 
@@ -233,3 +156,5 @@ export function Footer() {
         </footer>
     );
 }
+
+    

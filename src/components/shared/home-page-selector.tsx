@@ -19,6 +19,8 @@ import { WhiteLabelSection } from '@/components/shared/white-label-section';
 import { BlogSection } from '@/components/shared/blog-section';
 import { Footer } from '@/components/shared/footer';
 import type { Section } from '@/app/dashboard/settings/personalization/page';
+import { useAgency } from '@/context/agency-provider';
+import { Skeleton } from '../ui/skeleton';
 
 const sectionComponents: { [key: string]: React.ComponentType } = {
   about: AboutSection,
@@ -32,21 +34,6 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
   whiteLabel: WhiteLabelSection,
   pricing: PricingSection,
 };
-
-const defaultSections: Section[] = [
-  { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
-  { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
-  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
-  { id: 'video', label: 'Vidéo', enabled: true },
-  { id: 'shop', label: 'Boutique', enabled: true },
-  { id: 'services', label: 'Accompagnements', enabled: true },
-  { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
-  { id: 'blog', label: 'Blog', enabled: true },
-  { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
-  { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
-  { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
-];
 
 function HeroSection() {
     const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
@@ -90,45 +77,9 @@ function HeroSection() {
 
 
 function TunnelHomePage() {
-  const [sections, setSections] = useState<Section[]>(defaultSections);
-
-  useEffect(() => {
-    const storedSections = localStorage.getItem('homePageSections');
-    if (storedSections) {
-      try {
-        const parsedSections = JSON.parse(storedSections);
-        const updatedSections = defaultSections.map(defaultSection => {
-            const found = parsedSections.find((s: Section) => s.id === defaultSection.id);
-            return found ? { ...defaultSection, ...found } : defaultSection;
-        }).sort((a, b) => parsedSections.findIndex((s:Section) => s.id === a.id) - parsedSections.findIndex((s:Section) => s.id === b.id));
-        setSections(updatedSections);
-      } catch (e) {
-        console.error("Failed to parse sections from localStorage", e);
-        setSections(defaultSections);
-      }
-    }
-
-    const handleStorageChange = () => {
-      const newStoredSections = localStorage.getItem('homePageSections');
-       if (newStoredSections) {
-        try {
-          const parsedSections = JSON.parse(newStoredSections);
-           const updatedSections = defaultSections.map(defaultSection => {
-                const found = parsedSections.find((s: Section) => s.id === defaultSection.id);
-                return found ? { ...defaultSection, ...found } : defaultSection;
-            }).sort((a, b) => parsedSections.findIndex((s:Section) => s.id === a.id) - parsedSections.findIndex((s:Section) => s.id === b.id));
-          setSections(updatedSections);
-        } catch (e) {
-          console.error("Failed to parse sections from localStorage on update", e);
-        }
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-
-  }, []);
-
+  const { personalization } = useAgency();
+  const sections = personalization?.homePageSections as Section[] || [];
+  
   const heroSection = sections.find(s => s.id === 'hero');
   const footerSection = sections.find(s => s.id === 'footer');
 
@@ -181,29 +132,19 @@ function ApplicationHomePage() {
 
 
 export function HomePageSelector() {
-  const [homePageVersion, setHomePageVersion] = useState('tunnel');
-  const [isMounted, setIsMounted] = useState(false);
+  const { personalization, isLoading } = useAgency();
 
-  useEffect(() => {
-    setIsMounted(true);
-    const storedVersion = localStorage.getItem('homePageVersion') || 'tunnel';
-    setHomePageVersion(storedVersion);
-
-    const handleStorageChange = () => {
-      const newVersion = localStorage.getItem('homePageVersion') || 'tunnel';
-      setHomePageVersion(newVersion);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
-  if (!isMounted) {
-    return null; // ou un spinner de chargement
+  if (isLoading) {
+    return (
+        <div className="space-y-4 p-8">
+            <Skeleton className="h-[400px] w-full" />
+            <Skeleton className="h-[200px] w-full" />
+            <Skeleton className="h-[200px] w-full" />
+        </div>
+    )
   }
+
+  const homePageVersion = personalization?.homePageVersion || 'tunnel';
 
   if (homePageVersion === 'application') {
     return <ApplicationHomePage />;
@@ -211,3 +152,5 @@ export function HomePageSelector() {
 
   return <TunnelHomePage />;
 }
+
+    
