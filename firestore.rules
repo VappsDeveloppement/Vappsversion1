@@ -17,5 +17,12 @@ service cloud.firestore {
     match /{document=**} {
       allow read, write: if isSignedIn();
     }
+
+    // Exception for the agency document, which needs to be public for personalization
+    // even for non-authenticated users.
+    match /agencies/{agencyId} {
+      allow get: if true;
+      allow list, write: if isSignedIn();
+    }
   }
 }

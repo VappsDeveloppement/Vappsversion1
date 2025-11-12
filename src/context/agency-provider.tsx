@@ -90,7 +90,7 @@ const defaultAgency: Agency = {
 };
 
 export const AgencyProvider = ({ children }: AgencyProviderProps) => {
-    const { firestore, isUserLoading } = useFirebase();
+    const { firestore, isUserLoading, user } = useFirebase();
     const [agency, setAgency] = useState<Agency | null>(defaultAgency);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -98,11 +98,7 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
     const agencyId = 'vapps-agency'; // Hardcode the agency ID
 
     useEffect(() => {
-        // Wait until firebase auth state is resolved before doing anything
-        if (isUserLoading) {
-            return;
-        }
-
+        // We no longer wait for the user, we display default data right away if needed.
         if (!firestore) {
             setAgency(defaultAgency);
             setIsDefaultAgency(true);
@@ -136,14 +132,21 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
             }
             setIsLoading(false);
         }, (err: FirestoreError) => {
+             const contextualError = new FirestorePermissionError({
+                path: agencyDocRef.path,
+                operation: 'get',
+            });
             console.warn("Could not read agency document. Using default. Error:", err.message);
+            // Even if there's an error, we provide the default agency data so the app doesn't crash.
             setAgency(defaultAgency);
             setIsDefaultAgency(true);
             setIsLoading(false);
+            setError(contextualError);
+            errorEmitter.emit('permission-error', contextualError);
         });
 
         return () => unsubscribe();
-    }, [firestore, isUserLoading]);
+    }, [firestore]);
 
     const personalization = useMemo(() => {
         if (!agency) return defaultPersonalization;
