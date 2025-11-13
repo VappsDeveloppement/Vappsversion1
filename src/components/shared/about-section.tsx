@@ -15,6 +15,8 @@ export function AboutSection() {
     const pillars = aboutSettings?.pillars || [];
     const expertises = aboutSettings?.expertises || [];
 
+    if (!personalization) return null;
+
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
@@ -101,5 +103,3 @@ export function AboutSection() {
         </section>
     );
 }
-
-    

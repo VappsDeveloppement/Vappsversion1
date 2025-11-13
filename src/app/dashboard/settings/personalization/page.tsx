@@ -454,11 +454,10 @@ export default function PersonalizationPage() {
       </div>
 
       <Tabs defaultValue="info-legales">
-        <TabsList className="grid w-full grid-cols-7">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
           <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
-          <TabsTrigger value="section-a-propos">Section: À Propos</TabsTrigger>
           <TabsTrigger value="paiement">Paiement</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="rgpd">Paramètres RGPD</TabsTrigger>
@@ -1080,6 +1079,107 @@ export default function PersonalizationPage() {
                                             </div>
                                         </div>
                                     </div>
+                                ) : section.id === 'about' ? (
+                                    <div className="space-y-8">
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu Principal</h3>
+                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="about-main-title">Titre principal</Label>
+                                                <Input id="about-main-title" value={settings.aboutSection?.mainTitle} onChange={(e) => handleAboutSectionChange('mainTitle', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="about-main-subtitle">Sous-titre</Label>
+                                                <Input id="about-main-subtitle" value={settings.aboutSection?.mainSubtitle} onChange={(e) => handleAboutSectionChange('mainSubtitle', e.target.value)} />
+                                            </div>
+                                         </div>
+                                         <div className="mt-6 space-y-2">
+                                            <Label htmlFor="about-main-text">Texte principal</Label>
+                                            <Textarea id="about-main-text" value={settings.aboutSection?.mainText} onChange={(e) => handleAboutSectionChange('mainText', e.target.value)} rows={5} />
+                                         </div>
+                                         <div className="mt-6">
+                                            <Label>Image principale</Label>
+                                            <div className="flex items-center gap-4 mt-2">
+                                                <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                   {aboutImagePreview ? (
+                                                        <Image src={aboutImagePreview} alt="Aperçu de l'image À Propos" layout="fill" objectFit="cover" />
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    type="file"
+                                                    ref={aboutImageFileInputRef}
+                                                    onChange={handleAboutImageFileChange}
+                                                    className="hidden"
+                                                    accept="image/png, image/jpeg"
+                                                />
+                                                <div className="flex flex-col gap-2">
+                                                  <Button variant="outline" onClick={handleAboutImageUploadClick}>
+                                                      <Upload className="mr-2 h-4 w-4" />
+                                                      Uploader
+                                                  </Button>
+                                                  <Button variant="destructive" size="sm" onClick={handleRemoveAboutImage}>
+                                                      <Trash2 className="mr-2 h-4 w-4" />
+                                                      Supprimer
+                                                  </Button>
+                                                </div>
+                                            </div>
+                                         </div>
+                                      </section>
+
+                                      <div className="border-t -mx-6"></div>
+
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Piliers de l'accompagnement</h3>
+                                         <div className="space-y-2 mb-6">
+                                            <Label htmlFor="about-pillars-title">Titre de la section des piliers</Label>
+                                            <Input id="about-pillars-title" value={settings.aboutSection?.pillarsSectionTitle} onChange={(e) => handleAboutSectionChange('pillarsSectionTitle', e.target.value)} />
+                                         </div>
+                                         <div className="space-y-6">
+                                            {settings.aboutSection.pillars.map((pillar, index) => (
+                                                <div key={pillar.id} className="p-4 border rounded-lg">
+                                                    <h4 className="font-medium mb-4">Pilier {index + 1}</h4>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`pillar-title-${index}`}>Titre</Label>
+                                                            <Input id={`pillar-title-${index}`} value={pillar.title} onChange={(e) => handleAboutPillarChange(index, 'title', e.target.value)} />
+                                                        </div>
+                                                         <div className="space-y-2">
+                                                            <Label htmlFor={`pillar-desc-${index}`}>Description</Label>
+                                                            <Input id={`pillar-desc-${index}`} value={pillar.description} onChange={(e) => handleAboutPillarChange(index, 'description', e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                         </div>
+                                      </section>
+
+                                      <div className="border-t -mx-6"></div>
+                                      
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Expertises Sectorielles</h3>
+                                         <div className="space-y-2 mb-6">
+                                            <Label htmlFor="about-expertises-title">Titre de la section des expertises</Label>
+                                            <Input id="about-expertises-title" value={settings.aboutSection?.expertisesSectionTitle} onChange={(e) => handleAboutSectionChange('expertisesSectionTitle', e.target.value)} />
+                                         </div>
+                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            {settings.aboutSection.expertises.map((expertise, index) => (
+                                                <div key={expertise.id} className="p-4 border rounded-lg space-y-4">
+                                                     <h4 className="font-medium">Expertise {index + 1}</h4>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor={`expertise-title-${index}`}>Titre</Label>
+                                                        <Input id={`expertise-title-${index}`} value={expertise.title} onChange={(e) => handleAboutExpertiseChange(index, 'title', e.target.value)} />
+                                                    </div>
+                                                     <div className="space-y-2">
+                                                        <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
+                                                        <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                         </div>
+                                      </section>
+                                    </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>
                                 )}
@@ -1092,119 +1192,6 @@ export default function PersonalizationPage() {
                 <div className="flex justify-end pt-6 border-t">
                     <Button onClick={handleSave}>Enregistrer les modifications</Button>
                 </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="section-a-propos">
-          <Card>
-            <CardHeader>
-              <CardTitle>Section "À Propos"</CardTitle>
-              <CardDescription>Personnalisez le contenu de la section "À propos" de votre page d'accueil.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-8">
-              <section>
-                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu Principal</h3>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div className="space-y-2">
-                        <Label htmlFor="about-main-title">Titre principal</Label>
-                        <Input id="about-main-title" value={settings.aboutSection?.mainTitle} onChange={(e) => handleAboutSectionChange('mainTitle', e.target.value)} />
-                    </div>
-                    <div className="space-y-2">
-                        <Label htmlFor="about-main-subtitle">Sous-titre</Label>
-                        <Input id="about-main-subtitle" value={settings.aboutSection?.mainSubtitle} onChange={(e) => handleAboutSectionChange('mainSubtitle', e.target.value)} />
-                    </div>
-                 </div>
-                 <div className="mt-6 space-y-2">
-                    <Label htmlFor="about-main-text">Texte principal</Label>
-                    <Textarea id="about-main-text" value={settings.aboutSection?.mainText} onChange={(e) => handleAboutSectionChange('mainText', e.target.value)} rows={5} />
-                 </div>
-                 <div className="mt-6">
-                    <Label>Image principale</Label>
-                    <div className="flex items-center gap-4 mt-2">
-                        <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
-                           {aboutImagePreview ? (
-                                <Image src={aboutImagePreview} alt="Aperçu de l'image À Propos" layout="fill" objectFit="cover" />
-                            ) : (
-                                <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
-                            )}
-                        </div>
-                        <input
-                            type="file"
-                            ref={aboutImageFileInputRef}
-                            onChange={handleAboutImageFileChange}
-                            className="hidden"
-                            accept="image/png, image/jpeg"
-                        />
-                        <div className="flex flex-col gap-2">
-                          <Button variant="outline" onClick={handleAboutImageUploadClick}>
-                              <Upload className="mr-2 h-4 w-4" />
-                              Uploader
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={handleRemoveAboutImage}>
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              Supprimer
-                          </Button>
-                        </div>
-                    </div>
-                 </div>
-              </section>
-
-              <div className="border-t -mx-6"></div>
-
-              <section>
-                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Piliers de l'accompagnement</h3>
-                 <div className="space-y-2 mb-6">
-                    <Label htmlFor="about-pillars-title">Titre de la section des piliers</Label>
-                    <Input id="about-pillars-title" value={settings.aboutSection?.pillarsSectionTitle} onChange={(e) => handleAboutSectionChange('pillarsSectionTitle', e.target.value)} />
-                 </div>
-                 <div className="space-y-6">
-                    {settings.aboutSection.pillars.map((pillar, index) => (
-                        <div key={pillar.id} className="p-4 border rounded-lg">
-                            <h4 className="font-medium mb-4">Pilier {index + 1}</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label htmlFor={`pillar-title-${index}`}>Titre</Label>
-                                    <Input id={`pillar-title-${index}`} value={pillar.title} onChange={(e) => handleAboutPillarChange(index, 'title', e.target.value)} />
-                                </div>
-                                 <div className="space-y-2">
-                                    <Label htmlFor={`pillar-desc-${index}`}>Description</Label>
-                                    <Input id={`pillar-desc-${index}`} value={pillar.description} onChange={(e) => handleAboutPillarChange(index, 'description', e.target.value)} />
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                 </div>
-              </section>
-
-              <div className="border-t -mx-6"></div>
-              
-              <section>
-                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Expertises Sectorielles</h3>
-                 <div className="space-y-2 mb-6">
-                    <Label htmlFor="about-expertises-title">Titre de la section des expertises</Label>
-                    <Input id="about-expertises-title" value={settings.aboutSection?.expertisesSectionTitle} onChange={(e) => handleAboutSectionChange('expertisesSectionTitle', e.target.value)} />
-                 </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {settings.aboutSection.expertises.map((expertise, index) => (
-                        <div key={expertise.id} className="p-4 border rounded-lg space-y-4">
-                             <h4 className="font-medium">Expertise {index + 1}</h4>
-                            <div className="space-y-2">
-                                <Label htmlFor={`expertise-title-${index}`}>Titre</Label>
-                                <Input id={`expertise-title-${index}`} value={expertise.title} onChange={(e) => handleAboutExpertiseChange(index, 'title', e.target.value)} />
-                            </div>
-                             <div className="space-y-2">
-                                <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
-                                <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
-                            </div>
-                        </div>
-                    ))}
-                 </div>
-              </section>
-
-              <div className="flex justify-end pt-6 border-t">
-                <Button onClick={handleSave}>Enregistrer les modifications</Button>
-              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1255,5 +1242,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
