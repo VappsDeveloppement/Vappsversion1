@@ -18,7 +18,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAgency } from "@/context/agency-provider";
-import { updateDocumentNonBlocking } from "@/firebase";
+import { setDocumentNonBlocking } from "@/firebase";
 import { doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -209,7 +209,7 @@ export default function PersonalizationPage() {
       return;
     }
     const agencyRef = doc(firestore, 'agencies', agency.id);
-    updateDocumentNonBlocking(agencyRef, { personalization: settings });
+    setDocumentNonBlocking(agencyRef, { personalization: settings }, { merge: true });
     toast({ title: "Paramètres enregistrés", description: "Vos paramètres ont été sauvegardés." });
   };
   
@@ -224,7 +224,7 @@ export default function PersonalizationPage() {
 
       if (!agency) return;
       const agencyRef = doc(firestore, 'agencies', agency.id);
-      updateDocumentNonBlocking(agencyRef, { personalization: resetSettings });
+      setDocumentNonBlocking(agencyRef, { personalization: resetSettings }, { merge: true });
       toast({ title: "Réinitialisation", description: "Les paramètres d'apparence ont été réinitialisés." });
   };
 
@@ -737,7 +737,7 @@ export default function PersonalizationPage() {
                  <Accordion type="single" collapsible className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => (
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
-                            <div className="flex items-center gap-4 p-3">
+                            <div className="flex items-center gap-2 p-3">
                                 <AccordionTrigger className="flex-1 p-0 hover:no-underline">
                                     <div className="flex-1 text-left font-medium">{section.label}</div>
                                 </AccordionTrigger>
@@ -765,11 +765,12 @@ export default function PersonalizationPage() {
                                     </div>
                                 )}
 
-                                <Switch
-                                    checked={section.enabled}
-                                    onCheckedChange={(checked) => handleSectionToggle(section.id, checked)}
-                                    onClick={(e) => e.stopPropagation()}
-                                />
+                                <div onClick={(e) => e.stopPropagation()} className="p-2">
+                                  <Switch
+                                      checked={section.enabled}
+                                      onCheckedChange={(checked) => handleSectionToggle(section.id, checked)}
+                                  />
+                                </div>
                                 <AccordionTrigger className="p-0 [&_svg]:ml-2">
                                   <span className="sr-only">Toggle section content</span>
                                 </AccordionTrigger>
