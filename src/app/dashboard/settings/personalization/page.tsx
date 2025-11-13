@@ -260,10 +260,36 @@ export default function PersonalizationPage() {
       handleAboutSectionChange('pillars', newPillars);
   };
 
+  const addPillar = () => {
+    const newPillars = [
+        ...(settings.aboutSection.pillars || []),
+        { id: `pillar-${Date.now()}`, title: 'Nouveau Pilier', description: 'Description du nouveau pilier.', imageUrl: null },
+    ];
+    handleAboutSectionChange('pillars', newPillars);
+  };
+
+  const removePillar = (index: number) => {
+    const newPillars = settings.aboutSection.pillars.filter((_, i) => i !== index);
+    handleAboutSectionChange('pillars', newPillars);
+  };
+  
   const handleAboutExpertiseChange = (index: number, field: 'title' | 'description' | 'imageUrl', value: string | null) => {
       const newExpertises = [...(settings.aboutSection.expertises)];
       newExpertises[index] = { ...newExpertises[index], [field]: value };
       handleAboutSectionChange('expertises', newExpertises);
+  };
+
+  const addExpertise = () => {
+    const newExpertises = [
+        ...(settings.aboutSection.expertises || []),
+        { id: `expertise-${Date.now()}`, title: 'Nouvelle Expertise', description: 'Description de la nouvelle expertise.', imageUrl: null },
+    ];
+    handleAboutSectionChange('expertises', newExpertises);
+  };
+
+  const removeExpertise = (index: number) => {
+    const newExpertises = settings.aboutSection.expertises.filter((_, i) => i !== index);
+    handleAboutSectionChange('expertises', newExpertises);
   };
 
   const handleLegalInfoChange = (field: string, value: any) => {
@@ -1115,8 +1141,13 @@ export default function PersonalizationPage() {
                                          </div>
                                          <div className="space-y-6">
                                             {settings.aboutSection.pillars.map((pillar, index) => (
-                                                <div key={pillar.id} className="p-4 border rounded-lg">
-                                                    <h4 className="font-medium mb-4">Pilier {index + 1}</h4>
+                                                <div key={pillar.id} className="p-4 border rounded-lg space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="font-medium">Pilier {index + 1}</h4>
+                                                        <Button variant="ghost" size="icon" onClick={() => removePillar(index)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
                                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                                         <div className="space-y-2">
                                                             <Label htmlFor={`pillar-title-${index}`}>Titre</Label>
@@ -1139,8 +1170,11 @@ export default function PersonalizationPage() {
                                                             </div>
                                                             <div className="flex flex-col gap-2">
                                                                 <Button variant="outline" size="sm" onClick={() => {
-                                                                    fileInputRef.current.onchange = createUploadHandler(base64 => handleAboutPillarChange(index, 'imageUrl', base64));
-                                                                    fileInputRef.current?.click();
+                                                                    const currentRef = fileInputRef.current;
+                                                                    if (currentRef) {
+                                                                        currentRef.onchange = createUploadHandler(base64 => handleAboutPillarChange(index, 'imageUrl', base64));
+                                                                        currentRef.click();
+                                                                    }
                                                                 }}>
                                                                     <Upload className="mr-2 h-4 w-4" /> Uploader
                                                                 </Button>
@@ -1153,6 +1187,10 @@ export default function PersonalizationPage() {
                                                 </div>
                                             ))}
                                          </div>
+                                         <Button variant="outline" size="sm" onClick={addPillar} className="mt-4">
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Ajouter un pilier
+                                         </Button>
                                       </section>
 
                                       <div className="border-t -mx-6"></div>
@@ -1175,17 +1213,24 @@ export default function PersonalizationPage() {
                                                     <Label htmlFor="about-expertises-title">Titre de la section des expertises</Label>
                                                     <Input id="about-expertises-title" value={settings.aboutSection?.expertisesSectionTitle} onChange={(e) => handleAboutSectionChange('expertisesSectionTitle', e.target.value)} />
                                                 </div>
-                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <div className="space-y-6">
                                                     {settings.aboutSection.expertises.map((expertise, index) => (
                                                         <div key={expertise.id} className="p-4 border rounded-lg space-y-4">
+                                                          <div className="flex justify-between items-center">
                                                             <h4 className="font-medium">Expertise {index + 1}</h4>
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor={`expertise-title-${index}`}>Titre</Label>
-                                                                <Input id={`expertise-title-${index}`} value={expertise.title} onChange={(e) => handleAboutExpertiseChange(index, 'title', e.target.value)} />
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
-                                                                <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
+                                                            <Button variant="ghost" size="icon" onClick={() => removeExpertise(index)}>
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                          </div>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                              <div className="space-y-2">
+                                                                  <Label htmlFor={`expertise-title-${index}`}>Titre</Label>
+                                                                  <Input id={`expertise-title-${index}`} value={expertise.title} onChange={(e) => handleAboutExpertiseChange(index, 'title', e.target.value)} />
+                                                              </div>
+                                                              <div className="space-y-2">
+                                                                  <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
+                                                                  <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
+                                                              </div>
                                                             </div>
                                                             <div className="mt-4">
                                                                 <Label>Image de l'expertise</Label>
@@ -1199,8 +1244,11 @@ export default function PersonalizationPage() {
                                                                     </div>
                                                                     <div className="flex flex-col gap-2">
                                                                         <Button variant="outline" size="sm" onClick={() => {
-                                                                            fileInputRef.current.onchange = createUploadHandler(base64 => handleAboutExpertiseChange(index, 'imageUrl', base64));
-                                                                            fileInputRef.current?.click();
+                                                                            const currentRef = fileInputRef.current;
+                                                                            if (currentRef) {
+                                                                                currentRef.onchange = createUploadHandler(base64 => handleAboutExpertiseChange(index, 'imageUrl', base64));
+                                                                                currentRef.click();
+                                                                            }
                                                                         }}>
                                                                             <Upload className="mr-2 h-4 w-4" /> Uploader
                                                                         </Button>
@@ -1213,6 +1261,10 @@ export default function PersonalizationPage() {
                                                         </div>
                                                     ))}
                                                 </div>
+                                                <Button variant="outline" size="sm" onClick={addExpertise} className="mt-4">
+                                                  <PlusCircle className="mr-2 h-4 w-4" />
+                                                  Ajouter une expertise
+                                                </Button>
                                             </>
                                          )}
                                       </section>
@@ -1278,5 +1330,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
