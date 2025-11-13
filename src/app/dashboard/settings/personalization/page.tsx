@@ -710,9 +710,9 @@ export default function PersonalizationPage() {
                  <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
                  
                  <Accordion type="single" collapsible className="w-full space-y-2">
-                    {settings.homePageSections.map((section, index) => (
+                    {(settings.homePageSections || []).map((section, index) => (
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
-                            <AccordionTrigger className="flex items-center gap-4 p-3 hover:no-underline">
+                            <AccordionTrigger className="flex items-center gap-4 p-3 hover:no-underline [&[data-state=open]>svg:last-child]:rotate-180">
                                 <div className="flex-1 text-left font-medium">{section.label}</div>
                                 
                                 {!section.isLocked && (
@@ -856,5 +856,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
