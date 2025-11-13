@@ -738,8 +738,10 @@ export default function PersonalizationPage() {
                  <Accordion type="single" collapsible className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => (
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
-                            <AccordionTrigger className="flex items-center gap-4 p-3 hover:no-underline [&[data-state=open]>svg:last-child]:rotate-180">
-                                <div className="flex-1 text-left font-medium">{section.label}</div>
+                            <div className="flex items-center gap-4 p-3 [&[data-state=open]>svg:last-child]:rotate-180">
+                                <AccordionTrigger className="flex-1 p-0 hover:no-underline">
+                                    <div className="flex-1 text-left font-medium">{section.label}</div>
+                                </AccordionTrigger>
                                 
                                 {!section.isLocked && (
                                     <div className="flex gap-1">
@@ -769,8 +771,10 @@ export default function PersonalizationPage() {
                                     onCheckedChange={(checked) => handleSectionToggle(section.id, checked)}
                                     onClick={(e) => e.stopPropagation()}
                                 />
-                                <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                            </AccordionTrigger>
+                                <AccordionTrigger className="p-0 [&_svg]:ml-2">
+                                  <span className="sr-only">Toggle section content</span>
+                                </AccordionTrigger>
+                            </div>
                             <AccordionContent>
                                 <div className="p-6 border-t bg-muted/50">
                                 {section.id === 'hero' ? (
