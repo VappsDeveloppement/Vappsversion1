@@ -60,10 +60,10 @@ function HeroWithLogin() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                     <div className="flex flex-col gap-6 text-center items-center">
                          <Logo className="text-white" />
-                        <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
+                        <h1 className="text-4xl lg:text-5xl font-bold leading-tight" style={{color: personalization.heroTitleColor}}>
                            {personalization.heroAppTitle || "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs."}
                         </h1>
-                        <p className="text-lg text-white/80">
+                        <p className="text-lg text-white/80" style={{color: personalization.heroSubtitleColor}}>
                            {personalization.heroAppSubtitle || "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach."}
                         </p>
                         <Button size="lg" asChild variant="secondary">
@@ -113,8 +113,8 @@ function HeroWithoutLogin() {
             </header>
 
             <div className="relative z-20 container mx-auto px-4 pt-24 pb-32 text-center flex flex-col items-center">
-                <h1 className="text-4xl md:text-6xl font-bold leading-tight max-w-4xl">{personalization.heroTitle || "Révélez votre potentiel et construisez une carrière qui vous ressemble."}</h1>
-                <p className="mt-4 text-lg md:text-xl text-white/80 max-w-2xl">{personalization.heroSubtitle || "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel."}</p>
+                <h1 className="text-4xl md:text-6xl font-bold leading-tight max-w-4xl" style={{color: personalization.heroTitleColor}}>{personalization.heroTitle || "Révélez votre potentiel et construisez une carrière qui vous ressemble."}</h1>
+                <p className="mt-4 text-lg md:text-xl text-white/80 max-w-2xl" style={{color: personalization.heroSubtitleColor}}>{personalization.heroSubtitle || "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel."}</p>
                 <div className="mt-8 flex flex-wrap justify-center gap-4">
                     <Button size="lg" asChild variant="secondary">
                         <Link href={personalization.heroCta1Link || "#"}>

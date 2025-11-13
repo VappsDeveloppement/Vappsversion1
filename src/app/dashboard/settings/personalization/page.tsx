@@ -118,6 +118,8 @@ const defaultHomePageSections: Section[] = [
 const defaultPersonalization = {
     appTitle: "VApps",
     appSubtitle: "Développement",
+    appTitleColor: "#000000",
+    appSubtitleColor: "#666666",
     logoWidth: 40,
     logoHeight: 40,
     logoDisplay: "app-and-logo",
@@ -128,6 +130,8 @@ const defaultPersonalization = {
     heroStyle: 'application', // 'application' (avec connexion) ou 'tunnel' (sans connexion)
     heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
     heroSubtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
+    heroTitleColor: "#FFFFFF",
+    heroSubtitleColor: "#E0E0E0",
     heroCta1Text: "Découvrir mes services",
     heroCta1Link: "/services",
     heroCta2Text: "Prendre rendez-vous",
@@ -513,13 +517,31 @@ export default function PersonalizationPage() {
             </CardHeader>
             <CardContent className="space-y-8">
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                      <Label htmlFor="app-title">Titre de l'application</Label>
-                      <Input id="app-title" value={settings.appTitle} onChange={(e) => handleFieldChange('appTitle', e.target.value)} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="app-title">Titre de l'application</Label>
+                        <Input id="app-title" value={settings.appTitle} onChange={(e) => handleFieldChange('appTitle', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="app-title-color">Couleur du titre</Label>
+                        <div className="flex items-center gap-2">
+                            <Input type="color" value={settings.appTitleColor} onChange={(e) => handleFieldChange('appTitleColor', e.target.value)} className="w-10 h-10 p-1"/>
+                            <Input id="app-title-color" value={settings.appTitleColor} onChange={(e) => handleFieldChange('appTitleColor', e.target.value)} />
+                        </div>
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                      <Label htmlFor="app-subtitle">Sous-titre de l'application</Label>
-                      <Input id="app-subtitle" value={settings.appSubtitle} onChange={(e) => handleFieldChange('appSubtitle', e.target.value)} />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="app-subtitle">Sous-titre de l'application</Label>
+                        <Input id="app-subtitle" value={settings.appSubtitle} onChange={(e) => handleFieldChange('appSubtitle', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="app-subtitle-color">Couleur du sous-titre</Label>
+                        <div className="flex items-center gap-2">
+                            <Input type="color" value={settings.appSubtitleColor} onChange={(e) => handleFieldChange('appSubtitleColor', e.target.value)} className="w-10 h-10 p-1"/>
+                            <Input id="app-subtitle-color" value={settings.appSubtitleColor} onChange={(e) => handleFieldChange('appSubtitleColor', e.target.value)} />
+                        </div>
+                    </div>
                   </div>
                 </div>
 
@@ -881,9 +903,23 @@ export default function PersonalizationPage() {
                                                     <Label htmlFor="hero-title">Titre du Héro</Label>
                                                     <Textarea id="hero-title" value={settings.heroTitle} onChange={(e) => handleFieldChange('heroTitle', e.target.value)} />
                                                 </div>
+                                                 <div className="space-y-2">
+                                                    <Label htmlFor="hero-title-color">Couleur du titre</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={settings.heroTitleColor} onChange={(e) => handleFieldChange('heroTitleColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                                        <Input id="hero-title-color" value={settings.heroTitleColor} onChange={(e) => handleFieldChange('heroTitleColor', e.target.value)} />
+                                                    </div>
+                                                </div>
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hero-subtitle">Sous-titre du Héro</Label>
                                                     <Textarea id="hero-subtitle" value={settings.heroSubtitle} onChange={(e) => handleFieldChange('heroSubtitle', e.target.value)} />
+                                                </div>
+                                                 <div className="space-y-2">
+                                                    <Label htmlFor="hero-subtitle-color">Couleur du sous-titre</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={settings.heroSubtitleColor} onChange={(e) => handleFieldChange('heroSubtitleColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                                        <Input id="hero-subtitle-color" value={settings.heroSubtitleColor} onChange={(e) => handleFieldChange('heroSubtitleColor', e.target.value)} />
+                                                    </div>
                                                 </div>
                                                 <div className="grid grid-cols-2 gap-4">
                                                     <div className="space-y-2">
