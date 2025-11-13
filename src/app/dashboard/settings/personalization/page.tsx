@@ -123,7 +123,8 @@ const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
+  { id: 'cta', label: 'CTA 1', enabled: true },
+  { id: 'cta2', label: 'CTA 2', enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
@@ -227,6 +228,14 @@ const defaultPersonalization = {
         bgColor: "#f0fdf4",
         bgImageUrl: null as string | null
     },
+    cta2Section: {
+        title: "Un deuxième appel à l'action",
+        text: "Incitez vos visiteurs à effectuer une seconde action importante ici.",
+        buttonText: "S'inscrire à la newsletter",
+        buttonLink: "#",
+        bgColor: "#eff6ff", // bg-blue-50
+        bgImageUrl: null as string | null
+    },
     jobOffersSection: {
         title: "Nos Offres d'Emploi",
         subtitle: "Rejoignez une équipe dynamique et passionnée.",
@@ -248,6 +257,7 @@ export default function PersonalizationPage() {
   const [heroImagePreview, setHeroImagePreview] = React.useState(personalization?.heroImageUrl);
   const [aboutImagePreview, setAboutImagePreview] = React.useState(personalization?.aboutSection?.mainImageUrl);
   const [ctaImagePreview, setCtaImagePreview] = React.useState(personalization?.ctaSection?.bgImageUrl);
+  const [cta2ImagePreview, setCta2ImagePreview] = React.useState(personalization?.cta2Section?.bgImageUrl);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -270,6 +280,10 @@ export default function PersonalizationPage() {
         ctaSection: {
             ...defaultPersonalization.ctaSection,
             ...(personalization.ctaSection || {})
+        },
+        cta2Section: {
+            ...defaultPersonalization.cta2Section,
+            ...(personalization.cta2Section || {})
         },
         jobOffersSection: {
             ...defaultPersonalization.jobOffersSection,
@@ -295,6 +309,11 @@ export default function PersonalizationPage() {
         setCtaImagePreview(personalization.ctaSection.bgImageUrl);
       } else {
         setCtaImagePreview(null);
+      }
+      if (personalization.cta2Section?.bgImageUrl) {
+        setCta2ImagePreview(personalization.cta2Section.bgImageUrl);
+      } else {
+        setCta2ImagePreview(null);
       }
     }
   }, [personalization]);
@@ -390,6 +409,16 @@ export default function PersonalizationPage() {
     }));
   };
   
+  const handleCta2SectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      cta2Section: {
+        ...(prev.cta2Section || defaultPersonalization.cta2Section),
+        [field]: value
+      }
+    }));
+  };
+
   const handleJobOffersSectionChange = (field: string, value: any) => {
     setSettings(prev => ({
       ...prev,
@@ -1502,6 +1531,72 @@ export default function PersonalizationPage() {
                                                             <Button variant="destructive" size="sm" onClick={() => {
                                                                 setCtaImagePreview(null);
                                                                 handleCtaSectionChange('bgImageUrl', null);
+                                                            }}>Supprimer</Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ) : section.id === 'cta2' ? (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="font-medium">Contenu</h4>
+                                            <div className="space-y-4 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-title">Titre</Label>
+                                                    <Input id="cta2-title" value={settings.cta2Section?.title} onChange={e => handleCta2SectionChange('title', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-text">Texte</Label>
+                                                    <Textarea id="cta2-text" value={settings.cta2Section?.text} onChange={e => handleCta2SectionChange('text', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium">Bouton</h4>
+                                            <div className="grid grid-cols-2 gap-4 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-button-text">Texte du bouton</Label>
+                                                    <Input id="cta2-button-text" value={settings.cta2Section?.buttonText} onChange={e => handleCta2SectionChange('buttonText', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-button-link">Lien du bouton</Label>
+                                                    <Input id="cta2-button-link" value={settings.cta2Section?.buttonLink} onChange={e => handleCta2SectionChange('buttonLink', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium">Arrière-plan</h4>
+                                            <div className="grid grid-cols-2 gap-8 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-bg-color">Couleur de fond</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={settings.cta2Section?.bgColor} onChange={e => handleCta2SectionChange('bgColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                                        <Input id="cta2-bg-color" value={settings.cta2Section?.bgColor} onChange={e => handleCta2SectionChange('bgColor', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <Label>Image de fond</Label>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden" style={{backgroundColor: settings.cta2Section?.bgColor}}>
+                                                            {cta2ImagePreview && <Image src={cta2ImagePreview} alt="Aperçu CTA 2" layout="fill" objectFit="cover" />}
+                                                        </div>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            onChange={createUploadHandler(base64 => {
+                                                                setCta2ImagePreview(base64);
+                                                                handleCta2SectionChange('bgImageUrl', base64);
+                                                            })}
+                                                            className="hidden"
+                                                            accept="image/png, image/jpeg"
+                                                        />
+                                                        <div className="flex flex-col gap-2">
+                                                            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Uploader</Button>
+                                                            <Button variant="destructive" size="sm" onClick={() => {
+                                                                setCta2ImagePreview(null);
+                                                                handleCta2SectionChange('bgImageUrl', null);
                                                             }}>Supprimer</Button>
                                                         </div>
                                                     </div>

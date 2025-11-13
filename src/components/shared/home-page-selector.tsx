@@ -15,6 +15,7 @@ import { ShopSection } from '@/components/shared/shop-section';
 import { ServicesSection } from '@/components/shared/services-section';
 import { OtherActivitiesSection } from '@/components/shared/other-activities-section';
 import { CtaSection } from '@/components/shared/cta-section';
+import { CtaSection2 } from '@/components/shared/cta-section2';
 import { PricingSection } from '@/components/shared/pricing-section';
 import { WhiteLabelSection } from '@/components/shared/white-label-section';
 import { BlogSection } from '@/components/shared/blog-section';
@@ -30,6 +31,7 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
   about: AboutSection,
   parcours: ParcoursSection,
   cta: CtaSection,
+  cta2: CtaSection2,
   video: VideoSection,
   shop: ShopSection,
   services: ServicesSection,

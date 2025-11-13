@@ -50,6 +50,15 @@ interface CtaSectionPersonalization {
     bgImageUrl: string | null;
 }
 
+interface Cta2SectionPersonalization {
+    title: string;
+    text: string;
+    buttonText: string;
+    buttonLink: string;
+    bgColor: string;
+    bgImageUrl: string | null;
+}
+
 interface JobOffersSectionPersonalization {
     title: string;
     subtitle: string;
@@ -100,6 +109,7 @@ interface Personalization {
     aboutSection: AboutSectionPersonalization;
     parcoursSection: ParcoursSectionPersonalization;
     ctaSection: CtaSectionPersonalization;
+    cta2Section: Cta2SectionPersonalization;
     jobOffersSection: JobOffersSectionPersonalization;
     [key: string]: any;
 }
@@ -164,7 +174,8 @@ const defaultPersonalization: Personalization = {
       { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
       { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
       { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-      { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
+      { id: 'cta', label: 'CTA 1', enabled: true },
+      { id: 'cta2', label: 'CTA 2', enabled: true },
       { id: 'video', label: 'Vidéo', enabled: true },
       { id: 'shop', label: 'Boutique', enabled: true },
       { id: 'services', label: 'Accompagnements', enabled: true },
@@ -218,6 +229,14 @@ const defaultPersonalization: Personalization = {
         bgColor: "#f0fdf4",
         bgImageUrl: null
     },
+    cta2Section: {
+        title: "Un deuxième appel à l'action",
+        text: "Incitez vos visiteurs à effectuer une seconde action importante ici.",
+        buttonText: "S'inscrire à la newsletter",
+        buttonLink: "#",
+        bgColor: "#eff6ff", // bg-blue-50
+        bgImageUrl: null as string | null
+    },
     jobOffersSection: {
         title: "Nos Offres d'Emploi",
         subtitle: "Rejoignez une équipe dynamique et passionnée.",
@@ -267,27 +286,32 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 // Create a map of saved sections by their ID for quick lookups.
                 const savedSectionsMap = new Map(savedSections.map((s: Section) => [s.id, s]));
 
-                // Merge the lists: Keep the order and state of saved sections, but add any new default sections.
+                // Create a new merged list based on the order of defaultSections
                 const mergedSections = defaultSections.map(defaultSection => {
                     const savedSection = savedSectionsMap.get(defaultSection.id);
                     if (savedSection) {
-                        // If the section exists in both, use the saved one but ensure all keys are present
+                        // If the section exists in both, use the saved one, but ensure all default keys are present.
                         return { ...defaultSection, ...savedSection };
                     }
                     // If the section is new (only in defaults), use the default one.
                     return defaultSection;
                 });
                 
-                // Ensure any section that was in saved but not in default (e.g. old/deleted section) is not carried over
-                // by filtering based on default section IDs
-                const defaultSectionIds = new Set(defaultSections.map(s => s.id));
-                const finalSections = mergedSections.filter(s => defaultSectionIds.has(s.id));
+                // Keep the order from the saved sections, and append new ones.
+                // This preserves the user's custom order.
+                const finalOrderedSections = [
+                    ...savedSections.map((saved: Section) => {
+                        const defaultSection = defaultSections.find(d => d.id === saved.id);
+                        return defaultSection ? { ...defaultSection, ...saved } : saved;
+                    }).filter(s => defaultSections.some(d => d.id === s.id)), // Remove sections that no longer exist in default
+                    ...defaultSections.filter(defaultSection => !savedSectionsMap.has(defaultSection.id))
+                ];
 
 
                 const mergedPersonalization = {
                     ...defaultPersonalization,
                     ...(agencyData.personalization || {}),
-                    homePageSections: finalSections, // Use the intelligently merged sections
+                    homePageSections: finalOrderedSections,
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
@@ -305,6 +329,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                      ctaSection: {
                         ...defaultPersonalization.ctaSection,
                         ...(agencyData.personalization?.ctaSection || {}),
+                    },
+                    cta2Section: {
+                        ...defaultPersonalization.cta2Section,
+                        ...(agencyData.personalization?.cta2Section || {}),
                     },
                     jobOffersSection: {
                         ...defaultPersonalization.jobOffersSection,
