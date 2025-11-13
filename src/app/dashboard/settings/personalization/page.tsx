@@ -174,6 +174,25 @@ const defaultPersonalization = {
         companyName: "", structureType: "", capital: "", siret: "", addressStreet: "", addressZip: "", addressCity: "",
         email: "", phone: "", apeNaf: "", rm: "", rcs: "", nda: "", insurance: "", isVatSubject: false, vatRate: "", vatNumber: "",
         legalMentions: "", cgv: "", privacyPolicy: ""
+    },
+    aboutSection: {
+      mainTitle: "Trouver Votre Voie",
+      mainSubtitle: "Une approche sur-mesure",
+      mainImageUrl: null as string | null,
+      mainText: "Chez Vapps, nous croyons qu'il n'existe pas de chemin unique. C'est pourquoi nous proposons une approche holistique et inclusive, qui prend en compte votre personnalité, vos compétences, vos envies et vos contraintes.",
+      pillarsSectionTitle: "Les piliers de notre accompagnement",
+      pillars: [
+        { id: "pillar-method", title: "Notre Méthode", description: "Une approche structurée en 4 étapes pour garantir votre succès." },
+        { id: "pillar-tools", title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion." },
+        { id: "pillar-community", title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble." },
+      ],
+      expertisesSectionTitle: "Nos expertises sectorielles",
+      expertises: [
+        { id: "expertise-tech", title: "Secteur Tech", description: "Conseils pour les métiers du numérique." },
+        { id: "expertise-health", title: "Secteur Santé", description: "Évoluer dans le domaine de la santé." },
+        { id: "expertise-entrepreneurship", title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise." },
+        { id: "expertise-management", title: "Management", description: "Devenir un manager bienveillant et efficace." },
+      ]
     }
 };
 
@@ -185,8 +204,11 @@ export default function PersonalizationPage() {
   const [settings, setSettings] = useState(personalization || defaultPersonalization);
   const [logoPreview, setLogoPreview] = React.useState(personalization?.logoDataUrl || "/vapps.png");
   const [heroImagePreview, setHeroImagePreview] = React.useState(personalization?.heroImageUrl);
+  const [aboutImagePreview, setAboutImagePreview] = React.useState(personalization?.aboutSection?.mainImageUrl);
+  
   const logoFileInputRef = useRef<HTMLInputElement>(null);
   const heroImageFileInputRef = useRef<HTMLInputElement>(null);
+  const aboutImageFileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     if (personalization) {
@@ -196,6 +218,10 @@ export default function PersonalizationPage() {
         ...personalization,
         homePageSections: personalization.homePageSections || defaultHomePageSections,
         heroNavLinks: personalization.heroNavLinks || [],
+        aboutSection: {
+            ...defaultPersonalization.aboutSection,
+            ...(personalization.aboutSection || {})
+        }
       }));
       if (personalization.logoDataUrl) {
           setLogoPreview(personalization.logoDataUrl);
@@ -207,6 +233,11 @@ export default function PersonalizationPage() {
       } else {
         setHeroImagePreview(null);
       }
+       if (personalization.aboutSection?.mainImageUrl) {
+        setAboutImagePreview(personalization.aboutSection.mainImageUrl);
+      } else {
+        setAboutImagePreview(null);
+      }
     }
   }, [personalization]);
 
@@ -214,6 +245,28 @@ export default function PersonalizationPage() {
     setSettings(prev => ({ ...prev, [field]: value }));
   };
   
+  const handleAboutSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      aboutSection: {
+        ...(prev.aboutSection || defaultPersonalization.aboutSection),
+        [field]: value
+      }
+    }));
+  };
+  
+  const handleAboutPillarChange = (index: number, field: 'title' | 'description', value: string) => {
+      const newPillars = [...(settings.aboutSection.pillars)];
+      newPillars[index] = { ...newPillars[index], [field]: value };
+      handleAboutSectionChange('pillars', newPillars);
+  };
+
+  const handleAboutExpertiseChange = (index: number, field: 'title' | 'description', value: string) => {
+      const newExpertises = [...(settings.aboutSection.expertises)];
+      newExpertises[index] = { ...newExpertises[index], [field]: value };
+      handleAboutSectionChange('expertises', newExpertises);
+  };
+
   const handleLegalInfoChange = (field: string, value: any) => {
     setSettings(prev => ({
         ...prev,
@@ -275,6 +328,19 @@ export default function PersonalizationPage() {
         handleFieldChange('heroImageUrl', base64);
     }
   };
+  
+  const handleAboutImageUploadClick = () => {
+    aboutImageFileInputRef.current?.click();
+  };
+
+  const handleAboutImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        const base64 = await toBase64(file);
+        setAboutImagePreview(base64);
+        handleAboutSectionChange('mainImageUrl', base64);
+    }
+  };
 
   const handleRemoveLogo = () => {
     setLogoPreview("/vapps.png");
@@ -284,6 +350,11 @@ export default function PersonalizationPage() {
   const handleRemoveHeroImage = () => {
     setHeroImagePreview(null);
     handleFieldChange('heroImageUrl', null);
+  };
+  
+   const handleRemoveAboutImage = () => {
+    setAboutImagePreview(null);
+    handleAboutSectionChange('mainImageUrl', null);
   };
 
   const handleLinkChange = (index: number, field: keyof AboutLink, value: string) => {
@@ -383,10 +454,11 @@ export default function PersonalizationPage() {
       </div>
 
       <Tabs defaultValue="info-legales">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
           <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
+          <TabsTrigger value="section-a-propos">Section: À Propos</TabsTrigger>
           <TabsTrigger value="paiement">Paiement</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
           <TabsTrigger value="rgpd">Paramètres RGPD</TabsTrigger>
@@ -1024,6 +1096,119 @@ export default function PersonalizationPage() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="section-a-propos">
+          <Card>
+            <CardHeader>
+              <CardTitle>Section "À Propos"</CardTitle>
+              <CardDescription>Personnalisez le contenu de la section "À propos" de votre page d'accueil.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-8">
+              <section>
+                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu Principal</h3>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-2">
+                        <Label htmlFor="about-main-title">Titre principal</Label>
+                        <Input id="about-main-title" value={settings.aboutSection?.mainTitle} onChange={(e) => handleAboutSectionChange('mainTitle', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="about-main-subtitle">Sous-titre</Label>
+                        <Input id="about-main-subtitle" value={settings.aboutSection?.mainSubtitle} onChange={(e) => handleAboutSectionChange('mainSubtitle', e.target.value)} />
+                    </div>
+                 </div>
+                 <div className="mt-6 space-y-2">
+                    <Label htmlFor="about-main-text">Texte principal</Label>
+                    <Textarea id="about-main-text" value={settings.aboutSection?.mainText} onChange={(e) => handleAboutSectionChange('mainText', e.target.value)} rows={5} />
+                 </div>
+                 <div className="mt-6">
+                    <Label>Image principale</Label>
+                    <div className="flex items-center gap-4 mt-2">
+                        <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                           {aboutImagePreview ? (
+                                <Image src={aboutImagePreview} alt="Aperçu de l'image À Propos" layout="fill" objectFit="cover" />
+                            ) : (
+                                <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
+                            )}
+                        </div>
+                        <input
+                            type="file"
+                            ref={aboutImageFileInputRef}
+                            onChange={handleAboutImageFileChange}
+                            className="hidden"
+                            accept="image/png, image/jpeg"
+                        />
+                        <div className="flex flex-col gap-2">
+                          <Button variant="outline" onClick={handleAboutImageUploadClick}>
+                              <Upload className="mr-2 h-4 w-4" />
+                              Uploader
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={handleRemoveAboutImage}>
+                              <Trash2 className="mr-2 h-4 w-4" />
+                              Supprimer
+                          </Button>
+                        </div>
+                    </div>
+                 </div>
+              </section>
+
+              <div className="border-t -mx-6"></div>
+
+              <section>
+                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Piliers de l'accompagnement</h3>
+                 <div className="space-y-2 mb-6">
+                    <Label htmlFor="about-pillars-title">Titre de la section des piliers</Label>
+                    <Input id="about-pillars-title" value={settings.aboutSection?.pillarsSectionTitle} onChange={(e) => handleAboutSectionChange('pillarsSectionTitle', e.target.value)} />
+                 </div>
+                 <div className="space-y-6">
+                    {settings.aboutSection.pillars.map((pillar, index) => (
+                        <div key={pillar.id} className="p-4 border rounded-lg">
+                            <h4 className="font-medium mb-4">Pilier {index + 1}</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor={`pillar-title-${index}`}>Titre</Label>
+                                    <Input id={`pillar-title-${index}`} value={pillar.title} onChange={(e) => handleAboutPillarChange(index, 'title', e.target.value)} />
+                                </div>
+                                 <div className="space-y-2">
+                                    <Label htmlFor={`pillar-desc-${index}`}>Description</Label>
+                                    <Input id={`pillar-desc-${index}`} value={pillar.description} onChange={(e) => handleAboutPillarChange(index, 'description', e.target.value)} />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                 </div>
+              </section>
+
+              <div className="border-t -mx-6"></div>
+              
+              <section>
+                 <h3 className="text-xl font-semibold mb-6 border-b pb-2">Expertises Sectorielles</h3>
+                 <div className="space-y-2 mb-6">
+                    <Label htmlFor="about-expertises-title">Titre de la section des expertises</Label>
+                    <Input id="about-expertises-title" value={settings.aboutSection?.expertisesSectionTitle} onChange={(e) => handleAboutSectionChange('expertisesSectionTitle', e.target.value)} />
+                 </div>
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {settings.aboutSection.expertises.map((expertise, index) => (
+                        <div key={expertise.id} className="p-4 border rounded-lg space-y-4">
+                             <h4 className="font-medium">Expertise {index + 1}</h4>
+                            <div className="space-y-2">
+                                <Label htmlFor={`expertise-title-${index}`}>Titre</Label>
+                                <Input id={`expertise-title-${index}`} value={expertise.title} onChange={(e) => handleAboutExpertiseChange(index, 'title', e.target.value)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
+                                <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
+                            </div>
+                        </div>
+                    ))}
+                 </div>
+              </section>
+
+              <div className="flex justify-end pt-6 border-t">
+                <Button onClick={handleSave}>Enregistrer les modifications</Button>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="paiement">
           <Card>
             <CardHeader>
@@ -1070,3 +1255,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    

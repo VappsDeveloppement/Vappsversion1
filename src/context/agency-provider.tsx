@@ -9,6 +9,17 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 import type { Section, HeroNavLink } from '@/app/dashboard/settings/personalization/page';
 
+interface AboutSectionPersonalization {
+    mainTitle: string;
+    mainSubtitle: string;
+    mainImageUrl: string | null;
+    mainText: string;
+    pillarsSectionTitle: string;
+    pillars: { id: string; title: string; description: string; }[];
+    expertisesSectionTitle: string;
+    expertises: { id: string; title: string; description: string; }[];
+}
+
 // Define the shape of the personalization settings object
 interface Personalization {
     appTitle: string;
@@ -49,6 +60,7 @@ interface Personalization {
     homePageVersion: string;
     homePageSections: Section[];
     legalInfo: any;
+    aboutSection: AboutSectionPersonalization;
     [key: string]: any;
 }
 
@@ -126,6 +138,25 @@ const defaultPersonalization: Personalization = {
         companyName: "", structureType: "", capital: "", siret: "", addressStreet: "", addressZip: "", addressCity: "",
         email: "", phone: "", apeNaf: "", rm: "", rcs: "", nda: "", insurance: "", isVatSubject: false, vatRate: "", vatNumber: "",
         legalMentions: "", cgv: "", privacyPolicy: ""
+    },
+    aboutSection: {
+      mainTitle: "Trouver Votre Voie",
+      mainSubtitle: "Une approche sur-mesure",
+      mainImageUrl: null,
+      mainText: "Chez Vapps, nous croyons qu'il n'existe pas de chemin unique. C'est pourquoi nous proposons une approche holistique et inclusive, qui prend en compte votre personnalité, vos compétences, vos envies et vos contraintes.",
+      pillarsSectionTitle: "Les piliers de notre accompagnement",
+      pillars: [
+        { id: "pillar-method", title: "Notre Méthode", description: "Une approche structurée en 4 étapes pour garantir votre succès." },
+        { id: "pillar-tools", title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion." },
+        { id: "pillar-community", title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble." },
+      ],
+      expertisesSectionTitle: "Nos expertises sectorielles",
+      expertises: [
+        { id: "expertise-tech", title: "Secteur Tech", description: "Conseils pour les métiers du numérique." },
+        { id: "expertise-health", title: "Secteur Santé", description: "Évoluer dans le domaine de la santé." },
+        { id: "expertise-entrepreneurship", title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise." },
+        { id: "expertise-management", title: "Management", description: "Devenir un manager bienveillant et efficace." },
+      ]
     }
 };
 
@@ -166,6 +197,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
+                    },
+                    aboutSection: {
+                        ...defaultPersonalization.aboutSection,
+                        ...(agencyData.personalization?.aboutSection || {})
                     },
                     homePageSections: agencyData.personalization?.homePageSections?.length 
                         ? agencyData.personalization.homePageSections 
@@ -218,3 +253,5 @@ export const useAgency = (): AgencyContextType & { agency: {id: string, name: st
     // We add the dummy agency object here for backward compatibility during the refactor.
     return { ...context, agency: { id: 'vapps-agency', name: 'VApps Model', personalization: context.personalization } };
 };
+
+    
