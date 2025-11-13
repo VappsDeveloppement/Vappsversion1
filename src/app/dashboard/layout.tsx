@@ -17,6 +17,7 @@ import {
   ChevronDown,
   Home,
   DatabaseZap,
+  LayoutTemplate,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -55,7 +56,7 @@ const settingsMenuItems = [
 ]
 
 const apiMenuItems = [
-    { href: "/dashboard/api/agency", label: "Agence", icon: <DatabaseZap /> },
+    { href: "/dashboard/api/agency", label: "Vue d'ensemble", icon: <DatabaseZap /> },
 ]
 
 export default function DashboardLayout({
@@ -65,8 +66,12 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
-  const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
+
+  const isModelAgencyPath = menuItems.some(item => pathname.startsWith(item.href)) || pathname.startsWith('/dashboard/settings');
+
   const [isApiOpen, setIsApiOpen] = React.useState(pathname.startsWith('/dashboard/api'));
+  const [isModelAgencyOpen, setIsModelAgencyOpen] = React.useState(isModelAgencyPath);
+  const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -155,40 +160,60 @@ export default function DashboardLayout({
                         </SidebarMenuSub>
                     </CollapsibleContent>
                 </Collapsible>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.href}>
-                  <Link href={item.href}>
-                    <SidebarMenuButton isActive={pathname === item.href}>
-                      {item.icon}
-                      <span className="text-black">{item.label}</span>
-                    </SidebarMenuButton>
-                  </Link>
-                </SidebarMenuItem>
-              ))}
-                <Collapsible open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+              
+                <Collapsible open={isModelAgencyOpen} onOpenChange={setIsModelAgencyOpen}>
                     <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
-                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/settings")}>
-                                <Shield />
-                                <span>Administration</span>
-                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isSettingsOpen && "rotate-180")} />
+                            <SidebarMenuButton isActive={isModelAgencyPath}>
+                                <LayoutTemplate />
+                                <span>Modèle Agence</span>
+                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isModelAgencyOpen && "rotate-180")} />
                             </SidebarMenuButton>
                         </CollapsibleTrigger>
                     </SidebarMenuItem>
                     <CollapsibleContent>
                         <SidebarMenuSub>
-                            {settingsMenuItems.map((item) => (
-                                <SidebarMenuItem key={item.href}>
-                                    <Link href={item.href} passHref>
-                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                           {menuItems.map((item) => (
+                            <SidebarMenuItem key={item.href}>
+                              <Link href={item.href}>
+                                <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                                   <span>
+                                    {item.icon}
+                                    <span className="text-black">{item.label}</span>
+                                   </span>
+                                </SidebarMenuSubButton>
+                              </Link>
+                            </SidebarMenuItem>
+                          ))}
+                            <Collapsible open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+                                <SidebarMenuItem>
+                                    <CollapsibleTrigger asChild>
+                                        <SidebarMenuSubButton asChild isActive={pathname.startsWith("/dashboard/settings")}>
                                           <span>
-                                            {item.icon}
-                                            <span>{item.label}</span>
+                                            <Shield />
+                                            <span>Administration</span>
+                                            <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isSettingsOpen && "rotate-180")} />
                                           </span>
                                         </SidebarMenuSubButton>
-                                    </Link>
+                                    </CollapsibleTrigger>
                                 </SidebarMenuItem>
-                            ))}
+                                <CollapsibleContent>
+                                    <SidebarMenuSub>
+                                        {settingsMenuItems.map((item) => (
+                                            <SidebarMenuItem key={item.href}>
+                                                <Link href={item.href} passHref>
+                                                    <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                                                      <span>
+                                                        {item.icon}
+                                                        <span>{item.label}</span>
+                                                      </span>
+                                                    </SidebarMenuSubButton>
+                                                </Link>
+                                            </SidebarMenuItem>
+                                        ))}
+                                    </SidebarMenuSub>
+                                </CollapsibleContent>
+                            </Collapsible>
                         </SidebarMenuSub>
                     </CollapsibleContent>
                 </Collapsible>
