@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -85,6 +85,12 @@ export type SocialLink = {
   icon: string;
 };
 
+export type HeroNavLink = {
+  id: number;
+  text: string;
+  url: string;
+};
+
 const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Facebook,
     Twitter,
@@ -142,6 +148,12 @@ const defaultPersonalization = {
     heroAppSubtitle: "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.",
     heroAppCtaText: "Découvrir VApps",
     heroAppCtaLink: "#about",
+    heroNavLinks: [
+      { id: 1, text: "Approche", url: "#about" },
+      { id: 2, text: "Parcours", url: "#parcours" },
+      { id: 3, text: "Formules", url: "#pricing" },
+      { id: 4, text: "Contact", url: "#contact" },
+    ] as HeroNavLink[],
     footerAboutTitle: "À propos",
     footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
     footerAboutLinks: [
@@ -183,6 +195,7 @@ export default function PersonalizationPage() {
         ...prev,
         ...personalization,
         homePageSections: personalization.homePageSections || defaultHomePageSections,
+        heroNavLinks: personalization.heroNavLinks || [],
       }));
       if (personalization.logoDataUrl) {
           setLogoPreview(personalization.logoDataUrl);
@@ -296,6 +309,25 @@ export default function PersonalizationPage() {
     const newLinks = [...(settings.footerSocialLinks || [])];
     newLinks[index].url = url;
     handleFieldChange('footerSocialLinks', newLinks);
+  };
+
+  const handleHeroNavLinkChange = (index: number, field: keyof HeroNavLink, value: string) => {
+    const newLinks = [...(settings.heroNavLinks || [])];
+    (newLinks[index] as any)[field] = value;
+    handleFieldChange('heroNavLinks', newLinks);
+  };
+
+  const addHeroNavLink = () => {
+    const newLinks = [
+      ...(settings.heroNavLinks || []),
+      { id: Date.now(), text: 'Nouveau', url: '#' },
+    ];
+    handleFieldChange('heroNavLinks', newLinks);
+  };
+
+  const removeHeroNavLink = (index: number) => {
+    const newLinks = (settings.heroNavLinks || []).filter((_, i) => i !== index);
+    handleFieldChange('heroNavLinks', newLinks);
   };
   
   const moveSection = (index: number, direction: 'up' | 'down') => {
@@ -939,6 +971,38 @@ export default function PersonalizationPage() {
                                                     <div className="space-y-2">
                                                         <Label htmlFor="hero-cta2-link">Lien CTA 2</Label>
                                                         <Input id="hero-cta2-link" value={settings.heroCta2Link} onChange={(e) => handleFieldChange('heroCta2Link', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                                <div>
+                                                    <Label>Menu de navigation (pour Héro "Sans connexion")</Label>
+                                                    <div className="space-y-4 mt-2">
+                                                        {(settings.heroNavLinks || []).map((link, index) => (
+                                                            <div key={link.id} className="grid grid-cols-11 gap-2 items-center">
+                                                                <div className="col-span-5">
+                                                                    <Input 
+                                                                        placeholder="Texte du lien"
+                                                                        value={link.text}
+                                                                        onChange={(e) => handleHeroNavLinkChange(index, 'text', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="col-span-5">
+                                                                    <Input 
+                                                                        placeholder="URL (ex: #contact)"
+                                                                        value={link.url}
+                                                                        onChange={(e) => handleHeroNavLinkChange(index, 'url', e.target.value)}
+                                                                    />
+                                                                </div>
+                                                                <div className="col-span-1">
+                                                                    <Button variant="ghost" size="icon" onClick={() => removeHeroNavLink(index)}>
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        <Button variant="outline" size="sm" onClick={addHeroNavLink}>
+                                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                                            Ajouter un lien de navigation
+                                                        </Button>
                                                     </div>
                                                 </div>
                                             </div>

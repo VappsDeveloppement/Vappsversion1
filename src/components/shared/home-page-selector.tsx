@@ -19,7 +19,7 @@ import { PricingSection } from '@/components/shared/pricing-section';
 import { WhiteLabelSection } from '@/components/shared/white-label-section';
 import { BlogSection } from '@/components/shared/blog-section';
 import { Footer } from '@/components/shared/footer';
-import type { Section } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink } from '@/app/dashboard/settings/personalization/page';
 import { useAgency } from '@/context/agency-provider';
 import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
@@ -60,10 +60,10 @@ function HeroWithLogin() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
                     <div className="flex flex-col gap-6 text-center items-center">
                          <Logo className="text-white" />
-                        <h1 className="text-4xl lg:text-5xl font-bold leading-tight" style={{color: personalization.heroTitleColor}}>
+                        <h1 className="text-4xl lg:text-5xl font-bold leading-tight" style={{color: personalization.heroAppTitleColor}}>
                            {personalization.heroAppTitle || "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs."}
                         </h1>
-                        <p className="text-lg text-white/80" style={{color: personalization.heroSubtitleColor}}>
+                        <p className="text-lg text-white/80" style={{color: personalization.heroAppSubtitleColor}}>
                            {personalization.heroAppSubtitle || "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach."}
                         </p>
                         <Button size="lg" asChild variant="secondary">
@@ -85,6 +85,8 @@ function HeroWithLogin() {
 function HeroWithoutLogin() {
     const { personalization } = useAgency();
     const heroImageSrc = personalization.heroImageUrl;
+    const navLinks = personalization.heroNavLinks as HeroNavLink[] || [];
+
 
     return (
         <div className="relative text-white" style={{ backgroundColor: personalization.heroBgColor }}>
@@ -102,10 +104,9 @@ function HeroWithoutLogin() {
             <header className="relative z-20 container mx-auto px-4 py-4 flex justify-between items-center">
                 <Logo className="text-white" />
                 <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
-                    <Link href="#about" className="hover:text-primary transition-colors">Approche</Link>
-                    <Link href="#parcours" className="hover:text-primary transition-colors">Parcours</Link>
-                    <Link href="#pricing" className="hover:text-primary transition-colors">Formules</Link>
-                    <Link href="#contact" className="hover:text-primary transition-colors">Contact</Link>
+                    {navLinks.map(link => (
+                      <Link key={link.id} href={link.url} className="hover:text-primary transition-colors">{link.text}</Link>
+                    ))}
                 </nav>
                 <Button asChild>
                     <Link href="/application">Mon Espace</Link>

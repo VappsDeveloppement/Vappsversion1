@@ -7,12 +7,14 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink } from '@/app/dashboard/settings/personalization/page';
 
 // Define the shape of the personalization settings object
 interface Personalization {
     appTitle: string;
     appSubtitle: string;
+    appTitleColor: string;
+    appSubtitleColor: string;
     logoDataUrl: string | null;
     logoWidth: number;
     logoHeight: number;
@@ -23,12 +25,21 @@ interface Personalization {
     heroStyle: string;
     heroTitle: string;
     heroSubtitle: string;
+    heroTitleColor: string;
+    heroSubtitleColor: string;
     heroCta1Text: string;
     heroCta1Link: string;
     heroCta2Text: string;
     heroCta2Link: string;
     heroImageUrl: string | null;
     heroBgColor: string;
+    heroAppTitle: string;
+    heroAppSubtitle: string;
+    heroAppTitleColor: string;
+    heroAppSubtitleColor: string;
+    heroAppCtaText: string;
+    heroAppCtaLink: string;
+    heroNavLinks: HeroNavLink[];
     footerAboutTitle: string;
     footerAboutText: string;
     footerAboutLinks: any[];
@@ -55,6 +66,8 @@ const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 const defaultPersonalization: Personalization = {
     appTitle: "VApps",
     appSubtitle: "Développement",
+    appTitleColor: "#000000",
+    appSubtitleColor: "#666666",
     logoDataUrl: null,
     logoWidth: 40,
     logoHeight: 40,
@@ -65,12 +78,21 @@ const defaultPersonalization: Personalization = {
     heroStyle: "application",
     heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
     heroSubtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
+    heroTitleColor: "#FFFFFF",
+    heroSubtitleColor: "#E0E0E0",
     heroCta1Text: "Découvrir mes services",
     heroCta1Link: "/services",
     heroCta2Text: "Prendre rendez-vous",
     heroCta2Link: "/contact",
     heroImageUrl: null,
     heroBgColor: "#000000",
+    heroAppTitle: "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.",
+    heroAppSubtitle: "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.",
+    heroAppTitleColor: "#FFFFFF",
+    heroAppSubtitleColor: "#E0E0E0",
+    heroAppCtaText: "Découvrir VApps",
+    heroAppCtaLink: "#about",
+    heroNavLinks: [],
     footerAboutTitle: "À propos",
     footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
     footerAboutLinks: [
