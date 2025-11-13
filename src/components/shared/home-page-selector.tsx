@@ -169,17 +169,22 @@ function TunnelHomePage() {
 function ApplicationHomePage() {
     const { personalization } = useAgency();
     const sections = personalization?.homePageSections as Section[] || [];
-
-    const isWhiteLabelEnabled = sections.find(s => s.id === 'whiteLabel')?.enabled;
-    const isFooterEnabled = sections.find(s => s.id === 'footer')?.enabled;
-
+    const sectionsToRender = ['hero', 'whiteLabel', 'footer'];
+    
     return (
         <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
             <main>
-                <HeroSection />
-                {isWhiteLabelEnabled && <WhiteLabelSection />}
+                {sections
+                    .filter(section => sectionsToRender.includes(section.id) && section.enabled)
+                    .map(section => {
+                        if (section.id === 'hero') return <HeroSection key={section.id} />;
+                        if (section.id === 'footer') return null;
+
+                        const SectionComponent = sectionComponents[section.id];
+                        return SectionComponent ? <SectionComponent key={section.id} /> : null;
+                    })}
             </main>
-            {isFooterEnabled && <Footer />}
+            {sections.find(s => s.id === 'footer' && s.enabled) && <Footer />}
         </div>
     );
 }
@@ -198,15 +203,6 @@ export function HomePageSelector() {
     )
   }
 
-  // --- LOGIC ROUTING ---
-  // Pour maintenant, on simule une agence. La logique pour l'app principale sera ajoutée plus tard.
-  const isMainApp = false;
-  
-  if (isMainApp) {
-      // Logique pour l'app principale si nécessaire
-  }
-  
-  // Pour une AGENCE, on respecte le `homePageVersion`
   const homePageVersion = personalization?.homePageVersion || 'tunnel';
 
   if (homePageVersion === 'application') {
