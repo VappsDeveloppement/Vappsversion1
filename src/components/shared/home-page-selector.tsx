@@ -2,8 +2,7 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import React from 'react';
 import { LoginForm } from '@/components/shared/login-form';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -39,7 +38,9 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
   pricing: PricingSection,
 };
 
-function HeroSectionApplication() {
+// This is the Hero for the MAIN application (VApps Model)
+// It always has the login form on the right.
+function MainAppHero() {
     const { personalization } = useAgency();
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
     const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
@@ -82,7 +83,9 @@ function HeroSectionApplication() {
     )
 }
 
-function HeroSectionSalesFunnel() {
+// This is the Hero for an AGENCY using the "Tunnel de Vente" style.
+// Full-width, sales-oriented.
+function AgencySalesFunnelHero() {
     const { personalization } = useAgency();
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
     const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
@@ -131,19 +134,32 @@ function HeroSectionSalesFunnel() {
     );
 }
 
-function HeroSection() {
-    const { personalization } = useAgency();
-    
-    // We now derive the style from homePageVersion
-    if (personalization?.homePageVersion === 'tunnel') {
-        return <HeroSectionSalesFunnel />;
-    }
-    
-    return <HeroSectionApplication />;
+// This represents the MAIN application homepage.
+// It will have a consistent layout with the 2-column hero and other sections.
+function MainAppHomePage() {
+  return (
+    <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
+      <main>
+        <MainAppHero />
+        <AboutSection />
+        <ParcoursSection />
+        <CtaSection />
+        <VideoSection />
+        <ShopSection />
+        <ServicesSection />
+        <OtherActivitiesSection />
+        <BlogSection />
+        <WhiteLabelSection />
+        <PricingSection />
+      </main>
+      <Footer />
+    </div>
+  );
 }
 
 
-function TunnelHomePage() {
+// This represents an AGENCY's full sales funnel page.
+function AgencyTunnelHomePage() {
   const { personalization } = useAgency();
   const sections = personalization?.homePageSections as Section[] || [];
   
@@ -153,7 +169,7 @@ function TunnelHomePage() {
   return (
     <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
       <main>
-          {heroSection?.enabled && <HeroSection />}
+          {heroSection?.enabled && <AgencySalesFunnelHero />}
           {sections.map(section => {
             if (!section.enabled || section.id === 'hero' || section.id === 'footer') return null;
             const SectionComponent = sectionComponents[section.id];
@@ -165,13 +181,13 @@ function TunnelHomePage() {
   );
 }
 
-function ApplicationHomePage() {
+// This represents an AGENCY's simplified application access page.
+function AgencyApplicationHomePage() {
   return (
     <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
       <main>
-        <HeroSectionApplication />
+        <MainAppHero />
       </main>
-      <CtaSection />
       <WhiteLabelSection />
       <Footer />
     </div>
@@ -180,8 +196,9 @@ function ApplicationHomePage() {
 
 
 export function HomePageSelector() {
-  const { agency, isLoading, isDefaultAgency } = useAgency();
-
+  const { personalization, isLoading } = useAgency();
+  const isMainApp = true; // This will be the logic to differentiate later. For now, we are always on the main app.
+  
   if (isLoading) {
     return (
         <div className="flex items-center justify-center h-screen bg-muted/30">
@@ -193,11 +210,21 @@ export function HomePageSelector() {
     )
   }
 
-  const homePageVersion = agency?.personalization?.homePageVersion || 'tunnel';
+  // --- LOGIC ROUTING ---
+  
+  // For the main VApps application, we ALWAYS show the main app layout
+  // which includes the 2-column hero with the login form.
+  // We ignore the `homePageVersion` setting in this context.
+  if (isMainApp) {
+      return <MainAppHomePage />;
+  }
+  
+  // For a future AGENCY, we respect the `homePageVersion` setting.
+  const homePageVersion = personalization?.homePageVersion || 'tunnel';
 
   if (homePageVersion === 'application') {
-    return <ApplicationHomePage />;
+    return <AgencyApplicationHomePage />;
   }
 
-  return <TunnelHomePage />;
+  return <AgencyTunnelHomePage />;
 }

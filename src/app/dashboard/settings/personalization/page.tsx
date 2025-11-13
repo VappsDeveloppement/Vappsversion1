@@ -709,11 +709,11 @@ export default function PersonalizationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Page d'accueil</CardTitle>
-              <CardDescription>Configurez le contenu de votre page d'accueil.</CardDescription>
+              <CardDescription>Configurez le contenu de la page d'accueil de l'agence.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
               <section>
-                <h3 className="text-lg font-medium mb-4">Version de la page d'accueil</h3>
+                <h3 className="text-lg font-medium mb-4">Version de la page d'accueil (Pour les Agences)</h3>
                  <RadioGroup value={settings.homePageVersion} onValueChange={(value) => handleFieldChange('homePageVersion', value)} className="space-y-2">
                     <div className="flex items-center space-x-2">
                         <RadioGroupItem value="tunnel" id="tunnel" />
@@ -779,32 +779,29 @@ export default function PersonalizationPage() {
                                 <div className="p-6 border-t bg-muted/50">
                                 {section.id === 'hero' ? (
                                     <div className="space-y-6">
-                                        <div className="mt-6 space-y-6 pt-6 border-t">
-                                            <div className="space-y-4">
-                                                <h4 className="font-medium">Image de fond</h4>
-                                                <div className="flex items-center gap-4">
-                                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative">
-                                                        {heroImagePreview ? (
-                                                            <Image src={heroImagePreview} alt="Aperçu du Héro" layout="fill" objectFit="cover" />
-                                                        ) : (
-                                                            <span className="text-xs text-muted-foreground">Aucune image</span>
-                                                        )}
-                                                    </div>
-                                                    <input
-                                                        type="file"
-                                                        ref={heroImageFileInputRef}
-                                                        onChange={handleHeroImageFileChange}
-                                                        className="hidden"
-                                                        accept="image/png, image/jpeg"
-                                                    />
-                                                    <Button variant="outline" onClick={handleHeroImageUploadClick}>
-                                                        <Upload className="mr-2 h-4 w-4" />
-                                                        Changer l'image
-                                                    </Button>
+                                        <div className="space-y-4">
+                                            <h4 className="font-medium">Image de fond & Couleur</h4>
+                                            <div className="flex items-center gap-4">
+                                                <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative">
+                                                    {heroImagePreview ? (
+                                                        <Image src={heroImagePreview} alt="Aperçu du Héro" layout="fill" objectFit="cover" />
+                                                    ) : (
+                                                        <span className="text-xs text-muted-foreground">Aucune image</span>
+                                                    )}
                                                 </div>
+                                                <input
+                                                    type="file"
+                                                    ref={heroImageFileInputRef}
+                                                    onChange={handleHeroImageFileChange}
+                                                    className="hidden"
+                                                    accept="image/png, image/jpeg"
+                                                />
+                                                <Button variant="outline" onClick={handleHeroImageUploadClick}>
+                                                    <Upload className="mr-2 h-4 w-4" />
+                                                    Changer l'image
+                                                </Button>
                                             </div>
-                                            
-                                            <div className="space-y-2">
+                                             <div className="space-y-2">
                                                 <Label htmlFor="hero-bg-color">Couleur de fond (si pas d'image)</Label>
                                                 <div className="flex items-center gap-2">
                                                     <Input type="color" value={settings.heroBgColor} onChange={(e) => handleFieldChange('heroBgColor', e.target.value)} className="w-10 h-10 p-1"/>
@@ -813,8 +810,9 @@ export default function PersonalizationPage() {
                                             </div>
                                         </div>
 
-                                        {settings.homePageVersion === 'application' && (
-                                            <div className="mt-6 space-y-6 pt-6 border-t">
+                                        <div className="mt-6 pt-6 border-t">
+                                            <h4 className="font-semibold text-base mb-4">Contenu pour la version "Application"</h4>
+                                            <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hero-app-title">Titre</Label>
                                                     <Textarea id="hero-app-title" value={settings.heroAppTitle} onChange={(e) => handleFieldChange('heroAppTitle', e.target.value)} />
@@ -834,10 +832,11 @@ export default function PersonalizationPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                        )}
+                                        </div>
 
-                                        {settings.homePageVersion === 'tunnel' && (
-                                            <div className="mt-6 space-y-6 pt-6 border-t">
+                                        <div className="mt-6 pt-6 border-t">
+                                            <h4 className="font-semibold text-base mb-4">Contenu pour la version "Tunnel de Vente"</h4>
+                                            <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hero-title">Titre du Héro</Label>
                                                     <Textarea id="hero-title" value={settings.heroTitle} onChange={(e) => handleFieldChange('heroTitle', e.target.value)} />
@@ -867,7 +866,7 @@ export default function PersonalizationPage() {
                                                     </div>
                                                 </div>
                                             </div>
-                                        )}
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>
