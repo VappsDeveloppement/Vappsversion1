@@ -260,9 +260,34 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
             if (docSnap.exists()) {
                 const agencyData = docSnap.data();
                 
+                // Smart merge for sections
+                const savedSections = agencyData.personalization?.homePageSections || [];
+                const defaultSections = defaultPersonalization.homePageSections;
+                
+                // Create a map of saved sections by their ID for quick lookups.
+                const savedSectionsMap = new Map(savedSections.map((s: Section) => [s.id, s]));
+
+                // Merge the lists: Keep the order and state of saved sections, but add any new default sections.
+                const mergedSections = defaultSections.map(defaultSection => {
+                    const savedSection = savedSectionsMap.get(defaultSection.id);
+                    if (savedSection) {
+                        // If the section exists in both, use the saved one but ensure all keys are present
+                        return { ...defaultSection, ...savedSection };
+                    }
+                    // If the section is new (only in defaults), use the default one.
+                    return defaultSection;
+                });
+                
+                // Ensure any section that was in saved but not in default (e.g. old/deleted section) is not carried over
+                // by filtering based on default section IDs
+                const defaultSectionIds = new Set(defaultSections.map(s => s.id));
+                const finalSections = mergedSections.filter(s => defaultSectionIds.has(s.id));
+
+
                 const mergedPersonalization = {
                     ...defaultPersonalization,
                     ...(agencyData.personalization || {}),
+                    homePageSections: finalSections, // Use the intelligently merged sections
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
@@ -285,9 +310,6 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                         ...defaultPersonalization.jobOffersSection,
                         ...(agencyData.personalization?.jobOffersSection || {}),
                     },
-                    homePageSections: agencyData.personalization?.homePageSections?.length 
-                        ? agencyData.personalization.homePageSections 
-                        : defaultPersonalization.homePageSections
                 };
                 setPersonalization(mergedPersonalization);
             } else {
