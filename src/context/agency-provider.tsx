@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, ParcoursStep } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink, ParcoursStep, JobOffer } from '@/app/dashboard/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -48,6 +49,13 @@ interface CtaSectionPersonalization {
     bgColor: string;
     bgImageUrl: string | null;
 }
+
+interface JobOffersSectionPersonalization {
+    title: string;
+    subtitle: string;
+    offers: JobOffer[];
+}
+
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -92,6 +100,7 @@ interface Personalization {
     aboutSection: AboutSectionPersonalization;
     parcoursSection: ParcoursSectionPersonalization;
     ctaSection: CtaSectionPersonalization;
+    jobOffersSection: JobOffersSectionPersonalization;
     [key: string]: any;
 }
 
@@ -155,7 +164,7 @@ const defaultPersonalization: Personalization = {
       { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
       { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
       { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-      { id: 'cta', label: 'CTA 1', enabled: true },
+      { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
       { id: 'video', label: 'Vidéo', enabled: true },
       { id: 'shop', label: 'Boutique', enabled: true },
       { id: 'services', label: 'Accompagnements', enabled: true },
@@ -163,6 +172,7 @@ const defaultPersonalization: Personalization = {
       { id: 'blog', label: 'Blog', enabled: true },
       { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
       { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+      { id: 'jobOffers', label: 'Offre emploi', enabled: true },
       { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
     ],
     legalInfo: {
@@ -207,6 +217,15 @@ const defaultPersonalization: Personalization = {
         buttonLink: "#",
         bgColor: "#f0fdf4",
         bgImageUrl: null
+    },
+    jobOffersSection: {
+        title: "Nos Offres d'Emploi",
+        subtitle: "Rejoignez une équipe dynamique et passionnée.",
+        offers: [
+            { id: `job-1`, title: "Développeur Full-Stack", contractType: "CDI", location: "Paris, France" },
+            { id: `job-2`, title: "Chef de Projet Digital", contractType: "CDI", location: "Lyon, France" },
+            { id: `job-3`, title: "UX/UI Designer", contractType: "Alternance", location: "Télétravail" },
+        ]
     }
 };
 
@@ -261,6 +280,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                      ctaSection: {
                         ...defaultPersonalization.ctaSection,
                         ...(agencyData.personalization?.ctaSection || {}),
+                    },
+                    jobOffersSection: {
+                        ...defaultPersonalization.jobOffersSection,
+                        ...(agencyData.personalization?.jobOffersSection || {}),
                     },
                     homePageSections: agencyData.personalization?.homePageSections?.length 
                         ? agencyData.personalization.homePageSections 

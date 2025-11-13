@@ -97,6 +97,13 @@ export type ParcoursStep = {
   description: string;
 };
 
+export type JobOffer = {
+  id: string;
+  title: string;
+  contractType: string;
+  location: string;
+};
+
 const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Facebook,
     Twitter,
@@ -116,7 +123,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: 'CTA 1', enabled: true },
+  { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
@@ -124,6 +131,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'jobOffers', label: 'Offre emploi', enabled: true },
   { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
 ];
 
@@ -218,6 +226,15 @@ const defaultPersonalization = {
         buttonLink: "#",
         bgColor: "#f0fdf4",
         bgImageUrl: null as string | null
+    },
+    jobOffersSection: {
+        title: "Nos Offres d'Emploi",
+        subtitle: "Rejoignez une équipe dynamique et passionnée.",
+        offers: [
+            { id: `job-${Date.now()}-1`, title: "Développeur Full-Stack", contractType: "CDI", location: "Paris, France" },
+            { id: `job-${Date.now()}-2`, title: "Chef de Projet Digital", contractType: "CDI", location: "Lyon, France" },
+            { id: `job-${Date.now()}-3`, title: "UX/UI Designer", contractType: "Alternance", location: "Télétravail" },
+        ] as JobOffer[]
     }
 };
 
@@ -253,6 +270,10 @@ export default function PersonalizationPage() {
         ctaSection: {
             ...defaultPersonalization.ctaSection,
             ...(personalization.ctaSection || {})
+        },
+        jobOffersSection: {
+            ...defaultPersonalization.jobOffersSection,
+            ...(personalization.jobOffersSection || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -368,6 +389,36 @@ export default function PersonalizationPage() {
       }
     }));
   };
+  
+  const handleJobOffersSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      jobOffersSection: {
+        ...(prev.jobOffersSection || defaultPersonalization.jobOffersSection),
+        [field]: value
+      }
+    }));
+  };
+  
+  const handleJobOfferChange = (index: number, field: keyof JobOffer, value: string) => {
+      const newOffers = [...(settings.jobOffersSection.offers)];
+      (newOffers[index] as any)[field] = value;
+      handleJobOffersSectionChange('offers', newOffers);
+  };
+
+  const addJobOffer = () => {
+    const newOffers = [
+        ...(settings.jobOffersSection.offers || []),
+        { id: `job-${Date.now()}`, title: 'Nouveau Poste', contractType: 'CDI', location: 'À distance' },
+    ];
+    handleJobOffersSectionChange('offers', newOffers);
+  };
+
+  const removeJobOffer = (index: number) => {
+    const newOffers = settings.jobOffersSection.offers.filter((_, i) => i !== index);
+    handleJobOffersSectionChange('offers', newOffers);
+  };
+
 
   const handleLegalInfoChange = (field: string, value: any) => {
     setSettings(prev => ({
@@ -1457,6 +1508,58 @@ export default function PersonalizationPage() {
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                ) : section.id === 'jobOffers' ? (
+                                    <div className="space-y-8">
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu de la section</h3>
+                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="joboffers-title">Titre principal</Label>
+                                                <Input id="joboffers-title" value={settings.jobOffersSection.title} onChange={(e) => handleJobOffersSectionChange('title', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="joboffers-subtitle">Sous-titre</Label>
+                                                <Input id="joboffers-subtitle" value={settings.jobOffersSection.subtitle} onChange={(e) => handleJobOffersSectionChange('subtitle', e.target.value)} />
+                                            </div>
+                                         </div>
+                                      </section>
+
+                                      <div className="border-t -mx-6"></div>
+
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Offres d'emploi</h3>
+                                         <div className="space-y-6">
+                                            {settings.jobOffersSection.offers.map((offer, index) => (
+                                                <div key={offer.id} className="p-4 border rounded-lg space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="font-medium">Offre {index + 1}</h4>
+                                                        <Button variant="ghost" size="icon" onClick={() => removeJobOffer(index)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`job-title-${index}`}>Titre du poste</Label>
+                                                            <Input id={`job-title-${index}`} value={offer.title} onChange={(e) => handleJobOfferChange(index, 'title', e.target.value)} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`job-contract-${index}`}>Type de contrat</Label>
+                                                            <Input id={`job-contract-${index}`} value={offer.contractType} onChange={(e) => handleJobOfferChange(index, 'contractType', e.target.value)} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`job-location-${index}`}>Lieu</Label>
+                                                            <Input id={`job-location-${index}`} value={offer.location} onChange={(e) => handleJobOfferChange(index, 'location', e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                         </div>
+                                         <Button variant="outline" size="sm" onClick={addJobOffer} className="mt-4">
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Ajouter une offre
+                                         </Button>
+                                      </section>
                                     </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>

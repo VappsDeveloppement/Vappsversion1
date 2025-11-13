@@ -24,6 +24,7 @@ import { useAgency } from '@/context/agency-provider';
 import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { ArrowRight } from 'lucide-react';
+import { JobOffersSection } from './job-offers-section';
 
 const sectionComponents: { [key: string]: React.ComponentType } = {
   about: AboutSection,
@@ -36,6 +37,7 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
   blog: BlogSection,
   whiteLabel: WhiteLabelSection,
   pricing: PricingSection,
+  jobOffers: JobOffersSection,
 };
 
 // Héro AVEC fenêtre de connexion
