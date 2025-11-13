@@ -1,5 +1,14 @@
 
+import { redirect } from 'next/navigation'
+
 export default function DashboardPage() {
+    // For now, all Firebase Auth users are considered "Super Admins" for the model.
+    // This page will redirect them to their default dashboard.
+    // In the future, this page will be the landing page for "Agency" users.
+    redirect('/dashboard/api/agency');
+
+    // The content below will be shown to agency users in the future.
+    /*
     return (
         <div className="space-y-8">
             <div>
@@ -13,4 +22,5 @@ export default function DashboardPage() {
 
         </div>
     );
+    */
 }

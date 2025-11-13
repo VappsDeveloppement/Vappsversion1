@@ -128,6 +128,33 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
+                 <Collapsible open={isApiOpen} onOpenChange={setIsApiOpen}>
+                    <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/api")}>
+                                <DatabaseZap />
+                                <span>GESTION API</span>
+                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isApiOpen && "rotate-180")} />
+                            </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                    </SidebarMenuItem>
+                    <CollapsibleContent>
+                        <SidebarMenuSub>
+                            {apiMenuItems.map((item) => (
+                                <SidebarMenuItem key={item.href}>
+                                    <Link href={item.href} passHref>
+                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
+                                          <span>
+                                            {item.icon}
+                                            <span>{item.label}</span>
+                                          </span>
+                                        </SidebarMenuSubButton>
+                                    </Link>
+                                </SidebarMenuItem>
+                            ))}
+                        </SidebarMenuSub>
+                    </CollapsibleContent>
+                </Collapsible>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
@@ -151,33 +178,6 @@ export default function DashboardLayout({
                     <CollapsibleContent>
                         <SidebarMenuSub>
                             {settingsMenuItems.map((item) => (
-                                <SidebarMenuItem key={item.href}>
-                                    <Link href={item.href} passHref>
-                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
-                                          <span>
-                                            {item.icon}
-                                            <span>{item.label}</span>
-                                          </span>
-                                        </SidebarMenuSubButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenuSub>
-                    </CollapsibleContent>
-                </Collapsible>
-                 <Collapsible open={isApiOpen} onOpenChange={setIsApiOpen}>
-                    <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/api")}>
-                                <DatabaseZap />
-                                <span>GESTION API</span>
-                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isApiOpen && "rotate-180")} />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                    </SidebarMenuItem>
-                    <CollapsibleContent>
-                        <SidebarMenuSub>
-                            {apiMenuItems.map((item) => (
                                 <SidebarMenuItem key={item.href}>
                                     <Link href={item.href} passHref>
                                         <SidebarMenuSubButton asChild isActive={pathname === item.href}>
