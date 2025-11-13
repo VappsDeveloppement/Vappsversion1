@@ -63,14 +63,14 @@ function MainAppHero() {
                     <div className="flex flex-col gap-6 text-center md:text-left items-center md:items-start">
                          <Logo className="text-white" />
                         <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
-                           {personalization.heroAppTitle}
+                           {personalization.heroAppTitle || "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs."}
                         </h1>
                         <p className="text-lg text-white/80">
-                           {personalization.heroAppSubtitle}
+                           {personalization.heroAppSubtitle || "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach."}
                         </p>
                         <Button size="lg" asChild variant="secondary">
-                            <Link href={personalization.heroAppCtaLink}>
-                                {personalization.heroAppCtaText} <ArrowRight className="ml-2"/>
+                            <Link href={personalization.heroAppCtaLink || "#"}>
+                                {personalization.heroAppCtaText || "Découvrir VApps"} <ArrowRight className="ml-2"/>
                             </Link>
                         </Button>
                     </div>
@@ -117,16 +117,16 @@ function AgencySalesFunnelHero() {
             </header>
 
             <div className="relative z-20 container mx-auto px-4 pt-24 pb-32 text-center flex flex-col items-center">
-                <h1 className="text-4xl md:text-6xl font-bold leading-tight max-w-4xl">{personalization.heroTitle}</h1>
-                <p className="mt-4 text-lg md:text-xl text-white/80 max-w-2xl">{personalization.heroSubtitle}</p>
+                <h1 className="text-4xl md:text-6xl font-bold leading-tight max-w-4xl">{personalization.heroTitle || "Révélez votre potentiel et construisez une carrière qui vous ressemble."}</h1>
+                <p className="mt-4 text-lg md:text-xl text-white/80 max-w-2xl">{personalization.heroSubtitle || "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel."}</p>
                 <div className="mt-8 flex flex-wrap justify-center gap-4">
                     <Button size="lg" asChild variant="secondary">
-                        <Link href={personalization.heroCta1Link}>
-                            {personalization.heroCta1Text} <ArrowRight className="ml-2"/>
+                        <Link href={personalization.heroCta1Link || "#"}>
+                            {personalization.heroCta1Text || "Découvrir mes services"} <ArrowRight className="ml-2"/>
                         </Link>
                     </Button>
                     <Button size="lg" asChild>
-                         <Link href={personalization.heroCta2Link}>{personalization.heroCta2Text}</Link>
+                         <Link href={personalization.heroCta2Link || "#"}>{personalization.heroCta2Text || "Prendre rendez-vous"}</Link>
                     </Button>
                 </div>
             </div>
@@ -197,7 +197,10 @@ function AgencyApplicationHomePage() {
 
 export function HomePageSelector() {
   const { personalization, isLoading } = useAgency();
-  const isMainApp = true; // This will be the logic to differentiate later. For now, we are always on the main app.
+  
+  // For now, this is always the main application model.
+  // This variable can be changed to `false` to simulate an agency context.
+  const isMainApp = true; 
   
   if (isLoading) {
     return (
@@ -212,9 +215,8 @@ export function HomePageSelector() {
 
   // --- LOGIC ROUTING ---
   
-  // For the main VApps application, we ALWAYS show the main app layout
+  // For the main VApps application model, we ALWAYS show the main app layout
   // which includes the 2-column hero with the login form.
-  // We ignore the `homePageVersion` setting in this context.
   if (isMainApp) {
       return <MainAppHomePage />;
   }
