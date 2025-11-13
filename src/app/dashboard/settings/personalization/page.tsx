@@ -91,6 +91,12 @@ export type HeroNavLink = {
   url: string;
 };
 
+export type ParcoursStep = {
+  id: string;
+  title: string;
+  description: string;
+};
+
 const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Facebook,
     Twitter,
@@ -194,6 +200,16 @@ const defaultPersonalization = {
         { id: "expertise-entrepreneurship", title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise.", imageUrl: null as string | null },
         { id: "expertise-management", title: "Management", description: "Devenir un manager bienveillant et efficace.", imageUrl: null as string | null },
       ]
+    },
+    parcoursSection: {
+      title: "Votre parcours de transformation",
+      subtitle: "Un cheminement structuré et bienveillant pour vous guider à chaque étape de votre évolution.",
+      steps: [
+          { id: `step-1`, title: "Étape 1: Bilan & Intention", description: "Faire le point sur votre situation, vos besoins et poser une intention claire." },
+          { id: `step-2`, title: "Étape 2: Exploration", description: "Séances personnalisées alliant coaching et outils de développement personnel." },
+          { id: `step-3`, title: "Étape 3: Intégration", description: "Nous consolidons vos acquis et mettons en place un plan d'action durable." },
+          { id: `step-4`, title: "Étape 4: Épanouissement", description: "Vous repartez avec les clés pour poursuivre votre chemin en toute autonomie." }
+      ] as ParcoursStep[]
     }
 };
 
@@ -220,6 +236,10 @@ export default function PersonalizationPage() {
         aboutSection: {
             ...defaultPersonalization.aboutSection,
             ...(personalization.aboutSection || {})
+        },
+        parcoursSection: {
+            ...defaultPersonalization.parcoursSection,
+            ...(personalization.parcoursSection || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -290,6 +310,35 @@ export default function PersonalizationPage() {
   const removeExpertise = (index: number) => {
     const newExpertises = settings.aboutSection.expertises.filter((_, i) => i !== index);
     handleAboutSectionChange('expertises', newExpertises);
+  };
+  
+    const handleParcoursSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      parcoursSection: {
+        ...(prev.parcoursSection || defaultPersonalization.parcoursSection),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleParcoursStepChange = (index: number, field: 'title' | 'description', value: string) => {
+      const newSteps = [...(settings.parcoursSection.steps)];
+      newSteps[index] = { ...newSteps[index], [field]: value };
+      handleParcoursSectionChange('steps', newSteps);
+  };
+
+  const addParcoursStep = () => {
+    const newSteps = [
+        ...(settings.parcoursSection.steps || []),
+        { id: `step-${Date.now()}`, title: 'Nouvelle Étape', description: 'Description de la nouvelle étape.' },
+    ];
+    handleParcoursSectionChange('steps', newSteps);
+  };
+
+  const removeParcoursStep = (index: number) => {
+    const newSteps = settings.parcoursSection.steps.filter((_, i) => i !== index);
+    handleParcoursSectionChange('steps', newSteps);
   };
 
   const handleLegalInfoChange = (field: string, value: any) => {
@@ -1267,6 +1316,52 @@ export default function PersonalizationPage() {
                                                 </Button>
                                             </>
                                          )}
+                                      </section>
+                                    </div>
+                                ) : section.id === 'parcours' ? (
+                                    <div className="space-y-8">
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu de la section</h3>
+                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="space-y-2 md:col-span-2">
+                                                <Label htmlFor="parcours-title">Titre principal</Label>
+                                                <Input id="parcours-title" value={settings.parcoursSection.title} onChange={(e) => handleParcoursSectionChange('title', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2 md:col-span-2">
+                                                <Label htmlFor="parcours-subtitle">Sous-titre</Label>
+                                                <Textarea id="parcours-subtitle" value={settings.parcoursSection.subtitle} onChange={(e) => handleParcoursSectionChange('subtitle', e.target.value)} />
+                                            </div>
+                                         </div>
+                                      </section>
+
+                                      <div className="border-t -mx-6"></div>
+
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Étapes du parcours</h3>
+                                         <div className="space-y-6">
+                                            {settings.parcoursSection.steps.map((step, index) => (
+                                                <div key={step.id} className="p-4 border rounded-lg space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="font-medium">Étape {index + 1}</h4>
+                                                        <Button variant="ghost" size="icon" onClick={() => removeParcoursStep(index)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor={`step-title-${index}`}>Titre de l'étape</Label>
+                                                        <Input id={`step-title-${index}`} value={step.title} onChange={(e) => handleParcoursStepChange(index, 'title', e.target.value)} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor={`step-desc-${index}`}>Description</Label>
+                                                        <Textarea id={`step-desc-${index}`} value={step.description} onChange={(e) => handleParcoursStepChange(index, 'description', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                            ))}
+                                         </div>
+                                         <Button variant="outline" size="sm" onClick={addParcoursStep} className="mt-4">
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Ajouter une étape
+                                         </Button>
                                       </section>
                                     </div>
                                 ) : (

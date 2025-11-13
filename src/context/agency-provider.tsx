@@ -7,7 +7,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink, ParcoursStep } from '@/app/dashboard/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -32,6 +32,12 @@ interface AboutSectionPersonalization {
     showExpertises: boolean;
     expertisesSectionTitle: string;
     expertises: Expertise[];
+}
+
+interface ParcoursSectionPersonalization {
+    title: string;
+    subtitle: string;
+    steps: ParcoursStep[];
 }
 
 // Define the shape of the personalization settings object
@@ -75,6 +81,7 @@ interface Personalization {
     homePageSections: Section[];
     legalInfo: any;
     aboutSection: AboutSectionPersonalization;
+    parcoursSection: ParcoursSectionPersonalization;
     [key: string]: any;
 }
 
@@ -172,6 +179,16 @@ const defaultPersonalization: Personalization = {
         { id: "expertise-entrepreneurship", title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise.", imageUrl: null },
         { id: "expertise-management", title: "Management", description: "Devenir un manager bienveillant et efficace.", imageUrl: null },
       ]
+    },
+    parcoursSection: {
+      title: "Votre parcours de transformation",
+      subtitle: "Un cheminement structuré et bienveillant pour vous guider à chaque étape de votre évolution.",
+      steps: [
+          { id: `step-1`, title: "Étape 1: Bilan & Intention", description: "Faire le point sur votre situation, vos besoins et poser une intention claire." },
+          { id: `step-2`, title: "Étape 2: Exploration", description: "Séances personnalisées alliant coaching et outils de développement personnel." },
+          { id: `step-3`, title: "Étape 3: Intégration", description: "Nous consolidons vos acquis et mettons en place un plan d'action durable." },
+          { id: `step-4`, title: "Étape 4: Épanouissement", description: "Vous repartez avec les clés pour poursuivre votre chemin en toute autonomie." }
+      ]
     }
 };
 
@@ -218,6 +235,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                         ...(agencyData.personalization?.aboutSection || {}),
                         pillars: (agencyData.personalization?.aboutSection?.pillars || defaultPersonalization.aboutSection.pillars).map((p: any, i: number) => ({ ...defaultPersonalization.aboutSection.pillars[i], ...p })),
                         expertises: (agencyData.personalization?.aboutSection?.expertises || defaultPersonalization.aboutSection.expertises).map((e: any, i: number) => ({ ...defaultPersonalization.aboutSection.expertises[i], ...e })),
+                    },
+                    parcoursSection: {
+                        ...defaultPersonalization.parcoursSection,
+                        ...(agencyData.personalization?.parcoursSection || {}),
                     },
                     homePageSections: agencyData.personalization?.homePageSections?.length 
                         ? agencyData.personalization.homePageSections 
@@ -270,5 +291,3 @@ export const useAgency = (): AgencyContextType & { agency: {id: string, name: st
     // We add the dummy agency object here for backward compatibility during the refactor.
     return { ...context, agency: { id: 'vapps-agency', name: 'VApps Model', personalization: context.personalization } };
 };
-
-    
