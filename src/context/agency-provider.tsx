@@ -279,31 +279,16 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
             if (docSnap.exists()) {
                 const agencyData = docSnap.data();
                 
-                // Smart merge for sections
                 const savedSections = agencyData.personalization?.homePageSections || [];
                 const defaultSections = defaultPersonalization.homePageSections;
-                
-                // Create a map of saved sections by their ID for quick lookups.
+
                 const savedSectionsMap = new Map(savedSections.map((s: Section) => [s.id, s]));
 
-                // Create a new merged list based on the order of defaultSections
-                const mergedSections = defaultSections.map(defaultSection => {
-                    const savedSection = savedSectionsMap.get(defaultSection.id);
-                    if (savedSection) {
-                        // If the section exists in both, use the saved one, but ensure all default keys are present.
-                        return { ...defaultSection, ...savedSection };
-                    }
-                    // If the section is new (only in defaults), use the default one.
-                    return defaultSection;
-                });
-                
-                // Keep the order from the saved sections, and append new ones.
-                // This preserves the user's custom order.
                 const finalOrderedSections = [
                     ...savedSections.map((saved: Section) => {
                         const defaultSection = defaultSections.find(d => d.id === saved.id);
                         return defaultSection ? { ...defaultSection, ...saved } : saved;
-                    }).filter(s => defaultSections.some(d => d.id === s.id)), // Remove sections that no longer exist in default
+                    }).filter(s => defaultSections.some(d => d.id === s.id)),
                     ...defaultSections.filter(defaultSection => !savedSectionsMap.has(defaultSection.id))
                 ];
 
@@ -341,19 +326,16 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 };
                 setPersonalization(mergedPersonalization);
             } else {
-                // If doc doesn't exist in DB, use defaults. App still works.
                 setPersonalization(defaultPersonalization);
             }
             setIsLoading(false);
             setError(null);
         }, (err: FirestoreError) => {
             console.warn("Firestore read error in AgencyProvider:", err.message);
-            // On error (e.g. permissions on first run), still provide default data.
             setPersonalization(defaultPersonalization);
             setIsLoading(false);
             setError(err);
             
-            // This will trigger the global error listener for debugging if needed
             const contextualError = new FirestorePermissionError({
                 path: agencyDocRef.path,
                 operation: 'get',
@@ -362,27 +344,22 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return () => unsubscribe();
-    }, [firestore, user]); // Re-run when user authenticates
+    }, [firestore, user]);
 
     const value = {
-        // We no longer expose the whole 'agency' object, just what's needed.
         personalization,
         isLoading,
         error,
-        // The concepts of isDefaultAgency and the agency object itself are gone.
-        // We provide a dummy agency object for components that might still use it temporarily.
         agency: { id: agencyId, name: 'VApps Model', personalization }
     };
 
     return <AgencyContext.Provider value={value}>{children}</AgencyContext.Provider>;
 };
 
-// Create a custom hook to use the agency context
 export const useAgency = (): AgencyContextType & { agency: {id: string, name: string, personalization: Personalization} | null } => {
     const context = useContext(AgencyContext);
     if (context === undefined) {
         throw new Error('useAgency must be used within an AgencyProvider');
     }
-    // We add the dummy agency object here for backward compatibility during the refactor.
     return { ...context, agency: { id: 'vapps-agency', name: 'VApps Model', personalization: context.personalization } };
 };
