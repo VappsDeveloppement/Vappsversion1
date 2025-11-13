@@ -182,17 +182,17 @@ const defaultPersonalization = {
       mainText: "Chez Vapps, nous croyons qu'il n'existe pas de chemin unique. C'est pourquoi nous proposons une approche holistique et inclusive, qui prend en compte votre personnalité, vos compétences, vos envies et vos contraintes.",
       pillarsSectionTitle: "Les piliers de notre accompagnement",
       pillars: [
-        { id: "pillar-method", title: "Notre Méthode", description: "Une approche structurée en 4 étapes pour garantir votre succès." },
-        { id: "pillar-tools", title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion." },
-        { id: "pillar-community", title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble." },
+        { id: "pillar-method", title: "Notre Méthode", description: "Une approche structurée en 4 étapes pour garantir votre succès.", imageUrl: null as string | null },
+        { id: "pillar-tools", title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion.", imageUrl: null as string | null },
+        { id: "pillar-community", title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble.", imageUrl: null as string | null },
       ],
       showExpertises: true,
       expertisesSectionTitle: "Nos expertises sectorielles",
       expertises: [
-        { id: "expertise-tech", title: "Secteur Tech", description: "Conseils pour les métiers du numérique." },
-        { id: "expertise-health", title: "Secteur Santé", description: "Évoluer dans le domaine de la santé." },
-        { id: "expertise-entrepreneurship", title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise." },
-        { id: "expertise-management", title: "Management", description: "Devenir un manager bienveillant et efficace." },
+        { id: "expertise-tech", title: "Secteur Tech", description: "Conseils pour les métiers du numérique.", imageUrl: null as string | null },
+        { id: "expertise-health", title: "Secteur Santé", description: "Évoluer dans le domaine de la santé.", imageUrl: null as string | null },
+        { id: "expertise-entrepreneurship", title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise.", imageUrl: null as string | null },
+        { id: "expertise-management", title: "Management", description: "Devenir un manager bienveillant et efficace.", imageUrl: null as string | null },
       ]
     }
 };
@@ -207,9 +207,7 @@ export default function PersonalizationPage() {
   const [heroImagePreview, setHeroImagePreview] = React.useState(personalization?.heroImageUrl);
   const [aboutImagePreview, setAboutImagePreview] = React.useState(personalization?.aboutSection?.mainImageUrl);
   
-  const logoFileInputRef = useRef<HTMLInputElement>(null);
-  const heroImageFileInputRef = useRef<HTMLInputElement>(null);
-  const aboutImageFileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     if (personalization) {
@@ -256,13 +254,13 @@ export default function PersonalizationPage() {
     }));
   };
   
-  const handleAboutPillarChange = (index: number, field: 'title' | 'description', value: string) => {
+  const handleAboutPillarChange = (index: number, field: 'title' | 'description' | 'imageUrl', value: string | null) => {
       const newPillars = [...(settings.aboutSection.pillars)];
       newPillars[index] = { ...newPillars[index], [field]: value };
       handleAboutSectionChange('pillars', newPillars);
   };
 
-  const handleAboutExpertiseChange = (index: number, field: 'title' | 'description', value: string) => {
+  const handleAboutExpertiseChange = (index: number, field: 'title' | 'description' | 'imageUrl', value: string | null) => {
       const newExpertises = [...(settings.aboutSection.expertises)];
       newExpertises[index] = { ...newExpertises[index], [field]: value };
       handleAboutSectionChange('expertises', newExpertises);
@@ -304,60 +302,17 @@ export default function PersonalizationPage() {
   };
 
 
-  const handleLogoUploadClick = () => {
-    logoFileInputRef.current?.click();
-  };
-
-  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>, callback: (base64: string) => void) => {
     const file = event.target.files?.[0];
     if (file) {
-      const base64 = await toBase64(file);
-      setLogoPreview(base64);
-      handleFieldChange('logoDataUrl', base64);
+        toBase64(file).then(callback);
     }
   };
 
-  const handleHeroImageUploadClick = () => {
-    heroImageFileInputRef.current?.click();
-  };
-
-  const handleHeroImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-        const base64 = await toBase64(file);
-        setHeroImagePreview(base64);
-        handleFieldChange('heroImageUrl', base64);
-    }
+  const createUploadHandler = (callback: (base64: string) => void) => {
+    return (event: React.ChangeEvent<HTMLInputElement>) => handleFileUpload(event, callback);
   };
   
-  const handleAboutImageUploadClick = () => {
-    aboutImageFileInputRef.current?.click();
-  };
-
-  const handleAboutImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-        const base64 = await toBase64(file);
-        setAboutImagePreview(base64);
-        handleAboutSectionChange('mainImageUrl', base64);
-    }
-  };
-
-  const handleRemoveLogo = () => {
-    setLogoPreview("/vapps.png");
-    handleFieldChange('logoDataUrl', null);
-  };
-
-  const handleRemoveHeroImage = () => {
-    setHeroImagePreview(null);
-    handleFieldChange('heroImageUrl', null);
-  };
-  
-   const handleRemoveAboutImage = () => {
-    setAboutImagePreview(null);
-    handleAboutSectionChange('mainImageUrl', null);
-  };
-
   const handleLinkChange = (index: number, field: keyof AboutLink, value: string) => {
     const newLinks = [...(settings.footerAboutLinks || [])];
     (newLinks[index] as any)[field] = value;
@@ -453,6 +408,9 @@ export default function PersonalizationPage() {
           Gérez la personnalisation de la plateforme pour votre agence : **{agency?.name || '...'}**
         </p>
       </div>
+      
+      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
+
 
       <Tabs defaultValue="info-legales">
         <TabsList className="grid w-full grid-cols-6">
@@ -662,17 +620,23 @@ export default function PersonalizationPage() {
                                 </div>
                                 <input
                                     type="file"
-                                    ref={logoFileInputRef}
-                                    onChange={handleLogoFileChange}
+                                    ref={fileInputRef}
+                                    onChange={createUploadHandler(base64 => {
+                                      setLogoPreview(base64);
+                                      handleFieldChange('logoDataUrl', base64);
+                                    })}
                                     className="hidden"
                                     accept="image/png, image/jpeg, image/svg+xml"
                                 />
                                 <div className="flex flex-col gap-2">
-                                  <Button variant="outline" onClick={handleLogoUploadClick}>
+                                  <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                                       <Upload className="mr-2 h-4 w-4" />
                                       Uploader
                                   </Button>
-                                  <Button variant="destructive" size="sm" onClick={handleRemoveLogo}>
+                                  <Button variant="destructive" size="sm" onClick={() => {
+                                      setLogoPreview("/vapps.png");
+                                      handleFieldChange('logoDataUrl', null);
+                                  }}>
                                       <Trash2 className="mr-2 h-4 w-4" />
                                       Supprimer
                                   </Button>
@@ -951,17 +915,23 @@ export default function PersonalizationPage() {
                                                 </div>
                                                 <input
                                                     type="file"
-                                                    ref={heroImageFileInputRef}
-                                                    onChange={handleHeroImageFileChange}
+                                                    ref={fileInputRef}
+                                                    onChange={createUploadHandler(base64 => {
+                                                        setHeroImagePreview(base64);
+                                                        handleFieldChange('heroImageUrl', base64);
+                                                    })}
                                                     className="hidden"
                                                     accept="image/png, image/jpeg"
                                                 />
                                                 <div className="flex flex-col gap-2">
-                                                  <Button variant="outline" onClick={handleHeroImageUploadClick}>
+                                                  <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                                                       <Upload className="mr-2 h-4 w-4" />
                                                       Changer l'image
                                                   </Button>
-                                                  <Button variant="destructive" size="sm" onClick={handleRemoveHeroImage}>
+                                                  <Button variant="destructive" size="sm" onClick={() => {
+                                                        setHeroImagePreview(null);
+                                                        handleFieldChange('heroImageUrl', null);
+                                                  }}>
                                                       <Trash2 className="mr-2 h-4 w-4" />
                                                       Supprimer
                                                   </Button>
@@ -1110,17 +1080,23 @@ export default function PersonalizationPage() {
                                                 </div>
                                                 <input
                                                     type="file"
-                                                    ref={aboutImageFileInputRef}
-                                                    onChange={handleAboutImageFileChange}
+                                                    ref={fileInputRef}
+                                                    onChange={createUploadHandler(base64 => {
+                                                        setAboutImagePreview(base64);
+                                                        handleAboutSectionChange('mainImageUrl', base64);
+                                                    })}
                                                     className="hidden"
                                                     accept="image/png, image/jpeg"
                                                 />
                                                 <div className="flex flex-col gap-2">
-                                                  <Button variant="outline" onClick={handleAboutImageUploadClick}>
+                                                  <Button variant="outline" onClick={() => fileInputRef.current?.click()}>
                                                       <Upload className="mr-2 h-4 w-4" />
                                                       Uploader
                                                   </Button>
-                                                  <Button variant="destructive" size="sm" onClick={handleRemoveAboutImage}>
+                                                  <Button variant="destructive" size="sm" onClick={() => {
+                                                      setAboutImagePreview(null);
+                                                      handleAboutSectionChange('mainImageUrl', null);
+                                                  }}>
                                                       <Trash2 className="mr-2 h-4 w-4" />
                                                       Supprimer
                                                   </Button>
@@ -1149,6 +1125,29 @@ export default function PersonalizationPage() {
                                                          <div className="space-y-2">
                                                             <Label htmlFor={`pillar-desc-${index}`}>Description</Label>
                                                             <Input id={`pillar-desc-${index}`} value={pillar.description} onChange={(e) => handleAboutPillarChange(index, 'description', e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <Label>Image du pilier</Label>
+                                                        <div className="flex items-center gap-4 mt-2">
+                                                            <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                                {pillar.imageUrl ? (
+                                                                    <Image src={pillar.imageUrl} alt={`Aperçu pour ${pillar.title}`} layout="fill" objectFit="cover" />
+                                                                ) : (
+                                                                    <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col gap-2">
+                                                                <Button variant="outline" size="sm" onClick={() => {
+                                                                    fileInputRef.current.onchange = createUploadHandler(base64 => handleAboutPillarChange(index, 'imageUrl', base64));
+                                                                    fileInputRef.current?.click();
+                                                                }}>
+                                                                    <Upload className="mr-2 h-4 w-4" /> Uploader
+                                                                </Button>
+                                                                <Button variant="destructive" size="sm" onClick={() => handleAboutPillarChange(index, 'imageUrl', null)}>
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                                </Button>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -1187,6 +1186,29 @@ export default function PersonalizationPage() {
                                                             <div className="space-y-2">
                                                                 <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
                                                                 <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
+                                                            </div>
+                                                            <div className="mt-4">
+                                                                <Label>Image de l'expertise</Label>
+                                                                <div className="flex items-center gap-4 mt-2">
+                                                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                                        {expertise.imageUrl ? (
+                                                                            <Image src={expertise.imageUrl} alt={`Aperçu pour ${expertise.title}`} layout="fill" objectFit="cover" />
+                                                                        ) : (
+                                                                            <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="flex flex-col gap-2">
+                                                                        <Button variant="outline" size="sm" onClick={() => {
+                                                                            fileInputRef.current.onchange = createUploadHandler(base64 => handleAboutExpertiseChange(index, 'imageUrl', base64));
+                                                                            fileInputRef.current?.click();
+                                                                        }}>
+                                                                            <Upload className="mr-2 h-4 w-4" /> Uploader
+                                                                        </Button>
+                                                                        <Button variant="destructive" size="sm" onClick={() => handleAboutExpertiseChange(index, 'imageUrl', null)}>
+                                                                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     ))}
@@ -1256,3 +1278,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    
