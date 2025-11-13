@@ -123,7 +123,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
+  { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
