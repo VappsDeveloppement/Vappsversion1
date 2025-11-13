@@ -45,7 +45,7 @@ function HeroWithLogin() {
     const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
 
     return (
-        <div className="relative text-white min-h-[50vh] md:min-h-screen flex items-center" style={{ backgroundColor: personalization.heroBgColor }}>
+        <div className="relative text-white min-h-[50vh] md:min-h-[75vh] flex items-center" style={{ backgroundColor: personalization.heroBgColor }}>
              {heroImageSrc && (
                 <Image
                     src={heroImageSrc}
