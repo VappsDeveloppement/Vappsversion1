@@ -182,9 +182,13 @@ export default function PersonalizationPage() {
       }));
       if (personalization.logoDataUrl) {
           setLogoPreview(personalization.logoDataUrl);
+      } else {
+        setLogoPreview("/vapps.png")
       }
       if (personalization.heroImageUrl) {
         setHeroImagePreview(personalization.heroImageUrl);
+      } else {
+        setHeroImagePreview(null);
       }
     }
   }, [personalization]);
@@ -253,6 +257,16 @@ export default function PersonalizationPage() {
         setHeroImagePreview(base64);
         handleFieldChange('heroImageUrl', base64);
     }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoPreview("/vapps.png");
+    handleFieldChange('logoDataUrl', null);
+  };
+
+  const handleRemoveHeroImage = () => {
+    setHeroImagePreview(null);
+    handleFieldChange('heroImageUrl', null);
   };
 
   const handleLinkChange = (index: number, field: keyof AboutLink, value: string) => {
@@ -527,10 +541,16 @@ export default function PersonalizationPage() {
                                     className="hidden"
                                     accept="image/png, image/jpeg, image/svg+xml"
                                 />
-                                <Button variant="outline" onClick={handleLogoUploadClick}>
-                                    <Upload className="mr-2 h-4 w-4" />
-                                    Uploader
-                                </Button>
+                                <div className="flex flex-col gap-2">
+                                  <Button variant="outline" onClick={handleLogoUploadClick}>
+                                      <Upload className="mr-2 h-4 w-4" />
+                                      Uploader
+                                  </Button>
+                                  <Button variant="destructive" size="sm" onClick={handleRemoveLogo}>
+                                      <Trash2 className="mr-2 h-4 w-4" />
+                                      Supprimer
+                                  </Button>
+                                </div>
                             </div>
                             <p className="text-xs text-muted-foreground">Formats recommandés : SVG, PNG, JPG.</p>
                         </div>
@@ -796,11 +816,11 @@ export default function PersonalizationPage() {
                                         <div className="border-t pt-6 mt-6">
                                             <h4 className="font-medium">Image de fond & Couleur</h4>
                                             <div className="flex items-center gap-4 mt-4">
-                                                <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative">
+                                                <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden" style={{backgroundColor: heroImagePreview ? 'transparent' : settings.heroBgColor}}>
                                                     {heroImagePreview ? (
                                                         <Image src={heroImagePreview} alt="Aperçu du Héro" layout="fill" objectFit="cover" />
                                                     ) : (
-                                                        <span className="text-xs text-muted-foreground">Aucune image</span>
+                                                        <span className="text-xs text-muted-foreground p-2 text-center">Couleur de fond active</span>
                                                     )}
                                                 </div>
                                                 <input
@@ -810,10 +830,16 @@ export default function PersonalizationPage() {
                                                     className="hidden"
                                                     accept="image/png, image/jpeg"
                                                 />
-                                                <Button variant="outline" onClick={handleHeroImageUploadClick}>
-                                                    <Upload className="mr-2 h-4 w-4" />
-                                                    Changer l'image
-                                                </Button>
+                                                <div className="flex flex-col gap-2">
+                                                  <Button variant="outline" onClick={handleHeroImageUploadClick}>
+                                                      <Upload className="mr-2 h-4 w-4" />
+                                                      Changer l'image
+                                                  </Button>
+                                                  <Button variant="destructive" size="sm" onClick={handleRemoveHeroImage}>
+                                                      <Trash2 className="mr-2 h-4 w-4" />
+                                                      Supprimer
+                                                  </Button>
+                                                </div>
                                             </div>
                                              <div className="space-y-2 mt-4">
                                                 <Label htmlFor="hero-bg-color">Couleur de fond (si pas d'image)</Label>

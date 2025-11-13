@@ -41,8 +41,7 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
 // Héro AVEC fenêtre de connexion
 function HeroWithLogin() {
     const { personalization } = useAgency();
-    const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
-    const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
+    const heroImageSrc = personalization.heroImageUrl;
 
     return (
         <div className="relative text-white min-h-[50vh] md:min-h-[75vh] flex items-center" style={{ backgroundColor: personalization.heroBgColor }}>
@@ -85,8 +84,7 @@ function HeroWithLogin() {
 // Héro SANS fenêtre de connexion (style tunnel de vente)
 function HeroWithoutLogin() {
     const { personalization } = useAgency();
-    const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
-    const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
+    const heroImageSrc = personalization.heroImageUrl;
 
     return (
         <div className="relative text-white" style={{ backgroundColor: personalization.heroBgColor }}>
