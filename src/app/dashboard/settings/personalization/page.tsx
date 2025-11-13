@@ -134,6 +134,11 @@ const defaultPersonalization = {
     heroCta2Link: "/contact",
     heroImageUrl: null as string | null,
     heroBgColor: "#000000",
+    heroAppTitle: "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.",
+    heroAppSubtitle: "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.",
+
+    heroAppCtaText: "Découvrir VApps",
+    heroAppCtaLink: "#about",
     footerAboutTitle: "À propos",
     footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
     footerAboutLinks: [
@@ -784,7 +789,6 @@ export default function PersonalizationPage() {
                                             </RadioGroup>
                                         </div>
 
-                                        {settings.heroStyle === 'sales_funnel' && (
                                         <div className="mt-6 space-y-6 pt-6 border-t">
                                             <div className="space-y-4">
                                                 <h4 className="font-medium">Image de fond</h4>
@@ -817,36 +821,62 @@ export default function PersonalizationPage() {
                                                     <Input id="hero-bg-color" value={settings.heroBgColor} onChange={(e) => handleFieldChange('heroBgColor', e.target.value)} />
                                                 </div>
                                             </div>
-
-                                            <div className="space-y-2">
-                                                <Label htmlFor="hero-title">Titre du Héro</Label>
-                                                <Textarea id="hero-title" value={settings.heroTitle} onChange={(e) => handleFieldChange('heroTitle', e.target.value)} />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="hero-subtitle">Sous-titre du Héro</Label>
-                                                <Textarea id="hero-subtitle" value={settings.heroSubtitle} onChange={(e) => handleFieldChange('heroSubtitle', e.target.value)} />
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="hero-cta1-text">Texte CTA 1</Label>
-                                                    <Input id="hero-cta1-text" value={settings.heroCta1Text} onChange={(e) => handleFieldChange('heroCta1Text', e.target.value)} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="hero-cta1-link">Lien CTA 1</Label>
-                                                    <Input id="hero-cta1-link" value={settings.heroCta1Link} onChange={(e) => handleFieldChange('heroCta1Link', e.target.value)} />
-                                                </div>
-                                            </div>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="hero-cta2-text">Texte CTA 2</Label>
-                                                    <Input id="hero-cta2-text" value={settings.heroCta2Text} onChange={(e) => handleFieldChange('heroCta2Text', e.target.value)} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="hero-cta2-link">Lien CTA 2</Label>
-                                                    <Input id="hero-cta2-link" value={settings.heroCta2Link} onChange={(e) => handleFieldChange('heroCta2Link', e.target.value)} />
-                                                </div>
-                                            </div>
                                         </div>
+
+                                        {settings.heroStyle === 'application' && (
+                                            <div className="mt-6 space-y-6 pt-6 border-t">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="hero-app-title">Titre</Label>
+                                                    <Textarea id="hero-app-title" value={settings.heroAppTitle} onChange={(e) => handleFieldChange('heroAppTitle', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="hero-app-subtitle">Sous-titre</Label>
+                                                    <Textarea id="hero-app-subtitle" value={settings.heroAppSubtitle} onChange={(e) => handleFieldChange('heroAppSubtitle', e.target.value)} />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="hero-app-cta-text">Texte du bouton</Label>
+                                                        <Input id="hero-app-cta-text" value={settings.heroAppCtaText} onChange={(e) => handleFieldChange('heroAppCtaText', e.target.value)} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="hero-app-cta-link">Lien du bouton</Label>
+                                                        <Input id="hero-app-cta-link" value={settings.heroAppCtaLink} onChange={(e) => handleFieldChange('heroAppCtaLink', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {settings.heroStyle === 'sales_funnel' && (
+                                            <div className="mt-6 space-y-6 pt-6 border-t">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="hero-title">Titre du Héro</Label>
+                                                    <Textarea id="hero-title" value={settings.heroTitle} onChange={(e) => handleFieldChange('heroTitle', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="hero-subtitle">Sous-titre du Héro</Label>
+                                                    <Textarea id="hero-subtitle" value={settings.heroSubtitle} onChange={(e) => handleFieldChange('heroSubtitle', e.target.value)} />
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="hero-cta1-text">Texte CTA 1</Label>
+                                                        <Input id="hero-cta1-text" value={settings.heroCta1Text} onChange={(e) => handleFieldChange('heroCta1Text', e.target.value)} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="hero-cta1-link">Lien CTA 1</Label>
+                                                        <Input id="hero-cta1-link" value={settings.heroCta1Link} onChange={(e) => handleFieldChange('heroCta1Link', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="hero-cta2-text">Texte CTA 2</Label>
+                                                        <Input id="hero-cta2-text" value={settings.heroCta2Text} onChange={(e) => handleFieldChange('heroCta2Text', e.target.value)} />
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="hero-cta2-link">Lien CTA 2</Label>
+                                                        <Input id="hero-cta2-link" value={settings.heroCta2Link} onChange={(e) => handleFieldChange('heroCta2Link', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
                                 ) : (

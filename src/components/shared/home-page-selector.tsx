@@ -40,35 +40,38 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
 };
 
 function HeroSectionApplication() {
-    const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
+    const { personalization } = useAgency();
+    const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
+    const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
+
     return (
-        <div className="relative bg-background text-foreground">
-            {heroImage && (
+        <div className="relative text-white min-h-[50vh] md:min-h-screen flex items-center" style={{ backgroundColor: personalization.heroBgColor }}>
+             {heroImageSrc && (
                 <Image
-                    src={heroImage.imageUrl}
-                    alt={heroImage.description}
+                    src={heroImageSrc}
+                    alt="Image de fond"
                     fill
                     className="object-cover object-center z-0"
-                    data-ai-hint={heroImage.imageHint}
+                    data-ai-hint="hero background"
                 />
             )}
-            <div className="absolute inset-0 bg-black/50 z-10"></div>
+            <div className="absolute inset-0 bg-black/60 z-10"></div>
 
             <div className="relative z-20 container mx-auto px-4 py-16">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                    <div className="flex flex-col gap-8 text-center text-white">
-                        <div className="flex justify-center">
-                            <Logo className="text-white" />
-                        </div>
+                    <div className="flex flex-col gap-6 text-center md:text-left items-center md:items-start">
+                         <Logo className="text-white" />
                         <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
-                            Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.
+                           {personalization.heroAppTitle}
                         </h1>
-                        <div>
-                            <h2 className="text-xl font-bold text-primary">Vapps Accompagnement</h2>
-                            <p className="text-lg text-white/80 mt-2">
-                                Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.
-                            </p>
-                        </div>
+                        <p className="text-lg text-white/80">
+                           {personalization.heroAppSubtitle}
+                        </p>
+                        <Button size="lg" asChild variant="secondary">
+                            <Link href={personalization.heroAppCtaLink}>
+                                {personalization.heroAppCtaText} <ArrowRight className="ml-2"/>
+                            </Link>
+                        </Button>
                     </div>
                     <div>
                         <LoginForm />
@@ -162,30 +165,11 @@ function TunnelHomePage() {
 }
 
 function ApplicationHomePage() {
-    const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
-
   return (
     <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
-      <div className="relative bg-background text-foreground">
-        {heroImage && (
-          <Image
-            src={heroImage.imageUrl}
-            alt={heroImage.description}
-            fill
-            className="object-cover object-center z-0"
-            data-ai-hint={heroImage.imageHint}
-          />
-        )}
-        <div className="absolute inset-0 bg-black/50 z-10"></div>
-        
-        <main className="relative z-20 container mx-auto px-4 py-16">
-          <div className="flex justify-center">
-            <div className="w-full max-w-md">
-              <LoginForm />
-            </div>
-          </div>
-        </main>
-      </div>
+      <main>
+        <HeroSectionApplication />
+      </main>
       <CtaSection />
       <WhiteLabelSection />
       <Footer />
