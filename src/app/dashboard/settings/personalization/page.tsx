@@ -125,6 +125,7 @@ const defaultPersonalization = {
     secondaryColor: "#25d408",
     bgColor: "#ffffff",
     logoDataUrl: null as string | null,
+    heroStyle: 'application', // 'application' (avec connexion) ou 'tunnel' (sans connexion)
     heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
     heroSubtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
     heroCta1Text: "Découvrir mes services",
@@ -135,7 +136,6 @@ const defaultPersonalization = {
     heroBgColor: "#000000",
     heroAppTitle: "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs.",
     heroAppSubtitle: "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach.",
-
     heroAppCtaText: "Découvrir VApps",
     heroAppCtaLink: "#about",
     footerAboutTitle: "À propos",
@@ -779,9 +779,23 @@ export default function PersonalizationPage() {
                                 <div className="p-6 border-t bg-muted/50">
                                 {section.id === 'hero' ? (
                                     <div className="space-y-6">
-                                        <div className="space-y-4">
+                                        <div>
+                                            <Label className="text-base font-medium">Style de la section Héro</Label>
+                                            <RadioGroup value={settings.heroStyle} onValueChange={(value) => handleFieldChange('heroStyle', value)} className="mt-2 space-y-2">
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="application" id="hero-application" />
+                                                    <Label htmlFor="hero-application">Avec fenêtre de connexion</Label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="tunnel" id="hero-tunnel" />
+                                                    <Label htmlFor="hero-tunnel">Sans fenêtre de connexion (Tunnel)</Label>
+                                                </div>
+                                            </RadioGroup>
+                                        </div>
+
+                                        <div className="border-t pt-6 mt-6">
                                             <h4 className="font-medium">Image de fond & Couleur</h4>
-                                            <div className="flex items-center gap-4">
+                                            <div className="flex items-center gap-4 mt-4">
                                                 <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative">
                                                     {heroImagePreview ? (
                                                         <Image src={heroImagePreview} alt="Aperçu du Héro" layout="fill" objectFit="cover" />
@@ -801,7 +815,7 @@ export default function PersonalizationPage() {
                                                     Changer l'image
                                                 </Button>
                                             </div>
-                                             <div className="space-y-2">
+                                             <div className="space-y-2 mt-4">
                                                 <Label htmlFor="hero-bg-color">Couleur de fond (si pas d'image)</Label>
                                                 <div className="flex items-center gap-2">
                                                     <Input type="color" value={settings.heroBgColor} onChange={(e) => handleFieldChange('heroBgColor', e.target.value)} className="w-10 h-10 p-1"/>
@@ -811,7 +825,7 @@ export default function PersonalizationPage() {
                                         </div>
 
                                         <div className="mt-6 pt-6 border-t">
-                                            <h4 className="font-semibold text-base mb-4">Contenu pour la version "Application"</h4>
+                                            <h4 className="font-semibold text-base mb-4">Contenu pour le Héro "Avec connexion"</h4>
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hero-app-title">Titre</Label>
@@ -835,7 +849,7 @@ export default function PersonalizationPage() {
                                         </div>
 
                                         <div className="mt-6 pt-6 border-t">
-                                            <h4 className="font-semibold text-base mb-4">Contenu pour la version "Tunnel de Vente"</h4>
+                                            <h4 className="font-semibold text-base mb-4">Contenu pour le Héro "Sans connexion"</h4>
                                             <div className="space-y-4">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hero-title">Titre du Héro</Label>

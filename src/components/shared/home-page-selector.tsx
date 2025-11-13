@@ -38,9 +38,8 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
   pricing: PricingSection,
 };
 
-// This is the Hero for the MAIN application (VApps Model)
-// It always has the login form on the right.
-function MainAppHero() {
+// Héro AVEC fenêtre de connexion
+function HeroWithLogin() {
     const { personalization } = useAgency();
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
     const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
@@ -69,7 +68,7 @@ function MainAppHero() {
                            {personalization.heroAppSubtitle || "Accédez à vos ressources, suivez vos progrès et communiquez avec votre coach."}
                         </p>
                         <Button size="lg" asChild variant="secondary">
-                            <Link href={personalization.heroAppCtaLink || "#"}>
+                            <Link href={personalization.heroAppCtaLink || '#'}>
                                 {personalization.heroAppCtaText || "Découvrir VApps"} <ArrowRight className="ml-2"/>
                             </Link>
                         </Button>
@@ -83,9 +82,8 @@ function MainAppHero() {
     )
 }
 
-// This is the Hero for an AGENCY using the "Tunnel de Vente" style.
-// Full-width, sales-oriented.
-function AgencySalesFunnelHero() {
+// Héro SANS fenêtre de connexion (style tunnel de vente)
+function HeroWithoutLogin() {
     const { personalization } = useAgency();
     const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
     const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
@@ -134,73 +132,60 @@ function AgencySalesFunnelHero() {
     );
 }
 
-// This represents the MAIN application homepage.
-// It will have a consistent layout with the 2-column hero and other sections.
-function MainAppHomePage() {
-  return (
-    <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
-      <main>
-        <MainAppHero />
-        <AboutSection />
-        <ParcoursSection />
-        <CtaSection />
-        <VideoSection />
-        <ShopSection />
-        <ServicesSection />
-        <OtherActivitiesSection />
-        <BlogSection />
-        <WhiteLabelSection />
-        <PricingSection />
-      </main>
-      <Footer />
-    </div>
-  );
+// Le composant Héro qui choisit lequel afficher en fonction des réglages
+function HeroSection() {
+    const { personalization } = useAgency();
+    const heroStyle = personalization?.heroStyle || 'application'; // 'application' ou 'tunnel'
+
+    if (heroStyle === 'application') {
+        return <HeroWithLogin />;
+    }
+    return <HeroWithoutLogin />;
 }
 
-
-// This represents an AGENCY's full sales funnel page.
-function AgencyTunnelHomePage() {
+// Page d'accueil complète (tunnel)
+function TunnelHomePage() {
   const { personalization } = useAgency();
   const sections = personalization?.homePageSections as Section[] || [];
   
-  const heroSection = sections.find(s => s.id === 'hero');
-  const footerSection = sections.find(s => s.id === 'footer');
-
   return (
     <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
       <main>
-          {heroSection?.enabled && <AgencySalesFunnelHero />}
           {sections.map(section => {
-            if (!section.enabled || section.id === 'hero' || section.id === 'footer') return null;
+            if (!section.enabled) return null;
+            if (section.id === 'hero') return <HeroSection key={section.id} />;
+            if (section.id === 'footer') return null; // Pied de page géré à la fin
+
             const SectionComponent = sectionComponents[section.id];
             return SectionComponent ? <SectionComponent key={section.id} /> : null;
           })}
       </main>
-      {footerSection?.enabled && <Footer />}
+      {sections.find(s => s.id === 'footer' && s.enabled) && <Footer />}
     </div>
   );
 }
 
-// This represents an AGENCY's simplified application access page.
-function AgencyApplicationHomePage() {
-  return (
-    <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
-      <main>
-        <MainAppHero />
-      </main>
-      <WhiteLabelSection />
-      <Footer />
-    </div>
-  );
-}
+// Page d'accueil simplifiée (application)
+function ApplicationHomePage() {
+    const { personalization } = useAgency();
+    const sections = personalization?.homePageSections as Section[] || [];
 
+    const isWhiteLabelEnabled = sections.find(s => s.id === 'whiteLabel')?.enabled;
+    const isFooterEnabled = sections.find(s => s.id === 'footer')?.enabled;
+
+    return (
+        <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
+            <main>
+                <HeroSection />
+                {isWhiteLabelEnabled && <WhiteLabelSection />}
+            </main>
+            {isFooterEnabled && <Footer />}
+        </div>
+    );
+}
 
 export function HomePageSelector() {
   const { personalization, isLoading } = useAgency();
-  
-  // For now, this is always the main application model.
-  // This variable can be changed to `false` to simulate an agency context.
-  const isMainApp = true; 
   
   if (isLoading) {
     return (
@@ -214,19 +199,19 @@ export function HomePageSelector() {
   }
 
   // --- LOGIC ROUTING ---
+  // Pour maintenant, on simule une agence. La logique pour l'app principale sera ajoutée plus tard.
+  const isMainApp = false;
   
-  // For the main VApps application model, we ALWAYS show the main app layout
-  // which includes the 2-column hero with the login form.
   if (isMainApp) {
-      return <MainAppHomePage />;
+      // Logique pour l'app principale si nécessaire
   }
   
-  // For a future AGENCY, we respect the `homePageVersion` setting.
+  // Pour une AGENCE, on respecte le `homePageVersion`
   const homePageVersion = personalization?.homePageVersion || 'tunnel';
 
   if (homePageVersion === 'application') {
-    return <AgencyApplicationHomePage />;
+    return <ApplicationHomePage />;
   }
 
-  return <AgencyTunnelHomePage />;
+  return <TunnelHomePage />;
 }
