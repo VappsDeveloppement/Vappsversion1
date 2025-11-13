@@ -16,6 +16,7 @@ interface AboutSectionPersonalization {
     mainText: string;
     pillarsSectionTitle: string;
     pillars: { id: string; title: string; description: string; }[];
+    showExpertises: boolean;
     expertisesSectionTitle: string;
     expertises: { id: string; title: string; description: string; }[];
 }
@@ -150,6 +151,7 @@ const defaultPersonalization: Personalization = {
         { id: "pillar-tools", title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion." },
         { id: "pillar-community", title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble." },
       ],
+      showExpertises: true,
       expertisesSectionTitle: "Nos expertises sectorielles",
       expertises: [
         { id: "expertise-tech", title: "Secteur Tech", description: "Conseils pour les métiers du numérique." },
@@ -253,5 +255,3 @@ export const useAgency = (): AgencyContextType & { agency: {id: string, name: st
     // We add the dummy agency object here for backward compatibility during the refactor.
     return { ...context, agency: { id: 'vapps-agency', name: 'VApps Model', personalization: context.personalization } };
 };
-
-    

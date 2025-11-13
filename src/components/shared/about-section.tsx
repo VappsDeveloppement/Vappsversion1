@@ -71,34 +71,38 @@ export function AboutSection() {
                     })}
                 </div>
 
-                <div className="text-center mb-12">
-                    <h3 className="text-2xl lg:text-3xl font-bold text-primary">{aboutSettings?.expertisesSectionTitle || "Nos expertises sectorielles"}</h3>
-                </div>
+                {aboutSettings?.showExpertises && (
+                    <>
+                        <div className="text-center mb-12">
+                            <h3 className="text-2xl lg:text-3xl font-bold text-primary">{aboutSettings?.expertisesSectionTitle || "Nos expertises sectorielles"}</h3>
+                        </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-                    {expertises.map((expertise) => {
-                         const image = PlaceHolderImages.find(p => p.id === expertise.id);
-                        return (
-                            <Card key={expertise.id} className="overflow-hidden group">
-                               <div className="h-48 relative overflow-hidden">
-                                    {image && (
-                                        <Image
-                                            src={image.imageUrl}
-                                            alt={image.description}
-                                            fill
-                                            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-                                            data-ai-hint={image.imageHint}
-                                        />
-                                    )}
-                                </div>
-                                <CardContent className="p-6">
-                                    <h4 className="font-bold text-xl mb-2">{expertise.title}</h4>
-                                    <p className="text-muted-foreground">{expertise.description}</p>
-                                </CardContent>
-                            </Card>
-                        );
-                    })}
-                </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
+                            {expertises.map((expertise) => {
+                                const image = PlaceHolderImages.find(p => p.id === expertise.id);
+                                return (
+                                    <Card key={expertise.id} className="overflow-hidden group">
+                                    <div className="h-48 relative overflow-hidden">
+                                            {image && (
+                                                <Image
+                                                    src={image.imageUrl}
+                                                    alt={image.description}
+                                                    fill
+                                                    className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                                                    data-ai-hint={image.imageHint}
+                                                />
+                                            )}
+                                        </div>
+                                        <CardContent className="p-6">
+                                            <h4 className="font-bold text-xl mb-2">{expertise.title}</h4>
+                                            <p className="text-muted-foreground">{expertise.description}</p>
+                                        </CardContent>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                    </>
+                )}
             </div>
         </section>
     );

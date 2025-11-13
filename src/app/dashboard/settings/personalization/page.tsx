@@ -186,6 +186,7 @@ const defaultPersonalization = {
         { id: "pillar-tools", title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion." },
         { id: "pillar-community", title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble." },
       ],
+      showExpertises: true,
       expertisesSectionTitle: "Nos expertises sectorielles",
       expertises: [
         { id: "expertise-tech", title: "Secteur Tech", description: "Conseils pour les métiers du numérique." },
@@ -1158,26 +1159,40 @@ export default function PersonalizationPage() {
                                       <div className="border-t -mx-6"></div>
                                       
                                       <section>
-                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Expertises Sectorielles</h3>
-                                         <div className="space-y-2 mb-6">
-                                            <Label htmlFor="about-expertises-title">Titre de la section des expertises</Label>
-                                            <Input id="about-expertises-title" value={settings.aboutSection?.expertisesSectionTitle} onChange={(e) => handleAboutSectionChange('expertisesSectionTitle', e.target.value)} />
+                                         <div className="flex items-center justify-between mb-6 border-b pb-2">
+                                            <h3 className="text-xl font-semibold">Expertises Sectorielles</h3>
+                                            <div className="flex items-center gap-2">
+                                                <Label htmlFor="show-expertises">Afficher la section</Label>
+                                                <Switch
+                                                    id="show-expertises"
+                                                    checked={settings.aboutSection?.showExpertises}
+                                                    onCheckedChange={(checked) => handleAboutSectionChange('showExpertises', checked)}
+                                                />
+                                            </div>
                                          </div>
-                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            {settings.aboutSection.expertises.map((expertise, index) => (
-                                                <div key={expertise.id} className="p-4 border rounded-lg space-y-4">
-                                                     <h4 className="font-medium">Expertise {index + 1}</h4>
-                                                    <div className="space-y-2">
-                                                        <Label htmlFor={`expertise-title-${index}`}>Titre</Label>
-                                                        <Input id={`expertise-title-${index}`} value={expertise.title} onChange={(e) => handleAboutExpertiseChange(index, 'title', e.target.value)} />
-                                                    </div>
-                                                     <div className="space-y-2">
-                                                        <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
-                                                        <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
-                                                    </div>
+                                         {settings.aboutSection?.showExpertises && (
+                                            <>
+                                                <div className="space-y-2 mb-6">
+                                                    <Label htmlFor="about-expertises-title">Titre de la section des expertises</Label>
+                                                    <Input id="about-expertises-title" value={settings.aboutSection?.expertisesSectionTitle} onChange={(e) => handleAboutSectionChange('expertisesSectionTitle', e.target.value)} />
                                                 </div>
-                                            ))}
-                                         </div>
+                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    {settings.aboutSection.expertises.map((expertise, index) => (
+                                                        <div key={expertise.id} className="p-4 border rounded-lg space-y-4">
+                                                            <h4 className="font-medium">Expertise {index + 1}</h4>
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor={`expertise-title-${index}`}>Titre</Label>
+                                                                <Input id={`expertise-title-${index}`} value={expertise.title} onChange={(e) => handleAboutExpertiseChange(index, 'title', e.target.value)} />
+                                                            </div>
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor={`expertise-desc-${index}`}>Description</Label>
+                                                                <Input id={`expertise-desc-${index}`} value={expertise.description} onChange={(e) => handleAboutExpertiseChange(index, 'description', e.target.value)} />
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </>
+                                         )}
                                       </section>
                                     </div>
                                 ) : (
@@ -1195,7 +1210,6 @@ export default function PersonalizationPage() {
             </CardContent>
           </Card>
         </TabsContent>
-
         <TabsContent value="paiement">
           <Card>
             <CardHeader>
