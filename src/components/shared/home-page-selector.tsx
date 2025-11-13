@@ -59,7 +59,7 @@ function HeroWithLogin() {
 
             <div className="relative z-20 container mx-auto px-4 py-16">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-16 items-center">
-                    <div className="flex flex-col gap-6 text-center md:text-left items-center md:items-start">
+                    <div className="flex flex-col gap-6 text-center items-center">
                          <Logo className="text-white" />
                         <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
                            {personalization.heroAppTitle || "Un accompagnement holistique pour une évolution professionnelle alignée avec vos valeurs."}
@@ -176,6 +176,7 @@ function ApplicationHomePage() {
             <main>
                 {sections
                     .filter(section => sectionsToRender.includes(section.id) && section.enabled)
+                    .sort((a, b) => sectionsToRender.indexOf(a.id) - sectionsToRender.indexOf(b.id))
                     .map(section => {
                         if (section.id === 'hero') return <HeroSection key={section.id} />;
                         if (section.id === 'footer') return null;
