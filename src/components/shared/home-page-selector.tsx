@@ -6,6 +6,7 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { LoginForm } from '@/components/shared/login-form';
 import Image from 'next/image';
+import Link from 'next/link';
 import { Logo } from '@/components/shared/logo';
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { AboutSection } from '@/components/shared/about-section';
@@ -22,6 +23,8 @@ import { Footer } from '@/components/shared/footer';
 import type { Section } from '@/app/dashboard/settings/personalization/page';
 import { useAgency } from '@/context/agency-provider';
 import { Skeleton } from '../ui/skeleton';
+import { Button } from '../ui/button';
+import { ArrowRight } from 'lucide-react';
 
 const sectionComponents: { [key: string]: React.ComponentType } = {
   about: AboutSection,
@@ -36,7 +39,7 @@ const sectionComponents: { [key: string]: React.ComponentType } = {
   pricing: PricingSection,
 };
 
-function HeroSection() {
+function HeroSectionApplication() {
     const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
     return (
         <div className="relative bg-background text-foreground">
@@ -74,6 +77,64 @@ function HeroSection() {
             </div>
         </div>
     )
+}
+
+function HeroSectionSalesFunnel() {
+    const { personalization } = useAgency();
+    const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
+
+    return (
+        <div className="relative text-white">
+             {heroImage && (
+                <Image
+                    src={heroImage.imageUrl}
+                    alt={heroImage.description}
+                    fill
+                    className="object-cover object-center z-0"
+                    data-ai-hint={heroImage.imageHint}
+                />
+            )}
+            <div className="absolute inset-0 bg-black/60 z-10"></div>
+            
+            <header className="relative z-20 container mx-auto px-4 py-4 flex justify-between items-center">
+                <Logo className="text-white" />
+                <nav className="hidden md:flex items-center gap-6 text-sm font-medium">
+                    <Link href="#about" className="hover:text-primary transition-colors">Approche</Link>
+                    <Link href="#parcours" className="hover:text-primary transition-colors">Parcours</Link>
+                    <Link href="#pricing" className="hover:text-primary transition-colors">Formules</Link>
+                    <Link href="#contact" className="hover:text-primary transition-colors">Contact</Link>
+                </nav>
+                <Button asChild>
+                    <Link href="/application">Mon Espace</Link>
+                </Button>
+            </header>
+
+            <div className="relative z-20 container mx-auto px-4 pt-24 pb-32 text-center flex flex-col items-center">
+                <h1 className="text-4xl md:text-6xl font-bold leading-tight max-w-4xl">{personalization.heroTitle}</h1>
+                <p className="mt-4 text-lg md:text-xl text-white/80 max-w-2xl">{personalization.heroSubtitle}</p>
+                <div className="mt-8 flex flex-wrap justify-center gap-4">
+                    <Button size="lg" asChild variant="secondary">
+                        <Link href={personalization.heroCta1Link}>
+                            {personalization.heroCta1Text} <ArrowRight className="ml-2"/>
+                        </Link>
+                    </Button>
+                    <Button size="lg" asChild>
+                         <Link href={personalization.heroCta2Link}>{personalization.heroCta2Text}</Link>
+                    </Button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+function HeroSection() {
+    const { personalization } = useAgency();
+    
+    if (personalization?.heroStyle === 'sales_funnel') {
+        return <HeroSectionSalesFunnel />;
+    }
+    
+    return <HeroSectionApplication />;
 }
 
 

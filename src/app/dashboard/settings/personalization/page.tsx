@@ -1,4 +1,5 @@
 
+
 'use client'
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -122,6 +123,13 @@ const defaultPersonalization = {
     secondaryColor: "#25d408",
     bgColor: "#ffffff",
     logoDataUrl: null as string | null,
+    heroStyle: "application",
+    heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
+    heroSubtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
+    heroCta1Text: "Découvrir mes services",
+    heroCta1Link: "/services",
+    heroCta2Text: "Prendre rendez-vous",
+    heroCta2Link: "/contact",
     footerAboutTitle: "À propos",
     footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
     footerAboutLinks: [
@@ -692,6 +700,58 @@ export default function PersonalizationPage() {
                     <p className="text-sm text-muted-foreground ml-6">Une page simple avec un formulaire de connexion, pour un accès direct à l'application.</p>
                 </RadioGroup>
               </section>
+              <div className="border-t -mx-6"></div>
+
+              <section>
+                <h3 className="text-lg font-medium mb-4">Personnalisation du Héro</h3>
+                <div className="space-y-4">
+                    <Label>Style de la section Héro</Label>
+                    <RadioGroup value={settings.heroStyle} onValueChange={(value) => handleFieldChange('heroStyle', value)} className="space-y-2">
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="application" id="hero-app" />
+                            <Label htmlFor="hero-app">Modèle Application (avec connexion)</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="sales_funnel" id="hero-tunnel" />
+                            <Label htmlFor="hero-tunnel">Modèle Tunnel de Vente</Label>
+                        </div>
+                    </RadioGroup>
+                </div>
+
+                {settings.heroStyle === 'sales_funnel' && (
+                  <div className="mt-6 space-y-4 pt-4 border-t">
+                    <div className="space-y-2">
+                        <Label htmlFor="hero-title">Titre du Héro</Label>
+                        <Textarea id="hero-title" value={settings.heroTitle} onChange={(e) => handleFieldChange('heroTitle', e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="hero-subtitle">Sous-titre du Héro</Label>
+                        <Textarea id="hero-subtitle" value={settings.heroSubtitle} onChange={(e) => handleFieldChange('heroSubtitle', e.target.value)} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-cta1-text">Texte CTA 1</Label>
+                            <Input id="hero-cta1-text" value={settings.heroCta1Text} onChange={(e) => handleFieldChange('heroCta1Text', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-cta1-link">Lien CTA 1</Label>
+                            <Input id="hero-cta1-link" value={settings.heroCta1Link} onChange={(e) => handleFieldChange('heroCta1Link', e.target.value)} />
+                        </div>
+                    </div>
+                     <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-cta2-text">Texte CTA 2</Label>
+                            <Input id="hero-cta2-text" value={settings.heroCta2Text} onChange={(e) => handleFieldChange('heroCta2Text', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="hero-cta2-link">Lien CTA 2</Label>
+                            <Input id="hero-cta2-link" value={settings.heroCta2Link} onChange={(e) => handleFieldChange('heroCta2Link', e.target.value)} />
+                        </div>
+                    </div>
+                  </div>
+                )}
+              </section>
+
               <div className="border-t -mx-6"></div>
               <section>
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
