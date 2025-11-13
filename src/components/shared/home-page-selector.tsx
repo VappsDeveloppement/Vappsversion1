@@ -134,7 +134,8 @@ function HeroSectionSalesFunnel() {
 function HeroSection() {
     const { personalization } = useAgency();
     
-    if (personalization?.heroStyle === 'sales_funnel') {
+    // We now derive the style from homePageVersion
+    if (personalization?.homePageVersion === 'tunnel') {
         return <HeroSectionSalesFunnel />;
     }
     

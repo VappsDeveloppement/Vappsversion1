@@ -125,7 +125,6 @@ const defaultPersonalization = {
     secondaryColor: "#25d408",
     bgColor: "#ffffff",
     logoDataUrl: null as string | null,
-    heroStyle: "application",
     heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
     heroSubtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
     heroCta1Text: "Découvrir mes services",
@@ -738,7 +737,7 @@ export default function PersonalizationPage() {
                  <Accordion type="single" collapsible className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => (
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
-                            <div className="flex items-center gap-4 p-3 [&[data-state=open]>svg:last-child]:rotate-180">
+                            <div className="flex items-center gap-4 p-3">
                                 <AccordionTrigger className="flex-1 p-0 hover:no-underline">
                                     <div className="flex-1 text-left font-medium">{section.label}</div>
                                 </AccordionTrigger>
@@ -779,20 +778,6 @@ export default function PersonalizationPage() {
                                 <div className="p-6 border-t bg-muted/50">
                                 {section.id === 'hero' ? (
                                     <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <Label>Style de la section Héro</Label>
-                                            <RadioGroup value={settings.heroStyle} onValueChange={(value) => handleFieldChange('heroStyle', value)} className="space-y-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="application" id="hero-app" />
-                                                    <Label htmlFor="hero-app">Modèle Application (avec connexion)</Label>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="sales_funnel" id="hero-tunnel" />
-                                                    <Label htmlFor="hero-tunnel">Modèle Tunnel de Vente</Label>
-                                                </div>
-                                            </RadioGroup>
-                                        </div>
-
                                         <div className="mt-6 space-y-6 pt-6 border-t">
                                             <div className="space-y-4">
                                                 <h4 className="font-medium">Image de fond</h4>
@@ -827,7 +812,7 @@ export default function PersonalizationPage() {
                                             </div>
                                         </div>
 
-                                        {settings.heroStyle === 'application' && (
+                                        {settings.homePageVersion === 'application' && (
                                             <div className="mt-6 space-y-6 pt-6 border-t">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hero-app-title">Titre</Label>
@@ -850,7 +835,7 @@ export default function PersonalizationPage() {
                                             </div>
                                         )}
 
-                                        {settings.heroStyle === 'sales_funnel' && (
+                                        {settings.homePageVersion === 'tunnel' && (
                                             <div className="mt-6 space-y-6 pt-6 border-t">
                                                 <div className="space-y-2">
                                                     <Label htmlFor="hero-title">Titre du Héro</Label>
