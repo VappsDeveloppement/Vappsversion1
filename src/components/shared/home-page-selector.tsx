@@ -81,17 +81,18 @@ function HeroSectionApplication() {
 
 function HeroSectionSalesFunnel() {
     const { personalization } = useAgency();
-    const heroImage = PlaceHolderImages.find(p => p.id === 'hero-background');
+    const fallbackImage = PlaceHolderImages.find(p => p.id === 'hero-background');
+    const heroImageSrc = personalization.heroImageUrl || fallbackImage?.imageUrl;
 
     return (
-        <div className="relative text-white">
-             {heroImage && (
+        <div className="relative text-white" style={{ backgroundColor: personalization.heroBgColor }}>
+             {heroImageSrc && (
                 <Image
-                    src={heroImage.imageUrl}
-                    alt={heroImage.description}
+                    src={heroImageSrc}
+                    alt="Image de fond pour le Héro"
                     fill
                     className="object-cover object-center z-0"
-                    data-ai-hint={heroImage.imageHint}
+                    data-ai-hint="hero background"
                 />
             )}
             <div className="absolute inset-0 bg-black/60 z-10"></div>

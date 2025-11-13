@@ -20,6 +20,15 @@ interface Personalization {
     primaryColor: string;
     secondaryColor: string;
     bgColor: string;
+    heroStyle: string;
+    heroTitle: string;
+    heroSubtitle: string;
+    heroCta1Text: string;
+    heroCta1Link: string;
+    heroCta2Text: string;
+    heroCta2Link: string;
+    heroImageUrl: string | null;
+    heroBgColor: string;
     footerAboutTitle: string;
     footerAboutText: string;
     footerAboutLinks: any[];
@@ -53,6 +62,15 @@ const defaultPersonalization: Personalization = {
     primaryColor: "#2ff40a",
     secondaryColor: "#25d408",
     bgColor: "#ffffff",
+    heroStyle: "application",
+    heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
+    heroSubtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
+    heroCta1Text: "Découvrir mes services",
+    heroCta1Link: "/services",
+    heroCta2Text: "Prendre rendez-vous",
+    heroCta2Link: "/contact",
+    heroImageUrl: null,
+    heroBgColor: "#000000",
     footerAboutTitle: "À propos",
     footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
     footerAboutLinks: [

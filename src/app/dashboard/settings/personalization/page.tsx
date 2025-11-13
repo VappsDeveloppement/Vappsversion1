@@ -132,6 +132,8 @@ const defaultPersonalization = {
     heroCta1Link: "/services",
     heroCta2Text: "Prendre rendez-vous",
     heroCta2Link: "/contact",
+    heroImageUrl: null as string | null,
+    heroBgColor: "#000000",
     footerAboutTitle: "À propos",
     footerAboutText: "HOLICA LOC est une plateforme de test qui met en relation des développeurs d'applications avec une communauté de bêta-testeurs qualifiés.",
     footerAboutLinks: [
@@ -162,7 +164,9 @@ export default function PersonalizationPage() {
 
   const [settings, setSettings] = useState(personalization || defaultPersonalization);
   const [logoPreview, setLogoPreview] = React.useState(personalization?.logoDataUrl || "/vapps.png");
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [heroImagePreview, setHeroImagePreview] = React.useState(personalization?.heroImageUrl);
+  const logoFileInputRef = useRef<HTMLInputElement>(null);
+  const heroImageFileInputRef = useRef<HTMLInputElement>(null);
   
   useEffect(() => {
     if (personalization) {
@@ -174,6 +178,9 @@ export default function PersonalizationPage() {
       }));
       if (personalization.logoDataUrl) {
           setLogoPreview(personalization.logoDataUrl);
+      }
+      if (personalization.heroImageUrl) {
+        setHeroImagePreview(personalization.heroImageUrl);
       }
     }
   }, [personalization]);
@@ -209,6 +216,7 @@ export default function PersonalizationPage() {
       };
       setSettings(resetSettings);
       setLogoPreview(defaultPersonalization.logoDataUrl || "/vapps.png");
+      setHeroImagePreview(defaultPersonalization.heroImageUrl);
 
       if (!agency) return;
       const agencyRef = doc(firestore, 'agencies', agency.id);
@@ -218,15 +226,28 @@ export default function PersonalizationPage() {
 
 
   const handleLogoUploadClick = () => {
-    fileInputRef.current?.click();
+    logoFileInputRef.current?.click();
   };
 
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      setLogoPreview(URL.createObjectURL(file));
       const base64 = await toBase64(file);
+      setLogoPreview(base64);
       handleFieldChange('logoDataUrl', base64);
+    }
+  };
+
+  const handleHeroImageUploadClick = () => {
+    heroImageFileInputRef.current?.click();
+  };
+
+  const handleHeroImageFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+        const base64 = await toBase64(file);
+        setHeroImagePreview(base64);
+        handleFieldChange('heroImageUrl', base64);
     }
   };
 
@@ -497,8 +518,8 @@ export default function PersonalizationPage() {
                                 </div>
                                 <input
                                     type="file"
-                                    ref={fileInputRef}
-                                    onChange={handleFileChange}
+                                    ref={logoFileInputRef}
+                                    onChange={handleLogoFileChange}
                                     className="hidden"
                                     accept="image/png, image/jpeg, image/svg+xml"
                                 />
@@ -748,21 +769,55 @@ export default function PersonalizationPage() {
                             <AccordionContent>
                                 <div className="p-6 border-t bg-muted/50">
                                 {section.id === 'hero' ? (
-                                    <div className="space-y-4">
-                                        <Label>Style de la section Héro</Label>
-                                        <RadioGroup value={settings.heroStyle} onValueChange={(value) => handleFieldChange('heroStyle', value)} className="space-y-2">
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="application" id="hero-app" />
-                                                <Label htmlFor="hero-app">Modèle Application (avec connexion)</Label>
-                                            </div>
-                                            <div className="flex items-center space-x-2">
-                                                <RadioGroupItem value="sales_funnel" id="hero-tunnel" />
-                                                <Label htmlFor="hero-tunnel">Modèle Tunnel de Vente</Label>
-                                            </div>
-                                        </RadioGroup>
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label>Style de la section Héro</Label>
+                                            <RadioGroup value={settings.heroStyle} onValueChange={(value) => handleFieldChange('heroStyle', value)} className="space-y-2">
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="application" id="hero-app" />
+                                                    <Label htmlFor="hero-app">Modèle Application (avec connexion)</Label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="sales_funnel" id="hero-tunnel" />
+                                                    <Label htmlFor="hero-tunnel">Modèle Tunnel de Vente</Label>
+                                                </div>
+                                            </RadioGroup>
+                                        </div>
 
                                         {settings.heroStyle === 'sales_funnel' && (
-                                        <div className="mt-6 space-y-4 pt-4 border-t">
+                                        <div className="mt-6 space-y-6 pt-6 border-t">
+                                            <div className="space-y-4">
+                                                <h4 className="font-medium">Image de fond</h4>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative">
+                                                        {heroImagePreview ? (
+                                                            <Image src={heroImagePreview} alt="Aperçu du Héro" layout="fill" objectFit="cover" />
+                                                        ) : (
+                                                            <span className="text-xs text-muted-foreground">Aucune image</span>
+                                                        )}
+                                                    </div>
+                                                    <input
+                                                        type="file"
+                                                        ref={heroImageFileInputRef}
+                                                        onChange={handleHeroImageFileChange}
+                                                        className="hidden"
+                                                        accept="image/png, image/jpeg"
+                                                    />
+                                                    <Button variant="outline" onClick={handleHeroImageUploadClick}>
+                                                        <Upload className="mr-2 h-4 w-4" />
+                                                        Changer l'image
+                                                    </Button>
+                                                </div>
+                                            </div>
+                                            
+                                            <div className="space-y-2">
+                                                <Label htmlFor="hero-bg-color">Couleur de fond (si pas d'image)</Label>
+                                                <div className="flex items-center gap-2">
+                                                    <Input type="color" value={settings.heroBgColor} onChange={(e) => handleFieldChange('heroBgColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                                    <Input id="hero-bg-color" value={settings.heroBgColor} onChange={(e) => handleFieldChange('heroBgColor', e.target.value)} />
+                                                </div>
+                                            </div>
+
                                             <div className="space-y-2">
                                                 <Label htmlFor="hero-title">Titre du Héro</Label>
                                                 <Textarea id="hero-title" value={settings.heroTitle} onChange={(e) => handleFieldChange('heroTitle', e.target.value)} />
