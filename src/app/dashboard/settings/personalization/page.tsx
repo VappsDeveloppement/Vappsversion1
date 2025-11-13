@@ -116,7 +116,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
+  { id: 'cta', label: 'CTA 1', enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
@@ -210,6 +210,14 @@ const defaultPersonalization = {
           { id: `step-3`, title: "Étape 3: Intégration", description: "Nous consolidons vos acquis et mettons en place un plan d'action durable." },
           { id: `step-4`, title: "Étape 4: Épanouissement", description: "Vous repartez avec les clés pour poursuivre votre chemin en toute autonomie." }
       ] as ParcoursStep[]
+    },
+    ctaSection: {
+        title: "Prêt à tester le futur ?",
+        text: "Rejoignez notre communauté de bêta-testeurs et découvrez des applications innovantes avant tout le monde.",
+        buttonText: "Devenir bêta-testeur",
+        buttonLink: "#",
+        bgColor: "#f0fdf4",
+        bgImageUrl: null as string | null
     }
 };
 
@@ -222,6 +230,7 @@ export default function PersonalizationPage() {
   const [logoPreview, setLogoPreview] = React.useState(personalization?.logoDataUrl || "/vapps.png");
   const [heroImagePreview, setHeroImagePreview] = React.useState(personalization?.heroImageUrl);
   const [aboutImagePreview, setAboutImagePreview] = React.useState(personalization?.aboutSection?.mainImageUrl);
+  const [ctaImagePreview, setCtaImagePreview] = React.useState(personalization?.ctaSection?.bgImageUrl);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -240,6 +249,10 @@ export default function PersonalizationPage() {
         parcoursSection: {
             ...defaultPersonalization.parcoursSection,
             ...(personalization.parcoursSection || {})
+        },
+        ctaSection: {
+            ...defaultPersonalization.ctaSection,
+            ...(personalization.ctaSection || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -256,6 +269,11 @@ export default function PersonalizationPage() {
         setAboutImagePreview(personalization.aboutSection.mainImageUrl);
       } else {
         setAboutImagePreview(null);
+      }
+       if (personalization.ctaSection?.bgImageUrl) {
+        setCtaImagePreview(personalization.ctaSection.bgImageUrl);
+      } else {
+        setCtaImagePreview(null);
       }
     }
   }, [personalization]);
@@ -339,6 +357,16 @@ export default function PersonalizationPage() {
   const removeParcoursStep = (index: number) => {
     const newSteps = settings.parcoursSection.steps.filter((_, i) => i !== index);
     handleParcoursSectionChange('steps', newSteps);
+  };
+
+  const handleCtaSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      ctaSection: {
+        ...(prev.ctaSection || defaultPersonalization.ctaSection),
+        [field]: value
+      }
+    }));
   };
 
   const handleLegalInfoChange = (field: string, value: any) => {
@@ -1363,6 +1391,72 @@ export default function PersonalizationPage() {
                                             Ajouter une étape
                                          </Button>
                                       </section>
+                                    </div>
+                                ) : section.id === 'cta' ? (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="font-medium">Contenu</h4>
+                                            <div className="space-y-4 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta-title">Titre</Label>
+                                                    <Input id="cta-title" value={settings.ctaSection?.title} onChange={e => handleCtaSectionChange('title', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta-text">Texte</Label>
+                                                    <Textarea id="cta-text" value={settings.ctaSection?.text} onChange={e => handleCtaSectionChange('text', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium">Bouton</h4>
+                                            <div className="grid grid-cols-2 gap-4 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta-button-text">Texte du bouton</Label>
+                                                    <Input id="cta-button-text" value={settings.ctaSection?.buttonText} onChange={e => handleCtaSectionChange('buttonText', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta-button-link">Lien du bouton</Label>
+                                                    <Input id="cta-button-link" value={settings.ctaSection?.buttonLink} onChange={e => handleCtaSectionChange('buttonLink', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium">Arrière-plan</h4>
+                                            <div className="grid grid-cols-2 gap-8 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta-bg-color">Couleur de fond</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={settings.ctaSection?.bgColor} onChange={e => handleCtaSectionChange('bgColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                                        <Input id="cta-bg-color" value={settings.ctaSection?.bgColor} onChange={e => handleCtaSectionChange('bgColor', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <Label>Image de fond</Label>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden" style={{backgroundColor: settings.ctaSection?.bgColor}}>
+                                                            {ctaImagePreview && <Image src={ctaImagePreview} alt="Aperçu CTA" layout="fill" objectFit="cover" />}
+                                                        </div>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            onChange={createUploadHandler(base64 => {
+                                                                setCtaImagePreview(base64);
+                                                                handleCtaSectionChange('bgImageUrl', base64);
+                                                            })}
+                                                            className="hidden"
+                                                            accept="image/png, image/jpeg"
+                                                        />
+                                                        <div className="flex flex-col gap-2">
+                                                            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Uploader</Button>
+                                                            <Button variant="destructive" size="sm" onClick={() => {
+                                                                setCtaImagePreview(null);
+                                                                handleCtaSectionChange('bgImageUrl', null);
+                                                            }}>Supprimer</Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>

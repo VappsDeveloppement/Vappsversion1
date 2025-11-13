@@ -40,6 +40,15 @@ interface ParcoursSectionPersonalization {
     steps: ParcoursStep[];
 }
 
+interface CtaSectionPersonalization {
+    title: string;
+    text: string;
+    buttonText: string;
+    buttonLink: string;
+    bgColor: string;
+    bgImageUrl: string | null;
+}
+
 // Define the shape of the personalization settings object
 interface Personalization {
     appTitle: string;
@@ -82,6 +91,7 @@ interface Personalization {
     legalInfo: any;
     aboutSection: AboutSectionPersonalization;
     parcoursSection: ParcoursSectionPersonalization;
+    ctaSection: CtaSectionPersonalization;
     [key: string]: any;
 }
 
@@ -145,7 +155,7 @@ const defaultPersonalization: Personalization = {
       { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
       { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
       { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-      { id: 'cta', label: 'Appel à l\'action (CTA)', enabled: true },
+      { id: 'cta', label: 'CTA 1', enabled: true },
       { id: 'video', label: 'Vidéo', enabled: true },
       { id: 'shop', label: 'Boutique', enabled: true },
       { id: 'services', label: 'Accompagnements', enabled: true },
@@ -189,6 +199,14 @@ const defaultPersonalization: Personalization = {
           { id: `step-3`, title: "Étape 3: Intégration", description: "Nous consolidons vos acquis et mettons en place un plan d'action durable." },
           { id: `step-4`, title: "Étape 4: Épanouissement", description: "Vous repartez avec les clés pour poursuivre votre chemin en toute autonomie." }
       ]
+    },
+    ctaSection: {
+        title: "Prêt à tester le futur ?",
+        text: "Rejoignez notre communauté de bêta-testeurs et découvrez des applications innovantes avant tout le monde.",
+        buttonText: "Devenir bêta-testeur",
+        buttonLink: "#",
+        bgColor: "#f0fdf4",
+        bgImageUrl: null
     }
 };
 
@@ -239,6 +257,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     parcoursSection: {
                         ...defaultPersonalization.parcoursSection,
                         ...(agencyData.personalization?.parcoursSection || {}),
+                    },
+                     ctaSection: {
+                        ...defaultPersonalization.ctaSection,
+                        ...(agencyData.personalization?.ctaSection || {}),
                     },
                     homePageSections: agencyData.personalization?.homePageSections?.length 
                         ? agencyData.personalization.homePageSections 
