@@ -22,6 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, Eye, EyeOff } from "lucide-react";
 import { createUser } from "@/app/actions/user";
+import { Textarea } from "@/components/ui/textarea";
 
 type User = {
   id: string;
@@ -32,28 +33,44 @@ type User = {
   dateJoined: string;
 };
 
-const baseUserFormSchema = z.object({
-  firstName: z.string().min(1, "Le prénom est requis."),
-  lastName: z.string().min(1, "Le nom est requis."),
-  email: z.string().email("L'adresse email n'est pas valide."),
-  phone: z.string().optional(),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
-  confirmPassword: z.string(),
-});
-
 const passwordMatchRefine = (data: any) => data.password === data.confirmPassword;
 const passwordMatchMessage = {
   message: "Les mots de passe ne correspondent pas.",
   path: ["confirmPassword"],
 };
 
+const baseUserFormSchema = z.object({
+  firstName: z.string().min(1, "Le prénom est requis."),
+  lastName: z.string().min(1, "Le nom est requis."),
+  email: z.string().email("L'adresse email n'est pas valide."),
+  phone: z.string().min(1, "Le téléphone est requis."),
+});
+
 const adminFormSchema = baseUserFormSchema.extend({
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
+  confirmPassword: z.string(),
   role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
 }).refine(passwordMatchRefine, passwordMatchMessage);
 
 const conseillerFormSchema = baseUserFormSchema.extend({
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
+  confirmPassword: z.string(),
   role: z.literal('conseiller'),
 }).refine(passwordMatchRefine, passwordMatchMessage);
+
+const membreFormSchema = baseUserFormSchema.extend({
+    address: z.string().min(1, "L'adresse est requise."),
+    zipCode: z.string().min(1, "Le code postal est requis."),
+    city: z.string().min(1, "La ville est requise."),
+    password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
+    confirmPassword: z.string().optional(),
+    socialSecurityNumber: z.string().optional(),
+    franceTravailId: z.string().optional(),
+    role: z.literal('membre'),
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas.",
+    path: ["confirmPassword"],
+});
 
 
 // Component to render the user table
@@ -134,6 +151,8 @@ export default function UsersPage() {
   
   const [isConseillerFormOpen, setIsConseillerFormOpen] = useState(false);
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
+  const [isMembreFormOpen, setIsMembreFormOpen] = useState(false);
+
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -174,7 +193,25 @@ export default function UsersPage() {
     },
   });
 
-  async function handleCreateUser(values: z.infer<typeof adminFormSchema> | z.infer<typeof conseillerFormSchema>) {
+  const membreForm = useForm<z.infer<typeof membreFormSchema>>({
+    resolver: zodResolver(membreFormSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      address: "",
+      zipCode: "",
+      city: "",
+      password: "",
+      confirmPassword: "",
+      socialSecurityNumber: "",
+      franceTravailId: "",
+      role: "membre",
+    },
+  });
+
+  async function handleCreateUser(values: z.infer<typeof adminFormSchema> | z.infer<typeof conseillerFormSchema> | z.infer<typeof membreFormSchema>) {
     if (!agency) {
         toast({ title: "Erreur", description: "L'agence n'a pas été trouvée.", variant: "destructive" });
         return;
@@ -188,6 +225,9 @@ export default function UsersPage() {
             if (values.role === 'conseiller') {
                 conseillerForm.reset();
                 setIsConseillerFormOpen(false);
+            } else if (values.role === 'membre') {
+                membreForm.reset();
+                setIsMembreFormOpen(false);
             } else {
                 adminForm.reset();
                 setIsAdminFormOpen(false);
@@ -280,7 +320,7 @@ export default function UsersPage() {
                                         <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="phone" render={({ field }) => (
-                                        <FormItem><FormLabel>Téléphone (Optionnel)</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="password" render={({ field }) => (
                                         <FormItem><FormLabel>Mot de passe</FormLabel>
@@ -374,7 +414,7 @@ export default function UsersPage() {
                                             <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="phone" render={({ field }) => (
-                                            <FormItem><FormLabel>Téléphone (Optionnel)</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="password" render={({ field }) => (
                                             <FormItem><FormLabel>Mot de passe</FormLabel>
@@ -418,12 +458,99 @@ export default function UsersPage() {
             </TabsContent>
 
             <TabsContent value="membres">
-                <div className="space-y-4 pt-4">
-                    <Input 
-                        placeholder="Rechercher un membre..."
-                        value={membreSearch}
-                        onChange={(e) => setMembreSearch(e.target.value)}
-                    />
+                 <div className="space-y-4 pt-4">
+                    <div className="flex justify-between items-center">
+                        <Input 
+                            placeholder="Rechercher un membre..."
+                            value={membreSearch}
+                            onChange={(e) => setMembreSearch(e.target.value)}
+                            className="max-w-sm"
+                        />
+                         <Dialog open={isMembreFormOpen} onOpenChange={setIsMembreFormOpen}>
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Ajouter un Membre
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Ajouter un membre</DialogTitle>
+                                    <DialogDescription>
+                                        Créez un nouvel utilisateur avec le rôle de membre.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form {...membreForm}>
+                                    <form onSubmit={membreForm.handleSubmit(handleCreateUser)} className="space-y-4 px-1">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={membreForm.control} name="firstName" render={({ field }) => (
+                                                <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input placeholder="Jean" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                            <FormField control={membreForm.control} name="lastName" render={({ field }) => (
+                                                <FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Dupont" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                        </div>
+                                        <FormField control={membreForm.control} name="address" render={({ field }) => (
+                                            <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea placeholder="123 Rue de Paris" {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={membreForm.control} name="zipCode" render={({ field }) => (
+                                                <FormItem><FormLabel>Code postal</FormLabel><FormControl><Input placeholder="75001" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                            <FormField control={membreForm.control} name="city" render={({ field }) => (
+                                                <FormItem><FormLabel>Ville</FormLabel><FormControl><Input placeholder="Paris" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                        </div>
+                                        <FormField control={membreForm.control} name="email" render={({ field }) => (
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={membreForm.control} name="phone" render={({ field }) => (
+                                            <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={membreForm.control} name="password" render={({ field }) => (
+                                            <FormItem><FormLabel>Mot de passe (Optionnel)</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                                                        <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                        </Button>
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={membreForm.control} name="confirmPassword" render={({ field }) => (
+                                            <FormItem><FormLabel>Confirmer le mot de passe</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                                                        <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                        </Button>
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={membreForm.control} name="socialSecurityNumber" render={({ field }) => (
+                                            <FormItem><FormLabel>N° Sécurité Sociale (Optionnel)</FormLabel><FormControl><Input placeholder="1 23 45..." {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={membreForm.control} name="franceTravailId" render={({ field }) => (
+                                            <FormItem><FormLabel>ID France Travail (Optionnel)</FormLabel><FormControl><Input placeholder="ID..." {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+
+                                        <DialogFooter className="pt-4">
+                                            <Button type="submit" disabled={isSubmitting}>
+                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Créer le membre
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                     <UserTable users={membres} isLoading={isLoading} emptyMessage="Aucun membre trouvé." />
                 </div>
             </TabsContent>

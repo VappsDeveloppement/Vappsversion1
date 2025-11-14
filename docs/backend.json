@@ -35,6 +35,30 @@
           "type": "string",
           "description": "The date and time the user joined the platform.",
           "format": "date-time"
+        },
+        "phone": {
+          "type": "string",
+          "description": "The user's phone number."
+        },
+        "address": {
+          "type": "string",
+          "description": "The user's street address."
+        },
+        "zipCode": {
+          "type": "string",
+          "description": "The user's postal code."
+        },
+        "city": {
+          "type": "string",
+          "description": "The user's city."
+        },
+        "socialSecurityNumber": {
+          "type": "string",
+          "description": "The user's social security number."
+        },
+        "franceTravailId": {
+          "type": "string",
+          "description": "The user's France Travail identifier."
         }
       },
       "required": [
@@ -44,7 +68,11 @@
         "lastName",
         "email",
         "role",
-        "dateJoined"
+        "dateJoined",
+        "address",
+        "zipCode",
+        "city",
+        "phone"
       ]
     },
     "Agency": {
@@ -482,4 +510,5 @@
     "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
   }
 }
+
     
