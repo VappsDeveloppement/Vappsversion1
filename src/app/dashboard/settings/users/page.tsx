@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useFirebase } from "@/firebase";
+import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
 import React, { useMemo, useState } from "react";
 import { collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
@@ -127,7 +127,7 @@ export default function UsersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const usersQuery = useMemo(() => {
+  const usersQuery = useMemoFirebase(() => {
     if (!agency) return null;
     return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
   }, [agency, firestore]);
