@@ -360,8 +360,7 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
     const agencyId = 'vapps-agency'; 
 
     useEffect(() => {
-        if (!firestore || !user) {
-            // If there's no user or firestore, use defaults. App works offline/unauthenticated.
+        if (!firestore) {
             setPersonalization(defaultPersonalization);
             setIsLoading(false);
             return;
@@ -469,7 +468,7 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return () => unsubscribe();
-    }, [firestore, user]);
+    }, [firestore]);
 
     const value = {
         personalization,
