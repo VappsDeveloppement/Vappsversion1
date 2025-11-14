@@ -4,7 +4,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useFirebase, useMemoFirebase } from "@/firebase";
+import { useCollection, useMemoFirebase } from "@/firebase";
 import React, { useMemo, useState } from "react";
 import { collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
@@ -32,17 +32,24 @@ type User = {
   dateJoined: string;
 };
 
-const adminFormSchema = z.object({
+const baseUserFormSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
   email: z.string().email("L'adresse email n'est pas valide."),
   phone: z.string().optional(),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
   confirmPassword: z.string(),
-  role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Les mots de passe ne correspondent pas.",
     path: ["confirmPassword"],
+});
+
+const adminFormSchema = baseUserFormSchema.extend({
+  role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
+});
+
+const conseillerFormSchema = baseUserFormSchema.extend({
+  role: z.literal('conseiller'),
 });
 
 
@@ -115,14 +122,16 @@ const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoadin
 export default function UsersPage() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
-  const { auth } = useFirebase();
   const { toast } = useToast();
 
   const [adminSearch, setAdminSearch] = useState('');
   const [conseillerSearch, setConseillerSearch] = useState('');
   const [membreSearch, setMembreSearch] = useState('');
   const [prospectSearch, setProspectSearch] = useState('');
-  const [isFormOpen, setIsFormOpen] = useState(false);
+  
+  const [isConseillerFormOpen, setIsConseillerFormOpen] = useState(false);
+  const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -136,7 +145,7 @@ export default function UsersPage() {
 
   const isLoading = isAgencyLoading || areUsersLoading;
 
-  const form = useForm<z.infer<typeof adminFormSchema>>({
+  const adminForm = useForm<z.infer<typeof adminFormSchema>>({
     resolver: zodResolver(adminFormSchema),
     defaultValues: {
       firstName: "",
@@ -149,7 +158,20 @@ export default function UsersPage() {
     },
   });
 
-  async function onSubmit(values: z.infer<typeof adminFormSchema>) {
+  const conseillerForm = useForm<z.infer<typeof conseillerFormSchema>>({
+    resolver: zodResolver(conseillerFormSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phone: "",
+      password: "",
+      confirmPassword: "",
+      role: "conseiller",
+    },
+  });
+
+  async function handleCreateUser(values: z.infer<typeof adminFormSchema> | z.infer<typeof conseillerFormSchema>) {
     if (!agency) {
         toast({ title: "Erreur", description: "L'agence n'a pas été trouvée.", variant: "destructive" });
         return;
@@ -159,20 +181,24 @@ export default function UsersPage() {
         const result = await createUser({ ...values, agencyId: agency.id });
 
         if (result.success) {
-            toast({ title: "Succès", description: "L'administrateur a été ajouté." });
-            form.reset();
-            setIsFormOpen(false);
+            toast({ title: "Succès", description: "L'utilisateur a été ajouté." });
+            if (values.role === 'conseiller') {
+                conseillerForm.reset();
+                setIsConseillerFormOpen(false);
+            } else {
+                adminForm.reset();
+                setIsAdminFormOpen(false);
+            }
         } else {
             toast({ title: "Erreur de création", description: result.error, variant: "destructive" });
         }
     } catch (error) {
-        console.error("Error creating admin:", error);
+        console.error("Error creating user:", error);
         toast({ title: "Erreur inattendue", description: "Une erreur inattendue est survenue.", variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
-}
-
+  }
 
   const filterUsers = (data: User[] | null, role: string[], searchTerm: string): User[] => {
     if (!data) return [];
@@ -223,7 +249,7 @@ export default function UsersPage() {
                         onChange={(e) => setAdminSearch(e.target.value)}
                         className="max-w-sm"
                     />
-                    <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                    <Dialog open={isAdminFormOpen} onOpenChange={setIsAdminFormOpen}>
                         <DialogTrigger asChild>
                             <Button>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -237,23 +263,23 @@ export default function UsersPage() {
                                     Créez un nouvel utilisateur avec un rôle d'administration.
                                 </DialogDescription>
                             </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 px-1">
+                            <Form {...adminForm}>
+                                <form onSubmit={adminForm.handleSubmit(handleCreateUser)} className="space-y-4 px-1">
                                     <div className="grid grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="firstName" render={({ field }) => (
+                                        <FormField control={adminForm.control} name="firstName" render={({ field }) => (
                                             <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input placeholder="Jean" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
-                                        <FormField control={form.control} name="lastName" render={({ field }) => (
+                                        <FormField control={adminForm.control} name="lastName" render={({ field }) => (
                                             <FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Dupont" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                     </div>
-                                    <FormField control={form.control} name="email" render={({ field }) => (
+                                    <FormField control={adminForm.control} name="email" render={({ field }) => (
                                         <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
-                                    <FormField control={form.control} name="phone" render={({ field }) => (
+                                    <FormField control={adminForm.control} name="phone" render={({ field }) => (
                                         <FormItem><FormLabel>Téléphone (Optionnel)</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
-                                    <FormField control={form.control} name="password" render={({ field }) => (
+                                    <FormField control={adminForm.control} name="password" render={({ field }) => (
                                         <FormItem><FormLabel>Mot de passe</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
@@ -266,7 +292,7 @@ export default function UsersPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    <FormField control={form.control} name="confirmPassword" render={({ field }) => (
+                                    <FormField control={adminForm.control} name="confirmPassword" render={({ field }) => (
                                         <FormItem><FormLabel>Confirmer le mot de passe</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
@@ -279,7 +305,7 @@ export default function UsersPage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    <FormField control={form.control} name="role" render={({ field }) => (
+                                    <FormField control={adminForm.control} name="role" render={({ field }) => (
                                         <FormItem>
                                             <FormLabel>Rôle</FormLabel>
                                             <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -310,11 +336,80 @@ export default function UsersPage() {
 
             <TabsContent value="conseillers">
                 <div className="space-y-4 pt-4">
-                    <Input 
-                        placeholder="Rechercher un conseiller..."
-                        value={conseillerSearch}
-                        onChange={(e) => setConseillerSearch(e.target.value)}
-                    />
+                    <div className="flex justify-between items-center">
+                        <Input 
+                            placeholder="Rechercher un conseiller..."
+                            value={conseillerSearch}
+                            onChange={(e) => setConseillerSearch(e.target.value)}
+                            className="max-w-sm"
+                        />
+                         <Dialog open={isConseillerFormOpen} onOpenChange={setIsConseillerFormOpen}>
+                            <DialogTrigger asChild>
+                                <Button>
+                                    <PlusCircle className="mr-2 h-4 w-4" />
+                                    Ajouter un Conseiller
+                                </Button>
+                            </DialogTrigger>
+                            <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+                                <DialogHeader>
+                                    <DialogTitle>Ajouter un conseiller</DialogTitle>
+                                    <DialogDescription>
+                                        Créez un nouvel utilisateur avec le rôle de conseiller.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form {...conseillerForm}>
+                                    <form onSubmit={conseillerForm.handleSubmit(handleCreateUser)} className="space-y-4 px-1">
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <FormField control={conseillerForm.control} name="firstName" render={({ field }) => (
+                                                <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input placeholder="Jean" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                            <FormField control={conseillerForm.control} name="lastName" render={({ field }) => (
+                                                <FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Dupont" {...field} /></FormControl><FormMessage /></FormItem>
+                                            )} />
+                                        </div>
+                                        <FormField control={conseillerForm.control} name="email" render={({ field }) => (
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={conseillerForm.control} name="phone" render={({ field }) => (
+                                            <FormItem><FormLabel>Téléphone (Optionnel)</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
+                                        )} />
+                                        <FormField control={conseillerForm.control} name="password" render={({ field }) => (
+                                            <FormItem><FormLabel>Mot de passe</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                                                        <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                        </Button>
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <FormField control={conseillerForm.control} name="confirmPassword" render={({ field }) => (
+                                            <FormItem><FormLabel>Confirmer le mot de passe</FormLabel>
+                                                <FormControl>
+                                                    <div className="relative">
+                                                        <Input type={showConfirmPassword ? 'text' : 'password'} placeholder="********" {...field} />
+                                                        <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowConfirmPassword(!showConfirmPassword)}>
+                                                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                        </Button>
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
+                                        <DialogFooter className="pt-4">
+                                            <Button type="submit" disabled={isSubmitting}>
+                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Créer l'utilisateur
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                        </Dialog>
+                    </div>
                     <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." />
                 </div>
             </TabsContent>
@@ -346,5 +441,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
-    
