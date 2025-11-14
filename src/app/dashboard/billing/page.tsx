@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Download, PlusCircle } from "lucide-react";
+import { Download, PlusCircle, FlaskConical } from "lucide-react";
+import Link from "next/link";
 
 
 export default function BillingPage() {
@@ -71,6 +72,22 @@ export default function BillingPage() {
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 Add payment method
                            </Button>
+                        </CardContent>
+                    </Card>
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>PayPal Integration Test</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground mb-4">
+                                Use this page to verify that your PayPal Client ID is correctly configured.
+                            </p>
+                            <Button variant="secondary" className="w-full" asChild>
+                                <Link href="/dashboard/billing/test-paypal">
+                                    <FlaskConical className="mr-2 h-4 w-4" />
+                                    Test PayPal Connection
+                                </Link>
+                            </Button>
                         </CardContent>
                     </Card>
                 </div>
