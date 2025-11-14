@@ -130,7 +130,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: 'CTA 1', enabled: true },
-  { id: 'cta2', label: 'CTA 2', enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
@@ -138,6 +137,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'cta2', label: 'CTA 2', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
   { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
 ];
@@ -304,11 +304,17 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     ...mergedSections.filter(merged => !savedSectionsMap.has(merged.id))
                 ];
 
+                const finalSectionsWithoutFooter = finalOrderedSections.filter(s => s.id !== 'footer');
+                const footerSection = finalOrderedSections.find(s => s.id === 'footer');
+                if (footerSection) {
+                    finalSectionsWithoutFooter.push(footerSection);
+                }
+
 
                 const mergedPersonalization = {
                     ...defaultPersonalization,
                     ...(agencyData.personalization || {}),
-                    homePageSections: finalOrderedSections,
+                    homePageSections: finalSectionsWithoutFooter,
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
