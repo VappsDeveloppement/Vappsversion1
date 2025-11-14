@@ -125,6 +125,23 @@ interface AgencyContextType {
 const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 
 
+const defaultHomePageSections: Section[] = [
+  { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
+  { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
+  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
+  { id: 'cta', label: 'CTA 1', enabled: true },
+  { id: 'cta2', label: 'CTA 2', enabled: true },
+  { id: 'video', label: 'Vidéo', enabled: true },
+  { id: 'shop', label: 'Boutique', enabled: true },
+  { id: 'services', label: 'Accompagnements', enabled: true },
+  { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
+  { id: 'blog', label: 'Blog', enabled: true },
+  { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
+  { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'jobOffers', label: 'Offre emploi', enabled: true },
+  { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
+];
+
 const defaultPersonalization: Personalization = {
     appTitle: "VApps",
     appSubtitle: "Développement",
@@ -170,22 +187,7 @@ const defaultPersonalization: Personalization = {
     copyrightText: "Vapps.",
     copyrightUrl: "/",
     homePageVersion: 'tunnel',
-    homePageSections: [
-      { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
-      { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
-      { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-      { id: 'cta', label: 'CTA 1', enabled: true },
-      { id: 'cta2', label: 'CTA 2', enabled: true },
-      { id: 'video', label: 'Vidéo', enabled: true },
-      { id: 'shop', label: 'Boutique', enabled: true },
-      { id: 'services', label: 'Accompagnements', enabled: true },
-      { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
-      { id: 'blog', label: 'Blog', enabled: true },
-      { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
-      { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
-      { id: 'jobOffers', label: 'Offre emploi', enabled: true },
-      { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
-    ],
+    homePageSections: defaultHomePageSections,
     legalInfo: {
         companyName: "", structureType: "", capital: "", siret: "", addressStreet: "", addressZip: "", addressCity: "",
         email: "", phone: "", apeNaf: "", rm: "", rcs: "", nda: "", insurance: "", isVatSubject: false, vatRate: "", vatNumber: "",
@@ -280,16 +282,26 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 const agencyData = docSnap.data();
                 
                 const savedSections = agencyData.personalization?.homePageSections || [];
-                const defaultSections = defaultPersonalization.homePageSections;
+                const defaultSections = defaultHomePageSections;
 
+                // Create a map of saved sections for quick lookup, preserving their properties
                 const savedSectionsMap = new Map(savedSections.map((s: Section) => [s.id, s]));
 
+                // Rebuild the sections array: start with the default order, then update with saved properties.
+                const mergedSections = defaultSections.map(defaultSection => {
+                    const savedSection = savedSectionsMap.get(defaultSection.id);
+                    return savedSection ? { ...defaultSection, ...savedSection } : defaultSection;
+                });
+                
+                // Get the final sorted order from the saved data, but ensure all default sections are present.
                 const finalOrderedSections = [
-                    ...savedSections.map((saved: Section) => {
-                        const defaultSection = defaultSections.find(d => d.id === saved.id);
-                        return defaultSection ? { ...defaultSection, ...saved } : saved;
-                    }).filter(s => defaultSections.some(d => d.id === s.id)),
-                    ...defaultSections.filter(defaultSection => !savedSectionsMap.has(defaultSection.id))
+                    ...savedSections
+                        .map((saved: Section) => {
+                            const found = mergedSections.find(m => m.id === saved.id);
+                            return found ? found : null;
+                        })
+                        .filter((s: Section | null): s is Section => s !== null),
+                    ...mergedSections.filter(merged => !savedSectionsMap.has(merged.id))
                 ];
 
 
