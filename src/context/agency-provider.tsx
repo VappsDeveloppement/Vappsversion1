@@ -79,6 +79,14 @@ interface ServicesSectionPersonalization {
     services: ServiceItem[];
 }
 
+interface PaymentSettings {
+    ribIban: string;
+    ribBic: string;
+    paypalMerchantId: string;
+    paypalMeLink: string;
+    skrillEmail: string;
+}
+
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -128,6 +136,7 @@ interface Personalization {
     jobOffersSection: JobOffersSectionPersonalization;
     videoSection: VideoSectionPersonalization;
     servicesSection: ServicesSectionPersonalization;
+    paymentSettings: PaymentSettings;
     [key: string]: any;
 }
 
@@ -154,8 +163,8 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
-  { id: 'cta2', label: 'CTA 2', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
+  { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
 
 const defaultPersonalization: Personalization = {
@@ -284,6 +293,13 @@ const defaultPersonalization: Personalization = {
             { id: `service-2`, title: "Coaching Carrière", description: "Un accompagnement personnalisé pour atteindre vos objectifs professionnels.", imageUrl: null },
             { id: `service-3`, title: "Formation au Leadership", description: "Développez vos compétences managériales et devenez un leader inspirant.", imageUrl: null },
         ]
+    },
+    paymentSettings: {
+        ribIban: "",
+        ribBic: "",
+        paypalMerchantId: "",
+        paypalMeLink: "",
+        skrillEmail: "",
     }
 };
 
@@ -379,6 +395,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     servicesSection: {
                         ...defaultPersonalization.servicesSection,
                         ...(agencyData.personalization?.servicesSection || {}),
+                    },
+                    paymentSettings: {
+                        ...defaultPersonalization.paymentSettings,
+                        ...(agencyData.personalization?.paymentSettings || {}),
                     }
                 };
                 setPersonalization(mergedPersonalization);

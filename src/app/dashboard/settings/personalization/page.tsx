@@ -144,8 +144,8 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
-  { id: 'cta2', label: 'CTA 2', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
+  { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
 
 const defaultPersonalization = {
@@ -277,6 +277,13 @@ const defaultPersonalization = {
             { id: `service-${Date.now()}-2`, title: "Coaching Carrière", description: "Un accompagnement personnalisé pour atteindre vos objectifs professionnels.", imageUrl: null },
             { id: `service-${Date.now()}-3`, title: "Formation au Leadership", description: "Développez vos compétences managériales et devenez un leader inspirant.", imageUrl: null },
         ] as ServiceItem[]
+    },
+    paymentSettings: {
+        ribIban: "",
+        ribBic: "",
+        paypalMerchantId: "",
+        paypalMeLink: "",
+        skrillEmail: "",
     }
 };
 
@@ -329,6 +336,10 @@ export default function PersonalizationPage() {
         servicesSection: {
           ...defaultPersonalization.servicesSection,
           ...(personalization.servicesSection || {})
+        },
+        paymentSettings: {
+            ...defaultPersonalization.paymentSettings,
+            ...(personalization.paymentSettings || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -553,6 +564,16 @@ export default function PersonalizationPage() {
         ...prev,
         legalInfo: {
             ...prev.legalInfo,
+            [field]: value
+        }
+    }))
+  }
+
+  const handlePaymentSettingsChange = (field: string, value: any) => {
+    setSettings(prev => ({
+        ...prev,
+        paymentSettings: {
+            ...prev.paymentSettings,
             [field]: value
         }
     }))
@@ -1152,7 +1173,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'up')}}
-                                        disabled={index === 0 || settings.homePageSections[index - 1].isLocked}
+                                        disabled={index === 0 || (settings.homePageSections && settings.homePageSections[index - 1]?.isLocked)}
                                         className="h-8 w-8"
                                     >
                                         <ArrowUp className="h-4 w-4" />
@@ -1161,7 +1182,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'down')}}
-                                        disabled={index === settings.homePageSections.length - 1 || settings.homePageSections[index + 1]?.isLocked}
+                                        disabled={index === settings.homePageSections.length - 1 || (settings.homePageSections && settings.homePageSections[index + 1]?.isLocked)}
                                         className="h-8 w-8"
                                     >
                                         <ArrowDown className="h-4 w-4" />
@@ -1912,13 +1933,53 @@ export default function PersonalizationPage() {
         <TabsContent value="paiement">
           <Card>
             <CardHeader>
-              <CardTitle>Paiement</CardTitle>
-              <CardDescription>Gérez les options de paiement.</CardDescription>
+              <CardTitle>Moyens de Paiement</CardTitle>
+              <CardDescription>Configurez les moyens de paiement que vous acceptez pour la facturation.</CardDescription>
             </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">Le contenu des paiements est vide.</p>
-              </div>
+            <CardContent className="space-y-8">
+                <section>
+                    <h3 className="text-xl font-semibold mb-6 border-b pb-2">Virement Bancaire (RIB)</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="rib-iban">IBAN</Label>
+                            <Input id="rib-iban" placeholder="FR76..." value={settings.paymentSettings?.ribIban} onChange={e => handlePaymentSettingsChange('ribIban', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="rib-bic">BIC / SWIFT</Label>
+                            <Input id="rib-bic" placeholder="AGRIFRPP888" value={settings.paymentSettings?.ribBic} onChange={e => handlePaymentSettingsChange('ribBic', e.target.value)} />
+                        </div>
+                    </div>
+                </section>
+
+                <div className="border-t"></div>
+
+                <section>
+                    <h3 className="text-xl font-semibold mb-6 border-b pb-2">PayPal</h3>
+                    <div className="space-y-6">
+                        <div className="space-y-2">
+                            <Label htmlFor="paypal-merchant-id">ID Marchand PayPal</Label>
+                            <Input id="paypal-merchant-id" placeholder="ID de votre compte marchand" value={settings.paymentSettings?.paypalMerchantId} onChange={e => handlePaymentSettingsChange('paypalMerchantId', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="paypal-me-link">Lien PayPal.Me</Label>
+                            <Input id="paypal-me-link" placeholder="https://paypal.me/VotreNom" value={settings.paymentSettings?.paypalMeLink} onChange={e => handlePaymentSettingsChange('paypalMeLink', e.target.value)} />
+                        </div>
+                    </div>
+                </section>
+
+                <div className="border-t"></div>
+
+                <section>
+                    <h3 className="text-xl font-semibold mb-6 border-b pb-2">Skrill</h3>
+                    <div className="space-y-2">
+                        <Label htmlFor="skrill-email">Email du compte Skrill</Label>
+                        <Input id="skrill-email" type="email" placeholder="email@skrill.com" value={settings.paymentSettings?.skrillEmail} onChange={e => handlePaymentSettingsChange('skrillEmail', e.target.value)} />
+                    </div>
+                </section>
+
+                <div className="flex justify-end pt-6 border-t">
+                    <Button onClick={handleSave}>Enregistrer les modifications</Button>
+                </div>
             </CardContent>
           </Card>
         </TabsContent>
