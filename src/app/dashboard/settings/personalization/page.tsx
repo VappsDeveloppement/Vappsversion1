@@ -297,6 +297,13 @@ const defaultPersonalization = {
         smtpSecure: true,
         fromEmail: "",
         fromName: "",
+    },
+    gdprSettings: {
+        inactivityAlertDays: 365,
+        dpoName: "",
+        dpoEmail: "",
+        dpoPhone: "",
+        dpoAddress: "",
     }
 };
 
@@ -360,6 +367,10 @@ export default function PersonalizationPage() {
         emailSettings: {
             ...defaultPersonalization.emailSettings,
             ...(personalization.emailSettings || {})
+        },
+        gdprSettings: {
+            ...defaultPersonalization.gdprSettings,
+            ...(personalization.gdprSettings || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -609,6 +620,16 @@ export default function PersonalizationPage() {
     }))
   }
 
+  const handleGdprSettingsChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      gdprSettings: {
+        ...(prev.gdprSettings || defaultPersonalization.gdprSettings),
+        [field]: value,
+      },
+    }));
+  };
+
   const handleSave = () => {
     if (!agency) {
       toast({ title: "Erreur", description: "Agence non trouvée.", variant: "destructive" });
@@ -765,13 +786,12 @@ export default function PersonalizationPage() {
 
 
       <Tabs defaultValue="info-legales">
-        <TabsList className="grid w-full grid-cols-6">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
           <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
           <TabsTrigger value="paiement">Paiement</TabsTrigger>
           <TabsTrigger value="email">Email</TabsTrigger>
-          <TabsTrigger value="rgpd">Paramètres RGPD</TabsTrigger>
         </TabsList>
 
         <TabsContent value="info-legales">
@@ -1218,7 +1238,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'up')}}
-                                        disabled={index === 0 || settings.homePageSections[index - 1].isLocked}
+                                        disabled={index === 0 || (settings.homePageSections && settings.homePageSections[index - 1].isLocked)}
                                         className="h-8 w-8"
                                     >
                                         <ArrowUp className="h-4 w-4" />
@@ -2136,20 +2156,6 @@ export default function PersonalizationPage() {
                     </div>
                 </CardContent>
             </Card>
-        </TabsContent>
-
-        <TabsContent value="rgpd">
-          <Card>
-            <CardHeader>
-              <CardTitle>Paramètres RGPD</CardTitle>
-              <CardDescription>Gérez les paramètres de conformité RGPD.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">Le contenu des paramètres RGPD est vide.</p>
-              </div>
-            </CardContent>
-          </Card>
         </TabsContent>
 
       </Tabs>

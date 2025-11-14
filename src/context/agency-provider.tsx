@@ -99,6 +99,14 @@ interface EmailSettings {
     fromName: string;
 }
 
+interface GdprSettings {
+    inactivityAlertDays: number;
+    dpoName: string;
+    dpoEmail: string;
+    dpoPhone: string;
+    dpoAddress: string;
+}
+
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -150,6 +158,7 @@ interface Personalization {
     servicesSection: ServicesSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
+    gdprSettings: GdprSettings;
     [key: string]: any;
 }
 
@@ -324,6 +333,13 @@ const defaultPersonalization: Personalization = {
         smtpSecure: true,
         fromEmail: "",
         fromName: "",
+    },
+    gdprSettings: {
+        inactivityAlertDays: 365,
+        dpoName: "",
+        dpoEmail: "",
+        dpoPhone: "",
+        dpoAddress: "",
     }
 };
 
@@ -427,6 +443,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     emailSettings: {
                         ...defaultPersonalization.emailSettings,
                         ...(agencyData.personalization?.emailSettings || {})
+                    },
+                    gdprSettings: {
+                        ...defaultPersonalization.gdprSettings,
+                        ...(agencyData.personalization?.gdprSettings || {})
                     }
                 };
                 setPersonalization(mergedPersonalization);
