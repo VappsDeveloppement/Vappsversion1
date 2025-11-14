@@ -39,18 +39,21 @@ const baseUserFormSchema = z.object({
   phone: z.string().optional(),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
   confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-    message: "Les mots de passe ne correspondent pas.",
-    path: ["confirmPassword"],
 });
+
+const passwordMatchRefine = (data: any) => data.password === data.confirmPassword;
+const passwordMatchMessage = {
+  message: "Les mots de passe ne correspondent pas.",
+  path: ["confirmPassword"],
+};
 
 const adminFormSchema = baseUserFormSchema.extend({
   role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
-});
+}).refine(passwordMatchRefine, passwordMatchMessage);
 
 const conseillerFormSchema = baseUserFormSchema.extend({
   role: z.literal('conseiller'),
-});
+}).refine(passwordMatchRefine, passwordMatchMessage);
 
 
 // Component to render the user table
@@ -441,3 +444,5 @@ export default function UsersPage() {
     </div>
   );
 }
+
+    
