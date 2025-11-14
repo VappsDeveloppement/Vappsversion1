@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2 } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -26,6 +26,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { sendTestEmail } from "@/app/actions/email";
+import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
+import Link from 'next/link';
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -306,6 +308,70 @@ const defaultPersonalization = {
         dpoAddress: "",
     }
 };
+
+const PayPalConnectionTest = () => {
+    const { personalization, isLoading } = useAgency();
+    const clientId = personalization?.paymentSettings?.paypalClientId;
+
+    if (!clientId) {
+        return (
+            <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Configuration PayPal manquante</AlertTitle>
+                <AlertDescription>
+                   Votre Client ID PayPal n'est pas configuré. Impossible de tester l'intégration.
+                </AlertDescription>
+            </Alert>
+        );
+    }
+    
+    const initialOptions = {
+        "client-id": clientId,
+        currency: "EUR",
+        intent: "capture",
+    };
+
+    return (
+        <div>
+            <Alert className='mb-6'>
+                <CheckCircle className="h-4 w-4" />
+                <AlertTitle>Client ID trouvé</AlertTitle>
+                <AlertDescription>
+                    Tentative de chargement des boutons PayPal avec le Client ID fourni. Si les boutons s'affichent, votre configuration est probablement correcte.
+                </AlertDescription>
+            </Alert>
+
+            <PayPalScriptProvider options={initialOptions}>
+                <div className='max-w-md mx-auto'>
+                     <PayPalButtons
+                        style={{ layout: "vertical" }}
+                        createOrder={(data, actions) => {
+                            return actions.order.create({
+                                purchase_units: [{
+                                    description: "Test Transaction",
+                                    amount: {
+                                        value: "1.00",
+                                        currency_code: "EUR"
+                                    }
+                                }]
+                            });
+                        }}
+                         onApprove={(data, actions) => {
+                            return actions.order!.capture().then(details => {
+                                alert("Test transaction completed by " + details.payer.name?.given_name);
+                            });
+                        }}
+                        onError={(err) => {
+                            console.error("PayPal Button Error:", err);
+                            alert("Une erreur est survenue avec le bouton PayPal. Vérifiez la console pour plus de détails. Votre Client ID est peut-être invalide.");
+                        }}
+                     />
+                </div>
+            </PayPalScriptProvider>
+        </div>
+    );
+}
+
 
 export default function PersonalizationPage() {
   const { toast } = useToast();
@@ -2020,26 +2086,41 @@ export default function PersonalizationPage() {
 
                 <section>
                     <h3 className="text-xl font-semibold mb-6 border-b pb-2">PayPal</h3>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-2">
-                                <Label htmlFor="paypal-client-id">Client ID</Label>
-                                <Input id="paypal-client-id" placeholder="Votre Client ID PayPal" value={settings.paymentSettings?.paypalClientId} onChange={e => handlePaymentSettingsChange('paypalClientId', e.target.value)} />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="paypal-client-secret">Client Secret</Label>
-                                <Input id="paypal-client-secret" type="password" placeholder="Votre Client Secret PayPal" value={settings.paymentSettings?.paypalClientSecret} onChange={e => handlePaymentSettingsChange('paypalClientSecret', e.target.value)} />
-                            </div>
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="paypal-merchant-id">ID Marchand PayPal</Label>
-                            <Input id="paypal-merchant-id" placeholder="ID de votre compte marchand (optionnel)" value={settings.paymentSettings?.paypalMerchantId} onChange={e => handlePaymentSettingsChange('paypalMerchantId', e.target.value)} />
-                        </div>
-                        <div className="space-y-2">
-                            <Label htmlFor="paypal-me-link">Lien PayPal.Me (pour paiements manuels)</Label>
-                            <Input id="paypal-me-link" placeholder="https://paypal.me/VotreNom" value={settings.paymentSettings?.paypalMeLink} onChange={e => handlePaymentSettingsChange('paypalMeLink', e.target.value)} />
-                        </div>
-                    </div>
+                     <Accordion type="single" collapsible>
+                        <AccordionItem value="paypal-settings">
+                            <AccordionTrigger>Configurer les identifiants PayPal</AccordionTrigger>
+                            <AccordionContent>
+                                <div className="space-y-4 pt-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="paypal-client-id">Client ID</Label>
+                                            <Input id="paypal-client-id" placeholder="Votre Client ID PayPal" value={settings.paymentSettings?.paypalClientId} onChange={e => handlePaymentSettingsChange('paypalClientId', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="paypal-client-secret">Client Secret</Label>
+                                            <Input id="paypal-client-secret" type="password" placeholder="Votre Client Secret PayPal" value={settings.paymentSettings?.paypalClientSecret} onChange={e => handlePaymentSettingsChange('paypalClientSecret', e.target.value)} />
+                                        </div>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="paypal-merchant-id">ID Marchand PayPal</Label>
+                                        <Input id="paypal-merchant-id" placeholder="ID de votre compte marchand (optionnel)" value={settings.paymentSettings?.paypalMerchantId} onChange={e => handlePaymentSettingsChange('paypalMerchantId', e.target.value)} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="paypal-me-link">Lien PayPal.Me (pour paiements manuels)</Label>
+                                        <Input id="paypal-me-link" placeholder="https://paypal.me/VotreNom" value={settings.paymentSettings?.paypalMeLink} onChange={e => handlePaymentSettingsChange('paypalMeLink', e.target.value)} />
+                                    </div>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="paypal-test">
+                            <AccordionTrigger>Tester l'intégration PayPal</AccordionTrigger>
+                            <AccordionContent>
+                                <div className="pt-4">
+                                    <PayPalConnectionTest />
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                 </section>
 
                 <div className="border-t"></div>
