@@ -473,7 +473,7 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
 
     const agency = useMemo(() => {
         if (!personalization) return null;
-        return { id: agencyId, name: 'VApps Model', personalization };
+        return { id: agencyId, name: 'Vapps Principal', personalization };
     }, [personalization]);
 
 
