@@ -28,7 +28,7 @@ type User = {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'admin' | 'superadmin' | 'conseiller' | 'membre' | 'prospect';
+  role: 'admin' | 'superadmin' | 'conseiller' | 'membre' | 'prospect' | 'dpo';
   dateJoined: string;
 };
 
@@ -39,7 +39,7 @@ const adminFormSchema = z.object({
   phone: z.string().optional(),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
   confirmPassword: z.string(),
-  role: z.enum(['admin', 'superadmin'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
 }).refine((data) => data.password === data.confirmPassword, {
     message: "Les mots de passe ne correspondent pas.",
     path: ["confirmPassword"],
@@ -186,7 +186,7 @@ export default function UsersPage() {
     );
   };
   
-  const admins = useMemo(() => filterUsers(users, ['admin', 'superadmin'], adminSearch), [users, adminSearch]);
+  const admins = useMemo(() => filterUsers(users, ['admin', 'superadmin', 'dpo'], adminSearch), [users, adminSearch]);
   const conseillers = useMemo(() => filterUsers(users, ['conseiller'], conseillerSearch), [users, conseillerSearch]);
   const membres = useMemo(() => filterUsers(users, ['membre'], membreSearch), [users, membreSearch]);
   const prospects = useMemo(() => filterUsers(users, ['prospect'], prospectSearch), [users, prospectSearch]);
@@ -208,7 +208,7 @@ export default function UsersPage() {
         <CardContent>
           <Tabs defaultValue="admins">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="admins">Admins</TabsTrigger>
+              <TabsTrigger value="admins">Admins & DPO</TabsTrigger>
               <TabsTrigger value="conseillers">Conseillers</TabsTrigger>
               <TabsTrigger value="membres">Membres</TabsTrigger>
               <TabsTrigger value="prospects">Prospects</TabsTrigger>
@@ -227,14 +227,14 @@ export default function UsersPage() {
                         <DialogTrigger asChild>
                             <Button>
                                 <PlusCircle className="mr-2 h-4 w-4" />
-                                Ajouter un Admin
+                                Ajouter un Admin / DPO
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
-                                <DialogTitle>Ajouter un administrateur</DialogTitle>
+                                <DialogTitle>Ajouter un administrateur ou DPO</DialogTitle>
                                 <DialogDescription>
-                                    Créez un nouvel utilisateur avec un rôle d'administrateur.
+                                    Créez un nouvel utilisateur avec un rôle d'administration.
                                 </DialogDescription>
                             </DialogHeader>
                             <Form {...form}>
@@ -287,6 +287,7 @@ export default function UsersPage() {
                                                 <SelectContent>
                                                     <SelectItem value="admin">Admin</SelectItem>
                                                     <SelectItem value="superadmin">Super Admin</SelectItem>
+                                                    <SelectItem value="dpo">DPO</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                             <FormMessage />
@@ -303,7 +304,7 @@ export default function UsersPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
-                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin trouvé." />
+                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." />
               </div>
             </TabsContent>
 

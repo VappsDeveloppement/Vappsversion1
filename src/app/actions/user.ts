@@ -12,7 +12,7 @@ const adminFormSchema = z.object({
   email: z.string().email("L'adresse email n'est pas valide."),
   phone: z.string().optional(),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
-  role: z.enum(['admin', 'superadmin']),
+  role: z.enum(['admin', 'superadmin', 'dpo']),
   agencyId: z.string(),
 });
 
@@ -64,3 +64,5 @@ export async function createUser(data: z.infer<typeof adminFormSchema>): Promise
     return { success: false, error: errorMessage };
   }
 }
+
+    
