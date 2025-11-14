@@ -1109,7 +1109,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'up')}}
-                                        disabled={index === 0 || newSections[index - 1].isLocked}
+                                        disabled={index === 0 || settings.homePageSections[index - 1].isLocked}
                                         className="h-8 w-8"
                                     >
                                         <ArrowUp className="h-4 w-4" />
@@ -1836,4 +1836,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
