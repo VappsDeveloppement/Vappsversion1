@@ -36,6 +36,7 @@ export function Footer() {
     const socialLinks = personalization?.footerSocialLinks as SocialLink[] || [];
     const copyrightText = personalization?.copyrightText || "Vapps.";
     const copyrightUrl = personalization?.copyrightUrl || "/";
+    const footerBgColor = personalization?.footerBgColor || '#111827';
     
     const legalMentions = legalInfo?.legalMentions || "";
     const cgv = legalInfo?.cgv || "";
@@ -63,7 +64,7 @@ export function Footer() {
     );
 
     return (
-        <footer className="bg-gray-900 text-gray-300 py-12">
+        <footer style={{ backgroundColor: footerBgColor }} className="text-gray-300 py-12">
             <div className="container mx-auto px-4">
                 <div className="grid grid-cols-1 md:grid-cols-12 gap-8">
                     {/* Left Column */}
@@ -156,5 +157,3 @@ export function Footer() {
         </footer>
     );
 }
-
-    

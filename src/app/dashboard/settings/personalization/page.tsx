@@ -123,7 +123,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: "CTA 1", enabled: true },
+  { id: 'cta', label: 'CTA 1', enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
@@ -133,7 +133,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
   { id: 'cta2', label: 'CTA 2', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
-  { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
 ];
 
 const defaultPersonalization = {
@@ -147,6 +146,7 @@ const defaultPersonalization = {
     primaryColor: "#2ff40a",
     secondaryColor: "#25d408",
     bgColor: "#ffffff",
+    footerBgColor: "#111827",
     logoDataUrl: null as string | null,
     heroStyle: 'application', // 'application' (avec connexion) ou 'tunnel' (sans connexion)
     heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
@@ -864,7 +864,7 @@ export default function PersonalizationPage() {
 
                 <div className="space-y-6">
                     <h3 className="text-lg font-medium">Couleurs du thème</h3>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                         <div className="space-y-2">
                             <Label htmlFor="primary-color">Couleur Primaire</Label>
                             <div className="flex items-center gap-2">
@@ -884,6 +884,13 @@ export default function PersonalizationPage() {
                             <div className="flex items-center gap-2">
                                 <Input type="color" value={settings.bgColor} onChange={(e) => handleFieldChange('bgColor', e.target.value)} className="w-10 h-10 p-1"/>
                                 <Input id="bg-color" value={settings.bgColor} onChange={(e) => handleFieldChange('bgColor', e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="footer-bg-color">Fond du Pied de page</Label>
+                            <div className="flex items-center gap-2">
+                                <Input type="color" value={settings.footerBgColor} onChange={(e) => handleFieldChange('footerBgColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                <Input id="footer-bg-color" value={settings.footerBgColor} onChange={(e) => handleFieldChange('footerBgColor', e.target.value)} />
                             </div>
                         </div>
                     </div>
@@ -1029,7 +1036,6 @@ export default function PersonalizationPage() {
                  
                  <Accordion type="single" collapsible className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => {
-                       if (section.id === 'footer') return null;
                        return(
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
                             <div className="flex items-center gap-2 p-3">

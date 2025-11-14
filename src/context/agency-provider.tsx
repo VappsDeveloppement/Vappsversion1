@@ -79,6 +79,7 @@ interface Personalization {
     primaryColor: string;
     secondaryColor: string;
     bgColor: string;
+    footerBgColor: string;
     heroStyle: string;
     heroTitle: string;
     heroSubtitle: string;
@@ -139,7 +140,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
   { id: 'cta2', label: 'CTA 2', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
-  { id: 'footer', label: 'Pied de page', enabled: true, isLocked: true },
 ];
 
 const defaultPersonalization: Personalization = {
@@ -154,6 +154,7 @@ const defaultPersonalization: Personalization = {
     primaryColor: "#2ff40a",
     secondaryColor: "#25d408",
     bgColor: "#ffffff",
+    footerBgColor: "#111827",
     heroStyle: "application",
     heroTitle: "Révélez votre potentiel et construisez une carrière qui vous ressemble.",
     heroSubtitle: "Un accompagnement sur-mesure pour votre épanouissement professionnel et personnel.",
@@ -282,39 +283,25 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 const agencyData = docSnap.data();
                 
                 const savedSections = agencyData.personalization?.homePageSections || [];
-                const defaultSections = defaultHomePageSections;
+                // The full list of sections available in the code
+                const codeSections = defaultHomePageSections;
 
-                // Create a map of saved sections for quick lookup, preserving their properties
+                // Create a map of saved sections for quick lookup.
                 const savedSectionsMap = new Map(savedSections.map((s: Section) => [s.id, s]));
 
-                // Rebuild the sections array: start with the default order, then update with saved properties.
-                const mergedSections = defaultSections.map(defaultSection => {
-                    const savedSection = savedSectionsMap.get(defaultSection.id);
-                    return savedSection ? { ...defaultSection, ...savedSection } : defaultSection;
+                // Create the new list, ensuring all sections from the code exist.
+                // This adds new sections from the code that weren't in the saved data.
+                const mergedSections = codeSections.map(codeSection => {
+                    const savedSection = savedSectionsMap.get(codeSection.id);
+                    // If the section exists in saved data, use it. Otherwise, use the code default.
+                    return savedSection ? savedSection : codeSection;
                 });
                 
-                // Get the final sorted order from the saved data, but ensure all default sections are present.
-                const finalOrderedSections = [
-                    ...savedSections
-                        .map((saved: Section) => {
-                            const found = mergedSections.find(m => m.id === saved.id);
-                            return found ? found : null;
-                        })
-                        .filter((s: Section | null): s is Section => s !== null),
-                    ...mergedSections.filter(merged => !savedSectionsMap.has(merged.id))
-                ];
-
-                const finalSectionsWithoutFooter = finalOrderedSections.filter(s => s.id !== 'footer');
-                const footerSection = finalOrderedSections.find(s => s.id === 'footer');
-                if (footerSection) {
-                    finalSectionsWithoutFooter.push(footerSection);
-                }
-
 
                 const mergedPersonalization = {
                     ...defaultPersonalization,
                     ...(agencyData.personalization || {}),
-                    homePageSections: finalSectionsWithoutFooter,
+                    homePageSections: mergedSections,
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
