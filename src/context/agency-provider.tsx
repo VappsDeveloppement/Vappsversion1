@@ -167,6 +167,7 @@ interface AgencyContextType {
     personalization: Personalization;
     isLoading: boolean;
     error: Error | null;
+    agency: {id: string, name: string, personalization: Personalization} | null
 }
 
 // Create the context with a default value
@@ -351,7 +352,7 @@ const defaultAgency: {id: string, name: string, personalization: Personalization
 
 
 export const AgencyProvider = ({ children }: { children: ReactNode }) => {
-    const { firestore, user } = useFirebase();
+    const { firestore } = useFirebase();
     const [personalization, setPersonalization] = useState<Personalization>(defaultPersonalization);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -470,20 +471,28 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
         return () => unsubscribe();
     }, [firestore]);
 
+    const agency = useMemo(() => {
+        if (!personalization) return null;
+        return { id: agencyId, name: 'VApps Model', personalization };
+    }, [personalization]);
+
+
     const value = {
         personalization,
         isLoading,
         error,
-        agency: { id: agencyId, name: 'VApps Model', personalization }
+        agency
     };
 
     return <AgencyContext.Provider value={value}>{children}</AgencyContext.Provider>;
 };
 
-export const useAgency = (): AgencyContextType & { agency: {id: string, name: string, personalization: Personalization} | null } => {
+export const useAgency = (): AgencyContextType => {
     const context = useContext(AgencyContext);
     if (context === undefined) {
         throw new Error('useAgency must be used within an AgencyProvider');
     }
-    return { ...context, agency: { id: 'vapps-agency', name: 'VApps Model', personalization: context.personalization } };
+    return context;
 };
+
+    
