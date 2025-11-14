@@ -123,7 +123,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: 'CTA 1', enabled: true },
+  { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
@@ -1058,7 +1058,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'down')}}
-                                        disabled={index === settings.homePageSections.length - 1 || settings.homePageSections[index + 1]?.isLocked}
+                                        disabled={index === settings.homePageSections.length - 1}
                                         className="h-8 w-8"
                                     >
                                         <ArrowDown className="h-4 w-4" />

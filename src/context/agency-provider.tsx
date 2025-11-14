@@ -130,7 +130,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
-  { id: 'cta', label: 'CTA 1', enabled: true },
+  { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
@@ -283,20 +283,21 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 const agencyData = docSnap.data();
                 
                 const savedSections = agencyData.personalization?.homePageSections || [];
-                // The full list of sections available in the code
                 const codeSections = defaultHomePageSections;
 
-                // Create a map of saved sections for quick lookup.
                 const savedSectionsMap = new Map(savedSections.map((s: Section) => [s.id, s]));
 
-                // Create the new list, ensuring all sections from the code exist.
-                // This adds new sections from the code that weren't in the saved data.
                 const mergedSections = codeSections.map(codeSection => {
                     const savedSection = savedSectionsMap.get(codeSection.id);
-                    // If the section exists in saved data, use it. Otherwise, use the code default.
-                    return savedSection ? savedSection : codeSection;
+                    return savedSection ? { ...codeSection, ...savedSection } : codeSection;
+                }).sort((a, b) => {
+                    const aIndex = savedSections.findIndex((s: Section) => s.id === a.id);
+                    const bIndex = savedSections.findIndex((s: Section) => s.id === b.id);
+                    if (aIndex === -1 && bIndex === -1) return 0; // both new
+                    if (aIndex === -1) return 1; // a is new, b is not
+                    if (bIndex === -1) return -1; // b is new, a is not
+                    return aIndex - bIndex; // both exist, maintain order
                 });
-                
 
                 const mergedPersonalization = {
                     ...defaultPersonalization,

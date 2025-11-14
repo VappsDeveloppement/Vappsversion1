@@ -157,13 +157,12 @@ function TunnelHomePage() {
           {sections.map(section => {
             if (!section.enabled) return null;
             if (section.id === 'hero') return <HeroSection key={section.id} />;
-            if (section.id === 'footer') return null; // Pied de page géré à la fin
-
+            
             const SectionComponent = sectionComponents[section.id];
             return SectionComponent ? <SectionComponent key={section.id} /> : null;
           })}
       </main>
-      {sections.find(s => s.id === 'footer' && s.enabled) && <Footer />}
+      <Footer />
     </div>
   );
 }
@@ -172,23 +171,21 @@ function TunnelHomePage() {
 function ApplicationHomePage() {
     const { personalization } = useAgency();
     const sections = personalization?.homePageSections as Section[] || [];
-    const sectionsToRender = ['hero', 'whiteLabel', 'footer'];
     
     return (
         <div className="min-h-dvh flex flex-col overflow-hidden bg-white text-gray-800">
             <main>
-                {sections
-                    .filter(section => sectionsToRender.includes(section.id) && section.enabled)
-                    .sort((a, b) => sectionsToRender.indexOf(a.id) - sectionsToRender.indexOf(b.id))
-                    .map(section => {
-                        if (section.id === 'hero') return <HeroSection key={section.id} />;
-                        if (section.id === 'footer') return null;
-
+                {sections.map(section => {
+                    if (!section.enabled) return null;
+                    if (section.id === 'hero') return <HeroSection key={section.id} />;
+                    if (section.id === 'whiteLabel') {
                         const SectionComponent = sectionComponents[section.id];
                         return SectionComponent ? <SectionComponent key={section.id} /> : null;
-                    })}
+                    }
+                    return null;
+                })}
             </main>
-            {sections.find(s => s.id === 'footer' && s.enabled) && <Footer />}
+            <Footer />
         </div>
     );
 }
