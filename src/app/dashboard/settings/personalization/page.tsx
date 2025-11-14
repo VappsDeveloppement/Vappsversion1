@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,6 +24,7 @@ import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -286,6 +287,15 @@ const defaultPersonalization = {
         paypalClientSecret: "",
         paypalMeLink: "",
         skrillEmail: "",
+    },
+    emailSettings: {
+        smtpHost: "",
+        smtpPort: 587,
+        smtpUser: "",
+        smtpPass: "",
+        smtpSecure: true,
+        fromEmail: "",
+        fromName: "",
     }
 };
 
@@ -300,6 +310,7 @@ export default function PersonalizationPage() {
   const [aboutImagePreview, setAboutImagePreview] = React.useState(personalization?.aboutSection?.mainImageUrl);
   const [ctaImagePreview, setCtaImagePreview] = React.useState(personalization?.ctaSection?.bgImageUrl);
   const [cta2ImagePreview, setCta2ImagePreview] = React.useState(personalization?.cta2Section?.bgImageUrl);
+  const [showSmtpPass, setShowSmtpPass] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -342,6 +353,10 @@ export default function PersonalizationPage() {
         paymentSettings: {
             ...defaultPersonalization.paymentSettings,
             ...(personalization.paymentSettings || {})
+        },
+        emailSettings: {
+            ...defaultPersonalization.emailSettings,
+            ...(personalization.emailSettings || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -581,6 +596,16 @@ export default function PersonalizationPage() {
     }))
   }
 
+  const handleEmailSettingsChange = (field: string, value: any) => {
+    setSettings(prev => ({
+        ...prev,
+        emailSettings: {
+            ...prev.emailSettings,
+            [field]: value
+        }
+    }))
+  }
+
   const handleSave = () => {
     if (!agency) {
       toast({ title: "Erreur", description: "Agence non trouvée.", variant: "destructive" });
@@ -666,7 +691,6 @@ export default function PersonalizationPage() {
     const currentSections = [...(settings.homePageSections || [])];
     const newIndex = direction === 'up' ? index - 1 : index + 1;
   
-    // Check boundaries and locked status
     if (newIndex < 0 || newIndex >= currentSections.length || currentSections[index].isLocked || currentSections[newIndex].isLocked) {
       return;
     }
@@ -1997,17 +2021,85 @@ export default function PersonalizationPage() {
         </TabsContent>
         
         <TabsContent value="email">
-          <Card>
-            <CardHeader>
-              <CardTitle>Email</CardTitle>
-              <CardDescription>Configurez les paramètres d'envoi d'emails.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-center h-48 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">Le contenu des emails est vide.</p>
-              </div>
-            </CardContent>
-          </Card>
+            <Card>
+                <CardHeader>
+                <CardTitle>Configuration des e-mails</CardTitle>
+                <CardDescription>
+                    Configurez le serveur SMTP pour l'envoi des e-mails transactionnels (confirmation d'inscription, factures, etc.).
+                </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-8">
+                    <section>
+                        <h3 className="text-xl font-semibold mb-6 border-b pb-2">Expéditeur</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="from-name">Nom de l'expéditeur</Label>
+                                <Input id="from-name" placeholder="Votre Nom ou Nom de l'Agence" value={settings.emailSettings?.fromName} onChange={e => handleEmailSettingsChange('fromName', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="from-email">E-mail de l'expéditeur</Label>
+                                <Input id="from-email" type="email" placeholder="contact@votreagence.com" value={settings.emailSettings?.fromEmail} onChange={e => handleEmailSettingsChange('fromEmail', e.target.value)} />
+                            </div>
+                        </div>
+                    </section>
+                    <div className="border-t"></div>
+                    <section>
+                        <h3 className="text-xl font-semibold mb-6 border-b pb-2">Serveur SMTP</h3>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div className="space-y-2 md:col-span-2">
+                                    <Label htmlFor="smtp-host">Hôte SMTP</Label>
+                                    <Input id="smtp-host" placeholder="smtp.fournisseur.com" value={settings.emailSettings?.smtpHost} onChange={e => handleEmailSettingsChange('smtpHost', e.target.value)} />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="smtp-port">Port SMTP</Label>
+                                    <Input id="smtp-port" type="number" placeholder="587" value={settings.emailSettings?.smtpPort} onChange={e => handleEmailSettingsChange('smtpPort', parseInt(e.target.value) || 0)} />
+                                </div>
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="smtp-user">Nom d'utilisateur SMTP</Label>
+                                <Input id="smtp-user" placeholder="Votre nom d'utilisateur" value={settings.emailSettings?.smtpUser} onChange={e => handleEmailSettingsChange('smtpUser', e.target.value)} />
+                            </div>
+                             <div className="space-y-2">
+                                <Label htmlFor="smtp-pass">Mot de passe SMTP</Label>
+                                <div className="relative">
+                                    <Input id="smtp-pass" type={showSmtpPass ? "text" : "password"} placeholder="••••••••••••" value={settings.emailSettings?.smtpPass} onChange={e => handleEmailSettingsChange('smtpPass', e.target.value)} />
+                                    <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full px-3" onClick={() => setShowSmtpPass(!showSmtpPass)}>
+                                        {showSmtpPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2 pt-2">
+                                <Switch id="smtp-secure" checked={settings.emailSettings?.smtpSecure} onCheckedChange={checked => handleEmailSettingsChange('smtpSecure', checked)} />
+                                <Label htmlFor="smtp-secure">Utiliser une connexion sécurisée (TLS/SSL)</Label>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div className="border-t"></div>
+
+                     <section>
+                        <h3 className="text-xl font-semibold mb-6 border-b pb-2">Utiliser Gmail comme serveur SMTP</h3>
+                        <Alert>
+                            <Info className="h-4 w-4" />
+                            <AlertTitle>Information</AlertTitle>
+                            <AlertDescription>
+                                Pour utiliser votre compte Gmail, vous devez générer un "mot de passe d'application" dans les paramètres de sécurité de votre compte Google. N'utilisez pas votre mot de passe habituel.
+                                <ul className="list-disc pl-5 mt-2 text-xs">
+                                    <li><strong className="font-medium">Hôte SMTP :</strong> smtp.gmail.com</li>
+                                    <li><strong className="font-medium">Port :</strong> 587 (avec connexion sécurisée) ou 465</li>
+                                    <li><strong className="font-medium">Nom d'utilisateur :</strong> Votre adresse Gmail complète</li>
+                                    <li><strong className="font-medium">Mot de passe :</strong> Le mot de passe d'application que vous avez généré</li>
+                                </ul>
+                            </AlertDescription>
+                        </Alert>
+                    </section>
+
+                    <div className="flex justify-end pt-6 border-t">
+                        <Button onClick={handleSave}>Enregistrer les modifications</Button>
+                    </div>
+                </CardContent>
+            </Card>
         </TabsContent>
 
         <TabsContent value="rgpd">

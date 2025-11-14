@@ -89,6 +89,16 @@ interface PaymentSettings {
     skrillEmail: string;
 }
 
+interface EmailSettings {
+    smtpHost: string;
+    smtpPort: number;
+    smtpUser: string;
+    smtpPass: string;
+    smtpSecure: boolean;
+    fromEmail: string;
+    fromName: string;
+}
+
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -139,6 +149,7 @@ interface Personalization {
     videoSection: VideoSectionPersonalization;
     servicesSection: ServicesSectionPersonalization;
     paymentSettings: PaymentSettings;
+    emailSettings: EmailSettings;
     [key: string]: any;
 }
 
@@ -304,6 +315,15 @@ const defaultPersonalization: Personalization = {
         paypalClientSecret: "",
         paypalMeLink: "",
         skrillEmail: "",
+    },
+    emailSettings: {
+        smtpHost: "",
+        smtpPort: 587,
+        smtpUser: "",
+        smtpPass: "",
+        smtpSecure: true,
+        fromEmail: "",
+        fromName: "",
     }
 };
 
@@ -346,7 +366,7 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 const mergedSections = codeSections.map(codeSection => {
                     const savedSection = savedSectionsMap.get(codeSection.id);
                     return savedSection ? { ...codeSection, ...savedSection } : codeSection;
-                });
+                }).filter(section => section.id !== 'footer'); // Explicitly remove footer from selectable sections
                 
                 const finalSections = mergedSections.sort((a, b) => {
                     const aIndex = savedSections.findIndex((s: Section) => s.id === a.id);
@@ -402,7 +422,11 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,
-                        ...(agencyData.personalization?.paymentSettings || {}),
+                        ...(agencyData.personalization?.paymentSettings || {})
+                    },
+                    emailSettings: {
+                        ...defaultPersonalization.emailSettings,
+                        ...(agencyData.personalization?.emailSettings || {})
                     }
                 };
                 setPersonalization(mergedPersonalization);
