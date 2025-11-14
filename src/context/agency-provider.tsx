@@ -8,7 +8,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo, ServiceItem } from '@/app/dashboard/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -72,6 +72,13 @@ interface VideoSectionPersonalization {
     secondaryVideos: SecondaryVideo[];
 }
 
+interface ServicesSectionPersonalization {
+    title: string;
+    subtitle: string;
+    description: string;
+    services: ServiceItem[];
+}
+
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -120,6 +127,7 @@ interface Personalization {
     cta2Section: Cta2SectionPersonalization;
     jobOffersSection: JobOffersSectionPersonalization;
     videoSection: VideoSectionPersonalization;
+    servicesSection: ServicesSectionPersonalization;
     [key: string]: any;
 }
 
@@ -266,6 +274,16 @@ const defaultPersonalization: Personalization = {
             { id: `video-2`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Définir vos objectifs de carrière" },
             { id: `video-3`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Témoignage : La reconversion de Sarah" }
         ]
+    },
+    servicesSection: {
+        title: "Nos Accompagnements",
+        subtitle: "Construisons ensemble votre avenir",
+        description: "Que vous soyez en quête de sens, en reconversion ou désireux d'évoluer, nous avons une solution pour vous.",
+        services: [
+            { id: `service-1`, title: "Bilan de Compétences", description: "Faites le point sur vos forces et aspirations pour définir un projet clair.", imageUrl: null },
+            { id: `service-2`, title: "Coaching Carrière", description: "Un accompagnement personnalisé pour atteindre vos objectifs professionnels.", imageUrl: null },
+            { id: `service-3`, title: "Formation au Leadership", description: "Développez vos compétences managériales et devenez un leader inspirant.", imageUrl: null },
+        ]
     }
 };
 
@@ -358,6 +376,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                         ...defaultPersonalization.videoSection,
                         ...(agencyData.personalization?.videoSection || {}),
                     },
+                    servicesSection: {
+                        ...defaultPersonalization.servicesSection,
+                        ...(agencyData.personalization?.servicesSection || {}),
+                    }
                 };
                 setPersonalization(mergedPersonalization);
             } else {

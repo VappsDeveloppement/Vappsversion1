@@ -110,6 +110,13 @@ export type SecondaryVideo = {
   title: string;
 }
 
+export type ServiceItem = {
+  id: string;
+  title: string;
+  description: string;
+  imageUrl: string | null;
+};
+
 const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Facebook,
     Twitter,
@@ -260,6 +267,16 @@ const defaultPersonalization = {
             { id: `video-2`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Définir vos objectifs de carrière" },
             { id: `video-3`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Témoignage : La reconversion de Sarah" }
         ] as SecondaryVideo[]
+    },
+    servicesSection: {
+        title: "Nos Accompagnements",
+        subtitle: "Construisons ensemble votre avenir",
+        description: "Que vous soyez en quête de sens, en reconversion ou désireux d'évoluer, nous avons une solution pour vous.",
+        services: [
+            { id: `service-${Date.now()}-1`, title: "Bilan de Compétences", description: "Faites le point sur vos forces et aspirations pour définir un projet clair.", imageUrl: null },
+            { id: `service-${Date.now()}-2`, title: "Coaching Carrière", description: "Un accompagnement personnalisé pour atteindre vos objectifs professionnels.", imageUrl: null },
+            { id: `service-${Date.now()}-3`, title: "Formation au Leadership", description: "Développez vos compétences managériales et devenez un leader inspirant.", imageUrl: null },
+        ] as ServiceItem[]
     }
 };
 
@@ -308,6 +325,10 @@ export default function PersonalizationPage() {
         videoSection: {
           ...defaultPersonalization.videoSection,
           ...(personalization.videoSection || {})
+        },
+        servicesSection: {
+          ...defaultPersonalization.servicesSection,
+          ...(personalization.servicesSection || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -496,6 +517,35 @@ export default function PersonalizationPage() {
     const newVideos = settings.videoSection.secondaryVideos.filter((_, i) => i !== index);
     handleVideoSectionChange('secondaryVideos', newVideos);
   };
+  
+    const handleServicesSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      servicesSection: {
+        ...(prev.servicesSection || defaultPersonalization.servicesSection),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleAccompagnementChange = (index: number, field: keyof ServiceItem, value: string | null) => {
+      const newServices = [...(settings.servicesSection.services)];
+      (newServices[index] as any)[field] = value;
+      handleServicesSectionChange('services', newServices);
+  };
+
+  const addAccompagnement = () => {
+    const newServices = [
+        ...(settings.servicesSection.services || []),
+        { id: `service-${Date.now()}`, title: 'Nouvel Accompagnement', description: 'Description du nouvel accompagnement.', imageUrl: null },
+    ];
+    handleServicesSectionChange('services', newServices);
+  };
+
+  const removeAccompagnement = (index: number) => {
+    const newServices = settings.servicesSection.services.filter((_, i) => i !== index);
+    handleServicesSectionChange('services', newServices);
+  };
 
 
   const handleLegalInfoChange = (field: string, value: any) => {
@@ -590,25 +640,18 @@ export default function PersonalizationPage() {
   };
   
   const moveSection = (index: number, direction: 'up' | 'down') => {
-    const newSections = [...(settings.homePageSections || [])];
+    const currentSections = [...(settings.homePageSections || [])];
     const newIndex = direction === 'up' ? index - 1 : index + 1;
-
-    // Find the boundary for non-locked items
-    const firstLockedIndex = newSections.findIndex(s => s.isLocked);
-    
-    // Prevent moving up past the first item or a locked item
-    if (direction === 'up' && (newIndex < 0 || newSections[newIndex].isLocked)) {
-        return;
+  
+    // Check boundaries and locked status
+    if (newIndex < 0 || newIndex >= currentSections.length || currentSections[index].isLocked || currentSections[newIndex].isLocked) {
+      return;
     }
-    
-    // Prevent moving down into a locked item
-    if (direction === 'down' && (newIndex >= newSections.length || newSections[newIndex].isLocked)) {
-        return;
-    }
-
-    [newSections[index], newSections[newIndex]] = [newSections[newIndex], newSections[index]];
+  
+    const newSections = [...currentSections];
+    [newSections[index], newSections[newIndex]] = [newSections[newIndex], newSections[index]]; // Swap
     handleFieldChange('homePageSections', newSections);
-};
+  };
 
   const handleSectionToggle = (id: string, enabled: boolean) => {
     const newSections = (settings.homePageSections || []).map(section => 
@@ -1118,7 +1161,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'down')}}
-                                        disabled={index === settings.homePageSections.length - 1}
+                                        disabled={index === settings.homePageSections.length - 1 || settings.homePageSections[index + 1]?.isLocked}
                                         className="h-8 w-8"
                                     >
                                         <ArrowDown className="h-4 w-4" />
@@ -1653,6 +1696,82 @@ export default function PersonalizationPage() {
                                          <Button variant="outline" size="sm" onClick={addSecondaryVideo} className="mt-4">
                                             <PlusCircle className="mr-2 h-4 w-4" />
                                             Ajouter une vidéo secondaire
+                                         </Button>
+                                      </section>
+                                    </div>
+                                ) : section.id === 'services' ? (
+                                    <div className="space-y-8">
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu de la section</h3>
+                                         <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="services-title">Titre principal</Label>
+                                                <Input id="services-title" value={settings.servicesSection.title} onChange={(e) => handleServicesSectionChange('title', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="services-subtitle">Sous-titre (slogan)</Label>
+                                                <Input id="services-subtitle" value={settings.servicesSection.subtitle} onChange={(e) => handleServicesSectionChange('subtitle', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="services-description">Texte de description</Label>
+                                                <Textarea id="services-description" value={settings.servicesSection.description} onChange={(e) => handleServicesSectionChange('description', e.target.value)} />
+                                            </div>
+                                         </div>
+                                      </section>
+                                      <div className="border-t -mx-6"></div>
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Liste des Accompagnements</h3>
+                                         <div className="space-y-6">
+                                            {settings.servicesSection.services.map((service, index) => (
+                                                <div key={service.id} className="p-4 border rounded-lg space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="font-medium">Accompagnement {index + 1}</h4>
+                                                        <Button variant="ghost" size="icon" onClick={() => removeAccompagnement(index)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`service-title-${index}`}>Titre</Label>
+                                                            <Input id={`service-title-${index}`} value={service.title} onChange={(e) => handleAccompagnementChange(index, 'title', e.target.value)} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`service-desc-${index}`}>Description</Label>
+                                                            <Input id={`service-desc-${index}`} value={service.description} onChange={(e) => handleAccompagnementChange(index, 'description', e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                    <div className="mt-4">
+                                                        <Label>Image</Label>
+                                                        <div className="flex items-center gap-4 mt-2">
+                                                            <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                                {service.imageUrl ? (
+                                                                    <Image src={service.imageUrl} alt={`Aperçu pour ${service.title}`} layout="fill" objectFit="cover" />
+                                                                ) : (
+                                                                    <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-col gap-2">
+                                                                <Button variant="outline" size="sm" onClick={() => {
+                                                                    const currentRef = fileInputRef.current;
+                                                                    if (currentRef) {
+                                                                        currentRef.onchange = createUploadHandler(base64 => handleAccompagnementChange(index, 'imageUrl', base64));
+                                                                        currentRef.click();
+                                                                    }
+                                                                }}>
+                                                                    <Upload className="mr-2 h-4 w-4" /> Uploader
+                                                                </Button>
+                                                                <Button variant="destructive" size="sm" onClick={() => handleAccompagnementChange(index, 'imageUrl', null)}>
+                                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                                </Button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                         </div>
+                                         <Button variant="outline" size="sm" onClick={addAccompagnement} className="mt-4">
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Ajouter un accompagnement
                                          </Button>
                                       </section>
                                     </div>
