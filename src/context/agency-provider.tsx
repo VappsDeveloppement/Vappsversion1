@@ -8,7 +8,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, ParcoursStep, JobOffer } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo } from '@/app/dashboard/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -65,6 +65,13 @@ interface JobOffersSectionPersonalization {
     offers: JobOffer[];
 }
 
+interface VideoSectionPersonalization {
+    sectionTitle: string;
+    sectionSubtitle: string;
+    mainVideoUrl: string;
+    secondaryVideos: SecondaryVideo[];
+}
+
 
 // Define the shape of the personalization settings object
 interface Personalization {
@@ -112,6 +119,7 @@ interface Personalization {
     ctaSection: CtaSectionPersonalization;
     cta2Section: Cta2SectionPersonalization;
     jobOffersSection: JobOffersSectionPersonalization;
+    videoSection: VideoSectionPersonalization;
     [key: string]: any;
 }
 
@@ -248,6 +256,16 @@ const defaultPersonalization: Personalization = {
             { id: `job-2`, title: "Chef de Projet Digital", contractType: "CDI", location: "Lyon, France" },
             { id: `job-3`, title: "UX/UI Designer", contractType: "Alternance", location: "Télétravail" },
         ]
+    },
+    videoSection: {
+        sectionTitle: "Découvrez l'approche Vapps en Vidéo",
+        sectionSubtitle: "Plongez dans notre univers et découvrez comment notre accompagnement peut transformer votre parcours professionnel.",
+        mainVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        secondaryVideos: [
+            { id: `video-1`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Notre approche holistique" },
+            { id: `video-2`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Définir vos objectifs de carrière" },
+            { id: `video-3`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Témoignage : La reconversion de Sarah" }
+        ]
     }
 };
 
@@ -290,19 +308,26 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 const mergedSections = codeSections.map(codeSection => {
                     const savedSection = savedSectionsMap.get(codeSection.id);
                     return savedSection ? { ...codeSection, ...savedSection } : codeSection;
-                }).sort((a, b) => {
+                });
+                
+                const finalSections = mergedSections.sort((a, b) => {
                     const aIndex = savedSections.findIndex((s: Section) => s.id === a.id);
                     const bIndex = savedSections.findIndex((s: Section) => s.id === b.id);
+
+                    if (a.isLocked && !b.isLocked) return -1;
+                    if (!a.isLocked && b.isLocked) return 1;
+
                     if (aIndex === -1 && bIndex === -1) return 0; // both new
                     if (aIndex === -1) return 1; // a is new, b is not
                     if (bIndex === -1) return -1; // b is new, a is not
                     return aIndex - bIndex; // both exist, maintain order
                 });
 
+
                 const mergedPersonalization = {
                     ...defaultPersonalization,
                     ...(agencyData.personalization || {}),
-                    homePageSections: mergedSections,
+                    homePageSections: finalSections,
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
                         ...(agencyData.personalization?.legalInfo || {})
@@ -328,6 +353,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     jobOffersSection: {
                         ...defaultPersonalization.jobOffersSection,
                         ...(agencyData.personalization?.jobOffersSection || {}),
+                    },
+                    videoSection: {
+                        ...defaultPersonalization.videoSection,
+                        ...(agencyData.personalization?.videoSection || {}),
                     },
                 };
                 setPersonalization(mergedPersonalization);

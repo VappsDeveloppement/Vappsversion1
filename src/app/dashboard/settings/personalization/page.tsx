@@ -104,6 +104,12 @@ export type JobOffer = {
   location: string;
 };
 
+export type SecondaryVideo = {
+  id: string;
+  url: string;
+  title: string;
+}
+
 const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Facebook,
     Twitter,
@@ -244,6 +250,16 @@ const defaultPersonalization = {
             { id: `job-${Date.now()}-2`, title: "Chef de Projet Digital", contractType: "CDI", location: "Lyon, France" },
             { id: `job-${Date.now()}-3`, title: "UX/UI Designer", contractType: "Alternance", location: "Télétravail" },
         ] as JobOffer[]
+    },
+    videoSection: {
+        sectionTitle: "Découvrez l'approche Vapps en Vidéo",
+        sectionSubtitle: "Plongez dans notre univers et découvrez comment notre accompagnement peut transformer votre parcours professionnel.",
+        mainVideoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        secondaryVideos: [
+            { id: `video-1`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Notre approche holistique" },
+            { id: `video-2`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Définir vos objectifs de carrière" },
+            { id: `video-3`, url: "https://www.youtube.com/embed/dQw4w9WgXcQ", title: "Témoignage : La reconversion de Sarah" }
+        ] as SecondaryVideo[]
     }
 };
 
@@ -288,6 +304,10 @@ export default function PersonalizationPage() {
         jobOffersSection: {
             ...defaultPersonalization.jobOffersSection,
             ...(personalization.jobOffersSection || {})
+        },
+        videoSection: {
+          ...defaultPersonalization.videoSection,
+          ...(personalization.videoSection || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -448,6 +468,35 @@ export default function PersonalizationPage() {
     handleJobOffersSectionChange('offers', newOffers);
   };
 
+  const handleVideoSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      videoSection: {
+        ...(prev.videoSection || defaultPersonalization.videoSection),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleSecondaryVideoChange = (index: number, field: 'url' | 'title', value: string) => {
+    const newVideos = [...(settings.videoSection.secondaryVideos)];
+    newVideos[index] = { ...newVideos[index], [field]: value };
+    handleVideoSectionChange('secondaryVideos', newVideos);
+  };
+
+  const addSecondaryVideo = () => {
+    const newVideos = [
+        ...(settings.videoSection.secondaryVideos || []),
+        { id: `video-${Date.now()}`, url: '', title: 'Nouveau titre' },
+    ];
+    handleVideoSectionChange('secondaryVideos', newVideos);
+  };
+
+  const removeSecondaryVideo = (index: number) => {
+    const newVideos = settings.videoSection.secondaryVideos.filter((_, i) => i !== index);
+    handleVideoSectionChange('secondaryVideos', newVideos);
+  };
+
 
   const handleLegalInfoChange = (field: string, value: any) => {
     setSettings(prev => ({
@@ -544,11 +593,22 @@ export default function PersonalizationPage() {
     const newSections = [...(settings.homePageSections || [])];
     const newIndex = direction === 'up' ? index - 1 : index + 1;
 
-    if (newIndex >= 0 && newIndex < newSections.length) {
-      [newSections[index], newSections[newIndex]] = [newSections[newIndex], newSections[index]];
-      handleFieldChange('homePageSections', newSections);
+    // Find the boundary for non-locked items
+    const firstLockedIndex = newSections.findIndex(s => s.isLocked);
+    
+    // Prevent moving up past the first item or a locked item
+    if (direction === 'up' && (newIndex < 0 || newSections[newIndex].isLocked)) {
+        return;
     }
-  };
+    
+    // Prevent moving down into a locked item
+    if (direction === 'down' && (newIndex >= newSections.length || newSections[newIndex].isLocked)) {
+        return;
+    }
+
+    [newSections[index], newSections[newIndex]] = [newSections[newIndex], newSections[index]];
+    handleFieldChange('homePageSections', newSections);
+};
 
   const handleSectionToggle = (id: string, enabled: boolean) => {
     const newSections = (settings.homePageSections || []).map(section => 
@@ -1049,7 +1109,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'up')}}
-                                        disabled={index === 0 || settings.homePageSections[index - 1].isLocked}
+                                        disabled={index === 0 || newSections[index - 1].isLocked}
                                         className="h-8 w-8"
                                     >
                                         <ArrowUp className="h-4 w-4" />
@@ -1546,6 +1606,56 @@ export default function PersonalizationPage() {
                                             </div>
                                         </div>
                                     </div>
+                                ) : section.id === 'video' ? (
+                                    <div className="space-y-8">
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Contenu de la section</h3>
+                                         <div className="space-y-4">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="video-section-title">Titre principal</Label>
+                                                <Input id="video-section-title" value={settings.videoSection.sectionTitle} onChange={(e) => handleVideoSectionChange('sectionTitle', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="video-section-subtitle">Sous-titre</Label>
+                                                <Textarea id="video-section-subtitle" value={settings.videoSection.sectionSubtitle} onChange={(e) => handleVideoSectionChange('sectionSubtitle', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label htmlFor="video-main-url">URL de la vidéo principale</Label>
+                                                <Input id="video-main-url" placeholder="https://www.youtube.com/embed/..." value={settings.videoSection.mainVideoUrl} onChange={(e) => handleVideoSectionChange('mainVideoUrl', e.target.value)} />
+                                            </div>
+                                         </div>
+                                      </section>
+                                      <div className="border-t -mx-6"></div>
+                                      <section>
+                                         <h3 className="text-xl font-semibold mb-6 border-b pb-2">Vidéos secondaires</h3>
+                                         <div className="space-y-6">
+                                            {settings.videoSection.secondaryVideos.map((video, index) => (
+                                                <div key={video.id} className="p-4 border rounded-lg space-y-4">
+                                                    <div className="flex justify-between items-center">
+                                                        <h4 className="font-medium">Vidéo secondaire {index + 1}</h4>
+                                                        <Button variant="ghost" size="icon" onClick={() => removeSecondaryVideo(index)}>
+                                                            <Trash2 className="h-4 w-4 text-destructive" />
+                                                        </Button>
+                                                    </div>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`video-secondary-url-${index}`}>URL</Label>
+                                                            <Input id={`video-secondary-url-${index}`} placeholder="https://www.youtube.com/embed/..." value={video.url} onChange={(e) => handleSecondaryVideoChange(index, 'url', e.target.value)} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`video-secondary-title-${index}`}>Titre</Label>
+                                                            <Input id={`video-secondary-title-${index}`} value={video.title} onChange={(e) => handleSecondaryVideoChange(index, 'title', e.target.value)} />
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                         </div>
+                                         <Button variant="outline" size="sm" onClick={addSecondaryVideo} className="mt-4">
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Ajouter une vidéo secondaire
+                                         </Button>
+                                      </section>
+                                    </div>
                                 ) : section.id === 'cta2' ? (
                                     <div className="space-y-6">
                                         <div>
@@ -1726,3 +1836,4 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
