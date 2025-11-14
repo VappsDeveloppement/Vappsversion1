@@ -11,7 +11,7 @@ import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -25,6 +25,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { sendTestEmail } from "@/app/actions/email";
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -311,6 +312,8 @@ export default function PersonalizationPage() {
   const [ctaImagePreview, setCtaImagePreview] = React.useState(personalization?.ctaSection?.bgImageUrl);
   const [cta2ImagePreview, setCta2ImagePreview] = React.useState(personalization?.cta2Section?.bgImageUrl);
   const [showSmtpPass, setShowSmtpPass] = useState(false);
+  const [isTestingEmail, setIsTestingEmail] = useState(false);
+  const [testEmail, setTestEmail] = useState("");
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -629,6 +632,22 @@ export default function PersonalizationPage() {
       const agencyRef = doc(firestore, 'agencies', agency.id);
       setDocumentNonBlocking(agencyRef, { personalization: resetSettings }, { merge: true });
       toast({ title: "Réinitialisation", description: "Les paramètres d'apparence ont été réinitialisés." });
+  };
+
+  const handleTestEmail = async () => {
+    if (!testEmail) {
+        toast({ title: "Erreur", description: "Veuillez saisir une adresse e-mail de destination.", variant: "destructive"});
+        return;
+    }
+    setIsTestingEmail(true);
+    const result = await sendTestEmail({ settings: settings.emailSettings, recipient: testEmail });
+    setIsTestingEmail(false);
+
+    if (result.success) {
+        toast({ title: "Succès", description: "E-mail de test envoyé avec succès à " + testEmail });
+    } else {
+        toast({ title: "Échec de l'envoi", description: result.error, variant: "destructive" });
+    }
   };
 
 
@@ -2075,6 +2094,23 @@ export default function PersonalizationPage() {
                             </div>
                         </div>
                     </section>
+                    
+                    <div className="border-t"></div>
+
+                     <section>
+                        <h3 className="text-xl font-semibold mb-6 border-b pb-2">Tester la configuration</h3>
+                        <div className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="test-email">Envoyer un e-mail de test à</Label>
+                                <Input id="test-email" type="email" placeholder="votre.email@test.com" value={testEmail} onChange={e => setTestEmail(e.target.value)} />
+                            </div>
+                            <Button onClick={handleTestEmail} disabled={isTestingEmail}>
+                                {isTestingEmail ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Mail className="mr-2 h-4 w-4" />}
+                                Envoyer le test
+                            </Button>
+                        </div>
+                    </section>
+
 
                     <div className="border-t"></div>
 
