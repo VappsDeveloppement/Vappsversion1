@@ -282,6 +282,8 @@ const defaultPersonalization = {
         ribIban: "",
         ribBic: "",
         paypalMerchantId: "",
+        paypalClientId: "",
+        paypalClientSecret: "",
         paypalMeLink: "",
         skrillEmail: "",
     }
@@ -1173,7 +1175,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'up')}}
-                                        disabled={index === 0 || (settings.homePageSections && settings.homePageSections[index - 1]?.isLocked)}
+                                        disabled={index === 0 || settings.homePageSections[index - 1].isLocked}
                                         className="h-8 w-8"
                                     >
                                         <ArrowUp className="h-4 w-4" />
@@ -1182,7 +1184,7 @@ export default function PersonalizationPage() {
                                         variant="ghost"
                                         size="icon"
                                         onClick={(e) => { e.stopPropagation(); moveSection(index, 'down')}}
-                                        disabled={index === settings.homePageSections.length - 1 || (settings.homePageSections && settings.homePageSections[index + 1]?.isLocked)}
+                                        disabled={index === settings.homePageSections.length - 1 || (settings.homePageSections[index + 1] && settings.homePageSections[index + 1].isLocked)}
                                         className="h-8 w-8"
                                     >
                                         <ArrowDown className="h-4 w-4" />
@@ -1955,13 +1957,23 @@ export default function PersonalizationPage() {
 
                 <section>
                     <h3 className="text-xl font-semibold mb-6 border-b pb-2">PayPal</h3>
-                    <div className="space-y-6">
-                        <div className="space-y-2">
-                            <Label htmlFor="paypal-merchant-id">ID Marchand PayPal</Label>
-                            <Input id="paypal-merchant-id" placeholder="ID de votre compte marchand" value={settings.paymentSettings?.paypalMerchantId} onChange={e => handlePaymentSettingsChange('paypalMerchantId', e.target.value)} />
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <Label htmlFor="paypal-client-id">Client ID</Label>
+                                <Input id="paypal-client-id" placeholder="Votre Client ID PayPal" value={settings.paymentSettings?.paypalClientId} onChange={e => handlePaymentSettingsChange('paypalClientId', e.target.value)} />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="paypal-client-secret">Client Secret</Label>
+                                <Input id="paypal-client-secret" type="password" placeholder="Votre Client Secret PayPal" value={settings.paymentSettings?.paypalClientSecret} onChange={e => handlePaymentSettingsChange('paypalClientSecret', e.target.value)} />
+                            </div>
                         </div>
                         <div className="space-y-2">
-                            <Label htmlFor="paypal-me-link">Lien PayPal.Me</Label>
+                            <Label htmlFor="paypal-merchant-id">ID Marchand PayPal</Label>
+                            <Input id="paypal-merchant-id" placeholder="ID de votre compte marchand (optionnel)" value={settings.paymentSettings?.paypalMerchantId} onChange={e => handlePaymentSettingsChange('paypalMerchantId', e.target.value)} />
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="paypal-me-link">Lien PayPal.Me (pour paiements manuels)</Label>
                             <Input id="paypal-me-link" placeholder="https://paypal.me/VotreNom" value={settings.paymentSettings?.paypalMeLink} onChange={e => handlePaymentSettingsChange('paypalMeLink', e.target.value)} />
                         </div>
                     </div>

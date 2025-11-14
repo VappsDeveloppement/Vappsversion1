@@ -83,6 +83,8 @@ interface PaymentSettings {
     ribIban: string;
     ribBic: string;
     paypalMerchantId: string;
+    paypalClientId: string;
+    paypalClientSecret: string;
     paypalMeLink: string;
     skrillEmail: string;
 }
@@ -298,6 +300,8 @@ const defaultPersonalization: Personalization = {
         ribIban: "",
         ribBic: "",
         paypalMerchantId: "",
+        paypalClientId: "",
+        paypalClientSecret: "",
         paypalMeLink: "",
         skrillEmail: "",
     }
