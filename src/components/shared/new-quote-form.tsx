@@ -18,7 +18,7 @@ import { useAgency } from '@/context/agency-provider';
 import { useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
-import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, Save, Send, FileText } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, ChevronDown } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -26,6 +26,8 @@ import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
+import type { Plan } from './plan-management';
 
 type User = {
   id: string;
@@ -60,11 +62,20 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
     const firestore = useFirestore();
     const { toast } = useToast();
     
+    // Fetch clients
     const usersQuery = useMemoFirebase(() => {
         if (!agency) return null;
         return query(collection(firestore, 'users'), where('agencyId', '==', agency.id), where('role', 'in', ['membre', 'prospect']));
     }, [agency, firestore]);
     const { data: clients, isLoading: areClientsLoading } = useCollection<User>(usersQuery);
+
+    // Fetch plans
+    const plansQuery = useMemoFirebase(() => {
+        if (!agency) return null;
+        return collection(firestore, 'agencies', agency.id, 'plans');
+    }, [agency, firestore]);
+    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansQuery);
+
 
     const [selectedClient, setSelectedClient] = React.useState<User | null>(null);
     const [isClientPopoverOpen, setIsClientPopoverOpen] = React.useState(false);
@@ -126,6 +137,15 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
             toast({ title: "Erreur", description: "Impossible de sauvegarder le devis.", variant: "destructive"});
         }
     };
+
+    const addPlanAsItem = (plan: Plan) => {
+        append({
+            description: plan.name,
+            quantity: 1,
+            unitPrice: plan.price,
+            total: plan.price
+        });
+    }
     
     return (
         <Form {...form}>
@@ -318,10 +338,38 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
                                     )}
                                 </TableBody>
                             </Table>
-                            <Button type="button" variant="outline" size="sm" className="mt-4" onClick={() => append({ description: "", quantity: 1, unitPrice: 0, total: 0 })}>
-                                <PlusCircle className="mr-2 h-4 w-4"/>
-                                Ajouter une ligne
-                            </Button>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button type="button" variant="outline" size="sm" className="mt-4">
+                                        <PlusCircle className="mr-2 h-4 w-4"/>
+                                        Ajouter une ligne
+                                        <ChevronDown className="ml-2 h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => append({ description: "", quantity: 1, unitPrice: 0, total: 0 })}>
+                                        Ligne personnalisée
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>
+                                            Ajouter depuis un plan
+                                        </DropdownMenuSubTrigger>
+                                        <DropdownMenuPortal>
+                                            <DropdownMenuSubContent>
+                                                {(plans && plans.length > 0) ? (
+                                                    plans.map((plan) => (
+                                                        <DropdownMenuItem key={plan.id} onClick={() => addPlanAsItem(plan)}>
+                                                            {plan.name} ({plan.price}€)
+                                                        </DropdownMenuItem>
+                                                    ))
+                                                ) : (
+                                                    <DropdownMenuItem disabled>Aucun plan trouvé</DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuSubContent>
+                                        </DropdownMenuPortal>
+                                    </DropdownMenuSub>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
                         </div>
                     </div>
 
