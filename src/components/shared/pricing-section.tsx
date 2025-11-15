@@ -1,51 +1,57 @@
+
+'use client';
+
 import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { useAgency } from "@/context/agency-provider";
+import { useCollection, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { useFirestore } from "@/firebase/provider";
+import type { Plan } from "@/components/shared/plan-management";
+import { Skeleton } from "../ui/skeleton";
 
-const pricingTiers = [
-    {
-        name: "Essentiel",
-        price: "29€",
-        period: "/mois",
-        description: "Idéal pour commencer et explorer les bases.",
-        features: [
-            "Accès aux ressources de base",
-            "1 séance de coaching par mois",
-            "Support par email",
-        ],
-        cta: "Choisir Essentiel",
-    },
-    {
-        name: "Pro",
-        price: "79€",
-        period: "/mois",
-        description: "Pour ceux qui veulent accélérer leur progression.",
-        features: [
-            "Accès complet aux ressources",
-            "4 séances de coaching par mois",
-            "Support prioritaire",
-            "Accès à la communauté",
-        ],
-        cta: "Choisir Pro",
-        featured: true,
-    },
-    {
-        name: "Entreprise",
-        price: "Sur devis",
-        period: "",
-        description: "Une solution sur-mesure pour votre équipe.",
-        features: [
-            "Accompagnement personnalisé",
-            "Ateliers et formations d'équipe",
-            "Suivi dédié",
-            "Rapports de performance",
-        ],
-        cta: "Nous contacter",
-    },
-];
 
 export function PricingSection() {
+    const { agency, isLoading: isAgencyLoading } = useAgency();
+    const firestore = useFirestore();
+
+    const plansCollectionRef = useMemoFirebase(() => {
+        if (!agency) return null;
+        return collection(firestore, 'agencies', agency.id, 'plans');
+    }, [agency, firestore]);
+
+    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansCollectionRef);
+
+    const isLoading = isAgencyLoading || arePlansLoading;
+
+    if (isLoading) {
+        return (
+             <section className="bg-background text-foreground py-16 sm:py-24">
+                <div className="container mx-auto px-4">
+                    <div className="text-center mb-12">
+                        <Skeleton className="h-10 w-1/3 mx-auto" />
+                        <Skeleton className="h-6 w-1/2 mx-auto mt-4" />
+                    </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                        {[...Array(3)].map((_, i) => (
+                            <Card key={i} className="flex flex-col h-full">
+                                <CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader>
+                                <CardContent className="flex-1"><Skeleton className="h-24 w-full" /></CardContent>
+                                <CardFooter><Skeleton className="h-10 w-full" /></CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </div>
+            </section>
+        )
+    }
+    
+    if (!plans || plans.length === 0) {
+        return null; // Don't render the section if there are no plans
+    }
+
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
@@ -57,9 +63,9 @@ export function PricingSection() {
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                    {pricingTiers.map((tier) => (
-                        <Card key={tier.name} className={cn("flex flex-col h-full", tier.featured && "border-primary border-2 shadow-lg relative")}>
-                            {tier.featured && (
+                    {plans.map((tier) => (
+                        <Card key={tier.id} className={cn("flex flex-col h-full", tier.isFeatured && "border-primary border-2 shadow-lg relative")}>
+                            {tier.isFeatured && (
                                 <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
                                     <div className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
                                         Le plus populaire
@@ -70,7 +76,7 @@ export function PricingSection() {
                                 <CardTitle className="text-2xl">{tier.name}</CardTitle>
                                 <CardDescription>{tier.description}</CardDescription>
                                 <div>
-                                    <span className="text-4xl font-bold text-primary">{tier.price}</span>
+                                    <span className="text-4xl font-bold text-primary">{tier.price}€</span>
                                     <span className="text-muted-foreground">{tier.period}</span>
                                 </div>
                             </CardHeader>
@@ -82,11 +88,15 @@ export function PricingSection() {
                                             <span className="text-muted-foreground">{feature}</span>
                                         </li>
                                     ))}
+                                    <li className="flex items-center gap-2">
+                                        <Check className="h-5 w-5 text-green-500" />
+                                        <span className="text-muted-foreground">{tier.appointmentCredits} crédit(s) RDV</span>
+                                    </li>
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button className={cn("w-full", !tier.featured && "variant-secondary")}>
-                                    {tier.cta}
+                                <Button className={cn("w-full", !tier.isFeatured && "variant-secondary")}>
+                                    {tier.cta || 'Choisir ce plan'}
                                 </Button>
                             </CardFooter>
                         </Card>
@@ -96,3 +106,5 @@ export function PricingSection() {
         </section>
     );
 }
+
+    

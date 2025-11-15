@@ -51,7 +51,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PlusCircle, Trash2, Edit, Loader2, Upload } from 'lucide-react';
 import Image from 'next/image';
 
-type Plan = {
+export type Plan = {
   id: string;
   name: string;
   description: string;
@@ -61,6 +61,8 @@ type Plan = {
   appointmentCredits: number;
   isFeatured: boolean;
   imageUrl?: string;
+  agencyId: string;
+  cta?: string;
 };
 
 const planSchema = z.object({
@@ -78,6 +80,7 @@ const planSchema = z.object({
   ),
   isFeatured: z.boolean().default(false),
   imageUrl: z.string().optional(),
+  cta: z.string().optional(),
 });
 
 type PlanFormData = z.infer<typeof planSchema>;
@@ -116,6 +119,7 @@ export function PlanManagement() {
       appointmentCredits: 0,
       isFeatured: false,
       imageUrl: '',
+      cta: 'Choisir ce plan',
     },
   });
 
@@ -132,6 +136,7 @@ export function PlanManagement() {
     form.reset({
       ...plan,
       features: plan.features.map(f => ({ value: f })),
+      cta: plan.cta || 'Choisir ce plan',
     });
     setImagePreview(plan.imageUrl || null);
     setIsSheetOpen(true);
@@ -148,6 +153,7 @@ export function PlanManagement() {
       appointmentCredits: 0,
       isFeatured: false,
       imageUrl: '',
+      cta: 'Choisir ce plan'
     });
     setImagePreview(null);
     setIsSheetOpen(true);
@@ -296,6 +302,20 @@ export function PlanManagement() {
                             </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="cta"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Texte du bouton d'action</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Choisir ce plan" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
 
                         <div>
                             <FormLabel>Caractéristiques (puces)</FormLabel>
@@ -355,7 +375,7 @@ export function PlanManagement() {
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                     <div className="space-y-0.5">
-                                        <FormLabel>Mettre en avant</FormLabel>
+                                        <FormLabel>Plan le plus populaire</FormLabel>
                                         <FormMessage />
                                     </div>
                                     <FormControl>
@@ -390,7 +410,7 @@ export function PlanManagement() {
               <TableHead>Nom du Plan</TableHead>
               <TableHead>Prix</TableHead>
               <TableHead>Crédits RDV</TableHead>
-              <TableHead>Mis en avant</TableHead>
+              <TableHead>Populaire</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -437,3 +457,5 @@ export function PlanManagement() {
     </Card>
   );
 }
+
+    
