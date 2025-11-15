@@ -20,9 +20,8 @@ import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { QuotePDF } from '@/components/shared/quote-pdf';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
+import autoTable from 'jspdf-autotable';
 
 type Quote = {
     id: string;
@@ -56,12 +55,9 @@ export default function BillingPage() {
     const [isQuoteFormOpen, setIsQuoteFormOpen] = React.useState(false);
     const [editingQuote, setEditingQuote] = React.useState<Quote | null>(null);
     const [quoteToDelete, setQuoteToDelete] = React.useState<Quote | null>(null);
-    const [quoteToExport, setQuoteToExport] = React.useState<Quote | null>(null);
-    const { agency, isLoading: isAgencyLoading } = useAgency();
+    const { agency, isLoading: isAgencyLoading, personalization } = useAgency();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const pdfRef = React.useRef<HTMLDivElement>(null);
-
 
     const quotesQuery = useMemoFirebase(() => {
         if (!agency) return null;
@@ -99,27 +95,128 @@ export default function BillingPage() {
     }
 
     const handleExportPDF = (quote: Quote) => {
-        setQuoteToExport(quote);
-    };
+        const doc = new jsPDF();
+        const { legalInfo } = personalization;
+        const isVatSubject = legalInfo?.isVatSubject ?? false;
 
-    React.useEffect(() => {
-        if (quoteToExport && pdfRef.current) {
-            html2canvas(pdfRef.current, { scale: 3 }).then(canvas => {
-                const imgData = canvas.toDataURL('image/png');
-                const pdf = new jsPDF('p', 'mm', 'a4');
-                const pdfWidth = pdf.internal.pageSize.getWidth();
-                const pdfHeight = pdf.internal.pageSize.getHeight();
-                const canvasWidth = canvas.width;
-                const canvasHeight = canvas.height;
-                const ratio = canvasWidth / canvasHeight;
-                const width = pdfWidth;
-                const height = width / ratio;
-                pdf.addImage(imgData, 'PNG', 0, 0, width, height > pdfHeight ? pdfHeight : height);
-                pdf.save(`devis-${quoteToExport.quoteNumber}.pdf`);
-                setQuoteToExport(null);
-            });
+        // Header
+        doc.setFontSize(20);
+        doc.setTextColor(40);
+        doc.setFont('helvetica', 'bold');
+        doc.text(legalInfo?.companyName || 'VApps', 15, 20);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100);
+        doc.text(legalInfo?.addressStreet || '', 15, 26);
+        doc.text(`${legalInfo?.addressZip || ''} ${legalInfo?.addressCity || ''}`, 15, 31);
+        doc.text(legalInfo?.email || '', 15, 36);
+
+        doc.setFontSize(28);
+        doc.setTextColor(150);
+        doc.text('DEVIS', 200, 20, { align: 'right' });
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`N°: ${quote.quoteNumber}`, 200, 30, { align: 'right' });
+        doc.text(`Date: ${new Date(quote.issueDate).toLocaleDateString('fr-FR')}`, 200, 35, { align: 'right' });
+        if (quote.expiryDate) {
+            doc.text(`Valide jusqu'au: ${new Date(quote.expiryDate).toLocaleDateString('fr-FR')}`, 200, 40, { align: 'right' });
         }
-    }, [quoteToExport]);
+
+        // Client info
+        doc.setDrawColor(230);
+        doc.line(15, 48, 200, 48);
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text('FACTURÉ À', 15, 55);
+        doc.setFontSize(12);
+        doc.setTextColor(40);
+        doc.text(quote.clientInfo.name, 15, 62);
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(quote.clientInfo.email, 15, 67);
+
+        // Table
+        autoTable(doc, {
+            startY: 80,
+            head: [['Description', 'Qté', 'P.U. HT', 'Total HT']],
+            body: quote.items.map(item => [
+                item.description,
+                item.quantity,
+                `${item.unitPrice.toFixed(2)} €`,
+                `${(item.quantity * item.unitPrice).toFixed(2)} €`
+            ]),
+            theme: 'grid',
+            headStyles: {
+                fillColor: [248, 250, 252],
+                textColor: 100,
+                fontStyle: 'bold',
+            },
+            styles: {
+                cellPadding: 3,
+                fontSize: 10,
+            },
+            columnStyles: {
+                0: { cellWidth: 95 },
+                1: { cellWidth: 20, halign: 'center' },
+                2: { cellWidth: 30, halign: 'right' },
+                3: { cellWidth: 30, halign: 'right' },
+            }
+        });
+        
+        const finalY = (doc as any).lastAutoTable.finalY;
+
+        // Totals
+        const totals = [
+            ['Sous-total HT', `${quote.subtotal.toFixed(2)} €`],
+        ];
+        if (isVatSubject) {
+            totals.push([`TVA (${quote.tax}%)`, `${(quote.subtotal * (quote.tax / 100)).toFixed(2)} €`]);
+        }
+        totals.push([`Total ${isVatSubject ? 'TTC' : ''}`, `${quote.total.toFixed(2)} €`]);
+
+        autoTable(doc, {
+            startY: finalY + 10,
+            body: totals,
+            theme: 'plain',
+            styles: { fontSize: 10 },
+            columnStyles: {
+                0: { halign: 'right', fontStyle: 'bold' },
+                1: { halign: 'right', cellWidth: 40 },
+            },
+            didParseCell: (data) => {
+                if (data.row.index === totals.length - 1) {
+                    data.cell.styles.fontStyle = 'bold';
+                    data.cell.styles.fontSize = 12;
+                }
+            }
+        });
+
+        // Notes
+        if (quote.notes) {
+            doc.setFontSize(9);
+            doc.setTextColor(150);
+            doc.text('Notes', 15, (doc as any).lastAutoTable.finalY + 15);
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text(quote.notes, 15, (doc as any).lastAutoTable.finalY + 20, { maxWidth: 180 });
+        }
+
+        // Footer
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            const footerText = `${legalInfo?.companyName || ''} - ${legalInfo?.addressStreet || ''}, ${legalInfo?.addressZip || ''} ${legalInfo?.addressCity || ''}`;
+            const footerText2 = `SIRET: ${legalInfo?.siret || ''} - ${isVatSubject ? `TVA: ${legalInfo?.vatNumber || ''}` : 'TVA non applicable, art. 293 B du CGI'}`;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(footerText, 105, 285, { align: 'center' });
+            doc.text(footerText2, 105, 290, { align: 'center' });
+        }
+
+        doc.save(`devis-${quote.quoteNumber}.pdf`);
+    };
 
 
     return (
@@ -315,9 +412,6 @@ export default function BillingPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
-            <div style={{ position: 'fixed', left: '-2000px', top: 0 }}>
-              {quoteToExport && <QuotePDF ref={pdfRef} quote={quoteToExport} />}
-            </div>
         </div>
     );
 }

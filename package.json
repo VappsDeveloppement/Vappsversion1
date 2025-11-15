@@ -70,7 +70,8 @@
     "tailwindcss-animate": "^1.0.7",
     "zod": "^3.24.2",
     "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.1"
+    "jspdf": "^2.5.1",
+    "jspdf-autotable": "^3.8.2"
   },
   "devDependencies": {
     "@types/node": "^20",
