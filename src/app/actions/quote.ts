@@ -4,13 +4,9 @@ import { z } from 'zod';
 import nodemailer from 'nodemailer';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { updateDoc, doc, getFirestore } from 'firebase/firestore';
-import { getAdminApp } from '@/firebase/admin';
+import { JSDOM } from 'jsdom';
 
-// Initialize admin app to get firestore instance on the server
-const adminApp = getAdminApp();
-const db = getFirestore(adminApp);
-
+// No longer using Firebase Admin SDK on the server for this action
 
 const emailSettingsSchema = z.object({
   smtpHost: z.string().min(1),
@@ -41,10 +37,16 @@ const quoteItemSchema = z.object({
     total: z.number(),
 });
 
+const clientInfoSchema = z.object({
+    id: z.string(),
+    name: z.string(),
+    email: z.string(),
+});
+
 const quoteSchema = z.object({
     id: z.string(),
     quoteNumber: z.string(),
-    clientInfo: z.object({ name: z.string(), id: z.string(), email: z.string() }),
+    clientInfo: clientInfoSchema,
     issueDate: z.string(),
     expiryDate: z.string().optional(),
     total: z.number(),
@@ -60,7 +62,6 @@ const quoteSchema = z.object({
 
 const sendQuoteSchema = z.object({
     quote: quoteSchema,
-    agencyId: z.string(),
     emailSettings: emailSettingsSchema,
     legalInfo: legalInfoSchema,
 });
@@ -77,7 +78,7 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
     }
 
-    const { quote, agencyId, emailSettings, legalInfo } = validation.data;
+    const { quote, emailSettings, legalInfo } = validation.data;
 
     try {
         // 1. Generate PDF
@@ -188,14 +189,13 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             doc.setFont('helvetica', 'bold');
             doc.text(quote.contractTitle || "Contrat", 15, 20);
 
-            // This is a very basic conversion and won't handle complex CSS or layouts.
             let y = 35;
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(40);
             
-            const tempDiv = new (await import('jsdom')).JSDOM(`<body>${quote.contractContent}</body>`).window.document.body;
-            const textContent = tempDiv.textContent || "";
+            const dom = new JSDOM(`<body>${quote.contractContent}</body>`);
+            const textContent = dom.window.document.body.textContent || "";
             
             const lines = doc.splitTextToSize(textContent, 180);
             doc.text(lines, 15, y);
@@ -241,10 +241,7 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             ],
         });
 
-        // 3. Update quote status on the server
-        const quoteRef = doc(db, 'agencies', agencyId, 'quotes', quote.id);
-        await updateDoc(quoteRef, { status: 'sent' });
-
+        // The responsibility of updating the quote status is now on the client side
         return { success: true };
     } catch (error: any) {
         console.error("Error sending quote email:", error);

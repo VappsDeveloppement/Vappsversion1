@@ -230,11 +230,19 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
     const handleSendEmail = async () => {
         setIsSending(true);
+        const isValid = await form.trigger();
+        if (!isValid) {
+            toast({ title: "Formulaire invalide", description: "Veuillez corriger les erreurs avant d'envoyer.", variant: "destructive" });
+            setIsSending(false);
+            return;
+        }
+
         const values = form.getValues();
         const quoteId = await handleSaveQuote(values);
 
         if (quoteId && agency && selectedClient) {
-            const quoteData = {
+            const quoteRef = doc(firestore, 'agencies', agency.id, 'quotes', quoteId);
+            const quoteDataForEmail = {
                 ...values,
                 id: quoteId,
                 issueDate: values.issueDate.toISOString().split('T')[0],
@@ -243,23 +251,30 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                     id: selectedClient.id,
                     name: `${selectedClient.firstName} ${selectedClient.lastName}`,
                     email: selectedClient.email,
-                }
+                },
+                contractId: values.contractId,
+                contractTitle: contracts?.find(c => c.id === values.contractId)?.title,
+                contractContent: contracts?.find(c => c.id === values.contractId)?.content,
             };
+
             const result = await sendQuote({
-                quote: quoteData,
-                agencyId: agency.id,
+                quote: quoteDataForEmail,
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo
             });
 
             if (result.success) {
+                // Update status on the client side after successful email send
+                await setDocumentNonBlocking(quoteRef, { status: 'sent' }, { merge: true });
                 toast({ title: "E-mail envoyé", description: `Le devis a été envoyé à ${selectedClient.email}.`});
                 setOpen(false);
             } else {
                 toast({ title: "Erreur d'envoi", description: result.error, variant: "destructive" });
             }
         } else {
-            toast({ title: "Erreur", description: "Impossible de sauvegarder le devis avant de l'envoyer.", variant: "destructive" });
+             if (!quoteId) {
+                toast({ title: "Erreur", description: "Impossible de sauvegarder le devis avant de l'envoyer.", variant: "destructive" });
+            }
         }
         setIsSending(false);
     };
