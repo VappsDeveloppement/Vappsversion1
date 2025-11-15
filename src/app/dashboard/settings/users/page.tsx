@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -394,7 +395,6 @@ export default function UsersPage() {
   const membres = useMemo(() => filterUsers(users, ['membre'], membreSearch), [users, membreSearch]);
   const prospects = useMemo(() => filterUsers(users, ['prospect'], prospectSearch), [users, prospectSearch]);
 
-
   return (
     <div className="space-y-8">
       <div>
@@ -437,7 +437,7 @@ export default function UsersPage() {
                             <DialogHeader>
                                 <DialogTitle>{editingUser ? 'Modifier' : 'Ajouter'} un administrateur ou DPO</DialogTitle>
                                 <DialogDescription>
-                                    {editingUser ? 'Modifiez les informations ci-dessous.' : 'Créez un nouvel utilisateur avec un rôle d\'administration.'}
+                                    {editingUser ? 'Modifiez les informations ci-dessous.' : 'Créez un nouvel utilisateur avec un rôle d\\'administration.'}
                                 </DialogDescription>
                             </DialogHeader>
                             <Form {...adminForm}>
@@ -451,7 +451,7 @@ export default function UsersPage() {
                                         )} />
                                     </div>
                                     <FormField control={adminForm.control} name="email" render={({ field }) => (
-                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="phone" render={({ field }) => (
                                         <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -499,7 +499,7 @@ export default function UsersPage() {
                                     <DialogFooter className="pt-4">
                                         <Button type="submit" disabled={isSubmitting}>
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            {editingUser ? 'Enregistrer' : 'Créer l\'utilisateur'}
+                                            {editingUser ? 'Enregistrer' : 'Créer l\\'utilisateur'}
                                         </Button>
                                     </DialogFooter>
                                 </form>
@@ -545,7 +545,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={conseillerForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -579,7 +579,7 @@ export default function UsersPage() {
                                         <DialogFooter className="pt-4">
                                             <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                {editingUser ? 'Enregistrer' : 'Créer l\'utilisateur'}
+                                                {editingUser ? 'Enregistrer' : 'Créer l\\'utilisateur'}
                                             </Button>
                                         </DialogFooter>
                                     </form>
@@ -636,7 +636,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={membreForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={membreForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -720,5 +720,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
-    
