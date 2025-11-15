@@ -15,8 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useAgency } from '@/context/agency-provider';
-import { useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, ChevronDown } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -35,6 +35,20 @@ type User = {
   lastName: string;
   email: string;
 };
+
+type Quote = {
+    id: string;
+    quoteNumber: string;
+    clientInfo: { name: string; id: string; email: string; };
+    issueDate: string;
+    expiryDate?: string;
+    total: number;
+    status: 'draft' | 'sent' | 'accepted' | 'rejected';
+    items: any[];
+    notes?: string;
+    tax: number;
+}
+
 
 const quoteItemSchema = z.object({
     description: z.string().min(1, "La description est requise."),
@@ -56,8 +70,13 @@ const quoteFormSchema = z.object({
     total: z.number()
 });
 
+interface NewQuoteFormProps {
+    setOpen: (open: boolean) => void;
+    initialData?: Quote | null;
+}
 
-export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) {
+
+export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     const { agency } = useAgency();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -76,7 +95,6 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
     }, [agency, firestore]);
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansQuery);
 
-
     const [selectedClient, setSelectedClient] = React.useState<User | null>(null);
     const [isClientPopoverOpen, setIsClientPopoverOpen] = React.useState(false);
 
@@ -86,7 +104,12 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
 
     const form = useForm<z.infer<typeof quoteFormSchema>>({
         resolver: zodResolver(quoteFormSchema),
-        defaultValues: {
+        defaultValues: initialData ? {
+            ...initialData,
+            clientId: initialData.clientInfo.id,
+            issueDate: new Date(initialData.issueDate),
+            expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
+        } : {
             quoteNumber: `DEVIS-${new Date().getFullYear()}-`,
             status: 'draft',
             issueDate: new Date(),
@@ -95,14 +118,28 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
             tax: defaultTaxRate,
         }
     });
-
+    
     React.useEffect(() => {
-        const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
-        const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
-        form.setValue('tax', defaultTaxRate);
-    }, [agency, form]);
+        if (initialData) {
+            const client = clients?.find(c => c.id === initialData.clientInfo.id);
+            if (client) {
+                setSelectedClient(client);
+            }
+            form.reset({
+                ...initialData,
+                clientId: initialData.clientInfo.id,
+                issueDate: new Date(initialData.issueDate),
+                expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
+            });
+        } else {
+             const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
+            const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
+            form.setValue('tax', defaultTaxRate);
+        }
+    }, [initialData, agency, form, clients]);
 
-    const { fields, append, remove } = useFieldArray({
+
+    const { fields, append, remove, replace } = useFieldArray({
         control: form.control,
         name: "items"
     });
@@ -138,9 +175,15 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
         };
         
         try {
-            const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
-            await addDocumentNonBlocking(quotesCollectionRef, quoteData);
-            toast({ title: "Devis créé", description: "Le devis a été sauvegardé avec succès."});
+            if (initialData) {
+                const quoteDocRef = doc(firestore, 'agencies', agency.id, 'quotes', initialData.id);
+                await setDocumentNonBlocking(quoteDocRef, quoteData, { merge: true });
+                toast({ title: "Devis mis à jour", description: "Le devis a été sauvegardé avec succès."});
+            } else {
+                const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
+                await addDocumentNonBlocking(quotesCollectionRef, quoteData);
+                toast({ title: "Devis créé", description: "Le devis a été sauvegardé avec succès."});
+            }
             setOpen(false);
         } catch (error) {
             console.error("Failed to save quote", error);
@@ -437,9 +480,11 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
                 </div>
                 <div className="flex justify-end gap-2 pt-6 border-t">
                     <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-                    <Button type="submit">Enregistrer le devis</Button>
+                    <Button type="submit">{initialData ? 'Enregistrer les modifications' : 'Enregistrer le devis'}</Button>
                 </div>
             </form>
         </Form>
     );
 }
+
+    

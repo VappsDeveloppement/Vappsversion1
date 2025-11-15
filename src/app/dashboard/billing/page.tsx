@@ -15,17 +15,23 @@ import { NewQuoteForm } from '@/components/shared/new-quote-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAgency } from '@/context/agency-provider';
 import { useFirestore } from '@/firebase/provider';
-import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 type Quote = {
     id: string;
     quoteNumber: string;
-    clientInfo: { name: string };
+    clientInfo: { name: string; id: string; email: string; };
     issueDate: string;
+    expiryDate?: string;
     total: number;
     status: 'draft' | 'sent' | 'accepted' | 'rejected';
+    items: any[];
+    notes?: string;
+    tax: number;
 }
 
 const statusVariant: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -44,8 +50,11 @@ const statusText: Record<Quote['status'], string> = {
 
 export default function BillingPage() {
     const [isQuoteFormOpen, setIsQuoteFormOpen] = React.useState(false);
+    const [editingQuote, setEditingQuote] = React.useState<Quote | null>(null);
+    const [quoteToDelete, setQuoteToDelete] = React.useState<Quote | null>(null);
     const { agency, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
+    const { toast } = useToast();
 
     const quotesQuery = useMemoFirebase(() => {
         if (!agency) return null;
@@ -55,6 +64,33 @@ export default function BillingPage() {
     const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
     
     const isLoading = isAgencyLoading || areQuotesLoading;
+    
+    const handleEdit = (quote: Quote) => {
+        setEditingQuote(quote);
+        setIsQuoteFormOpen(true);
+    };
+
+    const handleDeleteConfirm = async () => {
+        if (!quoteToDelete || !agency) return;
+        try {
+            const quoteDocRef = doc(firestore, "agencies", agency.id, "quotes", quoteToDelete.id);
+            await deleteDocumentNonBlocking(quoteDocRef);
+            toast({ title: "Devis supprimé", description: "Le devis a été supprimé." });
+        } catch (error) {
+            console.error("Error deleting quote:", error);
+            toast({ title: "Erreur", description: "Impossible de supprimer le devis.", variant: "destructive" });
+        } finally {
+            setQuoteToDelete(null);
+        }
+    };
+    
+    const handleOpenChange = (open: boolean) => {
+        setIsQuoteFormOpen(open);
+        if (!open) {
+            setEditingQuote(null);
+        }
+    }
+
 
     return (
         <div className="space-y-8">
@@ -107,7 +143,7 @@ export default function BillingPage() {
                                     <CardTitle>Gestion des Devis</CardTitle>
                                     <CardDescription>Créez, envoyez et suivez vos devis.</CardDescription>
                                 </div>
-                                <Dialog open={isQuoteFormOpen} onOpenChange={setIsQuoteFormOpen}>
+                                <Dialog open={isQuoteFormOpen} onOpenChange={handleOpenChange}>
                                     <DialogTrigger asChild>
                                         <Button>
                                             <PlusCircle className="mr-2 h-4 w-4" />
@@ -116,10 +152,13 @@ export default function BillingPage() {
                                     </DialogTrigger>
                                     <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                                         <DialogHeader>
-                                            <DialogTitle>Nouveau Devis</DialogTitle>
+                                            <DialogTitle>{editingQuote ? 'Modifier le Devis' : 'Nouveau Devis'}</DialogTitle>
                                         </DialogHeader>
                                         <div className="flex-1 overflow-y-auto pr-6 -mr-6">
-                                            <NewQuoteForm setOpen={setIsQuoteFormOpen} />
+                                            <NewQuoteForm 
+                                              setOpen={setIsQuoteFormOpen} 
+                                              initialData={editingQuote}
+                                            />
                                         </div>
                                     </DialogContent>
                                 </Dialog>
@@ -164,7 +203,7 @@ export default function BillingPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleEdit(quote)}>
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 Modifier
                                                             </DropdownMenuItem>
@@ -172,7 +211,7 @@ export default function BillingPage() {
                                                                 <FileText className="mr-2 h-4 w-4" />
                                                                 Exporter en PDF
                                                             </DropdownMenuItem>
-                                                             <DropdownMenuItem className="text-destructive">
+                                                             <DropdownMenuItem className="text-destructive" onClick={() => setQuoteToDelete(quote)}>
                                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                                 Supprimer
                                                             </DropdownMenuItem>
@@ -232,6 +271,22 @@ export default function BillingPage() {
                     </Card>
                 </TabsContent>
             </Tabs>
+            <AlertDialog open={!!quoteToDelete} onOpenChange={(open) => !open && setQuoteToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer ce devis ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est irréversible. Le devis <strong>{quoteToDelete?.quoteNumber}</strong> sera définitivement supprimé.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setQuoteToDelete(null)}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
+
+    
