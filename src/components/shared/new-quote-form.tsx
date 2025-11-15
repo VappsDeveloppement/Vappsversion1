@@ -19,7 +19,7 @@ import { useAgency } from '@/context/agency-provider';
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
-import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, ChevronDown } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, ChevronDown, Send, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -29,6 +29,8 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import type { Plan } from './plan-management';
+import { sendQuote } from '@/app/actions/quote';
+
 
 type User = {
   id: string;
@@ -50,10 +52,11 @@ type Quote = {
     issueDate: string;
     expiryDate?: string;
     total: number;
+    subtotal: number;
+    tax: number;
     status: 'draft' | 'sent' | 'accepted' | 'rejected';
     items: any[];
     notes?: string;
-    tax: number;
     contractId?: string;
     contractContent?: string;
     contractTitle?: string;
@@ -88,9 +91,10 @@ interface NewQuoteFormProps {
 
 
 export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
-    const { agency } = useAgency();
+    const { agency, personalization } = useAgency();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [isSending, setIsSending] = React.useState(false);
     
     // Fetch clients
     const usersQuery = useMemoFirebase(() => {
@@ -127,6 +131,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             clientId: initialData.clientInfo.id,
             issueDate: new Date(initialData.issueDate),
             expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
+            contractId: initialData.contractId || 'none'
         } : {
             quoteNumber: `DEVIS-${new Date().getFullYear()}-`,
             status: 'draft',
@@ -175,7 +180,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     }, [watchItems, watchTax, form]);
 
 
-    const onSubmit = async (values: z.infer<typeof quoteFormSchema>) => {
+    const handleSaveQuote = async (values: z.infer<typeof quoteFormSchema>): Promise<string | undefined> => {
         if (!agency || !selectedClient) {
             toast({ title: "Erreur", description: "Agence ou client manquant.", variant: "destructive"});
             return;
@@ -204,16 +209,59 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 const quoteDocRef = doc(firestore, 'agencies', agency.id, 'quotes', initialData.id);
                 await setDocumentNonBlocking(quoteDocRef, quoteData, { merge: true });
                 toast({ title: "Devis mis à jour", description: "Le devis a été sauvegardé avec succès."});
+                return initialData.id;
             } else {
                 const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
-                await addDocumentNonBlocking(quotesCollectionRef, quoteData);
+                const newDocRef = await addDocumentNonBlocking(quotesCollectionRef, quoteData);
                 toast({ title: "Devis créé", description: "Le devis a été sauvegardé avec succès."});
+                return newDocRef.id;
             }
-            setOpen(false);
         } catch (error) {
             console.error("Failed to save quote", error);
             toast({ title: "Erreur", description: "Impossible de sauvegarder le devis.", variant: "destructive"});
+            return undefined;
         }
+    };
+    
+    const onSubmit = async (values: z.infer<typeof quoteFormSchema>) => {
+        await handleSaveQuote(values);
+        setOpen(false);
+    };
+
+    const handleSendEmail = async () => {
+        setIsSending(true);
+        const values = form.getValues();
+        const quoteId = await handleSaveQuote(values);
+
+        if (quoteId && agency && selectedClient) {
+            const quoteData = {
+                ...values,
+                id: quoteId,
+                issueDate: values.issueDate.toISOString().split('T')[0],
+                expiryDate: values.expiryDate?.toISOString().split('T')[0],
+                clientInfo: {
+                    id: selectedClient.id,
+                    name: `${selectedClient.firstName} ${selectedClient.lastName}`,
+                    email: selectedClient.email,
+                }
+            };
+            const result = await sendQuote({
+                quote: quoteData,
+                agencyId: agency.id,
+                emailSettings: personalization.emailSettings,
+                legalInfo: personalization.legalInfo
+            });
+
+            if (result.success) {
+                toast({ title: "E-mail envoyé", description: `Le devis a été envoyé à ${selectedClient.email}.`});
+                setOpen(false);
+            } else {
+                toast({ title: "Erreur d'envoi", description: result.error, variant: "destructive" });
+            }
+        } else {
+            toast({ title: "Erreur", description: "Impossible de sauvegarder le devis avant de l'envoyer.", variant: "destructive" });
+        }
+        setIsSending(false);
     };
 
     const addPlanAsItem = (plan: Plan) => {
@@ -531,7 +579,11 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 </div>
                 <div className="flex justify-end gap-2 pt-6 border-t">
                     <Button type="button" variant="outline" onClick={() => setOpen(false)}>Annuler</Button>
-                    <Button type="submit">{initialData ? 'Enregistrer les modifications' : 'Enregistrer le devis'}</Button>
+                    <Button type="button" variant="secondary" onClick={handleSendEmail} disabled={isSending}>
+                        {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                        Enregistrer et Envoyer
+                    </Button>
+                    <Button type="submit">Enregistrer Brouillon</Button>
                 </div>
             </form>
         </Form>
