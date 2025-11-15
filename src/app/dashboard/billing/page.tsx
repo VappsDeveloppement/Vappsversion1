@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -43,6 +44,9 @@ type Quote = {
     status: 'draft' | 'sent' | 'accepted' | 'rejected';
     items: any[];
     notes?: string;
+    contractId?: string;
+    contractContent?: string;
+    contractTitle?: string;
 }
 
 type Contract = {
@@ -397,13 +401,40 @@ export default function BillingPage() {
         });
 
         // Notes
+        let currentY = (doc as any).lastAutoTable.finalY + 15;
         if (quote.notes) {
             doc.setFontSize(9);
             doc.setTextColor(150);
-            doc.text('Notes', 15, (doc as any).lastAutoTable.finalY + 15);
+            doc.text('Notes', 15, currentY);
+            currentY += 5;
             doc.setFontSize(10);
             doc.setTextColor(100);
-            doc.text(quote.notes, 15, (doc as any).lastAutoTable.finalY + 20, { maxWidth: 180 });
+            const notesLines = doc.splitTextToSize(quote.notes, 180);
+            doc.text(notesLines, 15, currentY);
+            currentY += (notesLines.length * 5) + 5;
+        }
+
+        // Add contract
+        if (quote.contractContent) {
+            doc.addPage();
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text(quote.contractTitle || "Contrat", 15, 20);
+
+            // This is a simplified HTML renderer. For complex HTML, a more robust library would be needed.
+            // We use the 'splitTextToSize' to handle basic text wrapping.
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = quote.contractContent;
+            
+            // To simulate rendering for jspdf:
+            // This is a very basic conversion and won't handle complex CSS or layouts.
+            let y = 35;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(40);
+            const textContent = tempDiv.innerText || "";
+            const lines = doc.splitTextToSize(textContent, 180);
+            doc.text(lines, 15, y);
         }
 
         // Footer

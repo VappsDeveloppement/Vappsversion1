@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -36,6 +37,12 @@ type User = {
   email: string;
 };
 
+type Contract = {
+    id: string;
+    title: string;
+    content: string;
+}
+
 type Quote = {
     id: string;
     quoteNumber: string;
@@ -47,6 +54,9 @@ type Quote = {
     items: any[];
     notes?: string;
     tax: number;
+    contractId?: string;
+    contractContent?: string;
+    contractTitle?: string;
 }
 
 
@@ -67,7 +77,8 @@ const quoteFormSchema = z.object({
     notes: z.string().optional(),
     tax: z.number().min(0),
     subtotal: z.number(),
-    total: z.number()
+    total: z.number(),
+    contractId: z.string().optional(),
 });
 
 interface NewQuoteFormProps {
@@ -94,6 +105,13 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         return collection(firestore, 'agencies', agency.id, 'plans');
     }, [agency, firestore]);
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansQuery);
+    
+    // Fetch contracts
+    const contractsQuery = useMemoFirebase(() => {
+        if (!agency) return null;
+        return collection(firestore, 'agencies', agency.id, 'contracts');
+    }, [agency, firestore]);
+    const { data: contracts, isLoading: areContractsLoading } = useCollection<Contract>(contractsQuery);
 
     const [selectedClient, setSelectedClient] = React.useState<User | null>(null);
     const [isClientPopoverOpen, setIsClientPopoverOpen] = React.useState(false);
@@ -116,6 +134,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             items: [],
             notes: '',
             tax: defaultTaxRate,
+            contractId: '',
         }
     });
     
@@ -130,6 +149,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 clientId: initialData.clientInfo.id,
                 issueDate: new Date(initialData.issueDate),
                 expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
+                contractId: initialData.contractId || '',
             });
         } else {
              const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
@@ -161,6 +181,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             return;
         }
 
+        const selectedContract = contracts?.find(c => c.id === values.contractId);
+
         const quoteData = {
             ...values,
             issueDate: values.issueDate.toISOString().split('T')[0], // format as YYYY-MM-DD
@@ -172,6 +194,9 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 name: `${selectedClient.firstName} ${selectedClient.lastName}`,
                 email: selectedClient.email,
             },
+            contractId: selectedContract?.id,
+            contractTitle: selectedContract?.title,
+            contractContent: selectedContract?.content,
         };
         
         try {
@@ -299,7 +324,33 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                 )}
                             />
                         </div>
-                        
+                         
+                        <FormField
+                            control={form.control}
+                            name="contractId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Label>Contrat</Label>
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue="">
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Attacher un modèle de contrat..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="">Aucun contrat</SelectItem>
+                                            {(contracts || []).map((contract) => (
+                                                <SelectItem key={contract.id} value={contract.id}>
+                                                    {contract.title}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                         <div className="grid grid-cols-2 gap-8">
                             <FormField
                                 control={form.control}
@@ -486,5 +537,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
-
-    
