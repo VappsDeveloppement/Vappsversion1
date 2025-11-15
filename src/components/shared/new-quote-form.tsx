@@ -26,7 +26,7 @@ import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import type { Plan } from './plan-management';
 
 type User = {
@@ -80,6 +80,10 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
     const [selectedClient, setSelectedClient] = React.useState<User | null>(null);
     const [isClientPopoverOpen, setIsClientPopoverOpen] = React.useState(false);
 
+    const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
+    const defaultTaxRate = isVatSubject ? (agency?.personalization?.legalInfo?.vatRate || 20) : 0;
+
+
     const form = useForm<z.infer<typeof quoteFormSchema>>({
         resolver: zodResolver(quoteFormSchema),
         defaultValues: {
@@ -88,9 +92,15 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
             issueDate: new Date(),
             items: [],
             notes: '',
-            tax: 20, // Default tax rate
+            tax: defaultTaxRate,
         }
     });
+
+    React.useEffect(() => {
+        const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
+        const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
+        form.setValue('tax', defaultTaxRate);
+    }, [agency, form]);
 
     const { fields, append, remove } = useFieldArray({
         control: form.control,
@@ -383,12 +393,14 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
                                     <span className="text-muted-foreground">Sous-total HT</span>
                                     <span>{form.getValues('subtotal')?.toFixed(2) || '0.00'} €</span>
                                 </div>
-                                 <div className="flex justify-between items-center">
-                                    <Label htmlFor='tax'>TVA (%)</Label>
-                                    <Input id="tax" type="number" {...form.register('tax', { valueAsNumber: true })} className="w-24 h-8" />
-                                </div>
+                                {isVatSubject && (
+                                     <div className="flex justify-between items-center">
+                                        <Label htmlFor='tax'>TVA (%)</Label>
+                                        <Input id="tax" type="number" {...form.register('tax', { valueAsNumber: true })} className="w-24 h-8" />
+                                    </div>
+                                )}
                                  <div className="flex justify-between font-bold text-lg border-t pt-4">
-                                    <span>Total TTC</span>
+                                    <span>Total {isVatSubject ? 'TTC' : ''}</span>
                                     <span>{form.getValues('total')?.toFixed(2) || '0.00'} €</span>
                                 </div>
                             </CardContent>
@@ -431,3 +443,5 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
         </Form>
     );
 }
+
+    
