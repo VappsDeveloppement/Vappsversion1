@@ -59,16 +59,26 @@ const baseUserFormSchema = z.object({
 });
 
 const adminFormSchema = baseUserFormSchema.extend({
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
-  confirmPassword: z.string(),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
+  confirmPassword: z.string().optional(),
   role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
-}).refine(passwordMatchRefine, passwordMatchMessage);
+}).refine(data => {
+    if (data.password && data.password.length > 0) {
+        return data.password === data.confirmPassword;
+    }
+    return true;
+}, passwordMatchMessage);
 
 const conseillerFormSchema = baseUserFormSchema.extend({
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
-  confirmPassword: z.string(),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
+  confirmPassword: z.string().optional(),
   role: z.literal('conseiller'),
-}).refine(passwordMatchRefine, passwordMatchMessage);
+}).refine(data => {
+    if (data.password && data.password.length > 0) {
+        return data.password === data.confirmPassword;
+    }
+    return true;
+}, passwordMatchMessage);
 
 const membreFormSchema = baseUserFormSchema.extend({
     address: z.string().min(1, "L'adresse est requise."),
@@ -269,7 +279,7 @@ export default function UsersPage() {
             confirmPassword: '',
         });
         setIsConseillerFormOpen(true);
-    } else if (user.role === 'membre') {
+    } else if (user.role === 'membre' || user.role === 'prospect') {
         membreForm.reset({
             ...user,
             password: '',
@@ -330,9 +340,9 @@ export default function UsersPage() {
 
     try {
         let userId = editingUser?.id;
-        if (!editingUser) {
+        if (!editingUser && auth && finalPassword) {
             // Step 1: Create user in Firebase Auth if it's a new user
-            const userCredential = await createUserWithEmailAndPassword(auth, values.email, finalPassword as string);
+            const userCredential = await createUserWithEmailAndPassword(auth, values.email, finalPassword);
             userId = userCredential.user.uid;
         }
 
@@ -344,12 +354,14 @@ export default function UsersPage() {
         const { confirmPassword, ...firestoreData } = values;
         const userDocRef = doc(firestore, "users", userId);
         
-        const dataToSave = {
+        const dataToSave: any = {
             ...firestoreData,
-            id: userId,
             agencyId: agency.id,
-            ...(!editingUser && { dateJoined: new Date().toISOString() }), // Add dateJoined only for new users
         };
+
+        if(!editingUser) {
+          dataToSave.dateJoined = new Date().toISOString();
+        }
 
         await setDocumentNonBlocking(userDocRef, dataToSave, { merge: true });
 
@@ -378,7 +390,7 @@ export default function UsersPage() {
     }
   }
 
-  const filterUsers = (data: User[] | null, role: string[], searchTerm: string): User[] => {
+  const filterUsers = (data: User[] | null, role: string[], searchTerm: string) => {
     if (!data) return [];
     return data.filter(user => 
       role.includes(user.role) &&
@@ -451,7 +463,7 @@ export default function UsersPage() {
                                         )} />
                                     </div>
                                     <FormField control={adminForm.control} name="email" render={({ field }) => (
-                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="phone" render={({ field }) => (
                                         <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -545,7 +557,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={conseillerForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -636,7 +648,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={membreForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={membreForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
