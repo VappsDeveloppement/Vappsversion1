@@ -29,6 +29,7 @@ export const QuotePDF = React.forwardRef<HTMLDivElement, QuotePDFProps>(({ quote
     if (!agency || !personalization) return null;
 
     const isVatSubject = personalization.legalInfo?.isVatSubject ?? false;
+    const fullAddress = [personalization.legalInfo?.addressStreet, personalization.legalInfo?.addressZip, personalization.legalInfo?.addressCity].filter(Boolean).join(', ');
     
     return (
         <div ref={ref} className="bg-white text-black p-12" style={{ width: '210mm', minHeight: '297mm' }}>
