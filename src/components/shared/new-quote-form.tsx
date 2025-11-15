@@ -134,7 +134,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             items: [],
             notes: '',
             tax: defaultTaxRate,
-            contractId: '',
+            contractId: 'none',
         }
     });
     
@@ -149,7 +149,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 clientId: initialData.clientInfo.id,
                 issueDate: new Date(initialData.issueDate),
                 expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
-                contractId: initialData.contractId || '',
+                contractId: initialData.contractId || 'none',
             });
         } else {
              const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
@@ -181,7 +181,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             return;
         }
 
-        const selectedContract = contracts?.find(c => c.id === values.contractId);
+        const selectedContract = values.contractId !== 'none' ? contracts?.find(c => c.id === values.contractId) : undefined;
 
         const quoteData = {
             ...values,
@@ -331,14 +331,14 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <Label>Contrat</Label>
-                                    <Select onValueChange={field.onChange} value={field.value} defaultValue="">
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue="none">
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Attacher un modèle de contrat..." />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="">Aucun contrat</SelectItem>
+                                            <SelectItem value="none">Aucun contrat</SelectItem>
                                             {(contracts || []).map((contract) => (
                                                 <SelectItem key={contract.id} value={contract.id}>
                                                     {contract.title}
@@ -496,7 +496,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                  <div className="flex justify-between font-bold text-lg border-t pt-4">
                                     <span>Total {isVatSubject ? 'TTC' : ''}</span>
                                     <span>{form.getValues('total')?.toFixed(2) || '0.00'} €</span>
-                                </div>
+                                 </div>
                             </CardContent>
                         </Card>
                         <Card>
