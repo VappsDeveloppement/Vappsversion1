@@ -290,6 +290,41 @@
         "status"
       ]
     },
+    "Quote": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Quote",
+      "type": "object",
+      "description": "Represents a quote or estimate for services.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the quote." },
+        "quoteNumber": { "type": "string", "description": "The user-facing quote number." },
+        "agencyId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientInfo": { "type": "object", "description": "A snapshot of the client's information at the time of quote creation." },
+        "agencyInfo": { "type": "object", "description": "A snapshot of the agency's information." },
+        "issueDate": { "type": "string", "format": "date" },
+        "expiryDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["draft", "sent", "accepted", "rejected"], "description": "The status of the quote." },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "quantity": { "type": "number" },
+              "unitPrice": { "type": "number" },
+              "total": { "type": "number" }
+            },
+            "required": ["description", "quantity", "unitPrice", "total"]
+          }
+        },
+        "subtotal": { "type": "number" },
+        "tax": { "type": "number" },
+        "total": { "type": "number" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "quoteNumber", "agencyId", "clientId", "issueDate", "status", "items", "total"]
+    },
     "Consent": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Consent",
@@ -406,6 +441,10 @@
           "type": "boolean",
           "description": "Whether the plan should be highlighted as 'featured'."
         },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether the plan should be displayed on the public pricing page."
+        },
         "agencyId": {
           "type": "string",
           "description": "The ID of the agency this plan belongs to."
@@ -447,23 +486,33 @@
         }
       },
       {
+        "path": "/agencies/{agencyId}/plans/{planId}",
+        "definition": {
+          "entityName": "Plan",
+          "schema": {
+            "$ref": "#/backend/entities/Plan"
+          },
+          "description": "Stores the pricing plans for a specific agency."
+        }
+      },
+      {
+        "path": "/agencies/{agencyId}/quotes/{quoteId}",
+        "definition": {
+          "entityName": "Quote",
+          "schema": {
+            "$ref": "#/backend/entities/Quote"
+          },
+          "description": "Stores quotes for a specific agency."
+        }
+      },
+      {
         "path": "/users/{userId}/appointments/{appointmentId}",
         "definition": {
           "entityName": "Appointment",
           "schema": {
             "$ref": "#/backend/entities/Appointment"
           },
-          "description": "Stores appointments for a specific user. Path-based ownership ensures only the user can access their appointments.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "appointmentId",
-              "description": "The unique identifier of the appointment."
-            }
-          ]
+          "description": "Stores appointments for a specific user. Path-based ownership ensures only the user can access their appointments."
         }
       },
       {
@@ -473,17 +522,7 @@
           "schema": {
             "$ref": "#/backend/entities/Message"
           },
-          "description": "Stores messages for a specific user. Path-based ownership secures message access.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "messageId",
-              "description": "The unique identifier of the message."
-            }
-          ]
+          "description": "Stores messages for a specific user. Path-based ownership secures message access."
         }
       },
       {
@@ -493,17 +532,7 @@
           "schema": {
             "$ref": "#/backend/entities/Invoice"
           },
-          "description": "Stores invoices for a specific user. Path-based ownership ensures secure invoice management.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "invoiceId",
-              "description": "The unique identifier of the invoice."
-            }
-          ]
+          "description": "Stores invoices for a specific user. Path-based ownership ensures secure invoice management."
         }
       },
       {
@@ -513,17 +542,7 @@
           "schema": {
             "$ref": "#/backend/entities/Consent"
           },
-          "description": "Stores consent records for a specific user. Path-based ownership guarantees data privacy.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            },
-            {
-              "name": "consentId",
-              "description": "The unique identifier of the consent record."
-            }
-          ]
+          "description": "Stores consent records for a specific user. Path-based ownership guarantees data privacy."
         }
       },
       {
@@ -533,13 +552,7 @@
           "schema": {
             "$ref": "#/backend/entities/LandingPage"
           },
-          "description": "Stores landing page configurations. Access controlled by administrator roles.",
-          "params": [
-            {
-              "name": "landingPageId",
-              "description": "The unique identifier of the landing page."
-            }
-          ]
+          "description": "Stores landing page configurations. Access controlled by administrator roles."
         }
       },
       {
@@ -549,36 +562,10 @@
           "schema": {
             "$ref": "#/backend/entities/EmailCampaign"
           },
-          "description": "Stores email campaigns. Access controlled by administrator roles.",
-          "params": [
-            {
-              "name": "emailCampaignId",
-              "description": "The unique identifier of the email campaign."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/agencies/{agencyId}/plans/{planId}",
-        "definition": {
-          "entityName": "Plan",
-          "schema": {
-            "$ref": "#/backend/entities/Plan"
-          },
-          "description": "Stores the pricing plans for a specific agency.",
-          "params": [
-            {
-              "name": "agencyId",
-              "description": "The unique identifier of the agency."
-            },
-            {
-              "name": "planId",
-              "description": "The unique identifier of the plan."
-            }
-          ]
+          "description": "Stores email campaigns. Access controlled by administrator roles."
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. A new collection for `plans` is nested under each agency to manage pricing tiers on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
+    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans` and `quotes` are nested under each agency to manage pricing tiers and estimates on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
   }
 }

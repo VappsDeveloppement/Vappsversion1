@@ -1,12 +1,15 @@
 
+
 'use client';
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, FileText, ScrollText } from "lucide-react";
 import { PlanManagement } from "@/components/shared/plan-management";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 export default function BillingPage() {
     return (
@@ -60,24 +63,26 @@ export default function BillingPage() {
                                     <CardTitle>Gestion des Devis</CardTitle>
                                     <CardDescription>Créez, envoyez et suivez vos devis.</CardDescription>
                                 </div>
-                                <Button>
+                                <Button asChild>
+                                  <Link href="/dashboard/billing/quote/new">
                                     <PlusCircle className="mr-2 h-4 w-4" />
                                     Nouveau Devis
+                                  </Link>
                                 </Button>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <Table>
-                                <thead className="w-full">
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell>N° Devis</TableCell>
-                                        <TableCell>Client</TableCell>
-                                        <TableCell>Date</TableCell>
-                                        <TableCell>Montant</TableCell>
-                                        <TableCell>Statut</TableCell>
-                                        <TableCell className="text-right">Actions</TableCell>
+                                        <TableHead>N° Devis</TableHead>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead>Date</TableHead>
+                                        <TableHead>Montant</TableHead>
+                                        <TableHead>Statut</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                </thead>
+                                </TableHeader>
                                 <TableBody>
                                      <TableRow>
                                         <TableCell colSpan={6} className="h-24 text-center">
@@ -106,16 +111,16 @@ export default function BillingPage() {
                         </CardHeader>
                         <CardContent>
                             <Table>
-                                <thead className="w-full">
+                                <TableHeader>
                                     <TableRow>
-                                        <TableCell>N° Facture</TableCell>
-                                        <TableCell>Client</TableCell>
-                                        <TableCell>Date d'émission</TableCell>
-                                        <TableCell>Montant</TableCell>
-                                        <TableCell>Statut</TableCell>
-                                        <TableCell className="text-right">Actions</TableCell>
+                                        <TableHead>N° Facture</TableHead>
+                                        <TableHead>Client</TableHead>
+                                        <TableHead>Date d'émission</TableHead>
+                                        <TableHead>Montant</TableHead>
+                                        <TableHead>Statut</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                </thead>
+                                </TableHeader>
                                 <TableBody>
                                     <TableRow>
                                         <TableCell colSpan={6} className="h-24 text-center">
