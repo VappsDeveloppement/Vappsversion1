@@ -45,12 +45,6 @@ type User = {
   franceTravailId?: string;
 };
 
-const passwordMatchRefine = (data: any) => data.password === data.confirmPassword;
-const passwordMatchMessage = {
-  message: "Les mots de passe ne correspondent pas.",
-  path: ["confirmPassword"],
-};
-
 const baseUserFormSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
@@ -67,7 +61,10 @@ const adminFormSchema = baseUserFormSchema.extend({
         return data.password === data.confirmPassword;
     }
     return true;
-}, passwordMatchMessage);
+}, {
+  message: "Les mots de passe ne correspondent pas.",
+  path: ["confirmPassword"],
+});
 
 const conseillerFormSchema = baseUserFormSchema.extend({
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
@@ -78,7 +75,10 @@ const conseillerFormSchema = baseUserFormSchema.extend({
         return data.password === data.confirmPassword;
     }
     return true;
-}, passwordMatchMessage);
+}, {
+  message: "Les mots de passe ne correspondent pas.",
+  path: ["confirmPassword"],
+});
 
 const membreFormSchema = baseUserFormSchema.extend({
     address: z.string().min(1, "L'adresse est requise."),
@@ -95,8 +95,8 @@ const membreFormSchema = baseUserFormSchema.extend({
     }
     return true;
 }, {
-    message: "Les mots de passe ne correspondent pas.",
-    path: ["confirmPassword"],
+  message: "Les mots de passe ne correspondent pas.",
+  path: ["confirmPassword"],
 });
 
 
@@ -648,7 +648,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={membreForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={membreForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
