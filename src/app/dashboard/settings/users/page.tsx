@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAgency } from "@/context/agency-provider";
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import React, { useMemo, useState } from "react";
-import { collection, query, where, doc, deleteDoc } from "firebase/firestore";
+import { collection, query, where, doc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -390,10 +390,10 @@ export default function UsersPage() {
     }
   }
 
-  const filterUsers = (data: User[] | null, role: string[], searchTerm: string) => {
+  const filterUsers = (data: User[] | null, roles: string[], searchTerm: string) => {
     if (!data) return [];
     return data.filter(user => 
-      role.includes(user.role) &&
+      roles.includes(user.role) &&
       (
         user.firstName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.lastName.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -463,7 +463,7 @@ export default function UsersPage() {
                                         )} />
                                     </div>
                                     <FormField control={adminForm.control} name="email" render={({ field }) => (
-                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="phone" render={({ field }) => (
                                         <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -557,7 +557,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={conseillerForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
