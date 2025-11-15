@@ -1,17 +1,22 @@
 
-
 'use client';
 
+import React from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, FileText, ScrollText } from "lucide-react";
+import { PlusCircle, FileText, ScrollText, MoreHorizontal } from "lucide-react";
 import { PlanManagement } from "@/components/shared/plan-management";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { NewQuoteForm } from '@/components/shared/new-quote-form';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export default function BillingPage() {
+    const [isQuoteFormOpen, setIsQuoteFormOpen] = React.useState(false);
+
     return (
         <div className="space-y-8">
             <div>
@@ -63,12 +68,22 @@ export default function BillingPage() {
                                     <CardTitle>Gestion des Devis</CardTitle>
                                     <CardDescription>Créez, envoyez et suivez vos devis.</CardDescription>
                                 </div>
-                                <Button asChild>
-                                  <Link href="/dashboard/billing/quote/new">
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Nouveau Devis
-                                  </Link>
-                                </Button>
+                                <Dialog open={isQuoteFormOpen} onOpenChange={setIsQuoteFormOpen}>
+                                    <DialogTrigger asChild>
+                                        <Button>
+                                            <PlusCircle className="mr-2 h-4 w-4" />
+                                            Nouveau Devis
+                                        </Button>
+                                    </DialogTrigger>
+                                    <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                                        <DialogHeader>
+                                            <DialogTitle>Nouveau Devis</DialogTitle>
+                                        </DialogHeader>
+                                        <div className="flex-1 overflow-y-auto pr-6 -mr-6">
+                                            <NewQuoteForm setOpen={setIsQuoteFormOpen} />
+                                        </div>
+                                    </DialogContent>
+                                </Dialog>
                             </div>
                         </CardHeader>
                         <CardContent>
