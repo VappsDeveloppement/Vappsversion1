@@ -20,6 +20,9 @@ import { collection, doc } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
+import { QuotePDF } from '@/components/shared/quote-pdf';
+import jsPDF from 'jspdf';
+import html2canvas from 'html2canvas';
 
 type Quote = {
     id: string;
@@ -28,10 +31,11 @@ type Quote = {
     issueDate: string;
     expiryDate?: string;
     total: number;
+    subtotal: number;
+    tax: number;
     status: 'draft' | 'sent' | 'accepted' | 'rejected';
     items: any[];
     notes?: string;
-    tax: number;
 }
 
 const statusVariant: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -52,9 +56,12 @@ export default function BillingPage() {
     const [isQuoteFormOpen, setIsQuoteFormOpen] = React.useState(false);
     const [editingQuote, setEditingQuote] = React.useState<Quote | null>(null);
     const [quoteToDelete, setQuoteToDelete] = React.useState<Quote | null>(null);
+    const [quoteToExport, setQuoteToExport] = React.useState<Quote | null>(null);
     const { agency, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const pdfRef = React.useRef<HTMLDivElement>(null);
+
 
     const quotesQuery = useMemoFirebase(() => {
         if (!agency) return null;
@@ -90,6 +97,29 @@ export default function BillingPage() {
             setEditingQuote(null);
         }
     }
+
+    const handleExportPDF = (quote: Quote) => {
+        setQuoteToExport(quote);
+    };
+
+    React.useEffect(() => {
+        if (quoteToExport && pdfRef.current) {
+            html2canvas(pdfRef.current, { scale: 3 }).then(canvas => {
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF('p', 'mm', 'a4');
+                const pdfWidth = pdf.internal.pageSize.getWidth();
+                const pdfHeight = pdf.internal.pageSize.getHeight();
+                const canvasWidth = canvas.width;
+                const canvasHeight = canvas.height;
+                const ratio = canvasWidth / canvasHeight;
+                const width = pdfWidth;
+                const height = width / ratio;
+                pdf.addImage(imgData, 'PNG', 0, 0, width, height > pdfHeight ? pdfHeight : height);
+                pdf.save(`devis-${quoteToExport.quoteNumber}.pdf`);
+                setQuoteToExport(null);
+            });
+        }
+    }, [quoteToExport]);
 
 
     return (
@@ -207,7 +237,7 @@ export default function BillingPage() {
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 Modifier
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleExportPDF(quote)}>
                                                                 <FileText className="mr-2 h-4 w-4" />
                                                                 Exporter en PDF
                                                             </DropdownMenuItem>
@@ -285,8 +315,9 @@ export default function BillingPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <div style={{ position: 'fixed', left: '-2000px', top: 0 }}>
+              {quoteToExport && <QuotePDF ref={pdfRef} quote={quoteToExport} />}
+            </div>
         </div>
     );
 }
-
-    
