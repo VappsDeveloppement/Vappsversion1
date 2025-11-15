@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -51,28 +52,36 @@ const baseUserFormSchema = z.object({
   phone: z.string().min(1, "Le téléphone est requis."),
 });
 
-const passwordSchema = z.object({
+const passwordFields = {
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
   confirmPassword: z.string().optional(),
-}).refine(data => {
-    if (data.password) {
+};
+
+const passwordRefine = {
+  refine: (data: {password?: string, confirmPassword?: string}) => {
+    if (data.password && data.password.length > 0) {
         return data.password === data.confirmPassword;
     }
     return true;
-}, {
-  message: "Les mots de passe ne correspondent pas.",
-  path: ["confirmPassword"],
-});
+  },
+  params: {
+    message: "Les mots de passe ne correspondent pas.",
+    path: ["confirmPassword"],
+  }
+};
 
 
 const adminFormSchema = baseUserFormSchema.extend({
   role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
-}).merge(passwordSchema);
+  ...passwordFields
+}).refine(passwordRefine.refine, passwordRefine.params);
 
 
 const conseillerFormSchema = baseUserFormSchema.extend({
   role: z.literal('conseiller'),
-}).merge(passwordSchema);
+  ...passwordFields
+}).refine(passwordRefine.refine, passwordRefine.params);
+
 
 const membreFormSchema = baseUserFormSchema.extend({
     address: z.string().min(1, "L'adresse est requise."),
@@ -81,7 +90,8 @@ const membreFormSchema = baseUserFormSchema.extend({
     socialSecurityNumber: z.string().optional(),
     franceTravailId: z.string().optional(),
     role: z.literal('membre'),
-}).merge(passwordSchema);
+    ...passwordFields
+}).refine(passwordRefine.refine, passwordRefine.params);
 
 
 // Component to render the user table
