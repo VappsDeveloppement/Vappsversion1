@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -360,6 +361,57 @@
         "lastUpdated",
         "status"
       ]
+    },
+    "Plan": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Plan",
+      "type": "object",
+      "description": "Represents a pricing plan for the agency.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the plan."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the plan (e.g., 'Essentiel', 'Pro')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A short description of the plan."
+        },
+        "features": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "A list of features included in the plan."
+        },
+        "price": {
+          "type": "number",
+          "description": "The price of the plan."
+        },
+        "period": {
+          "type": "string",
+          "description": "The billing period (e.g., '/mois', '/an')."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of an image associated with the plan.",
+          "format": "uri"
+        },
+        "appointmentCredits": {
+          "type": "number",
+          "description": "Number of appointment credits included in the plan."
+        },
+        "isFeatured": {
+          "type": "boolean",
+          "description": "Whether the plan should be highlighted as 'featured'."
+        },
+        "agencyId": {
+          "type": "string",
+          "description": "The ID of the agency this plan belongs to."
+        }
+      },
+      "required": ["id", "name", "price", "period", "agencyId"]
     }
   },
   "auth": {
@@ -505,10 +557,28 @@
             }
           ]
         }
+      },
+      {
+        "path": "/agencies/{agencyId}/plans/{planId}",
+        "definition": {
+          "entityName": "Plan",
+          "schema": {
+            "$ref": "#/backend/entities/Plan"
+          },
+          "description": "Stores the pricing plans for a specific agency.",
+          "params": [
+            {
+              "name": "agencyId",
+              "description": "The unique identifier of the agency."
+            },
+            {
+              "name": "planId",
+              "description": "The unique identifier of the plan."
+            }
+          ]
+        }
       }
     ],
-    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
+    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. A new collection for `plans` is nested under each agency to manage pricing tiers on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
   }
 }
-
-    

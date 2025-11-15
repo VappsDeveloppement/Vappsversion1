@@ -2,17 +2,11 @@
 'use client';
 
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, FileText, ScrollText } from "lucide-react";
-
-const placeholderData = {
-    plans: [],
-    contracts: [],
-    quotes: [],
-    invoices: [],
-}
+import { PlanManagement } from "@/components/shared/plan-management";
 
 export default function BillingPage() {
     return (
@@ -22,7 +16,7 @@ export default function BillingPage() {
                 <p className="text-muted-foreground">Gérez vos plans, contrats, devis et factures.</p>
             </div>
 
-            <Tabs defaultValue="invoices">
+            <Tabs defaultValue="plans">
                 <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="plans">Plans</TabsTrigger>
                     <TabsTrigger value="contracts">Contrats</TabsTrigger>
@@ -31,44 +25,7 @@ export default function BillingPage() {
                 </TabsList>
 
                 <TabsContent value="plans">
-                    <Card>
-                        <CardHeader>
-                             <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle>Gestion des Plans</CardTitle>
-                                    <CardDescription>Créez et gérez les plans d'abonnement pour la section "Tarifs" de votre page d'accueil.</CardDescription>
-                                </div>
-                                <Button>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Nouveau Plan
-                                </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent>
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Nom du Plan</TableHead>
-                                        <TableHead>Prix</TableHead>
-                                        <TableHead>Période</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {placeholderData.plans.length > 0 ? (
-                                        // Map through plans here
-                                        <></>
-                                    ) : (
-                                        <TableRow>
-                                            <TableCell colSpan={4} className="h-24 text-center">
-                                                Aucun plan n'a été créé.
-                                            </TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                    <PlanManagement />
                 </TabsContent>
 
                 <TabsContent value="contracts">
@@ -111,16 +68,16 @@ export default function BillingPage() {
                         </CardHeader>
                         <CardContent>
                             <Table>
-                                <TableHeader>
+                                <thead className="w-full">
                                     <TableRow>
-                                        <TableHead>N° Devis</TableHead>
-                                        <TableHead>Client</TableHead>
-                                        <TableHead>Date</TableHead>
-                                        <TableHead>Montant</TableHead>
-                                        <TableHead>Statut</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableCell>N° Devis</TableCell>
+                                        <TableCell>Client</TableCell>
+                                        <TableCell>Date</TableCell>
+                                        <TableCell>Montant</TableCell>
+                                        <TableCell>Statut</TableCell>
+                                        <TableCell className="text-right">Actions</TableCell>
                                     </TableRow>
-                                </TableHeader>
+                                </thead>
                                 <TableBody>
                                      <TableRow>
                                         <TableCell colSpan={6} className="h-24 text-center">
@@ -149,16 +106,16 @@ export default function BillingPage() {
                         </CardHeader>
                         <CardContent>
                             <Table>
-                                <TableHeader>
+                                <thead className="w-full">
                                     <TableRow>
-                                        <TableHead>N° Facture</TableHead>
-                                        <TableHead>Client</TableHead>
-                                        <TableHead>Date d'émission</TableHead>
-                                        <TableHead>Montant</TableHead>
-                                        <TableHead>Statut</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableCell>N° Facture</TableCell>
+                                        <TableCell>Client</TableCell>
+                                        <TableCell>Date d'émission</TableCell>
+                                        <TableCell>Montant</TableCell>
+                                        <TableCell>Statut</TableCell>
+                                        <TableCell className="text-right">Actions</TableCell>
                                     </TableRow>
-                                </TableHeader>
+                                </thead>
                                 <TableBody>
                                     <TableRow>
                                         <TableCell colSpan={6} className="h-24 text-center">
