@@ -6,16 +6,55 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, FileText, ScrollText, MoreHorizontal } from "lucide-react";
+import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { PlanManagement } from "@/components/shared/plan-management";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { NewQuoteForm } from '@/components/shared/new-quote-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAgency } from '@/context/agency-provider';
+import { useFirestore } from '@/firebase/provider';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { Skeleton } from '@/components/ui/skeleton';
+
+type Quote = {
+    id: string;
+    quoteNumber: string;
+    clientInfo: { name: string };
+    issueDate: string;
+    total: number;
+    status: 'draft' | 'sent' | 'accepted' | 'rejected';
+}
+
+const statusVariant: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    draft: 'secondary',
+    sent: 'default',
+    accepted: 'default',
+    rejected: 'destructive',
+};
+const statusText: Record<Quote['status'], string> = {
+    draft: 'Brouillon',
+    sent: 'Envoyé',
+    accepted: 'Accepté',
+    rejected: 'Refusé',
+};
+
 
 export default function BillingPage() {
     const [isQuoteFormOpen, setIsQuoteFormOpen] = React.useState(false);
+    const { agency, isLoading: isAgencyLoading } = useAgency();
+    const firestore = useFirestore();
+
+    const quotesQuery = useMemoFirebase(() => {
+        if (!agency) return null;
+        return collection(firestore, 'agencies', agency.id, 'quotes');
+    }, [agency, firestore]);
+
+    const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
+    
+    const isLoading = isAgencyLoading || areQuotesLoading;
 
     return (
         <div className="space-y-8">
@@ -24,7 +63,7 @@ export default function BillingPage() {
                 <p className="text-muted-foreground">Gérez vos plans, contrats, devis et factures.</p>
             </div>
 
-            <Tabs defaultValue="plans">
+            <Tabs defaultValue="quotes">
                 <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="plans">Plans</TabsTrigger>
                     <TabsTrigger value="contracts">Contrats</TabsTrigger>
@@ -99,11 +138,56 @@ export default function BillingPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                     <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
-                                            Aucun devis trouvé.
-                                        </TableCell>
-                                    </TableRow>
+                                     {isLoading ? (
+                                        [...Array(3)].map((_, i) => (
+                                            <TableRow key={i}>
+                                                <TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell>
+                                            </TableRow>
+                                        ))
+                                     ) : quotes && quotes.length > 0 ? (
+                                        quotes.map((quote) => (
+                                            <TableRow key={quote.id}>
+                                                <TableCell className="font-medium">{quote.quoteNumber}</TableCell>
+                                                <TableCell>{quote.clientInfo.name}</TableCell>
+                                                <TableCell>{new Date(quote.issueDate).toLocaleDateString('fr-FR')}</TableCell>
+                                                <TableCell>{quote.total.toFixed(2)} €</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={statusVariant[quote.status]}>
+                                                        {statusText[quote.status]}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem>
+                                                                <Edit className="mr-2 h-4 w-4" />
+                                                                Modifier
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem>
+                                                                <FileText className="mr-2 h-4 w-4" />
+                                                                Exporter en PDF
+                                                            </DropdownMenuItem>
+                                                             <DropdownMenuItem className="text-destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Supprimer
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                     ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-24 text-center">
+                                                Aucun devis trouvé.
+                                            </TableCell>
+                                        </TableRow>
+                                     )}
                                 </TableBody>
                             </Table>
                         </CardContent>
