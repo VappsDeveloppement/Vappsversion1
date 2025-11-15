@@ -4,9 +4,9 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking } from "@/firebase";
+import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import React, { useMemo, useState } from "react";
-import { collection, query, where, doc } from "firebase/firestore";
+import { collection, query, where, doc, deleteDoc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
@@ -20,11 +20,13 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, Eye, EyeOff } from "lucide-react";
+import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { randomBytes } from "crypto";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 
 type User = {
@@ -34,6 +36,12 @@ type User = {
   email: string;
   role: 'admin' | 'superadmin' | 'conseiller' | 'membre' | 'prospect' | 'dpo';
   dateJoined: string;
+  phone: string;
+  address?: string;
+  zipCode?: string;
+  city?: string;
+  socialSecurityNumber?: string;
+  franceTravailId?: string;
 };
 
 const passwordMatchRefine = (data: any) => data.password === data.confirmPassword;
@@ -82,7 +90,7 @@ const membreFormSchema = baseUserFormSchema.extend({
 
 
 // Component to render the user table
-const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoading: boolean, emptyMessage: string }) => {
+const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete }: { users: User[], isLoading: boolean, emptyMessage: string, onEdit: (user: User) => void, onDelete: (user: User) => void }) => {
   if (isLoading) {
     return (
       <Table>
@@ -92,6 +100,7 @@ const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoadin
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
             <TableHead>Date d'inscription</TableHead>
+            <TableHead className="text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -101,6 +110,7 @@ const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoadin
               <TableCell><Skeleton className="h-5 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-16" /></TableCell>
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
+              <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -124,6 +134,7 @@ const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoadin
           <TableHead>Email</TableHead>
           <TableHead>Rôle</TableHead>
           <TableHead>Date d'inscription</TableHead>
+          <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -138,6 +149,25 @@ const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoadin
             </TableCell>
             <TableCell>
               {user.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}
+            </TableCell>
+            <TableCell className="text-right">
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => onEdit(user)}>
+                            <Edit className="mr-2 h-4 w-4" />
+                            Modifier
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onDelete(user)} className="text-destructive">
+                             <Trash2 className="mr-2 h-4 w-4" />
+                            Supprimer
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </TableCell>
           </TableRow>
         ))}
@@ -161,6 +191,8 @@ export default function UsersPage() {
   const [isConseillerFormOpen, setIsConseillerFormOpen] = useState(false);
   const [isAdminFormOpen, setIsAdminFormOpen] = useState(false);
   const [isMembreFormOpen, setIsMembreFormOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
 
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -220,6 +252,52 @@ export default function UsersPage() {
     },
   });
 
+  const handleEdit = (user: User) => {
+    setEditingUser(user);
+    if (user.role === 'admin' || user.role === 'superadmin' || user.role === 'dpo') {
+        adminForm.reset({
+            ...user,
+            password: '',
+            confirmPassword: '',
+        });
+        setIsAdminFormOpen(true);
+    } else if (user.role === 'conseiller') {
+        conseillerForm.reset({
+            ...user,
+            password: '',
+            confirmPassword: '',
+        });
+        setIsConseillerFormOpen(true);
+    } else if (user.role === 'membre') {
+        membreForm.reset({
+            ...user,
+            password: '',
+            confirmPassword: '',
+        });
+        setIsMembreFormOpen(true);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!userToDelete || !agency) return;
+    try {
+        const userDocRef = doc(firestore, "users", userToDelete.id);
+        await deleteDocumentNonBlocking(userDocRef);
+        // Note: Deleting from Firebase Auth requires a backend function for security.
+        // This part is omitted as it can't be done securely from the client.
+        toast({ title: "Utilisateur supprimé", description: "L'utilisateur a été supprimé de Firestore." });
+    } catch (error) {
+        console.error("Error deleting user:", error);
+        toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur.", variant: "destructive" });
+    } finally {
+        setUserToDelete(null);
+    }
+  };
+  
+  const openDeleteDialog = (user: User) => {
+    setUserToDelete(user);
+  };
+
   async function handleCreateUser(values: z.infer<typeof adminFormSchema> | z.infer<typeof conseillerFormSchema> | z.infer<typeof membreFormSchema>) {
     if (!agency) {
         toast({ title: "Erreur", description: "L'agence n'a pas été trouvée.", variant: "destructive" });
@@ -243,53 +321,57 @@ export default function UsersPage() {
         finalPassword = randomBytes(16).toString('hex');
     }
 
-    if (!finalPassword) {
+    if (!finalPassword && !editingUser) { // Password is required for new users
          toast({ title: "Erreur", description: "Impossible de créer un utilisateur sans mot de passe.", variant: "destructive" });
          setIsSubmitting(false);
          return;
     }
 
     try {
-        // Step 1: Create user in Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, finalPassword);
-        const user = userCredential.user;
-
-        // Step 2: Create user document in Firestore
-        const { confirmPassword, ...firestoreData } = values;
-        const userDocRef = doc(firestore, "users", user.uid);
-        
-        await setDocumentNonBlocking(userDocRef, {
-            ...firestoreData,
-            id: user.uid,
-            agencyId: agency.id,
-            dateJoined: new Date().toISOString(),
-        }, { merge: false });
-
-        toast({ title: "Succès", description: "L'utilisateur a été ajouté." });
-        
-        // Reset and close the correct form
-        if (values.role === 'conseiller') {
-            conseillerForm.reset();
-            setIsConseillerFormOpen(false);
-        } else if (values.role === 'membre') {
-            membreForm.reset();
-            setIsMembreFormOpen(false);
-        } else {
-            adminForm.reset();
-            setIsAdminFormOpen(false);
+        let userId = editingUser?.id;
+        if (!editingUser) {
+            // Step 1: Create user in Firebase Auth if it's a new user
+            const userCredential = await createUserWithEmailAndPassword(auth, values.email, finalPassword as string);
+            userId = userCredential.user.uid;
         }
 
+        if (!userId) {
+            throw new Error("ID utilisateur manquant.");
+        }
+
+        // Step 2: Create or update user document in Firestore
+        const { confirmPassword, ...firestoreData } = values;
+        const userDocRef = doc(firestore, "users", userId);
+        
+        const dataToSave = {
+            ...firestoreData,
+            id: userId,
+            agencyId: agency.id,
+            ...(!editingUser && { dateJoined: new Date().toISOString() }), // Add dateJoined only for new users
+        };
+
+        await setDocumentNonBlocking(userDocRef, dataToSave, { merge: true });
+
+        toast({ title: "Succès", description: `L'utilisateur a été ${editingUser ? 'modifié' : 'ajouté'}.` });
+        
+        // Reset and close the correct form
+        if (values.role === 'conseiller') setIsConseillerFormOpen(false);
+        else if (values.role === 'membre') setIsMembreFormOpen(false);
+        else setIsAdminFormOpen(false);
+
+        setEditingUser(null);
+
     } catch (error: any) {
-        console.error("Error creating user:", error);
+        console.error("Error saving user:", error);
         let errorMessage = "Une erreur inattendue est survenue.";
-         if (error.code === 'auth/email-already-exists') {
+         if (error.code === 'auth/email-already-in-use') {
             errorMessage = "Cette adresse email est déjà utilisée.";
         } else if (error.code === 'auth/invalid-password') {
             errorMessage = "Le mot de passe doit contenir au moins 6 caractères.";
         } else if (error.code) {
-            errorMessage = error.code;
+            errorMessage = error.message || error.code;
         }
-        toast({ title: "Erreur de création", description: errorMessage, variant: "destructive" });
+        toast({ title: `Erreur de ${editingUser ? 'modification' : 'création'}`, description: errorMessage, variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
@@ -344,7 +426,7 @@ export default function UsersPage() {
                         onChange={(e) => setAdminSearch(e.target.value)}
                         className="max-w-sm"
                     />
-                    <Dialog open={isAdminFormOpen} onOpenChange={setIsAdminFormOpen}>
+                    <Dialog open={isAdminFormOpen} onOpenChange={(isOpen) => { setIsAdminFormOpen(isOpen); if (!isOpen) setEditingUser(null); }}>
                         <DialogTrigger asChild>
                             <Button>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -353,9 +435,9 @@ export default function UsersPage() {
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
-                                <DialogTitle>Ajouter un administrateur ou DPO</DialogTitle>
+                                <DialogTitle>{editingUser ? 'Modifier' : 'Ajouter'} un administrateur ou DPO</DialogTitle>
                                 <DialogDescription>
-                                    Créez un nouvel utilisateur avec un rôle d'administration.
+                                    {editingUser ? 'Modifiez les informations ci-dessous.' : 'Créez un nouvel utilisateur avec un rôle d\'administration.'}
                                 </DialogDescription>
                             </DialogHeader>
                             <Form {...adminForm}>
@@ -369,13 +451,13 @@ export default function UsersPage() {
                                         )} />
                                     </div>
                                     <FormField control={adminForm.control} name="email" render={({ field }) => (
-                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="phone" render={({ field }) => (
                                         <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="password" render={({ field }) => (
-                                        <FormItem><FormLabel>Mot de passe</FormLabel>
+                                        <FormItem><FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
                                                     <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
@@ -417,7 +499,7 @@ export default function UsersPage() {
                                     <DialogFooter className="pt-4">
                                         <Button type="submit" disabled={isSubmitting}>
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            Créer l'utilisateur
+                                            {editingUser ? 'Enregistrer' : 'Créer l\'utilisateur'}
                                         </Button>
                                     </DialogFooter>
                                 </form>
@@ -425,7 +507,7 @@ export default function UsersPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
-                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." />
+                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
               </div>
             </TabsContent>
 
@@ -438,7 +520,7 @@ export default function UsersPage() {
                             onChange={(e) => setConseillerSearch(e.target.value)}
                             className="max-w-sm"
                         />
-                         <Dialog open={isConseillerFormOpen} onOpenChange={setIsConseillerFormOpen}>
+                         <Dialog open={isConseillerFormOpen} onOpenChange={(isOpen) => { setIsConseillerFormOpen(isOpen); if (!isOpen) setEditingUser(null); }}>
                             <DialogTrigger asChild>
                                 <Button>
                                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -447,9 +529,9 @@ export default function UsersPage() {
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle>Ajouter un conseiller</DialogTitle>
+                                    <DialogTitle>{editingUser ? 'Modifier' : 'Ajouter'} un conseiller</DialogTitle>
                                     <DialogDescription>
-                                        Créez un nouvel utilisateur avec le rôle de conseiller.
+                                        {editingUser ? 'Modifiez les informations ci-dessous.' : 'Créez un nouvel utilisateur avec le rôle de conseiller.'}
                                     </DialogDescription>
                                 </DialogHeader>
                                 <Form {...conseillerForm}>
@@ -463,13 +545,13 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={conseillerForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="password" render={({ field }) => (
-                                            <FormItem><FormLabel>Mot de passe</FormLabel>
+                                            <FormItem><FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
@@ -497,7 +579,7 @@ export default function UsersPage() {
                                         <DialogFooter className="pt-4">
                                             <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                Créer l'utilisateur
+                                                {editingUser ? 'Enregistrer' : 'Créer l\'utilisateur'}
                                             </Button>
                                         </DialogFooter>
                                     </form>
@@ -505,7 +587,7 @@ export default function UsersPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." />
+                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
                 </div>
             </TabsContent>
 
@@ -518,7 +600,7 @@ export default function UsersPage() {
                             onChange={(e) => setMembreSearch(e.target.value)}
                             className="max-w-sm"
                         />
-                         <Dialog open={isMembreFormOpen} onOpenChange={setIsMembreFormOpen}>
+                         <Dialog open={isMembreFormOpen} onOpenChange={(isOpen) => { setIsMembreFormOpen(isOpen); if (!isOpen) setEditingUser(null); }}>
                             <DialogTrigger asChild>
                                 <Button>
                                     <PlusCircle className="mr-2 h-4 w-4" />
@@ -527,9 +609,9 @@ export default function UsersPage() {
                             </DialogTrigger>
                             <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
                                 <DialogHeader>
-                                    <DialogTitle>Ajouter un membre</DialogTitle>
+                                    <DialogTitle>{editingUser ? 'Modifier' : 'Ajouter'} un membre</DialogTitle>
                                     <DialogDescription>
-                                        Créez un nouvel utilisateur avec le rôle de membre.
+                                        {editingUser ? 'Modifiez les informations ci-dessous.' : 'Créez un nouvel utilisateur avec le rôle de membre.'}
                                     </DialogDescription>
                                 </DialogHeader>
                                 <Form {...membreForm}>
@@ -554,13 +636,13 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={membreForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={membreForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={membreForm.control} name="password" render={({ field }) => (
-                                            <FormItem><FormLabel>Mot de passe (Optionnel)</FormLabel>
+                                            <FormItem><FormLabel>Mot de passe (Optionnel {editingUser ? ' - Laisser vide pour ne pas changer' : ''})</FormLabel>
                                                 <FormControl>
                                                     <div className="relative">
                                                         <Input type={showPassword ? 'text' : 'password'} placeholder="********" {...field} />
@@ -595,7 +677,7 @@ export default function UsersPage() {
                                         <DialogFooter className="pt-4">
                                             <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                Créer le membre
+                                                {editingUser ? 'Enregistrer' : 'Créer le membre'}
                                             </Button>
                                         </DialogFooter>
                                     </form>
@@ -603,7 +685,7 @@ export default function UsersPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <UserTable users={membres} isLoading={isLoading} emptyMessage="Aucun membre trouvé." />
+                    <UserTable users={membres} isLoading={isLoading} emptyMessage="Aucun membre trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
                 </div>
             </TabsContent>
 
@@ -614,12 +696,29 @@ export default function UsersPage() {
                         value={prospectSearch}
                         onChange={(e) => setProspectSearch(e.target.value)}
                     />
-                    <UserTable users={prospects} isLoading={isLoading} emptyMessage="Aucun prospect trouvé." />
+                    <UserTable users={prospects} isLoading={isLoading} emptyMessage="Aucun prospect trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
                 </div>
             </TabsContent>
           </Tabs>
         </CardContent>
       </Card>
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cet utilisateur ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Cette action est irréversible. L'utilisateur <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong> sera définitivement supprimé.
+                    La suppression du compte d'authentification doit être faite manuellement depuis la console Firebase pour des raisons de sécurité.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel onClick={() => setUserToDelete(null)}>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
+    
