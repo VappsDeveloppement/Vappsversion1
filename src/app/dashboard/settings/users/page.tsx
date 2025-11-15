@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import React, { useMemo, useState } from "react";
 import { collection, query, where, doc } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase/provider";
@@ -24,7 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, updateEmail } from "firebase/auth";
 import { randomBytes } from "crypto";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -52,12 +51,11 @@ const baseUserFormSchema = z.object({
   phone: z.string().min(1, "Le téléphone est requis."),
 });
 
-const adminFormSchema = baseUserFormSchema.extend({
+const passwordSchema = z.object({
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
   confirmPassword: z.string().optional(),
-  role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
 }).refine(data => {
-    if (data.password && data.password.length > 0) {
+    if (data.password) {
         return data.password === data.confirmPassword;
     }
     return true;
@@ -66,38 +64,24 @@ const adminFormSchema = baseUserFormSchema.extend({
   path: ["confirmPassword"],
 });
 
+
+const adminFormSchema = baseUserFormSchema.extend({
+  role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
+}).merge(passwordSchema);
+
+
 const conseillerFormSchema = baseUserFormSchema.extend({
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
-  confirmPassword: z.string().optional(),
   role: z.literal('conseiller'),
-}).refine(data => {
-    if (data.password && data.password.length > 0) {
-        return data.password === data.confirmPassword;
-    }
-    return true;
-}, {
-  message: "Les mots de passe ne correspondent pas.",
-  path: ["confirmPassword"],
-});
+}).merge(passwordSchema);
 
 const membreFormSchema = baseUserFormSchema.extend({
     address: z.string().min(1, "L'adresse est requise."),
     zipCode: z.string().min(1, "Le code postal est requis."),
     city: z.string().min(1, "La ville est requise."),
-    password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
-    confirmPassword: z.string().optional(),
     socialSecurityNumber: z.string().optional(),
     franceTravailId: z.string().optional(),
     role: z.literal('membre'),
-}).refine(data => {
-    if (data.password && data.password.length > 0) {
-        return data.password === data.confirmPassword;
-    }
-    return true;
-}, {
-  message: "Les mots de passe ne correspondent pas.",
-  path: ["confirmPassword"],
-});
+}).merge(passwordSchema);
 
 
 // Component to render the user table
@@ -215,7 +199,7 @@ export default function UsersPage() {
     return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
   }, [agency, firestore]);
 
-  const { data: users, isLoading: areUsersLoading } = useCollection(usersQuery);
+  const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
   const isLoading = isAgencyLoading || areUsersLoading;
 
@@ -325,32 +309,35 @@ export default function UsersPage() {
         return;
     }
     
-    // Now, create the user on the client side
+    // Now, create or update the user on the client side
     let finalPassword = 'password' in values ? values.password : '';
     
+    // Generate a password for members if none is provided
     if (values.role === 'membre' && (!finalPassword || finalPassword.length === 0)) {
         finalPassword = randomBytes(16).toString('hex');
     }
 
-    if (!finalPassword && !editingUser) { // Password is required for new users
-         toast({ title: "Erreur", description: "Impossible de créer un utilisateur sans mot de passe.", variant: "destructive" });
-         setIsSubmitting(false);
-         return;
-    }
-
     try {
         let userId = editingUser?.id;
+        
+        if (editingUser && editingUser.email !== values.email) {
+            // This is a sensitive operation and should ideally be handled with more security,
+            // like re-authentication, but for this app, we'll allow direct update.
+            // A server-side function would be better to update the Auth user's email.
+            console.warn("L'e-mail a été modifié. La mise à jour de l'e-mail dans Firebase Auth n'est pas implémentée de manière sécurisée côté client.");
+        }
+
         if (!editingUser && auth && finalPassword) {
-            // Step 1: Create user in Firebase Auth if it's a new user
             const userCredential = await createUserWithEmailAndPassword(auth, values.email, finalPassword);
             userId = userCredential.user.uid;
+        } else if (!editingUser) {
+             throw new Error("Impossible de créer un utilisateur sans mot de passe.");
         }
 
         if (!userId) {
             throw new Error("ID utilisateur manquant.");
         }
 
-        // Step 2: Create or update user document in Firestore
         const { confirmPassword, ...firestoreData } = values;
         const userDocRef = doc(firestore, "users", userId);
         
@@ -367,7 +354,6 @@ export default function UsersPage() {
 
         toast({ title: "Succès", description: `L'utilisateur a été ${editingUser ? 'modifié' : 'ajouté'}.` });
         
-        // Reset and close the correct form
         if (values.role === 'conseiller') setIsConseillerFormOpen(false);
         else if (values.role === 'membre') setIsMembreFormOpen(false);
         else setIsAdminFormOpen(false);
@@ -379,7 +365,7 @@ export default function UsersPage() {
         let errorMessage = "Une erreur inattendue est survenue.";
          if (error.code === 'auth/email-already-in-use') {
             errorMessage = "Cette adresse email est déjà utilisée.";
-        } else if (error.code === 'auth/invalid-password') {
+        } else if (error.code === 'auth/invalid-password' || error.code === 'auth/weak-password') {
             errorMessage = "Le mot de passe doit contenir au moins 6 caractères.";
         } else if (error.code) {
             errorMessage = error.message || error.code;
@@ -449,7 +435,7 @@ export default function UsersPage() {
                             <DialogHeader>
                                 <DialogTitle>{editingUser ? 'Modifier' : 'Ajouter'} un administrateur ou DPO</DialogTitle>
                                 <DialogDescription>
-                                    {editingUser ? 'Modifiez les informations ci-dessous.' : 'Créez un nouvel utilisateur avec un rôle d\\'administration.'}
+                                    {editingUser ? 'Modifiez les informations ci-dessous.' : 'Créez un nouvel utilisateur avec un rôle d\'administration.'}
                                 </DialogDescription>
                             </DialogHeader>
                             <Form {...adminForm}>
@@ -511,7 +497,7 @@ export default function UsersPage() {
                                     <DialogFooter className="pt-4">
                                         <Button type="submit" disabled={isSubmitting}>
                                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                            {editingUser ? 'Enregistrer' : 'Créer l\\'utilisateur'}
+                                            {editingUser ? 'Enregistrer' : 'Créer l\'utilisateur'}
                                         </Button>
                                     </DialogFooter>
                                 </form>
@@ -591,7 +577,7 @@ export default function UsersPage() {
                                         <DialogFooter className="pt-4">
                                             <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                {editingUser ? 'Enregistrer' : 'Créer l\\'utilisateur'}
+                                                {editingUser ? 'Enregistrer' : 'Créer l\'utilisateur'}
                                             </Button>
                                         </DialogFooter>
                                     </form>
