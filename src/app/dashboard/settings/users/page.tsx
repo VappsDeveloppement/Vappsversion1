@@ -4,10 +4,10 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase } from "@/firebase";
+import { useCollection, useMemoFirebase, setDocumentNonBlocking } from "@/firebase";
 import React, { useMemo, useState } from "react";
-import { collection, query, where } from "firebase/firestore";
-import { useFirestore } from "@/firebase/provider";
+import { collection, query, where, doc } from "firebase/firestore";
+import { useAuth, useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,8 +21,11 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, Eye, EyeOff } from "lucide-react";
-import { createUser } from "@/app/actions/user";
+import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { randomBytes } from "crypto";
+
 
 type User = {
   id: string;
@@ -67,7 +70,12 @@ const membreFormSchema = baseUserFormSchema.extend({
     socialSecurityNumber: z.string().optional(),
     franceTravailId: z.string().optional(),
     role: z.literal('membre'),
-}).refine(data => data.password === data.confirmPassword, {
+}).refine(data => {
+    if (data.password && data.password.length > 0) {
+        return data.password === data.confirmPassword;
+    }
+    return true;
+}, {
     message: "Les mots de passe ne correspondent pas.",
     path: ["confirmPassword"],
 });
@@ -142,6 +150,7 @@ const UserTable = ({ users, isLoading, emptyMessage }: { users: User[], isLoadin
 export default function UsersPage() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { toast } = useToast();
 
   const [adminSearch, setAdminSearch] = useState('');
@@ -217,27 +226,70 @@ export default function UsersPage() {
         return;
     }
     setIsSubmitting(true);
-    try {
-        const result = await createUser({ ...values, agencyId: agency.id });
+    
+    // First, validate data on the server
+    const validationResult = await validateUser({ ...values, agencyId: agency.id });
 
-        if (result.success) {
-            toast({ title: "Succès", description: "L'utilisateur a été ajouté." });
-            if (values.role === 'conseiller') {
-                conseillerForm.reset();
-                setIsConseillerFormOpen(false);
-            } else if (values.role === 'membre') {
-                membreForm.reset();
-                setIsMembreFormOpen(false);
-            } else {
-                adminForm.reset();
-                setIsAdminFormOpen(false);
-            }
+    if (!validationResult.success) {
+        toast({ title: "Erreur de validation", description: validationResult.error, variant: "destructive" });
+        setIsSubmitting(false);
+        return;
+    }
+    
+    // Now, create the user on the client side
+    let finalPassword = 'password' in values ? values.password : '';
+    
+    if (values.role === 'membre' && (!finalPassword || finalPassword.length === 0)) {
+        finalPassword = randomBytes(16).toString('hex');
+    }
+
+    if (!finalPassword) {
+         toast({ title: "Erreur", description: "Impossible de créer un utilisateur sans mot de passe.", variant: "destructive" });
+         setIsSubmitting(false);
+         return;
+    }
+
+    try {
+        // Step 1: Create user in Firebase Auth
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, finalPassword);
+        const user = userCredential.user;
+
+        // Step 2: Create user document in Firestore
+        const { confirmPassword, ...firestoreData } = values;
+        const userDocRef = doc(firestore, "users", user.uid);
+        
+        await setDocumentNonBlocking(userDocRef, {
+            ...firestoreData,
+            id: user.uid,
+            agencyId: agency.id,
+            dateJoined: new Date().toISOString(),
+        }, { merge: false });
+
+        toast({ title: "Succès", description: "L'utilisateur a été ajouté." });
+        
+        // Reset and close the correct form
+        if (values.role === 'conseiller') {
+            conseillerForm.reset();
+            setIsConseillerFormOpen(false);
+        } else if (values.role === 'membre') {
+            membreForm.reset();
+            setIsMembreFormOpen(false);
         } else {
-            toast({ title: "Erreur de création", description: result.error, variant: "destructive" });
+            adminForm.reset();
+            setIsAdminFormOpen(false);
         }
-    } catch (error) {
+
+    } catch (error: any) {
         console.error("Error creating user:", error);
-        toast({ title: "Erreur inattendue", description: "Une erreur inattendue est survenue.", variant: "destructive" });
+        let errorMessage = "Une erreur inattendue est survenue.";
+         if (error.code === 'auth/email-already-exists') {
+            errorMessage = "Cette adresse email est déjà utilisée.";
+        } else if (error.code === 'auth/invalid-password') {
+            errorMessage = "Le mot de passe doit contenir au moins 6 caractères.";
+        } else if (error.code) {
+            errorMessage = error.code;
+        }
+        toast({ title: "Erreur de création", description: errorMessage, variant: "destructive" });
     } finally {
         setIsSubmitting(false);
     }
