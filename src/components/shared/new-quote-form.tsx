@@ -26,7 +26,7 @@ import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import type { Plan } from './plan-management';
 
 type User = {
@@ -81,7 +81,7 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
     const [isClientPopoverOpen, setIsClientPopoverOpen] = React.useState(false);
 
     const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
-    const defaultTaxRate = isVatSubject ? (agency?.personalization?.legalInfo?.vatRate || 20) : 0;
+    const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
 
 
     const form = useForm<z.infer<typeof quoteFormSchema>>({
@@ -443,5 +443,3 @@ export function NewQuoteForm({ setOpen }: { setOpen: (open: boolean) => void }) 
         </Form>
     );
 }
-
-    
