@@ -325,6 +325,19 @@
       },
       "required": ["id", "quoteNumber", "agencyId", "clientId", "issueDate", "status", "items", "total"]
     },
+    "Contract": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Contract",
+        "type": "object",
+        "description": "Represents a contract template for an agency.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique identifier for the contract." },
+            "agencyId": { "type": "string", "description": "The ID of the agency this contract belongs to." },
+            "title": { "type": "string", "description": "The title of the contract template." },
+            "content": { "type": "string", "description": "The HTML content of the contract." }
+        },
+        "required": ["id", "agencyId", "title", "content"]
+    },
     "Consent": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Consent",
@@ -505,6 +518,16 @@
           "description": "Stores quotes for a specific agency."
         }
       },
+       {
+        "path": "/agencies/{agencyId}/contracts/{contractId}",
+        "definition": {
+          "entityName": "Contract",
+          "schema": {
+            "$ref": "#/backend/entities/Contract"
+          },
+          "description": "Stores contract templates for a specific agency."
+        }
+      },
       {
         "path": "/users/{userId}/appointments/{appointmentId}",
         "definition": {
@@ -566,6 +589,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans` and `quotes` are nested under each agency to manage pricing tiers and estimates on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
+    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans`, `quotes`, and `contracts` are nested under each agency to manage pricing tiers, estimates, and legal document templates on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
   }
 }
