@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Check } from "lucide-react";
@@ -7,7 +8,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { cn } from "@/lib/utils";
 import { useAgency } from "@/context/agency-provider";
 import { useCollection, useMemoFirebase } from "@/firebase";
-import { collection } from "firebase/firestore";
+import { collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import type { Plan } from "@/components/shared/plan-management";
 import { Skeleton } from "../ui/skeleton";
@@ -17,12 +18,13 @@ export function PricingSection() {
     const { agency, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
-    const plansCollectionRef = useMemoFirebase(() => {
+    const publicPlansQuery = useMemoFirebase(() => {
         if (!agency) return null;
-        return collection(firestore, 'agencies', agency.id, 'plans');
+        const plansCollectionRef = collection(firestore, 'agencies', agency.id, 'plans');
+        return query(plansCollectionRef, where("isPublic", "==", true));
     }, [agency, firestore]);
 
-    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansCollectionRef);
+    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
 
     const isLoading = isAgencyLoading || arePlansLoading;
 
@@ -49,7 +51,7 @@ export function PricingSection() {
     }
     
     if (!plans || plans.length === 0) {
-        return null; // Don't render the section if there are no plans
+        return null; // Don't render the section if there are no public plans
     }
 
     return (

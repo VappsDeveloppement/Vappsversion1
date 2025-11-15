@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -38,6 +39,7 @@ import {
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -60,6 +62,7 @@ export type Plan = {
   features: string[];
   appointmentCredits: number;
   isFeatured: boolean;
+  isPublic: boolean;
   imageUrl?: string;
   agencyId: string;
   cta?: string;
@@ -79,6 +82,7 @@ const planSchema = z.object({
     z.number().int().min(0, 'Les crédits doivent être positifs.')
   ),
   isFeatured: z.boolean().default(false),
+  isPublic: z.boolean().default(true),
   imageUrl: z.string().optional(),
   cta: z.string().optional(),
 });
@@ -118,6 +122,7 @@ export function PlanManagement() {
       features: [],
       appointmentCredits: 0,
       isFeatured: false,
+      isPublic: true,
       imageUrl: '',
       cta: 'Choisir ce plan',
     },
@@ -135,6 +140,7 @@ export function PlanManagement() {
     setEditingPlan(plan);
     form.reset({
       ...plan,
+      isPublic: plan.isPublic === undefined ? true : plan.isPublic, // Default to true if undefined
       features: plan.features.map(f => ({ value: f })),
       cta: plan.cta || 'Choisir ce plan',
     });
@@ -152,6 +158,7 @@ export function PlanManagement() {
       features: [],
       appointmentCredits: 0,
       isFeatured: false,
+      isPublic: true,
       imageUrl: '',
       cta: 'Choisir ce plan'
     });
@@ -371,12 +378,35 @@ export function PlanManagement() {
 
                          <FormField
                             control={form.control}
+                            name="isPublic"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Afficher publiquement</FormLabel>
+                                        <FormDescription>
+                                            Si activé, ce plan apparaîtra sur la page des tarifs.
+                                        </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
+                         <FormField
+                            control={form.control}
                             name="isFeatured"
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                                     <div className="space-y-0.5">
                                         <FormLabel>Plan le plus populaire</FormLabel>
-                                        <FormMessage />
+                                        <FormDescription>
+                                            Met en avant ce plan sur la page des tarifs.
+                                        </FormDescription>
                                     </div>
                                     <FormControl>
                                         <Switch
@@ -409,7 +439,7 @@ export function PlanManagement() {
             <TableRow>
               <TableHead>Nom du Plan</TableHead>
               <TableHead>Prix</TableHead>
-              <TableHead>Crédits RDV</TableHead>
+              <TableHead>Statut</TableHead>
               <TableHead>Populaire</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -420,8 +450,8 @@ export function PlanManagement() {
                     <TableRow key={i}>
                         <TableCell><Skeleton className="h-5 w-24" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                         <TableCell><Skeleton className="h-5 w-20" /></TableCell>
+                        <TableCell><Skeleton className="h-5 w-12" /></TableCell>
                         <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
                     </TableRow>
                 ))
@@ -430,7 +460,11 @@ export function PlanManagement() {
                     <TableRow key={plan.id}>
                         <TableCell className="font-medium">{plan.name}</TableCell>
                         <TableCell>{plan.price}€ {plan.period}</TableCell>
-                        <TableCell>{plan.appointmentCredits}</TableCell>
+                        <TableCell>
+                            <Badge variant={plan.isPublic ? 'default' : 'secondary'}>
+                                {plan.isPublic ? 'Public' : 'Privé'}
+                            </Badge>
+                        </TableCell>
                         <TableCell>
                             {plan.isFeatured && <Badge>Oui</Badge>}
                         </TableCell>
