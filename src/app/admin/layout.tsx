@@ -27,11 +27,8 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase";
-import { Skeleton } from "@/components/ui/skeleton";
-import { doc } from "firebase/firestore";
-import React, { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useUser } from "@/firebase";
+import React from "react";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
@@ -47,33 +44,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-
-  const userDocRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
-
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
-
-  const isLoading = isUserLoading || isUserDataLoading;
-
-  useEffect(() => {
-    if (!isLoading && userData?.role !== 'superadmin') {
-      router.push('/dashboard');
-    }
-  }, [isLoading, userData, router]);
-
-
-  if (isLoading || userData?.role !== 'superadmin') {
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
-        </div>
-    );
-  }
+  const { user } = useUser();
 
   return (
     <SidebarProvider>
@@ -116,7 +87,7 @@ export default function AdminLayout({
                 <AvatarFallback>A</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
-                <p className="font-semibold text-sm truncate">{user?.displayName || userData?.firstName || "Super Admin"}</p>
+                <p className="font-semibold text-sm truncate">{user?.displayName || "Super Admin"}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <Link href="/">

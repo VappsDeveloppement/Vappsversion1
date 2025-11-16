@@ -51,7 +51,7 @@ const roleVariant: Record<User['role'], 'default' | 'secondary' | 'destructive'>
 export default function UserManagementPage() {
     const firestore = useFirestore();
     const auth = useAuth();
-    const { user: currentUser } = useUser();
+    const { user: currentUser, isUserLoading } = useUser();
     const [searchTerm, setSearchTerm] = useState('');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -62,7 +62,7 @@ export default function UserManagementPage() {
 
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
 
-    const { data: allUsers, isLoading } = useCollection<User>(usersQuery);
+    const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
     
     const filteredUsers = useMemo(() => {
         if (!allUsers) return [];
@@ -160,6 +160,8 @@ export default function UserManagementPage() {
         try {
             const userDocRef = doc(firestore, "users", userToDelete.id);
             await deleteDocumentNonBlocking(userDocRef);
+            // Note: This does not delete the user from Firebase Auth.
+            // That should be done in a secure environment like a Cloud Function.
             toast({ title: "Utilisateur supprimé", description: "L'utilisateur a été supprimé de Firestore. La suppression de l'authentification doit se faire manuellement." });
         } catch (error) {
             console.error("Error deleting user:", error);
@@ -168,6 +170,8 @@ export default function UserManagementPage() {
             setUserToDelete(null);
         }
     };
+
+    const isLoading = areUsersLoading || isUserLoading;
 
     const renderContent = () => {
         if (isLoading) {
