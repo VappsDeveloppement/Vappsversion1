@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -59,7 +60,7 @@ export default function AdminLayout({
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
   
-  const isSuperAdmin = userData?.role === 'superadmin';
+  const isSuperAdmin = useMemo(() => userData?.role === 'superadmin', [userData]);
 
   useEffect(() => {
     if (!isUserLoading && !isUserDataLoading) {
