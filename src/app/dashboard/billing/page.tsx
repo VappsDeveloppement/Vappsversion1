@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye } from "lucide-react";
+import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye, CheckCircle } from "lucide-react";
 import { PlanManagement } from "@/components/shared/plan-management";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +17,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAgency } from '@/context/agency-provider';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, doc } from 'firebase/firestore';
+import { collection, doc, getDocs, query } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
@@ -31,6 +31,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { sendInvoice } from '@/app/actions/invoice';
+import { sendQuote } from '@/app/actions/quote';
 
 
 type Quote = {
@@ -48,6 +49,9 @@ type Quote = {
     contractId?: string;
     contractContent?: string;
     contractTitle?: string;
+    agencyInfo?: any;
+    validationCode?: string;
+    agencyId?: string;
 }
 
 type Invoice = {
@@ -632,6 +636,102 @@ export default function BillingPage() {
         doc.save(`devis-${quote.quoteNumber}.pdf`);
     };
 
+    const generateAndSendInvoice = async (quote: Quote) => {
+        if (!agency || !personalization) {
+            toast({ title: "Erreur", description: "Données d'agence manquantes.", variant: "destructive" });
+            return;
+        }
+
+        const invoicesCollectionRef = collection(firestore, 'agencies', agency.id, 'invoices');
+        const q = query(invoicesCollectionRef);
+        const querySnapshot = await getDocs(q);
+        
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const prefix = `FACT-${year}-${month}-`;
+        const monthInvoices = querySnapshot.docs.filter(doc => doc.data().invoiceNumber.startsWith(prefix));
+        const nextId = (monthInvoices.length + 1).toString().padStart(4, '0');
+        const invoiceNumber = `${prefix}${nextId}`;
+
+        const issueDate = new Date();
+        const dueDate = new Date();
+        dueDate.setDate(issueDate.getDate() + 30); // Due in 30 days
+
+        const invoiceData: any = {
+            invoiceNumber,
+            quoteNumber: quote.quoteNumber,
+            agencyId: agency.id,
+            clientId: quote.clientInfo.id,
+            clientInfo: quote.clientInfo,
+            issueDate: issueDate.toISOString(),
+            dueDate: dueDate.toISOString(),
+            items: quote.items,
+            subtotal: quote.subtotal,
+            tax: quote.tax,
+            total: quote.total,
+            status: 'pending',
+        };
+        
+        const newInvoiceRef = doc(invoicesCollectionRef);
+        invoiceData.id = newInvoiceRef.id;
+        
+        await setDocumentNonBlocking(newInvoiceRef, invoiceData, {});
+        
+        const sendResult = await sendInvoice({
+            invoice: invoiceData,
+            emailSettings: personalization.emailSettings,
+            legalInfo: personalization.legalInfo,
+            paymentSettings: personalization.paymentSettings,
+        });
+
+        if (sendResult.success) {
+            toast({ title: "Facture envoyée", description: `La facture ${invoiceNumber} a été envoyée au client.` });
+        } else {
+            toast({ title: "Erreur d'envoi de la facture", description: sendResult.error, variant: "destructive" });
+        }
+    };
+    
+    const handleManualValidation = async (quote: Quote) => {
+        if (!agency) return;
+
+        // Check if a quote is already accepted.
+        const existingInvoice = invoices?.find(inv => inv.quoteNumber === quote.quoteNumber);
+        if (quote.status === 'accepted' || existingInvoice) {
+            toast({ title: "Déjà traité", description: "Ce devis a déjà été accepté et facturé.", variant: "default" });
+            return;
+        }
+
+        const quoteRef = doc(firestore, 'agencies', agency.id, 'quotes', quote.id);
+        try {
+            await setDocumentNonBlocking(quoteRef, { status: 'accepted' }, { merge: true });
+            toast({ title: "Devis validé", description: "Le devis a été marqué comme accepté." });
+            await generateAndSendInvoice(quote);
+        } catch (e) {
+            toast({ title: "Erreur", description: "Impossible de valider le devis.", variant: "destructive" });
+        }
+    };
+    
+    const handleResendQuote = async (quote: Quote) => {
+        if (!agency || !personalization) return;
+        setIsSending(quote.id);
+        const result = await sendQuote({
+            quote,
+            emailSettings: personalization.emailSettings,
+            legalInfo: personalization.legalInfo,
+            agencyId: agency.id,
+        });
+        if (result.success) {
+            toast({ title: 'Devis renvoyé', description: `Le devis ${quote.quoteNumber} a été renvoyé.` });
+            if (quote.status === 'draft') {
+                const quoteRef = doc(firestore, 'agencies', agency.id, 'quotes', quote.id);
+                await setDocumentNonBlocking(quoteRef, { status: 'sent' }, { merge: true });
+            }
+        } else {
+            toast({ title: "Erreur d'envoi", description: result.error, variant: 'destructive' });
+        }
+        setIsSending(null);
+    };
 
     return (
         <div className="space-y-8">
@@ -705,7 +805,11 @@ export default function BillingPage() {
                                             </TableRow>
                                         ))
                                      ) : quotes && quotes.length > 0 ? (
-                                        quotes.map((quote) => (
+                                        quotes.map((quote) => {
+                                            const associatedInvoice = invoices?.find(inv => inv.quoteNumber === quote.quoteNumber);
+                                            const isDeletable = quote.status !== 'accepted' || !associatedInvoice || associatedInvoice.status !== 'paid';
+
+                                            return (
                                             <TableRow key={quote.id}>
                                                 <TableCell className="font-medium">{quote.quoteNumber}</TableCell>
                                                 <TableCell>{quote.clientInfo.name}</TableCell>
@@ -724,7 +828,17 @@ export default function BillingPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem onClick={() => handleEdit(quote)}>
+                                                            {quote.status !== 'accepted' && (
+                                                                <DropdownMenuItem onClick={() => handleManualValidation(quote)}>
+                                                                    <CheckCircle className="mr-2 h-4 w-4" />
+                                                                    Valider manuellement
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            <DropdownMenuItem onClick={() => handleResendQuote(quote)} disabled={isSending === quote.id}>
+                                                                {isSending === quote.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                                                Renvoyer par e-mail
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleEdit(quote)} disabled={quote.status === 'accepted'}>
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 Modifier
                                                             </DropdownMenuItem>
@@ -732,7 +846,7 @@ export default function BillingPage() {
                                                                 <FileText className="mr-2 h-4 w-4" />
                                                                 Exporter en PDF
                                                             </DropdownMenuItem>
-                                                             <DropdownMenuItem className="text-destructive" onClick={() => setQuoteToDelete(quote)}>
+                                                             <DropdownMenuItem className="text-destructive" onClick={() => setQuoteToDelete(quote)} disabled={!isDeletable}>
                                                                 <Trash2 className="mr-2 h-4 w-4" />
                                                                 Supprimer
                                                             </DropdownMenuItem>
@@ -740,7 +854,7 @@ export default function BillingPage() {
                                                     </DropdownMenu>
                                                 </TableCell>
                                             </TableRow>
-                                        ))
+                                        )})
                                      ) : (
                                         <TableRow>
                                             <TableCell colSpan={6} className="h-24 text-center">
