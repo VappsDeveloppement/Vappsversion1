@@ -11,12 +11,19 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // WARNING: DEVELOPMENT ONLY
-    // These rules are insecure and allow any authenticated user to read/write anywhere.
+    // Allow public read for agency personalization
+    match /agencies/{agencyId} {
+      allow get: if true;
+      allow list, write, delete: if isSignedIn();
+    }
+    
+    // WARNING: DEVELOPMENT ONLY for other collections
+    // These rules are insecure and allow any authenticated user to read/write anywhere else.
     // This is to facilitate rapid development of the application model.
-    // These rules MUST be replaced with granular, secure rules before production.
-    match /{document=**} {
-      allow read, write: if isSignedIn();
+    // These rules MUST be replaced with granular, secure rules before production for other collections.
+    match /{path=**}/documents/{document=**} {
+        // This rule will not match /agencies/{agencyId} because more specific rules take precedence.
+        allow read, write: if isSignedIn();
     }
   }
 }
