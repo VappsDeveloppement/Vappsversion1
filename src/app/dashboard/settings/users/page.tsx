@@ -45,6 +45,7 @@ type User = {
   status?: 'new' | 'contacted' | 'not_interested';
   origin?: string;
   message?: string;
+  agencyId: string;
 };
 
 const baseUserFormSchema = z.object({
@@ -200,7 +201,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
                                 {onView && <DropdownMenuItem onClick={() => onView(user)}><Info className="mr-2 h-4 w-4" /> Voir les informations</DropdownMenuItem>}
-                                {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
+                                {onEdit && user.role !== 'superadmin' && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
                                 
                                 {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
                                 {onStatusChange && (
@@ -254,14 +255,35 @@ export default function UsersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const usersQuery = useMemoFirebase(() => {
+  const agencyUsersQuery = useMemoFirebase(() => {
     if (!agency) return null;
     return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
   }, [agency, firestore]);
+  
+  const superAdminsQuery = useMemoFirebase(() => {
+    return query(collection(firestore, 'users'), where('role', '==', 'superadmin'));
+  }, [firestore]);
 
-  const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
+  const { data: agencyUsers, isLoading: areAgencyUsersLoading } = useCollection<User>(agencyUsersQuery);
+  const { data: superAdminsData, isLoading: areSuperAdminsLoading } = useCollection<User>(superAdminsQuery);
 
-  const isLoading = isAgencyLoading || areUsersLoading;
+  const isLoading = isAgencyLoading || areAgencyUsersLoading || areSuperAdminsLoading;
+
+  const users = useMemo(() => {
+    const combined = [...(agencyUsers || [])];
+    const agencyUserIds = new Set(agencyUsers?.map(u => u.id));
+    
+    if (superAdminsData) {
+        superAdminsData.forEach(su => {
+            if (!agencyUserIds.has(su.id)) {
+                combined.push(su);
+            }
+        });
+    }
+
+    return combined;
+  }, [agencyUsers, superAdminsData]);
+
 
   const adminForm = useForm<z.infer<typeof adminFormSchema>>({
     resolver: zodResolver(adminFormSchema),
@@ -473,7 +495,7 @@ export default function UsersPage() {
         <CardContent>
           <Tabs defaultValue="admins">
             <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="admins">Admins & DPO</TabsTrigger>
+              <TabsTrigger value="admins">Admins &amp; DPO</TabsTrigger>
               <TabsTrigger value="conseillers">Conseillers</TabsTrigger>
               <TabsTrigger value="membres">Membres</TabsTrigger>
               <TabsTrigger value="prospects">Prospects</TabsTrigger>
@@ -759,7 +781,7 @@ export default function UsersPage() {
             <TabsContent value="prospects">
                 <div className="space-y-4 pt-4">
                     {newProspects.length > 0 && (
-                         <Alert className="border-orange-500 bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-200 [&>svg]:text-orange-600 dark:[&>svg]:text-orange-300">
+                         <Alert className="border-orange-500 bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-200 [&gt;svg]:text-orange-600 dark:[&gt;svg]:text-orange-300">
                              <AlertTriangle className="h-4 w-4" />
                             <AlertTitle className="font-bold">Nouvelles Demandes à Traiter</AlertTitle>
                             <AlertDescription>
