@@ -8,8 +8,10 @@ import React from 'react';
 import { useAgency } from '@/context/agency-provider';
 
 export function Logo({ className }: { className?: string; text?: string; }) {
-  const { agency, personalization } = useAgency();
+  const agencyContext = useAgency(); // This hook can now return undefined
 
+  // Use personalization if context exists, otherwise use default values.
+  const personalization = agencyContext?.personalization;
   const logoText = personalization?.appTitle || "VApps";
   const logoSubtitle = personalization?.appSubtitle || "Développement";
   const appTitleColor = personalization?.appTitleColor || "#000000";

@@ -487,10 +487,6 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
     return <AgencyContext.Provider value={value}>{children}</AgencyContext.Provider>;
 };
 
-export const useAgency = (): AgencyContextType => {
-    const context = useContext(AgencyContext);
-    if (context === undefined) {
-        throw new Error('useAgency must be used within an AgencyProvider');
-    }
-    return context;
+export const useAgency = (): AgencyContextType | undefined => {
+    return useContext(AgencyContext);
 };
