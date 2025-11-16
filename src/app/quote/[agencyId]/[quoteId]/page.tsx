@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -120,10 +121,14 @@ export default function PublicQuotePage() {
         const invoicesCollectionRef = collection(firestore, 'agencies', agencyId as string, 'invoices');
         const q = query(invoicesCollectionRef);
         const querySnapshot = await getDocs(q);
-        const year = new Date().getFullYear();
-        const yearInvoices = querySnapshot.docs.filter(doc => doc.data().invoiceNumber.startsWith(`FACT-${year}-`));
-        const nextId = (yearInvoices.length + 1).toString().padStart(3, '0');
-        const invoiceNumber = `FACT-${year}-${nextId}`;
+        
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const prefix = `FACT-${year}-${month}-`;
+        const monthInvoices = querySnapshot.docs.filter(doc => doc.data().invoiceNumber.startsWith(prefix));
+        const nextId = (monthInvoices.length + 1).toString().padStart(4, '0');
+        const invoiceNumber = `${prefix}${nextId}`;
 
         const issueDate = new Date();
         const dueDate = new Date();

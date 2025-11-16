@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2, Loader2 } from "lucide-react";
+import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye } from "lucide-react";
 import { PlanManagement } from "@/components/shared/plan-management";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -30,6 +30,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { sendInvoice } from '@/app/actions/invoice';
 
 
 type Quote = {
@@ -54,8 +55,13 @@ type Invoice = {
     invoiceNumber: string;
     clientInfo: { name: string; id: string; email: string; };
     issueDate: string;
+    dueDate: string;
     total: number;
+    subtotal: number;
+    tax: number;
     status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+    items: any[];
+    quoteNumber: string;
 }
 
 type Contract = {
@@ -288,6 +294,7 @@ export default function BillingPage() {
     const { agency, isLoading: isAgencyLoading, personalization } = useAgency();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [isSending, setIsSending] = React.useState<string | null>(null);
 
     const quotesQuery = useMemoFirebase(() => {
         if (!agency) return null;
@@ -329,8 +336,137 @@ export default function BillingPage() {
             setEditingQuote(null);
         }
     }
+    
+    const generateInvoicePdf = (invoice: Invoice, legalInfo: any) => {
+        const doc = new jsPDF();
+        const isVatSubject = legalInfo?.isVatSubject ?? false;
 
-    const handleExportPDF = (quote: Quote) => {
+        doc.setFontSize(20);
+        doc.setTextColor(40);
+        doc.setFont('helvetica', 'bold');
+        doc.text(legalInfo?.companyName || 'VApps', 15, 20);
+
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(100);
+        doc.text(legalInfo?.addressStreet || '', 15, 26);
+        doc.text(`${legalInfo?.addressZip || ''} ${legalInfo?.addressCity || ''}`, 15, 31);
+        doc.text(legalInfo?.email || '', 15, 36);
+
+        doc.setFontSize(28);
+        doc.setTextColor(150);
+        doc.text('FACTURE', 200, 20, { align: 'right' });
+
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(`N°: ${invoice.invoiceNumber}`, 200, 30, { align: 'right' });
+        doc.text(`Date: ${new Date(invoice.issueDate).toLocaleDateString('fr-FR')}`, 200, 35, { align: 'right' });
+        doc.text(`Échéance: ${new Date(invoice.dueDate).toLocaleDateString('fr-FR')}`, 200, 40, { align: 'right' });
+        doc.text(`Ref Devis: ${invoice.quoteNumber}`, 200, 45, { align: 'right' });
+
+        doc.setDrawColor(230);
+        doc.line(15, 53, 200, 53);
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text('FACTURÉ À', 15, 60);
+        doc.setFontSize(12);
+        doc.setTextColor(40);
+        doc.text(invoice.clientInfo.name, 15, 67);
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        doc.text(invoice.clientInfo.email, 15, 72);
+
+        autoTable(doc, {
+            startY: 85,
+            head: [['Description', 'Qté', 'P.U. HT', 'Total HT']],
+            body: invoice.items.map(item => [
+                item.description,
+                item.quantity,
+                `${item.unitPrice.toFixed(2)} €`,
+                `${(item.quantity * item.unitPrice).toFixed(2)} €`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [248, 250, 252], textColor: 100, fontStyle: 'bold' },
+            styles: { cellPadding: 3, fontSize: 10 },
+            columnStyles: {
+                0: { cellWidth: 95 }, 1: { cellWidth: 20, halign: 'center' },
+                2: { cellWidth: 30, halign: 'right' }, 3: { cellWidth: 30, halign: 'right' },
+            }
+        });
+        
+        let finalY = (doc as any).lastAutoTable.finalY;
+
+        const totals = [
+            ['Sous-total HT', `${invoice.subtotal.toFixed(2)} €`],
+        ];
+        if (isVatSubject) {
+            totals.push([`TVA (${invoice.tax}%)`, `${(invoice.subtotal * (invoice.tax / 100)).toFixed(2)} €`]);
+        }
+        totals.push([`Total à régler ${isVatSubject ? 'TTC' : ''}`, `${invoice.total.toFixed(2)} €`]);
+
+        autoTable(doc, {
+            startY: finalY + 10,
+            body: totals,
+            theme: 'plain', styles: { fontSize: 10 },
+            columnStyles: { 0: { halign: 'right', fontStyle: 'bold' }, 1: { halign: 'right', cellWidth: 40 } },
+            didParseCell: (data) => {
+                if (data.row.index === totals.length - 1) {
+                    data.cell.styles.fontStyle = 'bold'; data.cell.styles.fontSize = 12;
+                }
+            }
+        });
+
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            const footerText = `${legalInfo?.companyName || ''} - ${legalInfo?.addressStreet || ''}, ${legalInfo?.addressZip || ''} ${legalInfo?.addressCity || ''}`;
+            const footerText2 = `SIRET: ${legalInfo?.siret || ''} - ${isVatSubject ? `TVA: ${legalInfo?.vatNumber || ''}` : 'TVA non applicable, art. 293 B du CGI'}`;
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(footerText, 105, 285, { align: 'center' });
+            doc.text(footerText2, 105, 290, { align: 'center' });
+        }
+        
+        return doc;
+    };
+    
+    const handleViewInvoice = (invoice: Invoice) => {
+        if (!personalization) return;
+        const doc = generateInvoicePdf(invoice, personalization.legalInfo);
+        doc.output('dataurlnewwindow');
+    };
+
+    const handleExportInvoicePDF = (invoice: Invoice) => {
+        if (!personalization) return;
+        const doc = generateInvoicePdf(invoice, personalization.legalInfo);
+        doc.save(`facture-${invoice.invoiceNumber}.pdf`);
+    };
+
+    const handleResendInvoice = async (invoice: Invoice) => {
+        if (!personalization || !agency) return;
+        setIsSending(invoice.id);
+        const result = await sendInvoice({
+            invoice,
+            emailSettings: personalization.emailSettings,
+            legalInfo: personalization.legalInfo,
+            paymentSettings: personalization.paymentSettings,
+        });
+        if (result.success) {
+            toast({ title: 'Facture renvoyée', description: `La facture ${invoice.invoiceNumber} a été renvoyée.` });
+        } else {
+            toast({ title: "Erreur d'envoi", description: result.error, variant: 'destructive' });
+        }
+        setIsSending(null);
+    };
+
+    const handleMarkAsPaid = async (invoice: Invoice) => {
+        if (!agency) return;
+        const invoiceRef = doc(firestore, 'agencies', agency.id, 'invoices', invoice.id);
+        await setDocumentNonBlocking(invoiceRef, { status: 'paid' }, { merge: true });
+        toast({ title: 'Statut mis à jour', description: 'La facture a été marquée comme payée.' });
+    };
+
+    const handleExportQuotePDF = (quote: Quote) => {
         const doc = new jsPDF();
         const { legalInfo } = personalization;
         const isVatSubject = legalInfo?.isVatSubject ?? false;
@@ -577,7 +713,7 @@ export default function BillingPage() {
                                                                 <Edit className="mr-2 h-4 w-4" />
                                                                 Modifier
                                                             </DropdownMenuItem>
-                                                            <DropdownMenuItem onClick={() => handleExportPDF(quote)}>
+                                                            <DropdownMenuItem onClick={() => handleExportQuotePDF(quote)}>
                                                                 <FileText className="mr-2 h-4 w-4" />
                                                                 Exporter en PDF
                                                             </DropdownMenuItem>
@@ -652,9 +788,23 @@ export default function BillingPage() {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end">
-                                                            <DropdownMenuItem>
-                                                                <FileText className="mr-2 h-4 w-4" />
+                                                            <DropdownMenuItem onClick={() => handleViewInvoice(invoice)}>
+                                                                <Eye className="mr-2 h-4 w-4" />
                                                                 Voir la facture
+                                                            </DropdownMenuItem>
+                                                            <DropdownMenuItem onClick={() => handleExportInvoicePDF(invoice)}>
+                                                                <FileText className="mr-2 h-4 w-4" />
+                                                                Exporter en PDF
+                                                            </DropdownMenuItem>
+                                                             {invoice.status === 'pending' && (
+                                                                <DropdownMenuItem onClick={() => handleMarkAsPaid(invoice)}>
+                                                                    <CreditCard className="mr-2 h-4 w-4" />
+                                                                    Marquer comme payée
+                                                                </DropdownMenuItem>
+                                                            )}
+                                                            <DropdownMenuItem onClick={() => handleResendInvoice(invoice)} disabled={isSending === invoice.id}>
+                                                                {isSending === invoice.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                                                                Renvoyer par e-mail
                                                             </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
