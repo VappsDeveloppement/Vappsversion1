@@ -28,8 +28,6 @@ type SuperAdmin = {
   dateJoined: string;
 };
 
-// Use a local, correct schema for this page's purpose.
-// This avoids relying on an external, incorrect schema.
 const superAdminFormSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
@@ -94,7 +92,6 @@ export default function SuperAdminsPage() {
             firstName: values.firstName,
             lastName: values.lastName,
             email: values.email,
-            // Ensure role is not accidentally changed
             role: 'superadmin',
         }, { merge: true });
         
@@ -115,13 +112,12 @@ export default function SuperAdminsPage() {
         const user = userCredential.user;
 
         const userDocRef = doc(firestore, 'users', user.uid);
-        // Correctly assign the 'superadmin' role here.
         await setDocumentNonBlocking(userDocRef, {
             id: user.uid,
             firstName: values.firstName,
             lastName: values.lastName,
             email: values.email,
-            role: 'superadmin',
+            role: 'superadmin', // Correctly assign the 'superadmin' role here.
             dateJoined: new Date().toISOString(),
         }, {});
         toast({ title: 'Succès', description: 'Le Super Admin a été créé avec succès.' });
@@ -165,10 +161,6 @@ export default function SuperAdminsPage() {
           setEditingUser(null);
       }
   }
-  
-  const filteredSuperAdmins = useMemo(() => {
-    return superAdmins?.filter(admin => admin.id !== currentUser?.uid);
-  }, [superAdmins, currentUser]);
 
   return (
     <div className="space-y-8">
@@ -271,17 +263,17 @@ export default function SuperAdminsPage() {
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : filteredSuperAdmins && filteredSuperAdmins.length > 0 ? (
-                filteredSuperAdmins.map((admin) => (
+              ) : superAdmins && superAdmins.length > 0 ? (
+                superAdmins.map((admin) => (
                   <TableRow key={admin.id}>
                     <TableCell className="font-medium">{admin.firstName} {admin.lastName}</TableCell>
                     <TableCell>{admin.email}</TableCell>
                     <TableCell>{new Date(admin.dateJoined).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
-                       <Button variant="ghost" size="icon" onClick={() => handleEdit(admin)}>
+                       <Button variant="ghost" size="icon" onClick={() => handleEdit(admin)} disabled={admin.id === currentUser?.uid}>
                         <Edit className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" onClick={() => setUserToDelete(admin)}>
+                      <Button variant="ghost" size="icon" onClick={() => setUserToDelete(admin)} disabled={admin.id === currentUser?.uid}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
                     </TableCell>
@@ -290,7 +282,7 @@ export default function SuperAdminsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    Aucun autre Super Admin trouvé.
+                    Aucun Super Admin trouvé.
                   </TableCell>
                 </TableRow>
               )}
