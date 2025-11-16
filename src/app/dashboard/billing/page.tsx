@@ -49,6 +49,15 @@ type Quote = {
     contractTitle?: string;
 }
 
+type Invoice = {
+    id: string;
+    invoiceNumber: string;
+    clientInfo: { name: string; id: string; email: string; };
+    issueDate: string;
+    total: number;
+    status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+}
+
 type Contract = {
     id: string;
     title: string;
@@ -63,17 +72,31 @@ const contractSchema = z.object({
 type ContractFormData = z.infer<typeof contractSchema>;
 
 
-const statusVariant: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
+const statusVariantQuote: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
     draft: 'secondary',
     sent: 'default',
     accepted: 'default',
     rejected: 'destructive',
 };
-const statusText: Record<Quote['status'], string> = {
+const statusTextQuote: Record<Quote['status'], string> = {
     draft: 'Brouillon',
     sent: 'Envoyé',
     accepted: 'Accepté',
     rejected: 'Refusé',
+};
+
+const statusVariantInvoice: Record<Invoice['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
+    pending: 'secondary',
+    paid: 'default',
+    overdue: 'destructive',
+    cancelled: 'destructive',
+};
+
+const statusTextInvoice: Record<Invoice['status'], string> = {
+    pending: 'En attente',
+    paid: 'Payée',
+    overdue: 'En retard',
+    cancelled: 'Annulée',
 };
 
 
@@ -273,7 +296,13 @@ export default function BillingPage() {
 
     const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
     
-    const isLoading = isAgencyLoading || areQuotesLoading;
+    const invoicesQuery = useMemoFirebase(() => {
+        if (!agency) return null;
+        return collection(firestore, 'agencies', agency.id, 'invoices');
+    }, [agency, firestore]);
+    const { data: invoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
+    
+    const isLoading = isAgencyLoading || areQuotesLoading || areInvoicesLoading;
     
     const handleEdit = (quote: Quote) => {
         setEditingQuote(quote);
@@ -532,8 +561,8 @@ export default function BillingPage() {
                                                 <TableCell>{new Date(quote.issueDate).toLocaleDateString('fr-FR')}</TableCell>
                                                 <TableCell>{quote.total.toFixed(2)} €</TableCell>
                                                 <TableCell>
-                                                    <Badge variant={statusVariant[quote.status]}>
-                                                        {statusText[quote.status]}
+                                                    <Badge variant={statusVariantQuote[quote.status]}>
+                                                        {statusTextQuote[quote.status]}
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-right">
@@ -580,12 +609,8 @@ export default function BillingPage() {
                              <div className="flex justify-between items-start">
                                 <div>
                                     <CardTitle>Gestion des Factures</CardTitle>
-                                    <CardDescription>Créez, envoyez et suivez vos factures.</CardDescription>
+                                    <CardDescription>Consultez et gérez vos factures.</CardDescription>
                                 </div>
-                                <Button>
-                                    <PlusCircle className="mr-2 h-4 w-4" />
-                                    Nouvelle Facture
-                                </Button>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -601,11 +626,48 @@ export default function BillingPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="h-24 text-center">
-                                            Aucune facture trouvée.
-                                        </TableCell>
-                                    </TableRow>
+                                    {isLoading ? (
+                                        [...Array(3)].map((_, i) => (
+                                            <TableRow key={i}>
+                                                <TableCell colSpan={6}><Skeleton className="h-5 w-full" /></TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : invoices && invoices.length > 0 ? (
+                                        invoices.map((invoice) => (
+                                            <TableRow key={invoice.id}>
+                                                <TableCell className="font-medium">{invoice.invoiceNumber}</TableCell>
+                                                <TableCell>{invoice.clientInfo.name}</TableCell>
+                                                <TableCell>{new Date(invoice.issueDate).toLocaleDateString('fr-FR')}</TableCell>
+                                                <TableCell>{invoice.total.toFixed(2)} €</TableCell>
+                                                <TableCell>
+                                                    <Badge variant={statusVariantInvoice[invoice.status]}>
+                                                        {statusTextInvoice[invoice.status]}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right">
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="icon">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end">
+                                                            <DropdownMenuItem>
+                                                                <FileText className="mr-2 h-4 w-4" />
+                                                                Voir la facture
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={6} className="h-24 text-center">
+                                                Aucune facture trouvée.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
                                 </TableBody>
                             </Table>
                         </CardContent>
