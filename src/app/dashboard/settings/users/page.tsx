@@ -21,13 +21,14 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat } from "lucide-react";
+import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat, AlertTriangle } from "lucide-react";
 import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { randomBytes } from "crypto";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
 
 type User = {
@@ -449,6 +450,10 @@ export default function UsersPage() {
   const membres = useMemo(() => filterUsers(users, ['membre'], membreSearch), [users, membreSearch]);
   const prospects = useMemo(() => filterUsers(users, ['prospect'], prospectSearch), [users, prospectSearch]);
 
+  const newProspects = useMemo(() => prospects.filter(p => p.status === 'new'), [prospects]);
+  const otherProspects = useMemo(() => prospects.filter(p => p.status !== 'new'), [prospects]);
+
+
   return (
     <div className="space-y-8">
       <div>
@@ -745,20 +750,47 @@ export default function UsersPage() {
 
             <TabsContent value="prospects">
                 <div className="space-y-4 pt-4">
-                    <Input 
-                        placeholder="Rechercher un prospect..."
-                        value={prospectSearch}
-                        onChange={(e) => setProspectSearch(e.target.value)}
-                    />
-                    <UserTable 
-                        users={prospects} 
-                        isLoading={isLoading} 
-                        emptyMessage="Aucun prospect trouvé." 
-                        onView={handleView}
-                        onDelete={openDeleteDialog}
-                        onConvert={handleConvert}
-                        onStatusChange={handleStatusChange}
-                    />
+                    {newProspects.length > 0 && (
+                         <Alert className="border-orange-500 bg-orange-50 text-orange-800 dark:bg-orange-950 dark:text-orange-200 [&>svg]:text-orange-600 dark:[&>svg]:text-orange-300">
+                             <AlertTriangle className="h-4 w-4" />
+                            <AlertTitle className="font-bold">Nouvelles Demandes à Traiter</AlertTitle>
+                            <AlertDescription>
+                                <div className="mt-4">
+                                     <UserTable 
+                                        users={newProspects} 
+                                        isLoading={isLoading} 
+                                        emptyMessage="" 
+                                        onView={handleView}
+                                        onDelete={openDeleteDialog}
+                                        onConvert={handleConvert}
+                                        onStatusChange={handleStatusChange}
+                                    />
+                                </div>
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    <Card className="mt-6">
+                        <CardHeader>
+                            <CardTitle>Prospects contactés</CardTitle>
+                            <Input 
+                                placeholder="Rechercher un prospect..."
+                                value={prospectSearch}
+                                onChange={(e) => setProspectSearch(e.target.value)}
+                                className="max-w-sm"
+                            />
+                        </CardHeader>
+                        <CardContent>
+                             <UserTable 
+                                users={otherProspects} 
+                                isLoading={isLoading} 
+                                emptyMessage="Aucun prospect traité." 
+                                onView={handleView}
+                                onDelete={openDeleteDialog}
+                                onConvert={handleConvert}
+                                onStatusChange={handleStatusChange}
+                            />
+                        </CardContent>
+                    </Card>
                 </div>
             </TabsContent>
           </Tabs>
