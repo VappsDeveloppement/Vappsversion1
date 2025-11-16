@@ -16,8 +16,6 @@ service cloud.firestore {
      * @returns {boolean} True if the user has the 'superadmin' role.
      */
      function isSuperAdmin() {
-       // This function only checks the role from the user's document.
-       // It's the most reliable way to confirm super admin status.
        return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
      }
 
@@ -41,8 +39,11 @@ service cloud.firestore {
      * @returns {boolean} True if the user is a staff member.
      */
     function isStaff() {
+        if (!isSignedIn()) {
+          return false;
+        }
         let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-        return isSignedIn() && (userDoc.role == 'conseiller' || userDoc.role == 'admin' || userDoc.role == 'dpo' || userDoc.role == 'superadmin');
+        return userDoc.role == 'conseiller' || userDoc.role == 'admin' || userDoc.role == 'dpo' || userDoc.role == 'superadmin';
     }
 
 
@@ -99,8 +100,8 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      // Superadmins and Admins can list all users. This is critical for the user management page.
-      allow list: if isSuperAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+      // Superadmins and Admins can list all users. This rule prevents unauthenticated access.
+      allow list: if isSignedIn() && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
 
       // Superadmins can do anything to any user.
       allow read, write: if isSuperAdmin();
