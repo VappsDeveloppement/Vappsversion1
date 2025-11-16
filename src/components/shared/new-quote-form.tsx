@@ -170,7 +170,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             clientId: initialData.clientInfo.id,
             issueDate: new Date(initialData.issueDate),
             expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
-            contractId: initialData.contractId || 'none'
+            contractId: initialData.contractId || ''
         } : {
             quoteNumber: '',
             validationCode: '',
@@ -179,7 +179,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             items: [],
             notes: '',
             tax: defaultTaxRate,
-            contractId: 'none',
+            contractId: '',
         }
     });
 
@@ -201,7 +201,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 clientId: initialData.clientInfo.id,
                 issueDate: new Date(initialData.issueDate),
                 expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
-                contractId: initialData.contractId || 'none',
+                contractId: initialData.contractId || '',
                 validationCode: initialData.validationCode || generateValidationCode(),
             });
         } else {
@@ -239,7 +239,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             return;
         }
 
-        const selectedContract = values.contractId !== 'none' ? contracts?.find(c => c.id === values.contractId) : undefined;
+        const selectedContract = values.contractId ? contracts?.find(c => c.id === values.contractId) : undefined;
 
         const quoteData = {
             ...values,
@@ -249,7 +249,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             agencyInfo: personalization.legalInfo,
             clientInfo: {
                 id: selectedClient.id,
-                name: `${selectedClient.firstName} ${selectedClient.lastName}`,
+                name: `${'selectedClient.firstName'} ${selectedClient.lastName}`,
                 email: selectedClient.email,
                 address: selectedClient.address,
                 zipCode: selectedClient.zipCode,
@@ -306,7 +306,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 expiryDate: values.expiryDate?.toISOString().split('T')[0],
                 clientInfo: {
                     id: selectedClient.id,
-                    name: `${selectedClient.firstName} ${selectedClient.lastName}`,
+                    name: `${'selectedClient.firstName'} ${selectedClient.lastName}`,
                     email: selectedClient.email,
                     address: selectedClient.address,
                     zipCode: selectedClient.zipCode,
@@ -455,14 +455,14 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <Label>Contrat (Optionnel)</Label>
-                                    <Select onValueChange={field.onChange} value={field.value} defaultValue="none">
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue="">
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Attacher un modèle de contrat..." />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="none">Aucun contrat</SelectItem>
+                                            <SelectItem value="">Aucun contrat</SelectItem>
                                             {(contracts || []).map((contract) => (
                                                 <SelectItem key={contract.id} value={contract.id}>
                                                     {contract.title}
@@ -680,3 +680,5 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
+
+    
