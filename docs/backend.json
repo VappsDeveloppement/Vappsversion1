@@ -12,10 +12,6 @@
           "type": "string",
           "description": "Unique identifier for the user."
         },
-        "agencyId": {
-          "type": "string",
-          "description": "Reference to the Agency the user belongs to. (Relationship: Agency 1:N User)"
-        },
         "firstName": {
           "type": "string",
           "description": "The first name of the user."
@@ -31,8 +27,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["admin", "superadmin", "dpo", "conseiller", "membre", "prospect"],
-          "description": "The role of the user (e.g., admin, superadmin, coach, client, prospect)."
+          "enum": ["superadmin", "membre"],
+          "description": "The highest role of the user across all agencies (superadmin or regular member)."
         },
         "dateJoined": {
           "type": "string",
@@ -88,14 +84,37 @@
         }
       },
       "required": [
-        "agencyId",
         "firstName",
         "lastName",
         "email",
         "role",
-        "dateJoined",
-        "phone"
+        "dateJoined"
       ]
+    },
+     "Membership": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Membership",
+      "type": "object",
+      "description": "Represents the relationship between a user and an agency, including their role.",
+      "properties": {
+        "id": { "type": "string", "description": "Unique identifier for the membership." },
+        "userId": { "type": "string", "description": "The ID of the user." },
+        "agencyId": { "type": "string", "description": "The ID of the agency." },
+        "role": {
+          "type": "string",
+          "enum": ["admin", "dpo", "conseiller", "membre"],
+          "description": "The role of the user within this specific agency."
+        },
+        "counselorId": {
+          "type": "string",
+          "description": "The ID of the user's assigned counselor within this agency."
+        },
+        "counselorName": {
+          "type": "string",
+          "description": "The name of the user's assigned counselor."
+        }
+      },
+      "required": ["userId", "agencyId", "role"]
     },
     "Agency": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -550,6 +569,14 @@
           "description": "Stores agency profiles and their personalization settings. Access is typically restricted to users belonging to that agency."
         }
       },
+       {
+        "path": "/memberships/{membershipId}",
+        "definition": {
+          "entityName": "Membership",
+          "schema": { "$ref": "#/backend/entities/Membership" },
+          "description": "Links users to agencies and defines their role within that agency."
+        }
+      },
       {
         "path": "/users/{userId}",
         "definition": {
@@ -681,7 +708,7 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans`, `quotes`, `contracts`, and `invoices` are nested under each agency to manage pricing tiers, estimates, legal documents, and billing on a per-agency basis. A new top-level `faq_items` collection is added to store all FAQ content, distinguished by a `scope` field ('general' or 'agency'). This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
+    "reasoning": "The Firestore structure is updated to support a true multi-agency model. The `agencyId` field is removed from the `User` entity. A new top-level `memberships` collection is introduced to create a many-to-many relationship between users and agencies. Each document in `memberships` links a `userId` to an `agencyId` and specifies the user's `role` within that agency. This allows a single user account to belong to multiple agencies with different roles. Security rules will be updated to check for the existence and role within these membership documents, rather than relying on a field on the user document."
   }
 }
 
