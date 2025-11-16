@@ -454,7 +454,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             name="contractId"
                             render={({ field }) => (
                                 <FormItem>
-                                    <Label>Contrat</Label>
+                                    <Label>Contrat (Optionnel)</Label>
                                     <Select onValueChange={field.onChange} value={field.value} defaultValue="none">
                                         <FormControl>
                                             <SelectTrigger>
@@ -680,5 +680,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
-
-    
