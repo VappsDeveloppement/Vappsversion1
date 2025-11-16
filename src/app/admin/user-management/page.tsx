@@ -66,15 +66,17 @@ export default function UserManagementPage() {
     
     const filteredUsers = useMemo(() => {
         if (!allUsers) return [];
-        if (!searchTerm) return allUsers;
+        // Ne pas afficher l'utilisateur courant pour l'empêcher de s'auto-modifier/supprimer de manière risquée
+        const usersExceptCurrent = allUsers.filter(user => user.id !== currentUser?.uid);
+        if (!searchTerm) return usersExceptCurrent;
         
         const lowercasedTerm = searchTerm.toLowerCase();
-        return allUsers.filter(user => 
+        return usersExceptCurrent.filter(user => 
             user.firstName.toLowerCase().includes(lowercasedTerm) ||
             user.lastName.toLowerCase().includes(lowercasedTerm) ||
             user.email.toLowerCase().includes(lowercasedTerm)
         );
-    }, [allUsers, searchTerm]);
+    }, [allUsers, searchTerm, currentUser]);
     
     const form = useForm<UserFormData>({
         resolver: zodResolver(userFormSchema),
@@ -250,7 +252,7 @@ export default function UserManagementPage() {
             <div className="flex justify-between items-start">
                 <div>
                     <h1 className="text-3xl font-bold font-headline">User Management</h1>
-                    <p className="text-muted-foreground">View, manage, and edit user accounts and permissions.</p>
+                    <p className="text-muted-foreground">Liste de tous les utilisateurs de la plateforme.</p>
                 </div>
                 <Dialog open={isDialogOpen} onOpenChange={handleOpenDialog}>
                     <DialogTrigger asChild>
@@ -367,3 +369,5 @@ export default function UserManagementPage() {
         </div>
     );
 }
+
+    
