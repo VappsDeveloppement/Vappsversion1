@@ -29,6 +29,17 @@ service cloud.firestore {
        return isSignedIn() && userDoc.role == 'superadmin';
      }
 
+    /**
+     * @description Checks if the user is assigned as the counselor for the given user.
+     * @param {string} userId - The ID of the user (membre) to check.
+     * @returns {boolean} True if the requesting user is the assigned counselor.
+     */
+    function isAssignedCounselor(userId) {
+      let memberDoc = get(/databases/$(database)/documents/users/$(userId)).data;
+      return isSignedIn() && memberDoc.counselorId == request.auth.uid;
+    }
+
+
     // Allow public read for agency personalization, but restrict write access
     match /agencies/{agencyId} {
       allow get: if true;
@@ -81,10 +92,12 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
-      // Admins can manage all users within their agency.
-      allow read, write: if isAgencyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.agencyId);
       // Users can manage their own data.
       allow read, write: if isSignedIn() && request.auth.uid == userId;
+      // Admins can manage all users within their agency.
+      allow read, write: if isAgencyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.agencyId);
+      // Assigned counselors can read their members' data.
+      allow read: if isAssignedCounselor(userId);
     }
     
     match /users/{userId}/{path=**} {
