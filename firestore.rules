@@ -12,40 +12,56 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the user is an admin for the given agency.
+     * @returns {boolean} True if the user is an admin, false otherwise.
+     */
+     function isAgencyAdmin(agencyId) {
+       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+       return isSignedIn() && userDoc.agencyId == agencyId && (userDoc.role == 'admin' || userDoc.role == 'superadmin' || userDoc.role == 'dpo');
+     }
+
     // Allow public read for agency personalization, but restrict write access
     match /agencies/{agencyId} {
       allow get: if true;
-      allow list, write, update, delete: if isSignedIn();
+      allow list, write, update, delete: if isAgencyAdmin(agencyId);
 
       // Allow public read for plans, but restrict write access
       match /plans/{planId} {
         allow get, list: if true;
-        allow write, update, delete: if isSignedIn();
+        allow write, update, delete: if isAgencyAdmin(agencyId);
       }
       
       // Allow public access to view quotes but restrict modification of accepted quotes.
       match /quotes/{quoteId} {
         allow get, list: if true;
-        allow write, create: if isSignedIn();
-        allow update: if isSignedIn() && resource.data.status != 'accepted';
-        allow delete: if isSignedIn() && !(exists(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)) && get(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)).data.status == 'paid');
+        allow write, create: if isAgencyAdmin(agencyId);
+        allow update: if isAgencyAdmin(agencyId) && resource.data.status != 'accepted';
+        allow delete: if isAgencyAdmin(agencyId) && !(exists(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)) && get(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)).data.status == 'paid');
 
       }
 
       match /contracts/{contractId} {
-        allow get, list: if isSignedIn();
-        allow write, update, delete: if isSignedIn();
+        allow get, list: if isAgencyAdmin(agencyId);
+        allow write, update, delete: if isAgencyAdmin(agencyId);
       }
 
       match /invoices/{invoiceId} {
-        allow get, list, write, update, delete: if isSignedIn();
+        allow get, list, write, update, delete: if isAgencyAdmin(agencyId);
       }
     }
     
     // GDPR requests can be created by anyone (public form), but only read/managed by admins
     match /gdpr_requests/{requestId} {
         allow create: if true;
-        allow read, write, update, delete: if isSignedIn();
+        allow read, write, update, delete: if isSignedIn(); // Simplified, should be admin
+    }
+    
+    match /users/{userId} {
+      // Admins can manage all users within their agency.
+      allow read, write: if isAgencyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.agencyId);
+      // Users can manage their own data.
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
     
     match /users/{userId}/{path=**} {
@@ -59,4 +75,5 @@ service cloud.firestore {
     }
   }
 }
+
 

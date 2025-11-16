@@ -1,4 +1,5 @@
 
+
 {
   "entities": {
     "User": {
@@ -30,7 +31,7 @@
         },
         "role": {
           "type": "string",
-          "description": "The role of the user (e.g., admin, coach, client)."
+          "description": "The role of the user (e.g., admin, coach, client, prospect)."
         },
         "dateJoined": {
           "type": "string",
@@ -60,19 +61,38 @@
         "franceTravailId": {
           "type": "string",
           "description": "The user's France Travail identifier."
+        },
+        "origin": {
+            "type": "string",
+            "description": "Source of user creation (e.g., 'Footer Contact Form')."
+        },
+        "status": {
+            "type": "string",
+            "enum": ["new", "contacted", "not_interested"],
+            "description": "Status for a prospect (e.g., new, contacted)."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message sent by the prospect from the contact form."
+        },
+        "lastSignInTime": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The last time the user signed in, synced from Firebase Auth."
+        },
+        "gdprReportedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp for when an admin reports an inactivity alert for this user."
         }
       },
       "required": [
-        "id",
         "agencyId",
         "firstName",
         "lastName",
         "email",
         "role",
         "dateJoined",
-        "address",
-        "zipCode",
-        "city",
         "phone"
       ]
     },
@@ -458,6 +478,24 @@
         }
       },
       "required": ["id", "name", "price", "period", "agencyId"]
+    },
+    "GdprRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GDPR Request",
+        "type": "object",
+        "description": "Represents a user request related to their personal data.",
+        "properties": {
+            "id": { "type": "string" },
+            "agencyId": { "type": "string" },
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" },
+            "subject": { "type": "string" },
+            "message": { "type": "string" },
+            "status": { "type": "string", "enum": ["new", "in_progress", "closed"] },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "agencyId", "name", "email", "phone", "subject", "message", "status", "createdAt"]
     }
   },
   "auth": {
@@ -532,6 +570,14 @@
           "description": "Stores invoices for a specific agency, often generated after a quote is accepted."
         }
       },
+       {
+        "path": "/gdpr_requests/{requestId}",
+        "definition": {
+          "entityName": "GdprRequest",
+          "schema": { "$ref": "#/backend/entities/GdprRequest" },
+          "description": "Stores user requests related to GDPR for tracking and management."
+        }
+      },
       {
         "path": "/users/{userId}/appointments/{appointmentId}",
         "definition": {
@@ -586,3 +632,4 @@
     "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans`, `quotes`, `contracts`, and `invoices` are nested under each agency to manage pricing tiers, estimates, legal documents, and billing on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
   }
 }
+

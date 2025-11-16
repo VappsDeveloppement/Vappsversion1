@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -6,6 +7,8 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, getDoc, setDoc } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError } from '@/firebase/errors';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -80,6 +83,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     const unsubscribe = onAuthStateChanged(
       auth,
       async (firebaseUser) => { // Auth state determined
+        if (firebaseUser) {
+            // User is signed in, sync last sign-in time to Firestore
+            const userDocRef = doc(firestore, "users", firebaseUser.uid);
+            const userDocSnap = await getDoc(userDocRef);
+            if (userDocSnap.exists()) {
+                const lastSignInTime = firebaseUser.metadata.lastSignInTime;
+                await setDoc(userDocRef, { lastSignInTime }, { merge: true });
+            }
+        }
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { // Auth listener error
@@ -175,3 +187,4 @@ export const useUser = (): UserHookResult => { // Renamed from useAuthUser
   const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
   return { user, isUserLoading, userError };
 };
+

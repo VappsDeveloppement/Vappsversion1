@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,13 +8,17 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAgency } from "@/context/agency-provider";
 import { useToast } from "@/hooks/use-toast";
-import { useFirestore } from "@/firebase/provider";
-import { collection, doc } from "firebase/firestore";
-import { setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
-import { useEffect, useState } from "react";
+import { useAuth, useFirestore } from "@/firebase/provider";
+import { collection, doc, query, where } from "firebase/firestore";
+import { setDocumentNonBlocking, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
+import React, { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { AlertTriangle, User, Users } from "lucide-react";
+import { differenceInDays } from "date-fns";
+
 
 const defaultGdprSettings = {
   inactivityAlertDays: 365,
@@ -34,11 +39,22 @@ type GdprRequest = {
   createdAt: string;
 };
 
+type UserData = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    lastSignInTime?: string;
+    gdprReportedAt?: string;
+};
+
 export default function GdprPage() {
   const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
   const { toast } = useToast();
   const firestore = useFirestore();
+  const auth = useAuth();
   const [settings, setSettings] = useState(personalization?.gdprSettings || defaultGdprSettings);
+  const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
 
   const gdprRequestsCollectionRef = useMemoFirebase(() => {
     if (!agency) return null;
@@ -46,6 +62,25 @@ export default function GdprPage() {
   }, [agency, firestore]);
 
   const { data: gdprRequests, isLoading: areGdprRequestsLoading } = useCollection<GdprRequest>(gdprRequestsCollectionRef);
+
+  const agencyUsersQuery = useMemoFirebase(() => {
+    if (!agency?.id) return null;
+    return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
+  }, [agency?.id, firestore]);
+
+  const { data: agencyUsers, isLoading: areUsersLoading } = useCollection<UserData>(agencyUsersQuery);
+  
+  const inactiveUsers = useMemo(() => {
+    if (!agencyUsers || !settings.inactivityAlertDays) return [];
+
+    const now = new Date();
+    return agencyUsers.filter(user => {
+      const lastActiveDate = user.gdprReportedAt ? new Date(user.gdprReportedAt) : (user.lastSignInTime ? new Date(user.lastSignInTime) : null);
+      if (!lastActiveDate) return false; // if no sign-in time, we can't determine inactivity
+
+      return differenceInDays(now, lastActiveDate) > settings.inactivityAlertDays;
+    });
+  }, [agencyUsers, settings.inactivityAlertDays]);
 
 
   useEffect(() => {
@@ -64,10 +99,27 @@ export default function GdprPage() {
       return;
     }
     const agencyRef = doc(firestore, 'agencies', agency.id);
-    // We save the entire gdprSettings object under the personalization document
     setDocumentNonBlocking(agencyRef, { personalization: { gdprSettings: settings } }, { merge: true });
     toast({ title: "Paramètres enregistrés", description: "Vos paramètres RGPD ont été sauvegardés." });
   };
+  
+  const handleReportUser = (user: UserData) => {
+    const userRef = doc(firestore, 'users', user.id);
+    setDocumentNonBlocking(userRef, { gdprReportedAt: new Date().toISOString() }, { merge: true });
+    toast({ title: "Alerte reportée", description: `L'alerte pour ${user.firstName} ${user.lastName} a été reportée.`});
+  };
+
+  const handleDeleteUserConfirm = async () => {
+    if (!userToDelete) return;
+    const userRef = doc(firestore, 'users', userToDelete.id);
+    // This is a simplified deletion. A robust implementation would use a backend function
+    // to delete the user from Firebase Auth and perform a cascading delete of all their data.
+    await deleteDocumentNonBlocking(userRef);
+    toast({ title: "Utilisateur supprimé", description: `Les données de ${userToDelete.firstName} ${userToDelete.lastName} ont été supprimées de Firestore.`});
+    setUserToDelete(null);
+  }
+
+  const isLoading = isAgencyLoading || areUsersLoading;
 
   if (isAgencyLoading) {
     return (
@@ -215,9 +267,71 @@ export default function GdprPage() {
           <div className="flex justify-end pt-6 border-t">
             <Button onClick={handleSave}>Enregistrer les modifications</Button>
           </div>
-
         </CardContent>
       </Card>
+      
+       <Card>
+        <CardHeader>
+          <CardTitle>Alertes d'inactivité</CardTitle>
+          <CardDescription>
+            Liste des utilisateurs considérés comme inactifs selon le délai de {settings.inactivityAlertDays} jours.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Utilisateur</TableHead>
+                <TableHead>Dernière activité</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {isLoading ? (
+                <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              ) : inactiveUsers.length > 0 ? (
+                inactiveUsers.map(user => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="font-medium">{user.firstName} {user.lastName}</div>
+                      <div className="text-sm text-muted-foreground">{user.email}</div>
+                    </TableCell>
+                    <TableCell>
+                      {user.lastSignInTime ? new Date(user.lastSignInTime).toLocaleDateString('fr-FR') : (user.gdprReportedAt ? `Reporté le ${new Date(user.gdprReportedAt).toLocaleDateString('fr-FR')}` : 'Inconnue')}
+                    </TableCell>
+                    <TableCell className="text-right space-x-2">
+                      <Button variant="outline" size="sm" onClick={() => handleReportUser(user)}>Reporter</Button>
+                      <Button variant="destructive" size="sm" onClick={() => setUserToDelete(user)}>Supprimer</Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
+                    Aucun utilisateur inactif.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                   Cette action supprimera l'utilisateur <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong> de la base de données Firestore. La suppression du compte d'authentification doit être effectuée manuellement depuis la console Firebase pour des raisons de sécurité.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteUserConfirm} className="bg-destructive hover:bg-destructive/90">Confirmer la suppression</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
+
