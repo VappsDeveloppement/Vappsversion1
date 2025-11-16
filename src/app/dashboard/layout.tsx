@@ -81,10 +81,6 @@ export default function DashboardLayout({
   React.useEffect(() => {
     setIsMounted(true);
   }, []);
-
-  const getInitials = (email?: string | null) => {
-    return email ? email.charAt(0).toUpperCase() : 'U';
-  }
   
   const isLoading = isUserLoading || isUserDataLoading || !isMounted;
 
@@ -186,7 +182,7 @@ export default function DashboardLayout({
              <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">
               <Avatar>
                 <AvatarImage src={user?.photoURL ?? undefined} />
-                <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
+                <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden"></div>
               <Link href="/">
