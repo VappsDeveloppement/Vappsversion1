@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye, CheckCircle } from "lucide-react";
+import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye, CheckCircle, Search } from "lucide-react";
 import { PlanManagement } from "@/components/shared/plan-management";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
@@ -304,6 +304,8 @@ export default function BillingPage() {
     const [isSending, setIsSending] = React.useState<string | null>(null);
     const [showUnvalidatedQuotesOnly, setShowUnvalidatedQuotesOnly] = useState(false);
     const [showUnpaidInvoicesOnly, setShowUnpaidInvoicesOnly] = useState(false);
+    const [quoteSearch, setQuoteSearch] = useState('');
+    const [invoiceSearch, setInvoiceSearch] = useState('');
 
 
     const quotesQuery = useMemoFirebase(() => {
@@ -315,11 +317,22 @@ export default function BillingPage() {
 
     const quotes = useMemo(() => {
         if (!allQuotes) return [];
+        let filteredQuotes = allQuotes;
+
         if (showUnvalidatedQuotesOnly) {
-            return allQuotes.filter(q => q.status === 'draft' || q.status === 'sent');
+            filteredQuotes = filteredQuotes.filter(q => q.status === 'draft' || q.status === 'sent');
         }
-        return allQuotes;
-    }, [allQuotes, showUnvalidatedQuotesOnly]);
+
+        if (quoteSearch) {
+            const searchTerm = quoteSearch.toLowerCase();
+            filteredQuotes = filteredQuotes.filter(q => 
+                q.quoteNumber.toLowerCase().includes(searchTerm) ||
+                q.clientInfo.name.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        return filteredQuotes;
+    }, [allQuotes, showUnvalidatedQuotesOnly, quoteSearch]);
     
     const invoicesQuery = useMemoFirebase(() => {
         if (!agency) return null;
@@ -329,11 +342,22 @@ export default function BillingPage() {
 
     const invoices = useMemo(() => {
         if (!allInvoices) return [];
+        let filteredInvoices = allInvoices;
+        
         if (showUnpaidInvoicesOnly) {
-            return allInvoices.filter(i => i.status === 'pending' || i.status === 'overdue');
+            filteredInvoices = filteredInvoices.filter(i => i.status === 'pending' || i.status === 'overdue');
         }
-        return allInvoices;
-    }, [allInvoices, showUnpaidInvoicesOnly]);
+        
+        if (invoiceSearch) {
+            const searchTerm = invoiceSearch.toLowerCase();
+            filteredInvoices = filteredInvoices.filter(i => 
+                i.invoiceNumber.toLowerCase().includes(searchTerm) ||
+                i.clientInfo.name.toLowerCase().includes(searchTerm)
+            );
+        }
+
+        return filteredInvoices;
+    }, [allInvoices, showUnpaidInvoicesOnly, invoiceSearch]);
     
     const isLoading = isAgencyLoading || areQuotesLoading || areInvoicesLoading;
     
@@ -812,13 +836,24 @@ export default function BillingPage() {
                                     </DialogContent>
                                 </Dialog>
                             </div>
-                            <div className="flex items-center space-x-2 pt-4">
-                                <Switch
-                                    id="unvalidated-quotes-filter"
-                                    checked={showUnvalidatedQuotesOnly}
-                                    onCheckedChange={setShowUnvalidatedQuotesOnly}
-                                />
-                                <Label htmlFor="unvalidated-quotes-filter">Afficher uniquement les devis non validés</Label>
+                            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Rechercher par n° ou client..." 
+                                        className="pl-10" 
+                                        value={quoteSearch}
+                                        onChange={(e) => setQuoteSearch(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id="unvalidated-quotes-filter"
+                                        checked={showUnvalidatedQuotesOnly}
+                                        onCheckedChange={setShowUnvalidatedQuotesOnly}
+                                    />
+                                    <Label htmlFor="unvalidated-quotes-filter">Afficher uniquement les devis non validés</Label>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -913,13 +948,24 @@ export default function BillingPage() {
                                     <CardDescription>Consultez et gérez vos factures.</CardDescription>
                                 </div>
                             </div>
-                            <div className="flex items-center space-x-2 pt-4">
-                                <Switch
-                                    id="unpaid-invoices-filter"
-                                    checked={showUnpaidInvoicesOnly}
-                                    onCheckedChange={setShowUnpaidInvoicesOnly}
-                                />
-                                <Label htmlFor="unpaid-invoices-filter">Afficher uniquement les factures non réglées</Label>
+                            <div className="flex flex-col sm:flex-row gap-4 pt-4">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                    <Input 
+                                        placeholder="Rechercher par n° ou client..." 
+                                        className="pl-10" 
+                                        value={invoiceSearch}
+                                        onChange={(e) => setInvoiceSearch(e.target.value)}
+                                    />
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                    <Switch
+                                        id="unpaid-invoices-filter"
+                                        checked={showUnpaidInvoicesOnly}
+                                        onCheckedChange={setShowUnpaidInvoicesOnly}
+                                    />
+                                    <Label htmlFor="unpaid-invoices-filter">Afficher uniquement les factures non réglées</Label>
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
