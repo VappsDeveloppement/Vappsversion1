@@ -128,8 +128,9 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(quote.clientInfo.email, 15, 67);
-        if (quote.clientInfo.address) {
-          doc.text(`${quote.clientInfo.address}, ${quote.clientInfo.zipCode} ${quote.clientInfo.city}`, 15, 72);
+        if (quote.clientInfo.address && quote.clientInfo.zipCode && quote.clientInfo.city) {
+          doc.text(`${quote.clientInfo.address}`, 15, 72);
+          doc.text(`${quote.clientInfo.zipCode} ${quote.clientInfo.city}`, 15, 77);
         }
 
 

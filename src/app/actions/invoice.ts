@@ -127,8 +127,9 @@ export async function sendInvoice(data: z.infer<typeof sendInvoiceSchema>): Prom
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(invoice.clientInfo.email, 15, 72);
-        if (invoice.clientInfo.address) {
-          doc.text(`${invoice.clientInfo.address}, ${invoice.clientInfo.zipCode} ${invoice.clientInfo.city}`, 15, 77);
+        if (invoice.clientInfo.address && invoice.clientInfo.zipCode && invoice.clientInfo.city) {
+          doc.text(`${invoice.clientInfo.address}`, 15, 77);
+          doc.text(`${invoice.clientInfo.zipCode} ${invoice.clientInfo.city}`, 15, 82);
         }
 
         autoTable(doc, {
@@ -224,7 +225,7 @@ export async function sendInvoice(data: z.infer<typeof sendInvoiceSchema>): Prom
 
         const paypalButtonHtml = paymentSettings.paypalClientId ? `
             <div id="paypal-button-container" style="max-width:250px; margin-top:20px;"></div>
-            <script src="https://www.paypal.com/sdk/js?client-id=${paymentSettings.paypalClientId}&currency=EUR"></script>
+            <script src="https://www.paypal.com/sdk/js?client-id=${paymentSettings.paypalClientId}&currency=EUR"><\/script>
             <script>
               paypal.Buttons({
                 createOrder: function(data, actions) {
@@ -243,7 +244,7 @@ export async function sendInvoice(data: z.infer<typeof sendInvoiceSchema>): Prom
                   });
                 }
               }).render('#paypal-button-container');
-            </script>
+            <\/script>
         ` : '';
         
         await transporter.sendMail({

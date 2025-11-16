@@ -57,7 +57,7 @@ type Quote = {
 type Invoice = {
     id: string;
     invoiceNumber: string;
-    clientInfo: { name: string; id: string; email: string; };
+    clientInfo: { name: string; id: string; email: string; address?: string; zipCode?: string; city?: string; };
     issueDate: string;
     dueDate: string;
     total: number;
@@ -394,9 +394,13 @@ export default function BillingPage() {
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(invoice.clientInfo.email, 15, 72);
+        if (invoice.clientInfo.address && invoice.clientInfo.zipCode && invoice.clientInfo.city) {
+            doc.text(invoice.clientInfo.address, 15, 77);
+            doc.text(`${invoice.clientInfo.zipCode} ${invoice.clientInfo.city}`, 15, 82);
+        }
 
         autoTable(doc, {
-            startY: 85,
+            startY: 90,
             head: [['Description', 'Qté', 'P.U. HT', 'Total HT']],
             body: invoice.items.map(item => [
                 item.description,
@@ -527,6 +531,11 @@ export default function BillingPage() {
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(quote.clientInfo.email, 15, 67);
+        // @ts-ignore
+        if (quote.clientInfo.address) {
+          // @ts-ignore
+          doc.text(`${quote.clientInfo.address}, ${quote.clientInfo.zipCode} ${quote.clientInfo.city}`, 15, 72);
+        }
 
         // Table
         autoTable(doc, {
@@ -988,4 +997,3 @@ export default function BillingPage() {
         </div>
     );
 }
-

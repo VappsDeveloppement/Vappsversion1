@@ -641,7 +641,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                     <div className="text-muted-foreground space-y-1">
                                         <p><strong>Nom:</strong> {selectedClient.firstName} {selectedClient.lastName}</p>
                                         <p><strong>Email:</strong> {selectedClient.email}</p>
-                                        {selectedClient.address && <p><strong>Adresse:</strong> {selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</p>}
+                                        {selectedClient.address && <p><strong>Adresse:</strong> {`${selectedClient.address}, ${selectedClient.zipCode} ${selectedClient.city}`}</p>}
                                     </div>
                                 ) : (
                                     <p className="text-muted-foreground">Sélectionnez un client pour voir ses informations.</p>
