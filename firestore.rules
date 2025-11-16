@@ -12,20 +12,22 @@ service cloud.firestore {
     }
 
     /**
-     * @description Checks if the user is a superadmin.
-     * @returns {boolean} True if the user is a superadmin, false otherwise.
+     * @description Checks if the user is a superadmin. This is the master key.
+     * @returns {boolean} True if the user has the 'superadmin' role.
      */
      function isSuperAdmin() {
-       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-       return isSignedIn() && userDoc.role == 'superadmin';
+       // This function only checks the role from the user's document.
+       // It's the most reliable way to confirm super admin status.
+       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
      }
 
     /**
      * @description Checks if the user is an admin for the given agency OR a superadmin.
+     * A superadmin has universal agency access.
      * @returns {boolean} True if the user has admin-level access for the agency.
      */
      function isAgencyAdmin(agencyId) {
-       // A superadmin has access to ALL agencies, regardless of their own agencyId.
+       // A superadmin bypasses any agencyId check. This is the master key rule.
        if (isSuperAdmin()) {
          return true;
        }
@@ -58,15 +60,15 @@ service cloud.firestore {
       // Allow public access to view quotes but restrict modification of accepted quotes.
       match /quotes/{quoteId} {
         allow get, list: if true;
-        allow write, create: if isAgencyAdmin(agencyId);
+        allow create: if isAgencyAdmin(agencyId);
         allow update: if isAgencyAdmin(agencyId) && resource.data.status != 'accepted';
-        allow delete: if isAgencyAdmin(agencyId) && !(exists(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)) && get(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)).data.status == 'paid');
+        allow delete: if isAgencyAdmin(agencyId) && !(existsAfter(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)) && getAfter(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)).data.status == 'paid');
 
       }
 
       match /contracts/{contractId} {
         allow get, list: if isAgencyAdmin(agencyId);
-        allow write, update, delete: if isAgencyAdmin(agencyId);
+        allow create, write, update, delete: if isAgencyAdmin(agencyId);
       }
 
       match /invoices/{invoiceId} {
@@ -77,6 +79,7 @@ service cloud.firestore {
     // GDPR requests can be created by anyone, but only read/managed by admins of the concerned agency
     match /gdpr_requests/{requestId} {
         allow create: if true;
+        // Allow listing only if it's for the user's agency or if the user is a superadmin
         allow list: if isSuperAdmin() || (isSignedIn() && request.query.agencyId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId);
         allow read, write, update, delete: if isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
     }
@@ -96,6 +99,9 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
+      // Superadmins and Admins can list all users. This is critical for the user management page.
+      allow list: if isSuperAdmin() || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+
       // Superadmins can do anything to any user.
       allow read, write: if isSuperAdmin();
       
@@ -114,8 +120,7 @@ service cloud.firestore {
       allow write: if request.resource.data.role == 'membre' && isStaff() &&
                    (
                      // SuperAdmins/Admins can assign anyone of a non-superadmin role
-                     (isAgencyAdmin(resource.data.agencyId) && get(/databases/$(database)/documents/users/$(request.resource.data.counselorId)).data.role != 'superadmin') ||
-                     (isSuperAdmin()) ||
+                     (isAgencyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.agencyId) && get(/databases/$(database)/documents/users/$(request.resource.data.counselorId)).data.role != 'superadmin') ||
                      // Counselors can assign themselves
                      (request.auth.uid == request.resource.data.counselorId)
                    );
