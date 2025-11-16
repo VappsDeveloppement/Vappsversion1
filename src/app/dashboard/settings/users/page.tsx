@@ -217,7 +217,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                             <DropdownMenuContent align="end">
                                 {onView && <DropdownMenuItem onClick={() => onView(user)}><Info className="mr-2 h-4 w-4" /> Voir les informations</DropdownMenuItem>}
                                 {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
-                                {user.role === 'membre' && onAssignCounselor && (isCurrentUserAdmin || currentUser?.role === 'conseiller') && (
+                                {user.role === 'membre' && onAssignCounselor && (
                                     <>
                                      {isCurrentUserAdmin && (
                                         <DropdownMenuSub>
