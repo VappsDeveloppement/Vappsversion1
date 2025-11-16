@@ -26,7 +26,7 @@ import { fr } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import type { Plan } from './plan-management';
 import { sendQuote } from '@/app/actions/quote';
 
@@ -212,7 +212,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     }, [initialData, agency, form, clients]);
 
 
-    const { fields, append, remove, replace } = useFieldArray({
+    const { fields, append, remove } = useFieldArray({
         control: form.control,
         name: "items"
     });
@@ -572,7 +572,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                      {fields.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center h-24">
-                                                Aucun article. Ajoutez une ligne pour commencer.
+                                                Aucun article. Ajoutez un plan pour commencer.
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -680,3 +680,5 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
+
+    
