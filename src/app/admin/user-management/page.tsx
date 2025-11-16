@@ -87,6 +87,7 @@ export default function UserManagementPage() {
     const auth = useAuth();
     const { user: currentUser, isUserLoading } = useUser();
     const [searchTerm, setSearchTerm] = useState('');
+    const [roleFilter, setRoleFilter] = useState('all');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -100,15 +101,24 @@ export default function UserManagementPage() {
     
     const filteredUsers = useMemo(() => {
         if (!allUsers) return [];
-        if (!searchTerm) return allUsers;
         
-        const lowercasedTerm = searchTerm.toLowerCase();
-        return allUsers.filter(user => 
-            (user.firstName?.toLowerCase() || '').includes(lowercasedTerm) ||
-            (user.lastName?.toLowerCase() || '').includes(lowercasedTerm) ||
-            (user.email?.toLowerCase() || '').includes(lowercasedTerm)
-        );
-    }, [allUsers, searchTerm]);
+        let users = allUsers;
+        
+        if (roleFilter !== 'all') {
+            users = users.filter(user => user.role === roleFilter);
+        }
+        
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            users = users.filter(user => 
+                (user.firstName?.toLowerCase() || '').includes(lowercasedTerm) ||
+                (user.lastName?.toLowerCase() || '').includes(lowercasedTerm) ||
+                (user.email?.toLowerCase() || '').includes(lowercasedTerm)
+            );
+        }
+
+        return users;
+    }, [allUsers, searchTerm, roleFilter]);
     
     const form = useForm<UserFormData>({
         resolver: zodResolver(userFormSchema),
@@ -397,12 +407,28 @@ export default function UserManagementPage() {
                 <CardHeader>
                     <CardTitle>Tous les Utilisateurs</CardTitle>
                     <CardDescription>Liste de tous les utilisateurs de la plateforme.</CardDescription>
-                    <div className="pt-4">
+                    <div className="flex gap-4 pt-4">
                         <Input 
                             placeholder="Rechercher par nom ou email..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            className="flex-grow"
                         />
+                         <Select value={roleFilter} onValueChange={setRoleFilter}>
+                            <SelectTrigger className="w-[180px]">
+                                <SelectValue placeholder="Filtrer par rôle" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Tous les rôles</SelectItem>
+                                <SelectItem value="superadmin">Super Admin</SelectItem>
+                                <SelectItem value="admin">Admin</SelectItem>
+                                <SelectItem value="dpo">DPO</SelectItem>
+                                <SelectItem value="conseiller">Conseiller</SelectItem>
+                                <SelectItem value="moderateur">Modérateur</SelectItem>
+                                <SelectItem value="membre">Membre</SelectItem>
+                                <SelectItem value="prospect">Prospect</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
                 </CardHeader>
                 <CardContent>

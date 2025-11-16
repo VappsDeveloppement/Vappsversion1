@@ -53,7 +53,7 @@ const baseUserSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
   email: z.string().email("L'adresse email n'est pas valide."),
-  phone: z.string().min(1, "Le téléphone est requis."),
+  phone: z.string().optional(),
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
@@ -78,6 +78,7 @@ export default function UsersPage() {
   const { toast } = useToast();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState('all');
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<(User & { membership?: Membership }) | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
@@ -104,19 +105,27 @@ export default function UsersPage() {
 
   const usersWithRoles = useMemo(() => {
     if (!users || !memberships) return [];
-    return users.map(user => {
+    
+    let processedUsers = users.map(user => {
         const membership = memberships.find(m => m.userId === user.id);
         return { ...user, membership };
-    }).filter(user => {
-        if (!searchTerm) return true;
-        const lowerSearch = searchTerm.toLowerCase();
-        return (
-            user.firstName.toLowerCase().includes(lowerSearch) ||
-            user.lastName.toLowerCase().includes(lowerSearch) ||
-            user.email.toLowerCase().includes(lowerSearch)
-        );
     });
-  }, [users, memberships, searchTerm]);
+
+    if (roleFilter !== 'all') {
+        processedUsers = processedUsers.filter(u => u.membership?.role === roleFilter);
+    }
+    
+    if (searchTerm) {
+        const lowerSearch = searchTerm.toLowerCase();
+        processedUsers = processedUsers.filter(user => 
+            (user.firstName.toLowerCase().includes(lowerSearch)) ||
+            (user.lastName.toLowerCase().includes(lowerSearch)) ||
+            (user.email.toLowerCase().includes(lowerSearch))
+        );
+    }
+
+    return processedUsers;
+  }, [users, memberships, searchTerm, roleFilter]);
   
   const form = useForm<z.infer<typeof baseUserSchema>>({
     resolver: zodResolver(baseUserSchema),
@@ -272,12 +281,27 @@ export default function UsersPage() {
           <CardTitle>Gestion des utilisateurs de l'agence</CardTitle>
           <CardDescription>Invitez, modifiez ou supprimez des utilisateurs.</CardDescription>
           <div className="flex justify-between items-center pt-4">
-              <Input 
-                placeholder="Rechercher par nom ou email..." 
-                value={searchTerm} 
-                onChange={(e) => setSearchTerm(e.target.value)} 
-                className="max-w-sm" 
-              />
+              <div className="flex gap-4">
+                  <Input 
+                    placeholder="Rechercher par nom ou email..." 
+                    value={searchTerm} 
+                    onChange={(e) => setSearchTerm(e.target.value)} 
+                    className="w-full sm:w-[300px]" 
+                  />
+                  <Select value={roleFilter} onValueChange={setRoleFilter}>
+                    <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Filtrer par rôle" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">Tous les rôles</SelectItem>
+                        <SelectItem value="admin">Admin</SelectItem>
+                        <SelectItem value="dpo">DPO</SelectItem>
+                        <SelectItem value="conseiller">Conseiller</SelectItem>
+                        <SelectItem value="moderateur">Modérateur</SelectItem>
+                        <SelectItem value="membre">Membre</SelectItem>
+                    </SelectContent>
+                  </Select>
+              </div>
               <Dialog open={isFormOpen} onOpenChange={handleOpenDialog}>
                   <DialogTrigger asChild>
                       <Button onClick={handleNew}>
