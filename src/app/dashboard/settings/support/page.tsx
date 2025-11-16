@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,6 +23,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { useUser } from "@/firebase/auth/use-user";
 
 
 const faqFormSchema = z.object({
@@ -347,7 +347,56 @@ function AgencyFaqManager() {
   )
 }
 
+const supportFormSchema = z.object({
+  name: z.string().min(1, 'Le nom est requis.'),
+  email: z.string().email('L\'email est invalide.'),
+  subject: z.string().min(1, 'Le sujet est requis.'),
+  message: z.string().min(10, 'Le message doit contenir au moins 10 caractères.'),
+});
+type SupportFormData = z.infer<typeof supportFormSchema>;
+
 export default function AgencySupportPage() {
+    const { agency } = useAgency();
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+    const supportForm = useForm<SupportFormData>({
+        resolver: zodResolver(supportFormSchema),
+        defaultValues: {
+            name: user?.displayName || '',
+            email: user?.email || '',
+            subject: '',
+            message: '',
+        }
+    });
+
+    const handleSupportSubmit = async (data: SupportFormData) => {
+        if (!agency) return;
+        setIsSubmitting(true);
+
+        try {
+            await addDocumentNonBlocking(collection(firestore, 'support_requests'), {
+                ...data,
+                agencyId: agency.id,
+                status: 'new',
+                createdAt: new Date().toISOString(),
+            });
+
+            toast({ title: 'Demande envoyée', description: 'Votre demande de support a été envoyée avec succès.' });
+            setIsDialogOpen(false);
+            supportForm.reset();
+        } catch (error) {
+            console.error(error);
+            toast({ title: 'Erreur', description: 'Une erreur est survenue lors de l\'envoi de votre demande.', variant: 'destructive' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+
     return (
         <div className="space-y-8">
             <div>
@@ -369,7 +418,7 @@ export default function AgencySupportPage() {
                                     <CardTitle>FAQ Générale de la Plateforme</CardTitle>
                                     <CardDescription>Retrouvez les réponses aux questions les plus fréquentes sur l'utilisation de la plateforme.</CardDescription>
                                 </div>
-                                 <Dialog>
+                                 <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                                     <DialogTrigger asChild>
                                         <Button>
                                             <Send className="mr-2 h-4 w-4" />
@@ -383,27 +432,60 @@ export default function AgencySupportPage() {
                                                 Décrivez votre problème ou votre question. Notre équipe vous répondra dans les plus brefs délais.
                                             </DialogDescription>
                                         </DialogHeader>
-                                        <div className="space-y-4 py-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="support-name">Votre Nom</Label>
-                                                <Input id="support-name" placeholder="Jean Dupont" />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="support-email">Votre Email</Label>
-                                                <Input id="support-email" type="email" placeholder="jean.dupont@votreagence.com" />
-                                            </div>
-                                             <div className="space-y-2">
-                                                <Label htmlFor="support-subject">Sujet</Label>
-                                                <Input id="support-subject" placeholder="Ex: Problème d'affichage..." />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="support-message">Message</Label>
-                                                <Textarea id="support-message" placeholder="Décrivez votre problème ici..." />
-                                            </div>
-                                        </div>
-                                        <DialogFooter>
-                                            <Button type="submit">Envoyer la demande</Button>
-                                        </DialogFooter>
+                                        <Form {...supportForm}>
+                                            <form onSubmit={supportForm.handleSubmit(handleSupportSubmit)} className="space-y-4 py-4">
+                                                <FormField
+                                                    control={supportForm.control}
+                                                    name="name"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Votre Nom</FormLabel>
+                                                            <FormControl><Input placeholder="Jean Dupont" {...field} /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={supportForm.control}
+                                                    name="email"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Votre Email</FormLabel>
+                                                            <FormControl><Input type="email" placeholder="jean.dupont@votreagence.com" {...field} /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={supportForm.control}
+                                                    name="subject"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Sujet</FormLabel>
+                                                            <FormControl><Input placeholder="Ex: Problème d'affichage..." {...field} /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <FormField
+                                                    control={supportForm.control}
+                                                    name="message"
+                                                    render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Message</FormLabel>
+                                                            <FormControl><Textarea placeholder="Décrivez votre problème ici..." {...field} /></FormControl>
+                                                            <FormMessage />
+                                                        </FormItem>
+                                                    )}
+                                                />
+                                                <DialogFooter>
+                                                    <Button type="submit" disabled={isSubmitting}>
+                                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                                        Envoyer la demande
+                                                    </Button>
+                                                </DialogFooter>
+                                            </form>
+                                        </Form>
                                     </DialogContent>
                                 </Dialog>
                             </div>
@@ -420,5 +502,3 @@ export default function AgencySupportPage() {
         </div>
     );
 }
-
-    

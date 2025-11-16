@@ -66,9 +66,9 @@ service cloud.firestore {
         allow read, write, update, delete: if isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
     }
     
-    // Support requests are managed by superadmins
+    // Support requests can be created by any signed-in user and are managed by superadmins
     match /support_requests/{requestId} {
-      allow create: if true;
+      allow create: if isSignedIn();
       allow list, read, write, update, delete: if isSuperAdmin();
     }
     
@@ -98,5 +98,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
