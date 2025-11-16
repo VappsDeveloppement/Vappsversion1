@@ -352,7 +352,7 @@ const defaultAgency: {id: string, name: string, personalization: Personalization
 
 
 export const AgencyProvider = ({ children }: { children: ReactNode }) => {
-    const { firestore } = useFirebase();
+    const { firestore, isUserLoading } = useFirebase();
     const [personalization, setPersonalization] = useState<Personalization>(defaultPersonalization);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
@@ -361,6 +361,11 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
     const agencyId = 'vapps-agency'; 
 
     useEffect(() => {
+        // Wait until Firebase auth state is determined
+        if (isUserLoading) {
+            return;
+        }
+
         if (!firestore) {
             setPersonalization(defaultPersonalization);
             setIsLoading(false);
@@ -469,7 +474,7 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return () => unsubscribe();
-    }, [firestore]);
+    }, [firestore, isUserLoading]);
 
     const agency = useMemo(() => {
         if (!personalization) return null;
@@ -479,7 +484,7 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
 
     const value = {
         personalization,
-        isLoading,
+        isLoading: isLoading || isUserLoading,
         error,
         agency
     };
