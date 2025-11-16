@@ -473,7 +473,7 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
 
     const agency = useMemo(() => {
         if (!personalization) return null;
-        return { id: agencyIdToLoad, name: personalization.legalInfo?.companyName || 'Agence', personalization };
+        return { id: agencyIdToLoad, name: personalization.legalInfo?.companyName || '...', personalization };
     }, [personalization, agencyIdToLoad]);
 
 
