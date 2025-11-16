@@ -26,9 +26,6 @@ import {
   SidebarFooter,
   SidebarTrigger,
   SidebarInset,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -144,8 +141,8 @@ export default function DashboardLayout({
               ))}
                 <Accordion type="single" collapsible defaultValue={isAdministrationPathActive ? "admin-menu" : undefined} className="w-full">
                     <AccordionItem value="admin-menu" className="border-none">
-                        <AccordionTrigger className="[&[data-state=open]>div>div>svg]:rotate-180 hover:no-underline p-0">
-                             <SidebarMenuButton className="w-full" isActive={isAdministrationPathActive}>
+                        <AccordionTrigger asChild>
+                            <SidebarMenuButton className="w-full" isActive={isAdministrationPathActive}>
                                 <Settings/>
                                 <span>Administration</span>
                             </SidebarMenuButton>
