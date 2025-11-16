@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LogOut,
   Users,
@@ -27,7 +27,7 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@/firebase";
+import { useUser, useAuth } from "@/firebase";
 import React from "react";
 
 const adminMenuItems = [
@@ -45,17 +45,13 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const { user } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
 
-  // REMOVED: Super admin role check to ensure access
-  // const isSuperAdmin = userData?.role === 'superadmin';
-  // if (!isSuperAdmin) {
-  //   // You can redirect or show an unauthorized message
-  //   return (
-  //     <div className="flex h-screen items-center justify-center">
-  //       <p>Accès non autorisé.</p>
-  //     </div>
-  //   );
-  // }
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/');
+  };
 
   return (
     <SidebarProvider>
@@ -100,11 +96,9 @@ export default function AdminLayout({
               <div className="flex-1 overflow-hidden">
                 <p className="font-semibold text-sm truncate">Super Admin</p>
               </div>
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </Link>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </SidebarFooter>
         </Sidebar>

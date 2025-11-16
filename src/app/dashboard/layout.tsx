@@ -2,7 +2,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   CalendarDays,
   LayoutDashboard,
@@ -33,7 +33,7 @@ import { Button } from "@/components/ui/button";
 import { useUser, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useMemo } from "react";
-import { useFirestore } from "@/firebase/provider";
+import { useFirestore, useAuth } from "@/firebase/provider";
 import { collection, doc, query, where } from "firebase/firestore";
 import {
   Accordion,
@@ -41,7 +41,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { AgencyProvider } from "@/context/agency-provider";
+import { AgencyProvider, useAgency } from "@/context/agency-provider";
 
 
 const mainMenuItems = [
@@ -68,6 +68,9 @@ function DashboardLayoutContent({
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const auth = useAuth();
+  const router = useRouter();
+  const { agency } = useAgency();
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -87,6 +90,12 @@ function DashboardLayoutContent({
   const isLoading = isUserLoading || isUserDataLoading || !isMounted;
   
   const isAdministrationPathActive = administrationMenuItems.some(item => pathname === item.href);
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    const redirectUrl = agency?.id ? `/agency/${agency.id}` : '/';
+    router.push(redirectUrl);
+  };
 
   if (isLoading) {
     return (
@@ -190,11 +199,9 @@ function DashboardLayoutContent({
                 <p className="font-semibold text-sm truncate">{userData?.firstName || user?.displayName || 'Utilisateur'}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
-              <Link href="/">
-                <Button variant="ghost" size="icon">
-                  <LogOut className="h-4 w-4" />
-                </Button>
-              </Link>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
             </div>
           </SidebarFooter>
         </Sidebar>
