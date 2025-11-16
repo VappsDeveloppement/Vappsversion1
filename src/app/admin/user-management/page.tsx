@@ -22,13 +22,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Textarea } from '@/components/ui/textarea';
 
 type User = {
     id: string;
     firstName: string;
     lastName: string;
     email: string;
-    role: 'superadmin' | 'membre' | 'prospect';
+    role: 'superadmin' | 'membre' | 'prospect' | 'admin' | 'dpo' | 'conseiller' | 'moderateur';
     dateJoined: string;
     phone?: string;
     address?: string;
@@ -44,7 +45,7 @@ const userFormSchema = z.object({
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
-  role: z.enum(['superadmin', 'membre', 'prospect'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['superadmin', 'admin', 'dpo', 'conseiller', 'moderateur', 'membre'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
 }).refine(data => {
     // Si on crée un nouvel utilisateur (pas d'ID), le mot de passe est requis et doit faire au moins 6 caractères
@@ -63,8 +64,22 @@ type UserFormData = z.infer<typeof userFormSchema>;
 
 const roleVariant: Record<User['role'], 'default' | 'secondary' | 'destructive'> = {
   superadmin: 'destructive',
+  admin: 'default',
+  dpo: 'default',
+  conseiller: 'default',
+  moderateur: 'default',
   membre: 'default',
   prospect: 'secondary',
+};
+
+const roleText: Record<User['role'], string> = {
+    superadmin: 'Super Admin',
+    admin: 'Admin',
+    dpo: 'DPO',
+    conseiller: 'Conseiller',
+    moderateur: 'Modérateur',
+    membre: 'Membre',
+    prospect: 'Prospect',
 };
 
 export default function UserManagementPage() {
@@ -108,6 +123,10 @@ export default function UserManagementPage() {
             if (editingUser) {
                 form.reset({
                     ...editingUser,
+                    phone: editingUser.phone || '',
+                    address: editingUser.address || '',
+                    zipCode: editingUser.zipCode || '',
+                    city: editingUser.city || '',
                     password: '' // Ne pas pré-remplir le mot de passe
                 });
             } else {
@@ -192,6 +211,12 @@ export default function UserManagementPage() {
             setUserToDelete(null);
             return;
         }
+        
+        if (userToDelete.role === 'superadmin') {
+             toast({ title: "Action impossible", description: "La suppression d'un super administrateur est interdite.", variant: "destructive" });
+            setUserToDelete(null);
+            return;
+        }
 
         try {
             const userDocRef = doc(firestore, "users", userToDelete.id);
@@ -231,7 +256,7 @@ export default function UserManagementPage() {
                        <TableRow key={user.id}>
                            <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
                            <TableCell>{user.email}</TableCell>
-                           <TableCell><Badge variant={roleVariant[user.role]}>{user.role}</Badge></TableCell>
+                           <TableCell><Badge variant={roleVariant[user.role] || 'secondary'}>{roleText[user.role] || user.role}</Badge></TableCell>
                            <TableCell>{user.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}</TableCell>
                            <TableCell className="text-right">
                                <DropdownMenu>
@@ -248,7 +273,7 @@ export default function UserManagementPage() {
                                         <DropdownMenuItem
                                             className="text-destructive"
                                             onClick={() => setUserToDelete(user)}
-                                            disabled={user.id === currentUser?.uid} // Disable delete for current user
+                                            disabled={user.id === currentUser?.uid || user.role === 'superadmin'}
                                         >
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Supprimer
@@ -311,7 +336,7 @@ export default function UserManagementPage() {
                                     <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <FormField control={form.control} name="address" render={({ field }) => (
-                                    <FormItem><FormLabel>Adresse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                    <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
                                 )} />
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField control={form.control} name="zipCode" render={({ field }) => (
@@ -332,8 +357,11 @@ export default function UserManagementPage() {
                                             </FormControl>
                                             <SelectContent>
                                                 <SelectItem value="superadmin">Super Admin</SelectItem>
+                                                <SelectItem value="admin">Admin</SelectItem>
+                                                <SelectItem value="dpo">DPO</SelectItem>
+                                                <SelectItem value="conseiller">Conseiller</SelectItem>
+                                                <SelectItem value="moderateur">Modérateur</SelectItem>
                                                 <SelectItem value="membre">Membre</SelectItem>
-                                                <SelectItem value="prospect">Prospect</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
