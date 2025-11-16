@@ -51,10 +51,10 @@ service cloud.firestore {
       }
     }
     
-    // GDPR requests can be created by anyone (public form), but only read/managed by admins
+    // GDPR requests can be created by anyone, but only read/managed by admins of the concerned agency
     match /gdpr_requests/{requestId} {
         allow create: if true;
-        allow read, write, update, delete: if isSignedIn(); // Simplified, should be admin
+        allow read, list, write, update, delete: if isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
     }
     
     match /users/{userId} {
@@ -75,5 +75,6 @@ service cloud.firestore {
     }
   }
 }
+
 
 
