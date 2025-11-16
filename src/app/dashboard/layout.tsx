@@ -46,9 +46,6 @@ const mainMenuItems = [
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
   { href: "/dashboard/billing", label: "Facturation & Devis", icon: <CreditCard /> },
-];
-
-const administrationMenuItems = [
   { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
   { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
   { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
@@ -135,26 +132,6 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
-               <SidebarMenuItem>
-                <SidebarMenuSub open={pathname.startsWith("/dashboard/settings")}>
-                  <SidebarMenuButton>
-                      <Settings />
-                      <span>Administration</span>
-                  </SidebarMenuButton>
-                  <SidebarMenuSub>
-                    {administrationMenuItems.map(item => (
-                       <SidebarMenuSubItem key={item.href}>
-                        <Link href={item.href}>
-                           <SidebarMenuSubButton isActive={pathname === item.href}>
-                            {item.icon}
-                            <span>{item.label}</span>
-                           </SidebarMenuSubButton>
-                        </Link>
-                      </SidebarMenuSubItem>
-                    ))}
-                  </SidebarMenuSub>
-                </SidebarMenuSub>
-              </SidebarMenuItem>
               <SidebarMenuItem>
                   <Link href={supportMenuItem.href}>
                     <SidebarMenuButton isActive={pathname === supportMenuItem.href}>
