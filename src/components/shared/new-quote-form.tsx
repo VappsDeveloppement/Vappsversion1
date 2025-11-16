@@ -61,6 +61,7 @@ type Quote = {
     contractContent?: string;
     contractTitle?: string;
     agencyId: string;
+    agencyInfo?: any;
 }
 
 
@@ -194,7 +195,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             issueDate: values.issueDate.toISOString().split('T')[0], // format as YYYY-MM-DD
             expiryDate: values.expiryDate?.toISOString().split('T')[0],
             agencyId: agency.id,
-            agencyInfo: agency.personalization.legalInfo,
+            agencyInfo: personalization.legalInfo,
             clientInfo: {
                 id: selectedClient.id,
                 name: `${selectedClient.firstName} ${selectedClient.lastName}`,
