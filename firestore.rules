@@ -126,6 +126,9 @@ service cloud.firestore {
       
       // Allow user creation by anyone (prospects, etc.)
       allow create: if true;
+
+      // Prevent deletion of any superadmin user
+      allow delete: if resource.data.role != 'superadmin';
     }
     
     match /users/{userId}/{path=**} {
