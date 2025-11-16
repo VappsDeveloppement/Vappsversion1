@@ -119,7 +119,7 @@ export default function DashboardPage() {
     }, [agency, firestore]);
 
     const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
-    const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(invoicesQuery);
+    const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
     const { data: invoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
 
     const isLoading = isAgencyLoading || areUsersLoading || areQuotesLoading || areInvoicesLoading;
