@@ -169,7 +169,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             clientId: initialData.clientInfo.id,
             issueDate: new Date(initialData.issueDate),
             expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
-            contractId: initialData.contractId || ''
+            contractId: initialData.contractId || 'none'
         } : {
             quoteNumber: '',
             validationCode: '',
@@ -178,7 +178,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             items: [],
             notes: '',
             tax: defaultTaxRate,
-            contractId: '',
+            contractId: 'none',
         }
     });
 
@@ -196,7 +196,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 clientId: initialData.clientInfo.id,
                 issueDate: new Date(initialData.issueDate),
                 expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
-                contractId: initialData.contractId || '',
+                contractId: initialData.contractId || 'none',
                 validationCode: initialData.validationCode || generateValidationCode(),
             });
         } else {
@@ -235,12 +235,14 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             return;
         }
 
-        const finalContractId = values.contractId === 'none' ? undefined : values.contractId;
-        const selectedContract = finalContractId ? contracts?.find(c => c.id === finalContractId) : undefined;
+        const isContractSelected = values.contractId && values.contractId !== 'none';
+        const selectedContract = isContractSelected ? contracts?.find(c => c.id === values.contractId) : undefined;
 
         const quoteData = {
             ...values,
-            contractId: finalContractId,
+            contractId: isContractSelected ? values.contractId : undefined,
+            contractTitle: isContractSelected ? selectedContract?.title : undefined,
+            contractContent: isContractSelected ? selectedContract?.content : undefined,
             issueDate: values.issueDate.toISOString().split('T')[0], // format as YYYY-MM-DD
             expiryDate: values.expiryDate?.toISOString().split('T')[0],
             agencyId: agency.id,
@@ -253,8 +255,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 zipCode: selectedClient.zipCode,
                 city: selectedClient.city,
             },
-            contractTitle: selectedContract?.title,
-            contractContent: selectedContract?.content,
         };
         
         try {
@@ -297,7 +297,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         const quoteId = await handleSaveQuote(values);
 
         if (quoteId && agency && selectedClient) {
-            const finalContractId = values.contractId === 'none' ? undefined : values.contractId;
+            const isContractSelected = values.contractId && values.contractId !== 'none';
             
             const quoteDataForEmail: any = {
                 ...values,
@@ -312,9 +312,9 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                     zipCode: selectedClient.zipCode,
                     city: selectedClient.city,
                 },
-                contractId: finalContractId,
-                contractTitle: contracts?.find(c => c.id === finalContractId)?.title,
-                contractContent: contracts?.find(c => c.id === finalContractId)?.content,
+                contractId: isContractSelected ? values.contractId : undefined,
+                contractTitle: isContractSelected ? contracts?.find(c => c.id === values.contractId)?.title : undefined,
+                contractContent: isContractSelected ? contracts?.find(c => c.id === values.contractId)?.content : undefined,
             };
 
             const result = await sendQuote({
@@ -460,7 +460,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <Label>Contrat (Optionnel)</Label>
-                                    <Select onValueChange={field.onChange} value={field.value || 'none'} defaultValue={field.value || 'none'}>
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Attacher un modèle de contrat..." />
@@ -686,4 +686,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     );
 }
 
-    
