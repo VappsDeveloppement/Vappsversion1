@@ -85,7 +85,7 @@ const quoteItemSchema = z.object({
 
 const quoteFormSchema = z.object({
     quoteNumber: z.string().min(1, "Le numéro de devis est requis."),
-    validationCode: z.string(),
+    validationCode: z.string().min(1, "Le code de validation est requis."),
     clientId: z.string().min(1, "Un client doit être sélectionné."),
     status: z.enum(["draft", "sent", "accepted", "rejected"]),
     issueDate: z.date({ required_error: "La date d'émission est requise."}),
@@ -191,6 +191,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 issueDate: new Date(initialData.issueDate),
                 expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
                 contractId: initialData.contractId || 'none',
+                validationCode: initialData.validationCode || generateValidationCode(),
             });
         } else {
              const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
