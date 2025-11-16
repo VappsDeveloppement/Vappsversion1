@@ -14,7 +14,8 @@ import {
   Paintbrush,
   UserCog,
   CreditCard,
-  LifeBuoy
+  LifeBuoy,
+  Settings,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -40,16 +41,20 @@ import { useFirestore } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { useDoc, useMemoFirebase } from "@/firebase";
 
-const menuItems = [
+const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
   { href: "/dashboard/billing", label: "Facturation & Devis", icon: <CreditCard /> },
+];
+
+const administrationMenuItems = [
   { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
   { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
   { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
-  { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> },
 ];
+
+const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
 
 
 export default function DashboardLayout({
@@ -124,7 +129,7 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-               {menuItems.map((item) => (
+               {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
                     <SidebarMenuButton isActive={pathname === item.href}>
@@ -134,6 +139,34 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
+               <SidebarMenuItem>
+                <SidebarMenuSub open={pathname.startsWith("/dashboard/settings")}>
+                  <SidebarMenuButton>
+                      <Settings />
+                      <span>Administration</span>
+                  </SidebarMenuButton>
+                  <SidebarMenuSub>
+                    {administrationMenuItems.map(item => (
+                       <SidebarMenuSubItem key={item.href}>
+                        <Link href={item.href}>
+                           <SidebarMenuSubButton isActive={pathname === item.href}>
+                            {item.icon}
+                            <span>{item.label}</span>
+                           </SidebarMenuSubButton>
+                        </Link>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </SidebarMenuSub>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                  <Link href={supportMenuItem.href}>
+                    <SidebarMenuButton isActive={pathname === supportMenuItem.href}>
+                        {supportMenuItem.icon}
+                        <span>{supportMenuItem.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+              </SidebarMenuItem>
             </SidebarMenu>
             
             <SidebarMenu className="mt-auto">
@@ -149,18 +182,12 @@ export default function DashboardLayout({
              
           </SidebarContent>
           <SidebarFooter>
-            <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">
+             <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">
               <Avatar>
                 <AvatarImage src={user?.photoURL ?? undefined} />
                 <AvatarFallback>{getInitials(user?.email)}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 overflow-hidden">
-                {isUserLoading ? (
-                  <Skeleton className="h-4 w-24" />
-                ) : (
-                  <p className="font-semibold text-sm truncate">{user?.displayName || "Utilisateur"}</p>
-                )}
-              </div>
+              <div className="flex-1 overflow-hidden"></div>
               <Link href="/">
                 <Button variant="ghost" size="icon">
                   <LogOut className="h-4 w-4" />
