@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -18,6 +17,7 @@ import { Input } from '@/components/ui/input';
 import { PlusCircle, Loader2, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useAgency } from '@/context/agency-provider';
 
 type SuperAdmin = {
   id: string;
@@ -39,6 +39,7 @@ export default function SuperAdminsPage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
+  const { agency } = useAgency();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -82,6 +83,10 @@ export default function SuperAdminsPage() {
 
 
   const onSubmit = async (values: z.infer<typeof superAdminFormSchema>) => {
+    if (!agency) {
+      toast({ title: 'Erreur', description: 'Agence principale non trouvée.', variant: 'destructive' });
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (editingUser) {
@@ -91,6 +96,7 @@ export default function SuperAdminsPage() {
             firstName: values.firstName,
             lastName: values.lastName,
             email: values.email,
+            agencyId: agency.id, // Ensure agencyId is present on update
         }, { merge: true });
         
         // Note: Password update for other users requires Admin SDK (backend function).
@@ -113,6 +119,7 @@ export default function SuperAdminsPage() {
             email: values.email,
             role: 'superadmin',
             dateJoined: new Date().toISOString(),
+            agencyId: agency.id, // Assign to main agency
         }, {});
         toast({ title: 'Succès', description: 'Le Super Admin a été créé avec succès.' });
       }
@@ -199,6 +206,7 @@ export default function SuperAdminsPage() {
                                 type="email" 
                                 placeholder="super.admin@vapps.com" 
                                 {...field} 
+                                disabled={!!editingUser}
                             />
                         </FormControl>
                         <FormMessage />

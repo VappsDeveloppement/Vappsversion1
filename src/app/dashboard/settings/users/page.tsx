@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -76,7 +74,7 @@ const passwordRefine = {
 
 
 const adminFormSchema = baseUserFormSchema.extend({
-  role: z.enum(['admin', 'superadmin', 'dpo'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['admin', 'dpo'], { required_error: "Le rôle est requis." }),
   ...passwordFields
 }).refine(passwordRefine.refine, passwordRefine.params);
 
@@ -319,13 +317,16 @@ export default function UsersPage() {
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
-    if (user.role === 'admin' || user.role === 'superadmin' || user.role === 'dpo') {
+    if (user.role === 'admin' || user.role === 'dpo') {
         adminForm.reset({
             ...user,
             password: '',
             confirmPassword: '',
         });
         setIsAdminFormOpen(true);
+    } else if (user.role === 'superadmin') {
+        // SuperAdmins are managed elsewhere
+        toast({ title: "Action non autorisée", description: "Les Super Admins ne peuvent être modifiés que depuis la page de gestion des Super Admins.", variant: "destructive" });
     } else if (user.role === 'conseiller') {
         conseillerForm.reset({
             ...user,
@@ -512,7 +513,7 @@ export default function UsersPage() {
                                         )} />
                                     </div>
                                     <FormField control={adminForm.control} name="email" render={({ field }) => (
-                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                        <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                     )} />
                                     <FormField control={adminForm.control} name="phone" render={({ field }) => (
                                         <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -550,7 +551,6 @@ export default function UsersPage() {
                                                 <FormControl><SelectTrigger><SelectValue placeholder="Sélectionnez un rôle" /></SelectTrigger></FormControl>
                                                 <SelectContent>
                                                     <SelectItem value="admin">Admin</SelectItem>
-                                                    <SelectItem value="superadmin">Super Admin</SelectItem>
                                                     <SelectItem value="dpo">DPO</SelectItem>
                                                 </SelectContent>
                                             </Select>
@@ -606,7 +606,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={conseillerForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={conseillerForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
@@ -697,7 +697,7 @@ export default function UsersPage() {
                                             )} />
                                         </div>
                                         <FormField control={membreForm.control} name="email" render={({ field }) => (
-                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} /></FormControl><FormMessage /></FormItem>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="jean.dupont@email.com" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                         )} />
                                         <FormField control={membreForm.control} name="phone" render={({ field }) => (
                                             <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" placeholder="0612345678" {...field} /></FormControl><FormMessage /></FormItem>
