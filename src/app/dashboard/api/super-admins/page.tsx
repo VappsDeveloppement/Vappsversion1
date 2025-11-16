@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -89,8 +90,15 @@ export default function SuperAdminsPage() {
         await setDocumentNonBlocking(userDocRef, {
             firstName: values.firstName,
             lastName: values.lastName,
-            email: values.email, // Note: This only changes the Firestore record, not Firebase Auth email.
+            // Email cannot be changed from client-side for other users for security reasons.
         }, { merge: true });
+        
+        // Note: Password update for other users requires Admin SDK (backend function).
+        // This is a placeholder for a future backend implementation.
+        if (values.password) {
+            toast({ title: 'Mise à jour du mot de passe', description: "La fonctionnalité de mise à jour du mot de passe d'un autre utilisateur nécessite une configuration côté serveur (Admin SDK) qui n'est pas implémentée ici." });
+        }
+
         toast({ title: 'Succès', description: 'Le Super Admin a été mis à jour.' });
         
       } else {
@@ -184,7 +192,19 @@ export default function SuperAdminsPage() {
                     )} />
                 </div>
                 <FormField control={form.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="super.admin@vapps.com" {...field} readOnly={!!editingUser} /></FormControl><FormMessage /></FormItem>
+                    <FormItem>
+                        <FormLabel>Email</FormLabel>
+                        <FormControl>
+                            <Input 
+                                type="email" 
+                                placeholder="super.admin@vapps.com" 
+                                {...field} 
+                                readOnly={!!editingUser} 
+                                className={editingUser ? 'bg-muted/50 cursor-not-allowed' : ''}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
                 )} />
                 <FormField control={form.control} name="password" render={({ field }) => (
                     <FormItem>
