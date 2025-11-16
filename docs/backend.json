@@ -64,6 +64,11 @@
         "origin": {
             "type": "string",
             "description": "Source of user creation (e.g., 'Footer Contact Form')."
+        },
+        "status": {
+            "type": "string",
+            "enum": ["new", "contacted", "not_interested"],
+            "description": "Status for a prospect (e.g., new, contacted)."
         }
       },
       "required": [

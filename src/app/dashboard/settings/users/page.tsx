@@ -21,13 +21,13 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat } from "lucide-react";
 import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
-import { createUserWithEmailAndPassword, updateEmail } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { randomBytes } from "crypto";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 
 
 type User = {
@@ -43,6 +43,8 @@ type User = {
   city?: string;
   socialSecurityNumber?: string;
   franceTravailId?: string;
+  status?: 'new' | 'contacted' | 'not_interested';
+  origin?: string;
 };
 
 const baseUserFormSchema = z.object({
@@ -94,8 +96,29 @@ const membreFormSchema = baseUserFormSchema.extend({
 }).refine(passwordRefine.refine, passwordRefine.params);
 
 
+const prospectStatusVariant: Record<NonNullable<User['status']>, 'default' | 'secondary' | 'destructive'> = {
+  new: 'secondary',
+  contacted: 'default',
+  not_interested: 'destructive',
+};
+
+const prospectStatusText: Record<NonNullable<User['status']>, string> = {
+  new: 'Nouveau',
+  contacted: 'Contacté',
+  not_interested: 'Non intéressé',
+};
+
 // Component to render the user table
-const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete }: { users: User[], isLoading: boolean, emptyMessage: string, onEdit: (user: User) => void, onDelete: (user: User) => void }) => {
+const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert, onStatusChange, onView }: {
+    users: User[],
+    isLoading: boolean,
+    emptyMessage: string,
+    onEdit?: (user: User) => void,
+    onDelete: (user: User) => void,
+    onConvert?: (user: User) => void,
+    onStatusChange?: (user: User, status: User['status']) => void,
+    onView?: (user: User) => void,
+}) => {
   if (isLoading) {
     return (
       <Table>
@@ -104,6 +127,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete }: { users
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
+            {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
             <TableHead>Date d'inscription</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -114,6 +138,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete }: { users
               <TableCell><Skeleton className="h-5 w-24" /></TableCell>
               <TableCell><Skeleton className="h-5 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+              {users[0]?.role === 'prospect' && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
             </TableRow>
@@ -138,6 +163,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete }: { users
           <TableHead>Nom</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Rôle</TableHead>
+          {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
           <TableHead>Date d'inscription</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
@@ -152,6 +178,15 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete }: { users
                 {user.role}
               </Badge>
             </TableCell>
+             {user.role === 'prospect' && (
+                <TableCell>
+                    {user.status && (
+                        <Badge variant={prospectStatusVariant[user.status]}>
+                            {prospectStatusText[user.status]}
+                        </Badge>
+                    )}
+                </TableCell>
+            )}
             <TableCell>
               {user.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}
             </TableCell>
@@ -163,10 +198,21 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete }: { users
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => onEdit(user)}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Modifier
-                        </DropdownMenuItem>
+                        {onView && <DropdownMenuItem onClick={() => onView(user)}><Info className="mr-2 h-4 w-4" /> Voir les informations</DropdownMenuItem>}
+                        {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
+                        {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
+                        {onStatusChange && (
+                            <DropdownMenuSub>
+                                <DropdownMenuSubTrigger>Changer le statut</DropdownMenuSubTrigger>
+                                <DropdownMenuPortal>
+                                    <DropdownMenuSubContent>
+                                        <DropdownMenuItem onClick={() => onStatusChange(user, 'new')}>Nouveau</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onStatusChange(user, 'contacted')}>Contacté</DropdownMenuItem>
+                                        <DropdownMenuItem onClick={() => onStatusChange(user, 'not_interested')}>Non intéressé</DropdownMenuItem>
+                                    </DropdownMenuSubContent>
+                                </DropdownMenuPortal>
+                            </DropdownMenuSub>
+                        )}
                         <DropdownMenuItem onClick={() => onDelete(user)} className="text-destructive">
                              <Trash2 className="mr-2 h-4 w-4" />
                             Supprimer
@@ -198,6 +244,7 @@ export default function UsersPage() {
   const [isMembreFormOpen, setIsMembreFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [userToView, setUserToView] = useState<User | null>(null);
 
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -216,46 +263,54 @@ export default function UsersPage() {
   const adminForm = useForm<z.infer<typeof adminFormSchema>>({
     resolver: zodResolver(adminFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      role: "admin",
+      firstName: "", lastName: "", email: "", phone: "", password: "", confirmPassword: "", role: "admin",
     },
   });
 
   const conseillerForm = useForm<z.infer<typeof conseillerFormSchema>>({
     resolver: zodResolver(conseillerFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      password: "",
-      confirmPassword: "",
-      role: "conseiller",
+      firstName: "", lastName: "", email: "", phone: "", password: "", confirmPassword: "", role: "conseiller",
     },
   });
 
   const membreForm = useForm<z.infer<typeof membreFormSchema>>({
     resolver: zodResolver(membreFormSchema),
     defaultValues: {
-      firstName: "",
-      lastName: "",
-      email: "",
-      phone: "",
-      address: "",
-      zipCode: "",
-      city: "",
-      password: "",
-      confirmPassword: "",
-      socialSecurityNumber: "",
-      franceTravailId: "",
-      role: "membre",
+      firstName: "", lastName: "", email: "", phone: "", address: "", zipCode: "", city: "",
+      password: "", confirmPassword: "", socialSecurityNumber: "", franceTravailId: "", role: "membre",
     },
   });
+  
+  const handleView = (user: User) => {
+    setUserToView(user);
+  };
+  
+  const handleConvert = (user: User) => {
+    setEditingUser(user);
+    membreForm.reset({
+        ...user,
+        role: "membre",
+        address: user.address || "",
+        zipCode: user.zipCode || "",
+        city: user.city || "",
+        password: '',
+        confirmPassword: '',
+    });
+    setIsMembreFormOpen(true);
+  };
+  
+  const handleStatusChange = async (user: User, status: User['status']) => {
+    if (!user || !agency) return;
+    try {
+        const userDocRef = doc(firestore, "users", user.id);
+        await setDocumentNonBlocking(userDocRef, { status }, { merge: true });
+        toast({ title: "Statut mis à jour", description: `Le statut de ${user.firstName} est maintenant "${prospectStatusText[status!]}".` });
+    } catch (error) {
+        toast({ title: "Erreur", description: "Impossible de mettre à jour le statut.", variant: "destructive" });
+    }
+  };
+
 
   const handleEdit = (user: User) => {
     setEditingUser(user);
@@ -273,7 +328,7 @@ export default function UsersPage() {
             confirmPassword: '',
         });
         setIsConseillerFormOpen(true);
-    } else if (user.role === 'membre' || user.role === 'prospect') {
+    } else if (user.role === 'membre') {
         membreForm.reset({
             ...user,
             password: '',
@@ -310,7 +365,6 @@ export default function UsersPage() {
     }
     setIsSubmitting(true);
     
-    // First, validate data on the server
     const validationResult = await validateUser({ ...values, agencyId: agency.id });
 
     if (!validationResult.success) {
@@ -319,28 +373,19 @@ export default function UsersPage() {
         return;
     }
     
-    // Now, create or update the user on the client side
     let finalPassword = 'password' in values ? values.password : '';
     
-    // Generate a password for members if none is provided
-    if (values.role === 'membre' && (!finalPassword || finalPassword.length === 0)) {
+    if ((values.role === 'membre' || values.role === 'conseiller') && (!finalPassword || finalPassword.length === 0) && !editingUser) {
         finalPassword = randomBytes(16).toString('hex');
     }
 
     try {
         let userId = editingUser?.id;
         
-        if (editingUser && editingUser.email !== values.email) {
-            // This is a sensitive operation and should ideally be handled with more security,
-            // like re-authentication, but for this app, we'll allow direct update.
-            // A server-side function would be better to update the Auth user's email.
-            console.warn("L'e-mail a été modifié. La mise à jour de l'e-mail dans Firebase Auth n'est pas implémentée de manière sécurisée côté client.");
-        }
-
         if (!editingUser && auth && finalPassword) {
             const userCredential = await createUserWithEmailAndPassword(auth, values.email, finalPassword);
             userId = userCredential.user.uid;
-        } else if (!editingUser) {
+        } else if (!editingUser && !finalPassword) {
              throw new Error("Impossible de créer un utilisateur sans mot de passe.");
         }
 
@@ -362,7 +407,7 @@ export default function UsersPage() {
 
         await setDocumentNonBlocking(userDocRef, dataToSave, { merge: true });
 
-        toast({ title: "Succès", description: `L'utilisateur a été ${editingUser ? 'modifié' : 'ajouté'}.` });
+        toast({ title: "Succès", description: `L'utilisateur a été ${editingUser ? 'modifié' : 'créé'}.` });
         
         if (values.role === 'conseiller') setIsConseillerFormOpen(false);
         else if (values.role === 'membre') setIsMembreFormOpen(false);
@@ -685,7 +730,7 @@ export default function UsersPage() {
                                         <DialogFooter className="pt-4">
                                             <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                                {editingUser ? 'Enregistrer' : 'Créer le membre'}
+                                                {editingUser?.role === 'prospect' ? 'Convertir en Membre' : (editingUser ? 'Enregistrer' : 'Créer le membre')}
                                             </Button>
                                         </DialogFooter>
                                     </form>
@@ -704,7 +749,15 @@ export default function UsersPage() {
                         value={prospectSearch}
                         onChange={(e) => setProspectSearch(e.target.value)}
                     />
-                    <UserTable users={prospects} isLoading={isLoading} emptyMessage="Aucun prospect trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
+                    <UserTable 
+                        users={prospects} 
+                        isLoading={isLoading} 
+                        emptyMessage="Aucun prospect trouvé." 
+                        onView={handleView}
+                        onDelete={openDeleteDialog}
+                        onConvert={handleConvert}
+                        onStatusChange={handleStatusChange}
+                    />
                 </div>
             </TabsContent>
           </Tabs>
@@ -725,6 +778,24 @@ export default function UsersPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+       <Dialog open={!!userToView} onOpenChange={(open) => !open && setUserToView(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Informations du Prospect</DialogTitle>
+                    <DialogDescription>Détails du prospect {userToView?.firstName} {userToView?.lastName}.</DialogDescription>
+                </DialogHeader>
+                {userToView && (
+                    <div className="space-y-4 py-4">
+                        <p><strong>Nom:</strong> {userToView.firstName} {userToView.lastName}</p>
+                        <p><strong>Email:</strong> {userToView.email}</p>
+                        <p><strong>Téléphone:</strong> {userToView.phone}</p>
+                        <p><strong>Origine:</strong> {userToView.origin || 'Inconnue'}</p>
+                        <p><strong>Date d'ajout:</strong> {new Date(userToView.dateJoined).toLocaleDateString('fr-FR')}</p>
+                         <p><strong>Statut:</strong> {userToView.status ? prospectStatusText[userToView.status] : 'Nouveau'}</p>
+                    </div>
+                )}
+            </DialogContent>
+        </Dialog>
     </div>
   );
 }
