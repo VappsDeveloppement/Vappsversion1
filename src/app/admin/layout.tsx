@@ -29,9 +29,7 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
-import { doc } from "firebase/firestore";
-import { useMemo, useEffect } from "react";
+import { useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const adminMenuItems = [
@@ -49,28 +47,9 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
 
-  const userDocRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
-
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
-  
-  const isSuperAdmin = useMemo(() => userData?.role === 'superadmin', [userData]);
-
-  useEffect(() => {
-    if (!isUserLoading && !isUserDataLoading) {
-        if (!isSuperAdmin) {
-            router.push('/dashboard');
-        }
-    }
-  }, [isUserLoading, isUserDataLoading, isSuperAdmin, router]);
-
-  if (isUserLoading || isUserDataLoading || !isSuperAdmin) {
+  if (isUserLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
             <Skeleton className="h-96 w-full max-w-4xl" />

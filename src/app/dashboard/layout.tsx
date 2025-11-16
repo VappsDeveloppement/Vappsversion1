@@ -72,8 +72,6 @@ export default function DashboardLayout({
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
-  const isSuperAdmin = useMemo(() => userData?.role === 'superadmin', [userData]);
-  
   const isSettingsOpen = React.useState(pathname.startsWith('/dashboard/settings'));
   const [isMounted, setIsMounted] = React.useState(false);
 
@@ -168,16 +166,14 @@ export default function DashboardLayout({
                 </Collapsible>
             </SidebarMenu>
              <SidebarMenu className="mt-auto">
-                {isSuperAdmin && (
-                  <SidebarMenuItem>
-                      <Link href="/admin">
-                           <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
-                               <UserCog />
-                              <span>Admin Platforme</span>
-                          </SidebarMenuButton>
-                      </Link>
-                  </SidebarMenuItem>
-                )}
+                <SidebarMenuItem>
+                    <Link href="/admin">
+                         <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
+                             <UserCog />
+                            <span>Admin Platforme</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
              </SidebarMenu>
           </SidebarContent>
           <SidebarFooter>
