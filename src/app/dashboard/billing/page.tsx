@@ -291,6 +291,7 @@ export default function BillingPage() {
     const [isQuoteFormOpen, setIsQuoteFormOpen] = React.useState(false);
     const [editingQuote, setEditingQuote] = React.useState<Quote | null>(null);
     const [quoteToDelete, setQuoteToDelete] = React.useState<Quote | null>(null);
+    const [invoiceToDelete, setInvoiceToDelete] = React.useState<Invoice | null>(null);
     const { agency, isLoading: isAgencyLoading, personalization } = useAgency();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -327,6 +328,20 @@ export default function BillingPage() {
             toast({ title: "Erreur", description: "Impossible de supprimer le devis.", variant: "destructive" });
         } finally {
             setQuoteToDelete(null);
+        }
+    };
+    
+    const handleDeleteInvoiceConfirm = async () => {
+        if (!invoiceToDelete || !agency) return;
+        try {
+            const invoiceDocRef = doc(firestore, "agencies", agency.id, "invoices", invoiceToDelete.id);
+            await deleteDocumentNonBlocking(invoiceDocRef);
+            toast({ title: "Facture supprimée", description: "La facture a été supprimée." });
+        } catch (error) {
+            console.error("Error deleting invoice:", error);
+            toast({ title: "Erreur", description: "Impossible de supprimer la facture.", variant: "destructive" });
+        } finally {
+            setInvoiceToDelete(null);
         }
     };
     
@@ -806,6 +821,10 @@ export default function BillingPage() {
                                                                 {isSending === invoice.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                                                                 Renvoyer par e-mail
                                                             </DropdownMenuItem>
+                                                            <DropdownMenuItem className="text-destructive" onClick={() => setInvoiceToDelete(invoice)}>
+                                                                <Trash2 className="mr-2 h-4 w-4" />
+                                                                Supprimer
+                                                            </DropdownMenuItem>
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </TableCell>
@@ -838,6 +857,21 @@ export default function BillingPage() {
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+            <AlertDialog open={!!invoiceToDelete} onOpenChange={(open) => !open && setInvoiceToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Êtes-vous sûr de vouloir supprimer cette facture ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est irréversible. La facture <strong>{invoiceToDelete?.invoiceNumber}</strong> sera définitivement supprimée.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel onClick={() => setInvoiceToDelete(null)}>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteInvoiceConfirm} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
+
