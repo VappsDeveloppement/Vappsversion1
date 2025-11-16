@@ -2,9 +2,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal } from "lucide-react";
+import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
@@ -18,7 +19,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useToast } from '@/hooks/use-toast';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 
 type Agency = {
     id: string;
@@ -188,10 +189,17 @@ export default function AgencyManagementPage() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem asChild>
+                                                        <Link href={`/agency/${agency.id}`} target="_blank">
+                                                            <ExternalLink className="mr-2 h-4 w-4" />
+                                                            Ouvrir l'URL publique
+                                                        </Link>
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleEdit(agency)}>
                                                         <Edit className="mr-2 h-4 w-4" />
-                                                        Modifier
+                                                        Modifier le nom
                                                     </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
                                                     <DropdownMenuItem
                                                         className="text-destructive"
                                                         onClick={() => setAgencyToDelete(agency)}
