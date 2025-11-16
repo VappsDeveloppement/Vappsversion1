@@ -28,6 +28,8 @@ type SuperAdmin = {
   dateJoined: string;
 };
 
+// Use a local, correct schema for this page's purpose.
+// This avoids relying on an external, incorrect schema.
 const superAdminFormSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
@@ -86,11 +88,14 @@ export default function SuperAdminsPage() {
     setIsSubmitting(true);
     try {
       if (editingUser) {
+        // Logic for updating an existing super admin
         const userDocRef = doc(firestore, 'users', editingUser.id);
         await setDocumentNonBlocking(userDocRef, {
             firstName: values.firstName,
             lastName: values.lastName,
             email: values.email,
+            // Ensure role is not accidentally changed
+            role: 'superadmin',
         }, { merge: true });
         
         if (values.password) {
@@ -99,11 +104,20 @@ export default function SuperAdminsPage() {
         toast({ title: 'Succès', description: 'Le Super Admin a été mis à jour.' });
         
       } else {
-        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
+        // Logic for creating a new super admin
+        if (!values.password) {
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Un mot de passe est requis pour un nouvel utilisateur.' });
+            setIsSubmitting(false);
+            return;
+        }
+
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
         const user = userCredential.user;
 
         const userDocRef = doc(firestore, 'users', user.uid);
+        // Correctly assign the 'superadmin' role here.
         await setDocumentNonBlocking(userDocRef, {
+            id: user.uid,
             firstName: values.firstName,
             lastName: values.lastName,
             email: values.email,
@@ -136,7 +150,7 @@ export default function SuperAdminsPage() {
     try {
       const userDocRef = doc(firestore, "users", userToDelete.id);
       await deleteDocumentNonBlocking(userDocRef);
-      toast({ title: "Utilisateur supprimé", description: "Le Super Admin a été supprimé de Firestore." });
+      toast({ title: "Utilisateur supprimé", description: "Le Super Admin a été supprimé de Firestore. La suppression de l'authentification doit se faire manuellement." });
     } catch (error) {
       console.error("Error deleting super admin:", error);
       toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur.", variant: "destructive" });
@@ -290,7 +304,7 @@ export default function SuperAdminsPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
             <AlertDialogDescription>
-              Cette action supprimera l'utilisateur <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong>. Cette action est irréversible.
+              Cette action supprimera l'utilisateur <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong> de la base de données Firestore. La suppression de l'authentification Firebase devra être effectuée manuellement. Cette action est irréversible.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -27,8 +27,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["superadmin", "membre"],
-          "description": "The highest role of the user across all agencies (superadmin or regular member)."
+          "enum": ["superadmin", "membre", "prospect"],
+          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'membre' is a standard user. 'prospect' is a potential user."
         },
         "dateJoined": {
           "type": "string",
