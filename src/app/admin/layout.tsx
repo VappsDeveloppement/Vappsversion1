@@ -28,10 +28,8 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@/firebase";
-import { useFirestore } from "@/firebase/provider";
-import { doc, query, collection, where } from "firebase/firestore";
-import { useDoc, useCollection, useMemoFirebase } from "@/firebase";
+import { useUser, useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { useMemo, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -64,8 +62,10 @@ export default function AdminLayout({
   const isSuperAdmin = userData?.role === 'superadmin';
 
   useEffect(() => {
-    if (!isUserLoading && !isUserDataLoading && !isSuperAdmin) {
-      router.push('/dashboard');
+    if (!isUserLoading && !isUserDataLoading) {
+        if (!isSuperAdmin) {
+            router.push('/dashboard');
+        }
     }
   }, [isUserLoading, isUserDataLoading, isSuperAdmin, router]);
 
@@ -105,7 +105,7 @@ export default function AdminLayout({
                     <Link href="/dashboard">
                         <SidebarMenuButton>
                             <Home />
-                            <span>Back to App</span>
+                            <span>Retour à l'app</span>
                         </SidebarMenuButton>
                     </Link>
                 </SidebarMenuItem>
