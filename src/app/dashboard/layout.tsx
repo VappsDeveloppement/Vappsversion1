@@ -136,18 +136,18 @@ export default function DashboardLayout({
                 </SidebarMenuItem>
               ))}
             </SidebarMenu>
-             {isSuperAdmin && (
-                <SidebarMenu className="mt-auto">
-                    <SidebarMenuItem>
-                        <Link href="/admin">
-                            <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
-                                <UserCog />
-                                <span>Admin Platforme</span>
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                </SidebarMenu>
-             )}
+            
+            <SidebarMenu className="mt-auto">
+                <SidebarMenuItem>
+                    <Link href="/admin">
+                        <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
+                            <UserCog />
+                            <span>Admin Platforme</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+            </SidebarMenu>
+             
           </SidebarContent>
           <SidebarFooter>
             <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">

@@ -49,7 +49,6 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
@@ -62,14 +61,9 @@ export default function AdminLayout({
 
   const isLoading = isUserLoading || isUserDataLoading;
 
-  useEffect(() => {
-    // If loading is finished and there's no user or the user is not a superadmin, redirect.
-    if (!isLoading && (!user || userData?.role !== 'superadmin')) {
-      router.push('/dashboard');
-    }
-  }, [isLoading, user, userData, router]);
+  // No redirection logic here anymore. Access is open for any connected user.
 
-  if (isLoading || !user || userData?.role !== 'superadmin') {
+  if (isLoading) {
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
