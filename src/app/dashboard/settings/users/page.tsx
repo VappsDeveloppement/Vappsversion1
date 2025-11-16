@@ -47,7 +47,6 @@ type User = {
   status?: 'new' | 'contacted' | 'not_interested';
   origin?: string;
   message?: string;
-  counselorId?: string;
 };
 
 const baseUserFormSchema = z.object({
@@ -112,7 +111,7 @@ const prospectStatusText: Record<NonNullable<User['status']>, string> = {
 };
 
 // Component to render the user table
-const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert, onStatusChange, onView, counselors, onAssignCounselor, currentUser }: {
+const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert, onStatusChange, onView }: {
     users: User[],
     isLoading: boolean,
     emptyMessage: string,
@@ -120,10 +119,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
     onDelete: (user: User) => void,
     onConvert?: (user: User) => void,
     onStatusChange?: (user: User, status: User['status']) => void,
-    onView?: (user: User) => void,
-    counselors?: User[],
-    onAssignCounselor?: (memberId: string, counselorId: string | null) => void,
-    currentUser: User | null;
+    onView?: (user: User) => void
 }) => {
   if (isLoading) {
     return (
@@ -133,7 +129,6 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
-            {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
             {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
             <TableHead>Date d'inscription</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -145,7 +140,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
               <TableCell><Skeleton className="h-5 w-24" /></TableCell>
               <TableCell><Skeleton className="h-5 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-              {(users[0]?.role === 'membre' || users[0]?.role === 'prospect') && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
+              {users[0]?.role === 'prospect' && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
             </TableRow>
@@ -163,9 +158,6 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
     );
   }
 
-  const canManageAssignation = currentUser && ['admin', 'superadmin', 'conseiller'].includes(currentUser.role);
-
-
   return (
     <Table>
       <TableHeader>
@@ -173,7 +165,6 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
           <TableHead>Nom</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Rôle</TableHead>
-          {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
           {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
           <TableHead>Date d'inscription</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -181,7 +172,6 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
       </TableHeader>
       <TableBody>
         {users.map(user => {
-            const assignedCounselor = user.counselorId ? counselors?.find(c => c.id === user.counselorId) : null;
             return (
                 <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
@@ -191,11 +181,6 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                             {user.role}
                         </Badge>
                     </TableCell>
-                    {user.role === 'membre' && (
-                        <TableCell>
-                            {assignedCounselor ? `${assignedCounselor.firstName} ${assignedCounselor.lastName}` : <Badge variant="outline">Non assigné</Badge>}
-                        </TableCell>
-                    )}
                     {user.role === 'prospect' && (
                         <TableCell>
                             {user.status && (
@@ -219,34 +204,6 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                 {onView && <DropdownMenuItem onClick={() => onView(user)}><Info className="mr-2 h-4 w-4" /> Voir les informations</DropdownMenuItem>}
                                 {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
                                 
-                                {user.role === 'membre' && canManageAssignation && (
-                                  <DropdownMenuSub>
-                                    <DropdownMenuSubTrigger><UserCog className="mr-2 h-4 w-4" />Assigner un Conseiller</DropdownMenuSubTrigger>
-                                    <DropdownMenuPortal>
-                                      <DropdownMenuSubContent>
-                                        {(currentUser?.role === 'admin' || currentUser?.role === 'superadmin') && (
-                                          <>
-                                            <DropdownMenuItem onClick={() => onAssignCounselor!(user.id, null)}>Aucun (retirer)</DropdownMenuItem>
-                                            {counselors?.map(c => (
-                                                <DropdownMenuItem key={c.id} onClick={() => onAssignCounselor!(user.id, c.id)}>{c.firstName} {c.lastName}</DropdownMenuItem>
-                                            ))}
-                                          </>
-                                        )}
-                                        {currentUser?.role === 'conseiller' && !user.counselorId && (
-                                          <DropdownMenuItem onClick={() => onAssignCounselor!(user.id, currentUser.id)}>
-                                            <UserPlus className="mr-2 h-4 w-4" /> M'assigner ce membre
-                                          </DropdownMenuItem>
-                                        )}
-                                        {currentUser?.role === 'conseiller' && user.counselorId && user.counselorId === currentUser.id && (
-                                           <DropdownMenuItem onClick={() => onAssignCounselor!(user.id, null)}>
-                                             Me désassigner
-                                           </DropdownMenuItem>
-                                        )}
-                                      </DropdownMenuSubContent>
-                                    </DropdownMenuPortal>
-                                  </DropdownMenuSub>
-                                )}
-
                                 {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
                                 {onStatusChange && (
                                     <DropdownMenuSub>
@@ -305,12 +262,6 @@ export default function UsersPage() {
   }, [agency, firestore]);
 
   const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
-  const { data: counselorsData } = useCollection<User>(
-    useMemoFirebase(() => {
-        if (!agency) return null;
-        return query(collection(firestore, 'users'), where('agencyId', '==', agency.id), where('role', 'in', ['conseiller', 'admin', 'superadmin']));
-    }, [agency, firestore])
-  );
 
   const isLoading = isAgencyLoading || areUsersLoading;
 
@@ -412,19 +363,6 @@ export default function UsersPage() {
     setUserToDelete(user);
   };
 
-  const handleAssignCounselor = async (memberId: string, counselorId: string | null) => {
-    const userDocRef = doc(firestore, "users", memberId);
-    try {
-        await setDocumentNonBlocking(userDocRef, { counselorId }, { merge: true });
-        const member = users?.find(u => u.id === memberId);
-        const counselor = counselorsData?.find(c => c.id === counselorId);
-        const message = counselorId ? `Le membre ${member?.firstName} a été assigné à ${counselor?.firstName}.` : `L'assignation de ${member?.firstName} a été retirée.`;
-        toast({ title: "Assignation mise à jour", description: message });
-    } catch (error) {
-        toast({ title: "Erreur", description: "Impossible de mettre à jour l'assignation.", variant: "destructive" });
-    }
-  };
-
   async function handleCreateUser(values: z.infer<typeof adminFormSchema> | z.infer<typeof conseillerFormSchema> | z.infer<typeof membreFormSchema>) {
     if (!agency) {
         toast({ title: "Erreur", description: "L'agence n'a pas été trouvée.", variant: "destructive" });
@@ -470,13 +408,6 @@ export default function UsersPage() {
 
         if(!editingUser) {
           dataToSave.dateJoined = new Date().toISOString();
-        }
-
-        if (!editingUser && values.role === 'membre') {
-            const creator = users?.find(u => u.id === firebaseAuthUser?.uid);
-            if (creator && ['admin', 'superadmin', 'conseiller'].includes(creator.role)) {
-                dataToSave.counselorId = creator.id;
-            }
         }
         
         await setDocumentNonBlocking(userDocRef, dataToSave, { merge: true });
@@ -524,8 +455,6 @@ export default function UsersPage() {
 
   const newProspects = useMemo(() => prospects.filter(p => p.status === 'new'), [prospects]);
   const otherProspects = useMemo(() => prospects.filter(p => p.status !== 'new'), [prospects]);
-
-  const currentConnectedUser = users?.find(u => u.id === firebaseAuthUser?.uid) || null;
 
   return (
     <div className="space-y-8">
@@ -639,7 +568,7 @@ export default function UsersPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
-                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentConnectedUser} />
+                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
               </div>
             </TabsContent>
 
@@ -719,7 +648,7 @@ export default function UsersPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentConnectedUser}/>
+                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
                 </div>
             </TabsContent>
 
@@ -823,9 +752,6 @@ export default function UsersPage() {
                         emptyMessage="Aucun membre trouvé." 
                         onEdit={handleEdit} 
                         onDelete={openDeleteDialog} 
-                        counselors={counselorsData || []}
-                        onAssignCounselor={handleAssignCounselor}
-                        currentUser={currentConnectedUser}
                     />
                 </div>
             </TabsContent>
@@ -846,7 +772,6 @@ export default function UsersPage() {
                                         onDelete={openDeleteDialog}
                                         onConvert={handleConvert}
                                         onStatusChange={handleStatusChange}
-                                        currentUser={currentConnectedUser}
                                     />
                                 </div>
                             </AlertDescription>
@@ -871,7 +796,6 @@ export default function UsersPage() {
                                 onDelete={openDeleteDialog}
                                 onConvert={handleConvert}
                                 onStatusChange={handleStatusChange}
-                                currentUser={currentConnectedUser}
                             />
                         </CardContent>
                     </Card>
@@ -922,5 +846,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
-
