@@ -9,7 +9,6 @@ import {
   LogOut,
   MessageSquare,
   Users,
-  Shield,
   FileText,
   Paintbrush,
   UserCog,
@@ -184,7 +183,6 @@ export default function DashboardLayout({
                 <AvatarImage src={user?.photoURL ?? undefined} />
                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
-              <div className="flex-1 overflow-hidden"></div>
               <Link href="/">
                 <Button variant="ghost" size="icon">
                   <LogOut className="h-4 w-4" />
