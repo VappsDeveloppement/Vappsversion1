@@ -166,10 +166,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
     );
   }
   
-  const isCurrentUserAdmin = currentUser?.role === 'admin';
-  const isCurrentUserSuperAdmin = currentUser?.role === 'superadmin';
-  const isCurrentUserConseiller = currentUser?.role === 'conseiller';
-  const canManageAssignations = isCurrentUserAdmin || isCurrentUserSuperAdmin || isCurrentUserConseiller;
+  const canManageAssignations = currentUser?.role === 'admin' || currentUser?.role === 'superadmin' || currentUser?.role === 'conseiller';
 
 
   return (
@@ -232,17 +229,17 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                         </DropdownMenuSubTrigger>
                                         <DropdownMenuPortal>
                                             <DropdownMenuSubContent>
-                                                {(isCurrentUserAdmin || isCurrentUserSuperAdmin) && (
+                                                {(currentUser.role === 'admin' || currentUser.role === 'superadmin') && (
                                                   <>
                                                     <DropdownMenuItem onClick={() => onAssign(user, null)}>Aucun (retirer)</DropdownMenuItem>
                                                     {counselors.map(c => (
-                                                        <DropdownMenuItem key={c.id} onClick={() => onAssign(user, c.id)}>
+                                                        <DropdownMenuItem key={c.id} onClick={() => onAssign(user, c.id)} disabled={currentUser.role === 'admin' && c.role === 'superadmin'}>
                                                           {c.firstName} {c.lastName} ({c.role})
                                                         </DropdownMenuItem>
                                                     ))}
                                                   </>
                                                 )}
-                                                {isCurrentUserConseiller && !user.counselorId && (
+                                                {currentUser.role === 'conseiller' && !user.counselorId && (
                                                     <DropdownMenuItem onClick={() => onAssign(user, currentUser.id)}>
                                                         <UserCheck className="mr-2 h-4 w-4" />
                                                         S'assigner
@@ -306,14 +303,14 @@ export default function UsersPage() {
 
   // The query should only run when we have an agency ID and the user is authenticated.
   const agencyUsersQuery = useMemoFirebase(() => {
-    if (!agency?.id || !firebaseAuthUser) return null;
+    if (!agency?.id || !firebaseAuthUser?.uid) return null;
     return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
-  }, [agency?.id, firebaseAuthUser, firestore]);
+  }, [agency?.id, firebaseAuthUser?.uid, firestore]);
   
   const superAdminsQuery = useMemoFirebase(() => {
-    if (!firebaseAuthUser) return null;
+    if (!firebaseAuthUser?.uid) return null;
     return query(collection(firestore, 'users'), where('role', '==', 'superadmin'));
-  }, [firebaseAuthUser, firestore]);
+  }, [firebaseAuthUser?.uid, firestore]);
 
   const { data: agencyUsers, isLoading: areAgencyUsersLoading } = useCollection<User>(agencyUsersQuery);
   const { data: superAdminsData, isLoading: areSuperAdminsLoading } = useCollection<User>(superAdminsQuery);
