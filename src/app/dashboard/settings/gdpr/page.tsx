@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,10 +8,12 @@ import { Label } from "@/components/ui/label";
 import { useAgency } from "@/context/agency-provider";
 import { useToast } from "@/hooks/use-toast";
 import { useFirestore } from "@/firebase/provider";
-import { doc } from "firebase/firestore";
-import { setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { collection, doc } from "firebase/firestore";
+import { setDocumentNonBlocking, useCollection, useMemoFirebase } from "@/firebase";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 
 const defaultGdprSettings = {
   inactivityAlertDays: 365,
@@ -20,11 +23,30 @@ const defaultGdprSettings = {
   dpoAddress: "",
 };
 
+type GdprRequest = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  status: 'new' | 'in_progress' | 'closed';
+  createdAt: string;
+};
+
 export default function GdprPage() {
   const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
   const { toast } = useToast();
   const firestore = useFirestore();
   const [settings, setSettings] = useState(personalization?.gdprSettings || defaultGdprSettings);
+
+  const gdprRequestsCollectionRef = useMemoFirebase(() => {
+    if (!agency) return null;
+    return collection(firestore, 'gdpr_requests');
+  }, [agency, firestore]);
+
+  const { data: gdprRequests, isLoading: areGdprRequestsLoading } = useCollection<GdprRequest>(gdprRequestsCollectionRef);
+
 
   useEffect(() => {
     if (personalization?.gdprSettings) {
@@ -69,9 +91,56 @@ export default function GdprPage() {
       <div>
         <h1 className="text-3xl font-bold font-headline">Gestion RGPD</h1>
         <p className="text-muted-foreground">
-          Gérez les données et la conformité RGPD de l'agence.
+          Gérez les données, la conformité RGPD et les demandes des utilisateurs de l'agence.
         </p>
       </div>
+       <Card>
+        <CardHeader>
+          <CardTitle>Demandes "Données Personnelles"</CardTitle>
+          <CardDescription>Liste des demandes soumises via le formulaire de contact.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Demandeur</TableHead>
+                <TableHead>Message</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {areGdprRequestsLoading ? (
+                <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+              ) : gdprRequests && gdprRequests.length > 0 ? (
+                gdprRequests.map(request => (
+                  <TableRow key={request.id}>
+                    <TableCell>
+                      <div className="font-medium">{request.name}</div>
+                      <div className="text-sm text-muted-foreground">{request.email}</div>
+                      <div className="text-sm text-muted-foreground">{request.phone}</div>
+                    </TableCell>
+                    <TableCell className="max-w-xs truncate">{request.message}</TableCell>
+                    <TableCell>{new Date(request.createdAt).toLocaleDateString('fr-FR')}</TableCell>
+                    <TableCell><Badge variant={request.status === 'new' ? 'destructive' : 'secondary'}>{request.status}</Badge></TableCell>
+                    <TableCell className="text-right">
+                      <Button variant="outline" size="sm">Traiter</Button>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    Aucune demande relative aux données personnelles.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Paramètres de conformité RGPD</CardTitle>

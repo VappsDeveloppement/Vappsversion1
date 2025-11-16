@@ -42,6 +42,12 @@ service cloud.firestore {
       }
     }
     
+    // GDPR requests can be created by anyone (public form), but only read/managed by admins
+    match /gdpr_requests/{requestId} {
+        allow create: if true;
+        allow read, write, update, delete: if isSignedIn();
+    }
+    
     match /users/{userId}/{path=**} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }

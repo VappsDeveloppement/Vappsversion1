@@ -15,9 +15,11 @@ import { useAgency } from "@/context/agency-provider";
 import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
 import { Label } from "../ui/label";
 import { useFirestore } from "@/firebase/provider";
-import { collection, query, where, getDocs } from "firebase/firestore";
+import { collection, query, where, getDocs, doc } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/hooks/use-toast";
+import { addDocumentNonBlocking } from "@/firebase";
+
 
 const iconMap: { [key: string]: React.ComponentType<any> } = {
     GitBranch,
@@ -100,7 +102,70 @@ function QuoteValidationForm() {
 }
 
 export function Footer() {
-    const { personalization } = useAgency();
+    const { personalization, agency } = useAgency();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const [contactName, setContactName] = useState('');
+    const [contactEmail, setContactEmail] = useState('');
+    const [contactPhone, setContactPhone] = useState('');
+    const [contactSubject, setContactSubject] = useState('');
+    const [contactMessage, setContactMessage] = useState('');
+    const [isContactLoading, setIsContactLoading] = useState(false);
+
+    const handleContactSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!contactName || !contactEmail || !contactPhone || !contactSubject || !contactMessage) {
+            toast({ title: "Erreur", description: "Veuillez remplir tous les champs.", variant: "destructive" });
+            return;
+        }
+        setIsContactLoading(true);
+
+        try {
+            if (contactSubject === "Demande d'information") {
+                const usersCollectionRef = collection(firestore, 'users');
+                const nameParts = contactName.split(' ');
+                const firstName = nameParts.shift() || contactName;
+                const lastName = nameParts.join(' ') || '-';
+
+                await addDocumentNonBlocking(usersCollectionRef, {
+                    firstName,
+                    lastName,
+                    email: contactEmail,
+                    phone: contactPhone,
+                    role: 'prospect',
+                    agencyId: agency?.id,
+                    dateJoined: new Date().toISOString(),
+                    origin: 'Footer Contact Form'
+                });
+                toast({ title: "Demande envoyée", description: "Merci ! Vous avez été ajouté à notre liste de prospects." });
+            } else if (contactSubject === "Données Personnelles") {
+                const requestsCollectionRef = collection(firestore, 'gdpr_requests');
+                await addDocumentNonBlocking(requestsCollectionRef, {
+                    name: contactName,
+                    email: contactEmail,
+                    phone: contactPhone,
+                    subject: contactSubject,
+                    message: contactMessage,
+                    agencyId: agency?.id,
+                    status: 'new',
+                    createdAt: new Date().toISOString(),
+                });
+                toast({ title: "Demande envoyée", description: "Votre demande concernant vos données personnelles a bien été prise en compte." });
+            }
+             // Reset form
+            setContactName('');
+            setContactEmail('');
+            setContactPhone('');
+            setContactSubject('');
+            setContactMessage('');
+        } catch (error) {
+            console.error("Error submitting contact form:", error);
+            toast({ title: "Erreur", description: "Une erreur est survenue.", variant: "destructive" });
+        } finally {
+            setIsContactLoading(false);
+        }
+    };
 
     const legalInfo = personalization?.legalInfo || {};
     const aboutTitle = personalization?.footerAboutTitle || "À propos";
@@ -163,28 +228,52 @@ export function Footer() {
                     {/* Middle Column */}
                     <div className="md:col-span-4">
                         <h3 className="font-bold text-white text-lg mb-4">Contactez-nous</h3>
-                        <form className="space-y-4">
-                            <Input 
-                                type="email" 
-                                placeholder="email@example.com" 
+                        <form className="space-y-4" onSubmit={handleContactSubmit}>
+                            <Input
+                                value={contactName}
+                                onChange={(e) => setContactName(e.target.value)}
+                                placeholder="Nom & Prénom"
+                                required
                                 className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500" 
                             />
-                            <Select>
+                            <Input 
+                                type="email"
+                                value={contactEmail}
+                                onChange={(e) => setContactEmail(e.target.value)}
+                                placeholder="email@example.com"
+                                required
+                                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500" 
+                            />
+                            <Input
+                                type="tel"
+                                value={contactPhone}
+                                onChange={(e) => setContactPhone(e.target.value)}
+                                placeholder="Votre numéro de téléphone"
+                                required
+                                className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500" 
+                            />
+                            <Select value={contactSubject} onValueChange={setContactSubject} required>
                                 <SelectTrigger className="w-full bg-gray-800 border-gray-700 text-white">
-                                    <SelectValue placeholder="Demande d'information" />
+                                    <SelectValue placeholder="Objet de votre demande" />
                                 </SelectTrigger>
                                 <SelectContent className="bg-gray-800 border-gray-700 text-white">
-                                    <SelectItem value="info">Demande d'information</SelectItem>
-                                    <SelectItem value="partnership">Partenariat</SelectItem>
-                                    <SelectItem value="support">Support</SelectItem>
+                                    <SelectItem value="Demande d'information">Demande d'information</SelectItem>
+                                    <SelectItem value="Données Personnelles">Données Personnelles</SelectItem>
+                                    <SelectItem value="Support">Support</SelectItem>
                                 </SelectContent>
                             </Select>
                             <Textarea 
-                                placeholder="Votre message..." 
+                                value={contactMessage}
+                                onChange={(e) => setContactMessage(e.target.value)}
+                                placeholder="Votre message..."
+                                required
                                 className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 min-h-[100px]" 
                             />
                              <div className="flex gap-2">
-                                <Button>Envoyer</Button>
+                                <Button type="submit" disabled={isContactLoading}>
+                                    {isContactLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Envoyer
+                                </Button>
                                 <Dialog>
                                     <DialogTrigger asChild>
                                         <Button>Valider un devis</Button>
