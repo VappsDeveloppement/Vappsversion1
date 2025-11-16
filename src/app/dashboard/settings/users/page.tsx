@@ -45,6 +45,7 @@ type User = {
   franceTravailId?: string;
   status?: 'new' | 'contacted' | 'not_interested';
   origin?: string;
+  message?: string;
 };
 
 const baseUserFormSchema = z.object({
@@ -785,13 +786,19 @@ export default function UsersPage() {
                     <DialogDescription>Détails du prospect {userToView?.firstName} {userToView?.lastName}.</DialogDescription>
                 </DialogHeader>
                 {userToView && (
-                    <div className="space-y-4 py-4">
+                    <div className="space-y-4 py-4 text-sm">
                         <p><strong>Nom:</strong> {userToView.firstName} {userToView.lastName}</p>
                         <p><strong>Email:</strong> {userToView.email}</p>
                         <p><strong>Téléphone:</strong> {userToView.phone}</p>
                         <p><strong>Origine:</strong> {userToView.origin || 'Inconnue'}</p>
                         <p><strong>Date d'ajout:</strong> {new Date(userToView.dateJoined).toLocaleDateString('fr-FR')}</p>
                          <p><strong>Statut:</strong> {userToView.status ? prospectStatusText[userToView.status] : 'Nouveau'}</p>
+                         {userToView.message && (
+                            <div>
+                                <p><strong>Message:</strong></p>
+                                <p className="text-muted-foreground p-2 border bg-muted rounded-md whitespace-pre-wrap">{userToView.message}</p>
+                            </div>
+                         )}
                     </div>
                 )}
             </DialogContent>

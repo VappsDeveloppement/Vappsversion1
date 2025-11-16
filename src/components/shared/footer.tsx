@@ -133,10 +133,12 @@ export function Footer() {
                     lastName,
                     email: contactEmail,
                     phone: contactPhone,
+                    message: contactMessage, // Save the message
                     role: 'prospect',
                     agencyId: agency?.id,
                     dateJoined: new Date().toISOString(),
-                    origin: 'Footer Contact Form'
+                    origin: 'Footer Contact Form',
+                    status: 'new'
                 });
                 toast({ title: "Demande envoyée", description: "Merci ! Vous avez été ajouté à notre liste de prospects." });
             } else if (contactSubject === "Données Personnelles") {

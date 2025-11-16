@@ -69,6 +69,10 @@
             "type": "string",
             "enum": ["new", "contacted", "not_interested"],
             "description": "Status for a prospect (e.g., new, contacted)."
+        },
+        "message": {
+          "type": "string",
+          "description": "The message sent by the prospect from the contact form."
         }
       },
       "required": [
