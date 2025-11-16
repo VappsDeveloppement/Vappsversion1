@@ -30,12 +30,20 @@ type User = {
     email: string;
     role: 'superadmin' | 'membre' | 'prospect';
     dateJoined: string;
+    phone?: string;
+    address?: string;
+    zipCode?: string;
+    city?: string;
 };
 
 const userFormSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
   email: z.string().email("L'adresse email n'est pas valide."),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  zipCode: z.string().optional(),
+  city: z.string().optional(),
   role: z.enum(['superadmin', 'membre', 'prospect'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
 }).refine(data => {
@@ -81,20 +89,17 @@ export default function UserManagementPage() {
         
         const lowercasedTerm = searchTerm.toLowerCase();
         return allUsers.filter(user => 
-            user.firstName.toLowerCase().includes(lowercasedTerm) ||
-            user.lastName.toLowerCase().includes(lowercasedTerm) ||
-            user.email.toLowerCase().includes(lowercasedTerm)
+            (user.firstName?.toLowerCase() || '').includes(lowercasedTerm) ||
+            (user.lastName?.toLowerCase() || '').includes(lowercasedTerm) ||
+            (user.email?.toLowerCase() || '').includes(lowercasedTerm)
         );
     }, [allUsers, searchTerm]);
     
     const form = useForm<UserFormData>({
         resolver: zodResolver(userFormSchema),
         defaultValues: {
-            firstName: '',
-            lastName: '',
-            email: '',
-            role: 'membre',
-            password: '',
+            firstName: '', lastName: '', email: '', phone: '',
+            address: '', zipCode: '', city: '', role: 'membre', password: '',
         },
     });
 
@@ -107,11 +112,8 @@ export default function UserManagementPage() {
                 });
             } else {
                 form.reset({
-                    firstName: '',
-                    lastName: '',
-                    email: '',
-                    role: 'membre',
-                    password: '',
+                    firstName: '', lastName: '', email: '', phone: '',
+                    address: '', zipCode: '', city: '', role: 'membre', password: '',
                 });
             }
         }
@@ -134,13 +136,17 @@ export default function UserManagementPage() {
         setIsSubmitting(true);
         try {
             if (editingUser) {
-                // La modification d'un utilisateur ne change pas son mot de passe ici
+                // Modification d'un utilisateur
                 const userDocRef = doc(firestore, 'users', editingUser.id);
                 await setDocumentNonBlocking(userDocRef, {
                     firstName: values.firstName,
                     lastName: values.lastName,
                     email: values.email,
                     role: values.role,
+                    phone: values.phone,
+                    address: values.address,
+                    zipCode: values.zipCode,
+                    city: values.city,
                 }, { merge: true });
                 toast({ title: 'Succès', description: 'L\'utilisateur a été mis à jour.' });
             } else {
@@ -159,6 +165,10 @@ export default function UserManagementPage() {
                     lastName: values.lastName,
                     email: values.email,
                     role: values.role,
+                    phone: values.phone,
+                    address: values.address,
+                    zipCode: values.zipCode,
+                    city: values.city,
                     dateJoined: new Date().toISOString(),
                 }, {});
                 toast({ title: 'Succès', description: 'L\'utilisateur a été créé.' });
@@ -277,7 +287,7 @@ export default function UserManagementPage() {
                             Nouvel Utilisateur
                         </Button>
                     </DialogTrigger>
-                    <DialogContent>
+                    <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
                         <DialogHeader>
                             <DialogTitle>{editingUser ? 'Modifier l' : 'Créer un'} utilisateur</DialogTitle>
                             <DialogDescription>
@@ -285,7 +295,7 @@ export default function UserManagementPage() {
                             </DialogDescription>
                         </DialogHeader>
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-2">
                                 <div className="grid grid-cols-2 gap-4">
                                     <FormField control={form.control} name="firstName" render={({ field }) => (
                                         <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
@@ -297,6 +307,20 @@ export default function UserManagementPage() {
                                 <FormField control={form.control} name="email" render={({ field }) => (
                                     <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem>
                                 )} />
+                                 <FormField control={form.control} name="phone" render={({ field }) => (
+                                    <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="address" render={({ field }) => (
+                                    <FormItem><FormLabel>Adresse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="zipCode" render={({ field }) => (
+                                        <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="city" render={({ field }) => (
+                                        <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                    )} />
+                                </div>
                                 <FormField control={form.control} name="role" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Rôle</FormLabel>
