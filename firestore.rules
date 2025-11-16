@@ -11,10 +11,10 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Allow public read for agency personalization
+    // Allow public read for agency personalization, but restrict write access
     match /agencies/{agencyId} {
       allow get: if true;
-      allow list, write, delete: if isSignedIn();
+      allow list, write, update, delete: if isSignedIn();
     }
     
     // WARNING: DEVELOPMENT ONLY for other collections
