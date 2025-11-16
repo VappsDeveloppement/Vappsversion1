@@ -27,7 +27,7 @@ service cloud.firestore {
      function isAgencyAdmin(agencyId) {
        let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
        // A superadmin has access to ALL agencies.
-       if (isSignedIn() && userDoc.role == 'superadmin') {
+       if (isSuperAdmin()) {
          return true;
        }
        // An agency admin only has access to their own agency.
@@ -78,7 +78,7 @@ service cloud.firestore {
     // GDPR requests can be created by anyone, but only read/managed by admins of the concerned agency
     match /gdpr_requests/{requestId} {
         allow create: if true;
-        allow list: if isSignedIn() && request.query.agencyId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId;
+        allow list: if isSuperAdmin() || (isSignedIn() && request.query.agencyId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId);
         allow read, write, update, delete: if isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
     }
     
@@ -97,6 +97,8 @@ service cloud.firestore {
     }
     
     match /users/{userId} {
+      // Superadmins can do anything to any user.
+      allow read, write: if isSuperAdmin();
       // Users can manage their own data.
       allow read, write: if isSignedIn() && request.auth.uid == userId;
       // Admins can manage all users within their agency.
@@ -106,6 +108,9 @@ service cloud.firestore {
     }
     
     match /users/{userId}/{path=**} {
+      // Superadmins have access to subcollections.
+      allow read, write: if isSuperAdmin();
+      // Users can access their own subcollections.
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
     
