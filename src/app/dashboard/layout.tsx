@@ -15,7 +15,6 @@ import {
   FileText,
   Paintbrush,
   ChevronDown,
-  LayoutTemplate,
   UserCog,
 } from "lucide-react";
 import {
@@ -75,10 +74,7 @@ export default function DashboardLayout({
 
   const isSuperAdmin = useMemo(() => userData?.role === 'superadmin', [userData]);
   
-  const isModelAgencyPath = menuItems.some(item => pathname.startsWith(item.href)) || pathname.startsWith('/dashboard/settings');
-
-  const [isModelAgencyOpen, setIsModelAgencyOpen] = React.useState(isModelAgencyPath);
-  const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
+  const isSettingsOpen = React.useState(pathname.startsWith('/dashboard/settings'));
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -101,21 +97,12 @@ export default function DashboardLayout({
                     </SidebarHeader>
                     <SidebarContent>
                         <div className="flex-1 p-2 space-y-1">
-                            {[...Array(4)].map((_, i) => (
+                            {[...Array(5)].map((_, i) => (
                                 <Skeleton key={i} className="h-8 w-full" />
                             ))}
-                            <Skeleton className="h-8 w-full mt-2" />
-                            <div className="pl-4 space-y-1 pt-1">
-                                <Skeleton className="h-7 w-[calc(100%-1rem)]" />
-                                <Skeleton className="h-7 w-[calc(100%-1rem)]" />
-                                <Skeleton className="h-7 w-[calc(100%-1rem)]" />
-                            </div>
                         </div>
                     </SidebarContent>
                     <SidebarFooter>
-                        <div className="p-2 mt-auto">
-                            <Skeleton className="h-8 w-full" />
-                        </div>
                         <div className="p-2">
                             <Skeleton className="h-12 w-full" />
                         </div>
@@ -142,60 +129,40 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-              
-                <Collapsible open={isModelAgencyOpen} onOpenChange={setIsModelAgencyOpen}>
+               {menuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href}>
+                    <SidebarMenuButton isActive={pathname === item.href}>
+                        {item.icon}
+                        <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+                <Collapsible open={isSettingsOpen[0]} onOpenChange={isSettingsOpen[1]}>
                     <SidebarMenuItem>
                         <CollapsibleTrigger asChild>
-                            <SidebarMenuButton isActive={isModelAgencyPath}>
-                                <LayoutTemplate />
-                                <span>Modèle Agence</span>
-                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isModelAgencyOpen && "rotate-180")} />
+                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/settings")}>
+                                <Shield />
+                                <span>Administration</span>
+                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isSettingsOpen[0] && "rotate-180")} />
                             </SidebarMenuButton>
                         </CollapsibleTrigger>
                     </SidebarMenuItem>
                     <CollapsibleContent>
                         <SidebarMenuSub>
-                           {menuItems.map((item) => (
-                            <SidebarMenuItem key={item.href}>
-                              <Link href={item.href}>
-                                <SidebarMenuSubButton asChild isActive={pathname === item.href}>
-                                   <span>
-                                    {item.icon}
-                                    <span>{item.label}</span>
-                                   </span>
-                                </SidebarMenuSubButton>
-                              </Link>
-                            </SidebarMenuItem>
-                          ))}
-                            <Collapsible open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-                                <SidebarMenuItem>
-                                    <CollapsibleTrigger asChild>
-                                        <SidebarMenuSubButton asChild isActive={pathname.startsWith("/dashboard/settings")}>
+                            {settingsMenuItems.map((item) => (
+                                <SidebarMenuItem key={item.href}>
+                                    <Link href={item.href} passHref>
+                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
                                           <span>
-                                            <Shield />
-                                            <span>Administration</span>
-                                            <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isSettingsOpen && "rotate-180")} />
+                                            {item.icon}
+                                            <span>{item.label}</span>
                                           </span>
                                         </SidebarMenuSubButton>
-                                    </CollapsibleTrigger>
+                                    </Link>
                                 </SidebarMenuItem>
-                                <CollapsibleContent>
-                                    <SidebarMenuSub>
-                                        {settingsMenuItems.map((item) => (
-                                            <SidebarMenuItem key={item.href}>
-                                                <Link href={item.href} passHref>
-                                                    <SidebarMenuSubButton asChild isActive={pathname === item.href}>
-                                                      <span>
-                                                        {item.icon}
-                                                        <span>{item.label}</span>
-                                                      </span>
-                                                    </SidebarMenuSubButton>
-                                                </Link>
-                                            </SidebarMenuItem>
-                                        ))}
-                                    </SidebarMenuSub>
-                                </CollapsibleContent>
-                            </Collapsible>
+                            ))}
                         </SidebarMenuSub>
                     </CollapsibleContent>
                 </Collapsible>
