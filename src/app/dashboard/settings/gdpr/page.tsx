@@ -9,15 +9,18 @@ import { Label } from "@/components/ui/label";
 import { useAgency } from "@/context/agency-provider";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth, useFirestore } from "@/firebase/provider";
-import { collection, doc, query, where } from "firebase/firestore";
+import { collection, doc, query, where, getDocs } from "firebase/firestore";
 import { setDocumentNonBlocking, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
 import React, { useEffect, useMemo, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { AlertTriangle, User, Users } from "lucide-react";
+import { AlertTriangle, User, Users, Check, Edit, Trash2, Loader2, Info } from "lucide-react";
 import { differenceInDays } from "date-fns";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useRouter } from "next/navigation";
+import { sendGdprEmail } from "@/app/actions/gdpr";
 
 
 const defaultGdprSettings = {
@@ -37,6 +40,7 @@ type GdprRequest = {
   message: string;
   status: 'new' | 'in_progress' | 'closed';
   createdAt: string;
+  agencyId: string;
 };
 
 type UserData = {
@@ -53,12 +57,16 @@ export default function GdprPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const auth = useAuth();
+  const router = useRouter();
   const [settings, setSettings] = useState(personalization?.gdprSettings || defaultGdprSettings);
   const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
+  const [requestToProcess, setRequestToProcess] = useState<GdprRequest | null>(null);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
+
 
   const gdprRequestsCollectionRef = useMemoFirebase(() => {
     if (!agency) return null;
-    return collection(firestore, 'gdpr_requests');
+    return query(collection(firestore, 'gdpr_requests'), where('agencyId', '==', agency.id), where('status', '!=', 'closed'));
   }, [agency, firestore]);
 
   const { data: gdprRequests, isLoading: areGdprRequestsLoading } = useCollection<GdprRequest>(gdprRequestsCollectionRef);
@@ -70,13 +78,19 @@ export default function GdprPage() {
 
   const { data: agencyUsers, isLoading: areUsersLoading } = useCollection<UserData>(agencyUsersQuery);
   
+  const userForRequest = useMemo(() => {
+    if (!requestToProcess || !agencyUsers) return null;
+    return agencyUsers.find(u => u.email === requestToProcess.email) || null;
+  }, [requestToProcess, agencyUsers]);
+
+
   const inactiveUsers = useMemo(() => {
     if (!agencyUsers || !settings.inactivityAlertDays) return [];
 
     const now = new Date();
     return agencyUsers.filter(user => {
       const lastActiveDate = user.gdprReportedAt ? new Date(user.gdprReportedAt) : (user.lastSignInTime ? new Date(user.lastSignInTime) : null);
-      if (!lastActiveDate) return false; // if no sign-in time, we can't determine inactivity
+      if (!lastActiveDate) return false; 
 
       return differenceInDays(now, lastActiveDate) > settings.inactivityAlertDays;
     });
@@ -112,12 +126,76 @@ export default function GdprPage() {
   const handleDeleteUserConfirm = async () => {
     if (!userToDelete) return;
     const userRef = doc(firestore, 'users', userToDelete.id);
-    // This is a simplified deletion. A robust implementation would use a backend function
-    // to delete the user from Firebase Auth and perform a cascading delete of all their data.
     await deleteDocumentNonBlocking(userRef);
     toast({ title: "Utilisateur supprimé", description: `Les données de ${userToDelete.firstName} ${userToDelete.lastName} ont été supprimées de Firestore.`});
     setUserToDelete(null);
   }
+
+  const handleMarkRequestAsClosed = async () => {
+    if (!requestToProcess) return;
+    setIsProcessing(true);
+    try {
+        await sendGdprEmail({
+            emailSettings: personalization.emailSettings,
+            recipientEmail: requestToProcess.email,
+            recipientName: requestToProcess.name,
+            subject: 'Votre demande a été traitée',
+            textBody: `Bonjour ${requestToProcess.name},\n\nVotre demande concernant vos données personnelles a été traitée par nos services.\n\nCordialement,\n${personalization.emailSettings.fromName}`,
+            htmlBody: `<p>Bonjour ${requestToProcess.name},</p><p>Votre demande concernant vos données personnelles a été traitée par nos services.</p><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
+        });
+        
+        const requestRef = doc(firestore, 'gdpr_requests', requestToProcess.id);
+        await setDocumentNonBlocking(requestRef, { status: 'closed' }, { merge: true });
+        
+        toast({ title: "Demande traitée", description: "La demande a été marquée comme fermée et un e-mail a été envoyé."});
+        setRequestToProcess(null);
+    } catch (e) {
+        toast({ title: "Erreur", description: "Impossible de traiter la demande.", variant: "destructive" });
+    } finally {
+        setIsProcessing(false);
+    }
+  };
+
+  const handleGoToUserEdit = () => {
+    if (!userForRequest) return;
+    // This assumes the user management page can handle being opened with a specific user context,
+    // which is not implemented yet. For now, it just navigates.
+    router.push('/dashboard/settings/users');
+    setRequestToProcess(null);
+    toast({ title: "Redirection", description: `Veuillez rechercher ${userForRequest.email} dans la liste pour le modifier.`})
+  };
+
+  const handleDeleteUserAccount = async () => {
+      if (!userForRequest) return;
+      setIsProcessing(true);
+      try {
+          await sendGdprEmail({
+              emailSettings: personalization.emailSettings,
+              recipientEmail: userForRequest.email,
+              recipientName: `${userForRequest.firstName} ${userForRequest.lastName}`,
+              subject: 'Confirmation de suppression de votre compte',
+              textBody: `Bonjour ${userForRequest.firstName},\n\nConformément à votre demande, nous vous confirmons que votre compte et vos données personnelles associées vont être supprimés de notre plateforme.\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
+              htmlBody: `<p>Bonjour ${userForRequest.firstName},</p><p>Conformément à votre demande, nous vous confirmons que votre compte et vos données personnelles associées vont être supprimés de notre plateforme.</p><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
+          });
+
+          // Delete user document
+          const userRef = doc(firestore, 'users', userForRequest.id);
+          await deleteDocumentNonBlocking(userRef);
+          
+          // Close the GDPR request
+          const requestRef = doc(firestore, 'gdpr_requests', requestToProcess!.id);
+          await setDocumentNonBlocking(requestRef, { status: 'closed' }, { merge: true });
+
+          toast({ title: "Compte supprimé", description: `L'utilisateur ${userForRequest.email} a été supprimé.` });
+          setRequestToProcess(null);
+
+      } catch (e) {
+          toast({ title: "Erreur", description: "Impossible de supprimer le compte.", variant: "destructive" });
+      } finally {
+          setIsProcessing(false);
+      }
+  }
+
 
   const isLoading = isAgencyLoading || areUsersLoading;
 
@@ -177,7 +255,7 @@ export default function GdprPage() {
                     <TableCell>{new Date(request.createdAt).toLocaleDateString('fr-FR')}</TableCell>
                     <TableCell><Badge variant={request.status === 'new' ? 'destructive' : 'secondary'}>{request.status}</Badge></TableCell>
                     <TableCell className="text-right">
-                      <Button variant="outline" size="sm">Traiter</Button>
+                       <Button variant="outline" size="sm" onClick={() => setRequestToProcess(request)}>Traiter</Button>
                     </TableCell>
                   </TableRow>
                 ))
@@ -331,7 +409,53 @@ export default function GdprPage() {
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      
+      <Dialog open={!!requestToProcess} onOpenChange={open => !open && setRequestToProcess(null)}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Traiter la demande RGPD</DialogTitle>
+            <DialogDescription>
+              Demande de {requestToProcess?.name} concernant "{requestToProcess?.subject}".
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 text-sm">
+            <div className="space-y-1">
+              <p className="font-medium">Informations du demandeur</p>
+              <p className="text-muted-foreground">
+                {requestToProcess?.name}<br />
+                {requestToProcess?.email}<br />
+                {requestToProcess?.phone}
+              </p>
+            </div>
+            <div className="space-y-1">
+              <p className="font-medium">Message</p>
+              <p className="text-muted-foreground p-3 border rounded-md bg-muted whitespace-pre-wrap">{requestToProcess?.message}</p>
+            </div>
+             {userForRequest && (
+                <div className="space-y-1 pt-4 border-t">
+                    <p className="font-medium flex items-center gap-2"><Info className="h-4 w-4 text-blue-500" /> Un compte utilisateur est associé à cet e-mail.</p>
+                </div>
+             )}
+          </div>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {userForRequest && (
+                <>
+                <Button variant="destructive" onClick={handleDeleteUserAccount} disabled={isProcessing}>
+                    {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer le Compte
+                </Button>
+                <Button variant="secondary" onClick={handleGoToUserEdit} disabled={isProcessing}>
+                    <Edit className="mr-2 h-4 w-4" /> Modifier l'Utilisateur
+                </Button>
+                </>
+            )}
+             <Button onClick={handleMarkRequestAsClosed} disabled={isProcessing}>
+                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Check className="mr-2 h-4 w-4" /> Marquer comme traité
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
-
