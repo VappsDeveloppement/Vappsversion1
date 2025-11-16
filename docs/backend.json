@@ -31,7 +31,7 @@
         },
         "role": {
           "type": "string",
-          "description": "The role of the user (e.g., admin, coach, client, prospect)."
+          "description": "The role of the user (e.g., admin, superadmin, coach, client, prospect)."
         },
         "counselorId": {
             "type": "string",

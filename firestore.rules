@@ -12,15 +12,6 @@ service cloud.firestore {
     }
 
     /**
-     * @description Checks if the user is an admin for the given agency.
-     * @returns {boolean} True if the user is an admin, false otherwise.
-     */
-     function isAgencyAdmin(agencyId) {
-       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-       return isSignedIn() && userDoc.agencyId == agencyId && (userDoc.role == 'admin' || userDoc.role == 'superadmin' || userDoc.role == 'dpo');
-     }
-     
-    /**
      * @description Checks if the user is a superadmin.
      * @returns {boolean} True if the user is a superadmin, false otherwise.
      */
@@ -29,6 +20,20 @@ service cloud.firestore {
        return isSignedIn() && userDoc.role == 'superadmin';
      }
 
+    /**
+     * @description Checks if the user is an admin for the given agency OR a superadmin.
+     * @returns {boolean} True if the user has admin-level access for the agency.
+     */
+     function isAgencyAdmin(agencyId) {
+       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+       // A superadmin has access to ALL agencies.
+       if (isSignedIn() && userDoc.role == 'superadmin') {
+         return true;
+       }
+       // An agency admin only has access to their own agency.
+       return isSignedIn() && userDoc.agencyId == agencyId && (userDoc.role == 'admin' || userDoc.role == 'dpo');
+     }
+     
     /**
      * @description Checks if the user is assigned as the counselor for the given user.
      * @param {string} userId - The ID of the user (membre) to check.
