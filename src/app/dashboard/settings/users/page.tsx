@@ -135,7 +135,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
-            {users.some(u => u.role === 'membre') && <TableHead>Conseiller</TableHead>}
+            <TableHead>Conseiller</TableHead>
             {users.some(u => u.role === 'prospect') && <TableHead>Statut</TableHead>}
             <TableHead>Date d'inscription</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -147,7 +147,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
               <TableCell><Skeleton className="h-5 w-24" /></TableCell>
               <TableCell><Skeleton className="h-5 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-              {users.some(u => u.role === 'membre') && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
+              <TableCell><Skeleton className="h-5 w-24" /></TableCell>
               {users.some(u => u.role === 'prospect') && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
@@ -176,7 +176,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
           <TableHead>Nom</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Rôle</TableHead>
-          {users.some(u => u.role === 'membre') && <TableHead>Conseiller</TableHead>}
+          <TableHead>Conseiller</TableHead>
           {users.some(u => u.role === 'prospect') && <TableHead>Statut</TableHead>}
           <TableHead>Date d'inscription</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -195,7 +195,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                             {user.role}
                         </Badge>
                     </TableCell>
-                    {user.role === 'membre' && <TableCell>{user.counselorName || 'Non assigné'}</TableCell>}
+                    <TableCell>{user.counselorName || 'Non assigné'}</TableCell>
                     {user.role === 'prospect' && (
                         <TableCell>
                             {user.status && (
@@ -239,7 +239,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                                     ))}
                                                   </>
                                                 )}
-                                                {currentUser.role === 'conseiller' && !user.counselorId && (
+                                                {currentUser.role === 'conseiller' && (
                                                     <DropdownMenuItem onClick={() => onAssign(user, currentUser.id)}>
                                                         <UserCheck className="mr-2 h-4 w-4" />
                                                         S'assigner
@@ -301,43 +301,24 @@ export default function UsersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // The query should only run when we have an agency ID and the user is authenticated.
-  const agencyUsersQuery = useMemoFirebase(() => {
-    if (!agency?.id || !firebaseAuthUser?.uid) return null;
-    return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
-  }, [agency?.id, firebaseAuthUser?.uid, firestore]);
+  // This is the critical fix. The query only runs when firebaseAuthUser is available.
+  const usersQuery = useMemoFirebase(() => {
+    if (!firestore || !firebaseAuthUser) return null;
+    return query(collection(firestore, 'users'));
+  }, [firestore, firebaseAuthUser]);
   
-  const superAdminsQuery = useMemoFirebase(() => {
-    if (!firebaseAuthUser?.uid) return null;
-    return query(collection(firestore, 'users'), where('role', '==', 'superadmin'));
-  }, [firebaseAuthUser?.uid, firestore]);
+  const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
-  const { data: agencyUsers, isLoading: areAgencyUsersLoading } = useCollection<User>(agencyUsersQuery);
-  const { data: superAdminsData, isLoading: areSuperAdminsLoading } = useCollection<User>(superAdminsQuery);
+  const isLoading = isAgencyLoading || isAuthLoading || areUsersLoading;
 
-  const isLoading = isAgencyLoading || areAgencyUsersLoading || areSuperAdminsLoading || isAuthLoading;
-
-  const users = useMemo(() => {
-    if (isAuthLoading || !agencyUsers) return [];
-    
-    const combined = [...(agencyUsers || [])];
-    const agencyUserIds = new Set(agencyUsers.map(u => u.id));
-    
-    if (superAdminsData) {
-        superAdminsData.forEach(su => {
-            if (!agencyUserIds.has(su.id)) {
-                combined.push(su);
-            }
-        });
+  const { currentUser, agencyUsers } = useMemo(() => {
+    if (!allUsers || !firebaseAuthUser || !agency) {
+      return { currentUser: undefined, agencyUsers: [] };
     }
-
-    return combined;
-  }, [agencyUsers, superAdminsData, isAuthLoading]);
-  
-  const currentUser = useMemo(() => {
-      if (isAuthLoading || !firebaseAuthUser) return undefined;
-      return users.find(u => u.id === firebaseAuthUser?.uid);
-  }, [users, firebaseAuthUser, isAuthLoading]);
+    const currentUserData = allUsers.find(u => u.id === firebaseAuthUser.uid);
+    const filteredAgencyUsers = allUsers.filter(u => u.agencyId === agency.id || u.role === 'superadmin');
+    return { currentUser: currentUserData, agencyUsers: filteredAgencyUsers };
+  }, [allUsers, firebaseAuthUser, agency]);
 
 
   const adminForm = useForm<z.infer<typeof adminFormSchema>>({
@@ -522,7 +503,7 @@ export default function UsersPage() {
       
       let counselorName: string | null = null;
       if (counselorId) {
-          const counselor = users.find(u => u.id === counselorId);
+          const counselor = agencyUsers.find(u => u.id === counselorId);
           if (counselor) {
               counselorName = `${counselor.firstName} ${counselor.lastName}`;
           }
@@ -553,10 +534,10 @@ export default function UsersPage() {
     );
   };
   
-  const admins = useMemo(() => filterUsers(users, ['admin', 'superadmin', 'dpo'], adminSearch), [users, adminSearch]);
-  const conseillers = useMemo(() => filterUsers(users, ['conseiller'], conseillerSearch), [users, conseillerSearch]);
-  const membres = useMemo(() => filterUsers(users, ['membre'], membreSearch), [users, membreSearch]);
-  const prospects = useMemo(() => filterUsers(users, ['prospect'], prospectSearch), [users, prospectSearch]);
+  const admins = useMemo(() => filterUsers(agencyUsers, ['admin', 'superadmin', 'dpo'], adminSearch), [agencyUsers, adminSearch]);
+  const conseillers = useMemo(() => filterUsers(agencyUsers, ['conseiller'], conseillerSearch), [agencyUsers, conseillerSearch]);
+  const membres = useMemo(() => filterUsers(agencyUsers, ['membre'], membreSearch), [agencyUsers, membreSearch]);
+  const prospects = useMemo(() => filterUsers(agencyUsers, ['prospect'], prospectSearch), [agencyUsers, prospectSearch]);
 
   const newProspects = useMemo(() => prospects.filter(p => p.status === 'new'), [prospects]);
   const otherProspects = useMemo(() => prospects.filter(p => p.status !== 'new'), [prospects]);
@@ -565,16 +546,16 @@ export default function UsersPage() {
     if (!currentUser) return [];
     
     if (currentUser.role === 'superadmin') {
-      return users.filter(u => u.role === 'conseiller' || u.role === 'admin' || u.role === 'superadmin');
+      return agencyUsers.filter(u => u.role === 'conseiller' || u.role === 'admin' || u.role === 'superadmin');
     }
     if (currentUser.role === 'admin') {
-      return users.filter(u => u.role === 'conseiller' || u.role === 'admin');
+      return agencyUsers.filter(u => u.role === 'conseiller' || u.role === 'admin');
     }
     return [];
-  }, [users, currentUser]);
+  }, [agencyUsers, currentUser]);
 
 
-  if (!currentUser) {
+  if (isLoading || !currentUser) {
       return (
         <div className="flex items-center justify-center h-full">
             <Loader2 className="h-8 w-8 animate-spin" />
@@ -980,3 +961,4 @@ export default function UsersPage() {
     </div>
   );
 }
+
