@@ -57,7 +57,7 @@ const StatCard = ({ title, value, description, icon: Icon, isLoading }: { title:
 const ConversionCard = ({ title, description, total, converted, conversionRate, isLoading, fromLabel, toLabel }: { title: string, description: string, total: number, converted: number, conversionRate: number, isLoading: boolean, fromLabel: string, toLabel: string }) => {
     if (isLoading) {
         return (
-            <Card className="col-span-1">
+            <Card className="col-span-1 md:col-span-2 lg:col-span-1">
                 <CardHeader>
                     <Skeleton className="h-6 w-1/2" />
                     <Skeleton className="h-4 w-3/4" />
@@ -69,7 +69,7 @@ const ConversionCard = ({ title, description, total, converted, conversionRate, 
         )
     }
     return (
-        <Card className="col-span-1">
+        <Card className="col-span-1 md:col-span-2 lg:col-span-1">
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
                 <CardDescription>{description}</CardDescription>
@@ -119,7 +119,7 @@ export default function DashboardPage() {
     }, [agency, firestore]);
 
     const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
-    const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
+    const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(invoicesQuery);
     const { data: invoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
 
     const isLoading = isAgencyLoading || areUsersLoading || areQuotesLoading || areInvoicesLoading;
@@ -133,8 +133,6 @@ export default function DashboardPage() {
     const totalQuotesCount = quotes?.length || 0;
     const totalInvoicesCount = invoices?.length || 0;
 
-    // Conversion rate: (members / (prospects + members)) * 100
-    // This assumes a user cannot be both a prospect and a member.
     const totalLeads = totalProspectsCount + totalMembersCount;
     const prospectToMemberConversion = totalLeads > 0 ? (totalMembersCount / totalLeads) * 100 : 0;
     
@@ -173,20 +171,6 @@ export default function DashboardPage() {
                     fromLabel="Devis"
                     toLabel="Factures"
                     conversionRate={quoteToInvoiceConversion}
-                    isLoading={isLoading}
-                />
-            </div>
-             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                 <StatCard 
-                    title="Total Devis"
-                    value={totalQuotesCount}
-                    icon={FileText}
-                    isLoading={isLoading}
-                />
-                 <StatCard 
-                    title="Total Factures"
-                    value={totalInvoicesCount}
-                    icon={Receipt}
                     isLoading={isLoading}
                 />
             </div>
