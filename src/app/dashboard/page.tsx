@@ -11,10 +11,10 @@ import { Users, FileText, Receipt, ArrowRight } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 
-type Prospect = {
+type User = {
   id: string;
-  status: 'new' | 'contacted' | 'not_interested';
-  role: 'prospect';
+  role: 'prospect' | 'membre';
+  status?: 'new' | 'contacted' | 'not_interested';
 };
 
 type Quote = {
@@ -54,10 +54,10 @@ const StatCard = ({ title, value, description, icon: Icon, isLoading }: { title:
     );
 };
 
-const ConversionCard = ({ title, description, total, converted, conversionRate, isLoading }: { title: string, description: string, total: number, converted: number, conversionRate: number, isLoading: boolean }) => {
+const ConversionCard = ({ title, description, total, converted, conversionRate, isLoading, fromLabel, toLabel }: { title: string, description: string, total: number, converted: number, conversionRate: number, isLoading: boolean, fromLabel: string, toLabel: string }) => {
     if (isLoading) {
         return (
-            <Card className="col-span-1 md:col-span-2">
+            <Card className="col-span-1">
                 <CardHeader>
                     <Skeleton className="h-6 w-1/2" />
                     <Skeleton className="h-4 w-3/4" />
@@ -69,7 +69,7 @@ const ConversionCard = ({ title, description, total, converted, conversionRate, 
         )
     }
     return (
-        <Card className="col-span-1 md:col-span-2">
+        <Card className="col-span-1">
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
                 <CardDescription>{description}</CardDescription>
@@ -78,12 +78,12 @@ const ConversionCard = ({ title, description, total, converted, conversionRate, 
                 <div className="flex justify-around items-center text-center">
                     <div>
                         <p className="text-3xl font-bold">{total}</p>
-                        <p className="text-sm text-muted-foreground">Total</p>
+                        <p className="text-sm text-muted-foreground">{fromLabel}</p>
                     </div>
                     <ArrowRight className="h-8 w-8 text-muted-foreground" />
                     <div>
                         <p className="text-3xl font-bold">{converted}</p>
-                        <p className="text-sm text-muted-foreground">Convertis</p>
+                        <p className="text-sm text-muted-foreground">{toLabel}</p>
                     </div>
                 </div>
                 <div>
@@ -103,9 +103,9 @@ export default function DashboardPage() {
     const { agency, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
-    const prospectsQuery = useMemoFirebase(() => {
+    const usersQuery = useMemoFirebase(() => {
         if (!agency) return null;
-        return query(collection(firestore, 'users'), where('agencyId', '==', agency.id), where('role', '==', 'prospect'));
+        return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
     }, [agency, firestore]);
 
     const quotesQuery = useMemoFirebase(() => {
@@ -118,18 +118,26 @@ export default function DashboardPage() {
         return collection(firestore, 'agencies', agency.id, 'invoices');
     }, [agency, firestore]);
 
-    const { data: prospects, isLoading: areProspectsLoading } = useCollection<Prospect>(prospectsQuery);
+    const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
     const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
     const { data: invoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
 
-    const isLoading = isAgencyLoading || areProspectsLoading || areQuotesLoading || areInvoicesLoading;
+    const isLoading = isAgencyLoading || areUsersLoading || areQuotesLoading || areInvoicesLoading;
 
-    const newProspectsCount = prospects?.filter(p => p.status === 'new').length || 0;
-    const totalProspectsCount = prospects?.length || 0;
+    const prospects = users?.filter(u => u.role === 'prospect') || [];
+    const members = users?.filter(u => u.role === 'membre') || [];
+
+    const newProspectsCount = prospects.filter(p => p.status === 'new').length;
+    const totalProspectsCount = prospects.length;
+    const totalMembersCount = members.length;
     const totalQuotesCount = quotes?.length || 0;
     const totalInvoicesCount = invoices?.length || 0;
 
-    const prospectToQuoteConversion = totalProspectsCount > 0 ? (totalQuotesCount / totalProspectsCount) * 100 : 0;
+    // Conversion rate: (members / (prospects + members)) * 100
+    // This assumes a user cannot be both a prospect and a member.
+    const totalLeads = totalProspectsCount + totalMembersCount;
+    const prospectToMemberConversion = totalLeads > 0 ? (totalMembersCount / totalLeads) * 100 : 0;
+    
     const quoteToInvoiceConversion = totalQuotesCount > 0 ? (totalInvoicesCount / totalQuotesCount) * 100 : 0;
 
     return (
@@ -139,7 +147,7 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Voici un aperçu de votre activité commerciale.</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                  <StatCard 
                     title="Nouveaux Prospects"
                     value={newProspectsCount}
@@ -148,11 +156,13 @@ export default function DashboardPage() {
                     isLoading={isLoading}
                 />
                 <ConversionCard
-                    title="Conversion Prospects → Devis"
-                    description="Performance de la transformation des prospects en devis."
+                    title="Conversion Prospects → Membres"
+                    description="Performance de la transformation des prospects en membres."
                     total={totalProspectsCount}
-                    converted={totalQuotesCount}
-                    conversionRate={prospectToQuoteConversion}
+                    converted={totalMembersCount}
+                    fromLabel="Prospects"
+                    toLabel="Membres"
+                    conversionRate={prospectToMemberConversion}
                     isLoading={isLoading}
                 />
                  <ConversionCard
@@ -160,6 +170,8 @@ export default function DashboardPage() {
                     description="Performance de la transformation des devis en factures."
                     total={totalQuotesCount}
                     converted={totalInvoicesCount}
+                    fromLabel="Devis"
+                    toLabel="Factures"
                     conversionRate={quoteToInvoiceConversion}
                     isLoading={isLoading}
                 />
