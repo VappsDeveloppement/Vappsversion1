@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useAgency } from '@/context/agency-provider';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -13,9 +13,16 @@ import { Progress } from '@/components/ui/progress';
 
 type User = {
   id: string;
-  role: 'prospect' | 'membre';
+  role: 'prospect' | 'membre' | 'admin' | 'conseiller';
   status?: 'new' | 'contacted' | 'not_interested';
 };
+
+type Membership = {
+    id: string;
+    userId: string;
+    agencyId: string;
+    role: 'admin' | 'dpo' | 'conseiller' | 'membre';
+}
 
 type Quote = {
   id: string;
@@ -149,10 +156,20 @@ export default function DashboardPage() {
     const { agency, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
-    const usersQuery = useMemoFirebase(() => {
+    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+    const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
+
+    const membershipsQuery = useMemoFirebase(() => {
         if (!agency) return null;
-        return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
+        return query(collection(firestore, 'memberships'), where('agencyId', '==', agency.id));
     }, [agency, firestore]);
+    const { data: memberships, isLoading: areMembershipsLoading } = useCollection<Membership>(membershipsQuery);
+    
+    const agencyMembers = useMemo(() => {
+        if (!memberships || !allUsers) return [];
+        const memberIds = new Set(memberships.filter(m => m.role === 'membre').map(m => m.userId));
+        return allUsers.filter(u => memberIds.has(u.id));
+    }, [memberships, allUsers]);
 
     const quotesQuery = useMemoFirebase(() => {
         if (!agency) return null;
@@ -164,24 +181,18 @@ export default function DashboardPage() {
         return collection(firestore, 'agencies', agency.id, 'invoices');
     }, [agency, firestore]);
 
-    const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
     const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
     const { data: invoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
 
-    const isLoading = isAgencyLoading || areUsersLoading || areQuotesLoading || areInvoicesLoading;
-
-    const prospects = users?.filter(u => u.role === 'prospect') || [];
-    const members = users?.filter(u => u.role === 'membre') || [];
-
-    const newProspectsCount = prospects.filter(p => p.status === 'new').length;
-    const totalProspectsCount = prospects.length;
-    const totalMembersCount = members.length;
+    const isLoading = isAgencyLoading || areUsersLoading || areMembershipsLoading || areQuotesLoading || areInvoicesLoading;
+    
+    const newProspectsCount = allUsers?.filter(p => p.role === 'prospect' && p.status === 'new').length || 0;
+    const totalMembersCount = agencyMembers.length;
     
     const unvalidatedQuotesCount = quotes?.filter(q => q.status === 'draft' || q.status === 'sent').length || 0;
     const unpaidInvoicesCount = invoices?.filter(i => i.status === 'pending' || i.status === 'overdue').length || 0;
 
-
-    const totalLeads = totalProspectsCount + totalMembersCount;
+    const totalLeads = allUsers?.filter(u => u.role === 'prospect' || u.role === 'membre').length || 0;
     const prospectToMemberConversion = totalLeads > 0 ? (totalMembersCount / totalLeads) * 100 : 0;
     
     const quoteToInvoiceConversion = (quotes?.length || 0) > 0 ? ((invoices?.length || 0) / (quotes?.length || 0)) * 100 : 0;
@@ -213,7 +224,7 @@ export default function DashboardPage() {
                 <ConversionCard
                     title="Conversion Prospects → Membres"
                     description="Performance de la transformation des prospects en membres."
-                    total={totalProspectsCount}
+                    total={totalLeads}
                     converted={totalMembersCount}
                     fromLabel="Prospects"
                     toLabel="Membres"

@@ -24,7 +24,6 @@ import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat, UserCog, UserPlus, UserCheck, AlertTriangle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { createUserWithEmailAndPassword } from "firebase/auth";
-import { randomBytes } from "crypto";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -502,4 +501,3 @@ export default function UsersPage() {
     </div>
   );
 }
-

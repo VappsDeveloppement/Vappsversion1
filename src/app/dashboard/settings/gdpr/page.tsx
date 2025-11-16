@@ -76,11 +76,23 @@ export default function GdprPage() {
       return allGdprRequests.filter(req => req.status !== 'closed');
   }, [allGdprRequests])
 
-  const agencyUsersQuery = useMemoFirebase(() => {
-    if (!agency?.id) return null;
-    return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
-  }, [agency?.id, firestore]);
+  const membershipsQuery = useMemoFirebase(() => {
+    if (!agency) return null;
+    return query(collection(firestore, 'memberships'), where('agencyId', '==', agency.id));
+  }, [agency, firestore]);
+  const { data: memberships, isLoading: areMembershipsLoading } = useCollection(membershipsQuery);
 
+  const agencyUserIds = useMemo(() => {
+    if (!memberships) return [];
+    return memberships.map((m: any) => m.userId);
+  }, [memberships]);
+
+  const agencyUsersQuery = useMemoFirebase(() => {
+    if (!agencyUserIds || agencyUserIds.length === 0) return null;
+    const usersCollectionRef = collection(firestore, 'users');
+    return query(usersCollectionRef, where('__name__', 'in', agencyUserIds));
+  }, [agencyUserIds, firestore]);
+  
   const { data: agencyUsers, isLoading: areUsersLoading } = useCollection<UserData>(agencyUsersQuery);
   
   const userForRequest = useMemo(() => {
@@ -163,8 +175,6 @@ export default function GdprPage() {
 
   const handleGoToUserEdit = () => {
     if (!userForRequest) return;
-    // This assumes the user management page can handle being opened with a specific user context,
-    // which is not implemented yet. For now, it just navigates.
     router.push('/dashboard/settings/users');
     setRequestToProcess(null);
     toast({ title: "Redirection", description: `Veuillez rechercher ${userForRequest.email} dans la liste pour le modifier.`})
