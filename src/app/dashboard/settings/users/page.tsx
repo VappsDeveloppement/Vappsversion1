@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -134,8 +135,8 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
-            {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
-            {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
+            {users.some(u => u.role === 'membre') && <TableHead>Conseiller</TableHead>}
+            {users.some(u => u.role === 'prospect') && <TableHead>Statut</TableHead>}
             <TableHead>Date d'inscription</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -146,8 +147,8 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
               <TableCell><Skeleton className="h-5 w-24" /></TableCell>
               <TableCell><Skeleton className="h-5 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-              {users[0]?.role === 'membre' && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
-              {users[0]?.role === 'prospect' && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
+              {users.some(u => u.role === 'membre') && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
+              {users.some(u => u.role === 'prospect') && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
             </TableRow>
@@ -165,8 +166,11 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
     );
   }
   
-  const isCurrentUserAdminOrHigher = currentUser.role === 'admin' || currentUser.role === 'superadmin';
-  const isCurrentUserConseiller = currentUser.role === 'conseiller';
+  const isCurrentUserAdmin = currentUser?.role === 'admin';
+  const isCurrentUserSuperAdmin = currentUser?.role === 'superadmin';
+  const isCurrentUserConseiller = currentUser?.role === 'conseiller';
+  const canManageAssignations = isCurrentUserAdmin || isCurrentUserSuperAdmin || isCurrentUserConseiller;
+
 
   return (
     <Table>
@@ -175,16 +179,16 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
           <TableHead>Nom</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Rôle</TableHead>
-          {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
-          {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
+          {users.some(u => u.role === 'membre') && <TableHead>Conseiller</TableHead>}
+          {users.some(u => u.role === 'prospect') && <TableHead>Statut</TableHead>}
           <TableHead>Date d'inscription</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {users.map(user => {
-            const canAssign = user.role === 'membre' && (isCurrentUserAdminOrHigher || isCurrentUserConseiller);
-            
+            const canBeAssigned = user.role === 'membre' && canManageAssignations;
+
             return (
                 <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
@@ -220,12 +224,15 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                 
                                 {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
                                 
-                                {canAssign && (
+                                {canBeAssigned && (
                                     <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger>Assigner/Réassigner</DropdownMenuSubTrigger>
+                                        <DropdownMenuSubTrigger>
+                                            <UserCog className="mr-2 h-4 w-4" />
+                                            Assigner un responsable
+                                        </DropdownMenuSubTrigger>
                                         <DropdownMenuPortal>
                                             <DropdownMenuSubContent>
-                                                {isCurrentUserAdminOrHigher && (
+                                                {(isCurrentUserAdmin || isCurrentUserSuperAdmin) && (
                                                   <>
                                                     <DropdownMenuItem onClick={() => onAssign(user, null)}>Aucun (retirer)</DropdownMenuItem>
                                                     {counselors.map(c => (
@@ -237,6 +244,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                                 )}
                                                 {isCurrentUserConseiller && !user.counselorId && (
                                                     <DropdownMenuItem onClick={() => onAssign(user, currentUser.id)}>
+                                                        <UserCheck className="mr-2 h-4 w-4" />
                                                         S'assigner
                                                     </DropdownMenuItem>
                                                 )}
@@ -276,7 +284,7 @@ export default function UsersPage() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user: firebaseAuthUser } = useFirebaseUser();
+  const { user: firebaseAuthUser, isUserLoading: isAuthLoading } = useFirebaseUser();
   const { toast } = useToast();
 
   const [adminSearch, setAdminSearch] = useState('');
@@ -296,23 +304,27 @@ export default function UsersPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // The query should only run when we have an agency ID and the user is authenticated.
   const agencyUsersQuery = useMemoFirebase(() => {
-    if (!agency) return null;
+    if (!agency?.id || !firebaseAuthUser) return null;
     return query(collection(firestore, 'users'), where('agencyId', '==', agency.id));
-  }, [agency, firestore]);
+  }, [agency?.id, firebaseAuthUser, firestore]);
   
   const superAdminsQuery = useMemoFirebase(() => {
+    if (!firebaseAuthUser) return null;
     return query(collection(firestore, 'users'), where('role', '==', 'superadmin'));
-  }, [firestore]);
+  }, [firebaseAuthUser, firestore]);
 
   const { data: agencyUsers, isLoading: areAgencyUsersLoading } = useCollection<User>(agencyUsersQuery);
   const { data: superAdminsData, isLoading: areSuperAdminsLoading } = useCollection<User>(superAdminsQuery);
 
-  const isLoading = isAgencyLoading || areAgencyUsersLoading || areSuperAdminsLoading;
+  const isLoading = isAgencyLoading || areAgencyUsersLoading || areSuperAdminsLoading || isAuthLoading;
 
   const users = useMemo(() => {
+    if (isAuthLoading || !agencyUsers) return [];
+    
     const combined = [...(agencyUsers || [])];
-    const agencyUserIds = new Set(agencyUsers?.map(u => u.id));
+    const agencyUserIds = new Set(agencyUsers.map(u => u.id));
     
     if (superAdminsData) {
         superAdminsData.forEach(su => {
@@ -323,11 +335,12 @@ export default function UsersPage() {
     }
 
     return combined;
-  }, [agencyUsers, superAdminsData]);
+  }, [agencyUsers, superAdminsData, isAuthLoading]);
   
   const currentUser = useMemo(() => {
+      if (isAuthLoading || !firebaseAuthUser) return undefined;
       return users.find(u => u.id === firebaseAuthUser?.uid);
-  }, [users, firebaseAuthUser]);
+  }, [users, firebaseAuthUser, isAuthLoading]);
 
 
   const adminForm = useForm<z.infer<typeof adminFormSchema>>({
@@ -553,6 +566,7 @@ export default function UsersPage() {
   
   const assignableCounselors = useMemo(() => {
     if (!currentUser) return [];
+    
     if (currentUser.role === 'superadmin') {
       return users.filter(u => u.role === 'conseiller' || u.role === 'admin' || u.role === 'superadmin');
     }
@@ -682,7 +696,7 @@ export default function UsersPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
-                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentUser} counselors={[]} onAssign={() => {}} />
+                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentUser!} counselors={[]} onAssign={() => {}} />
               </div>
             </TabsContent>
 
@@ -762,7 +776,7 @@ export default function UsersPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentUser} counselors={[]} onAssign={() => {}}/>
+                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentUser!} counselors={[]} onAssign={() => {}}/>
                 </div>
             </TabsContent>
 
@@ -866,7 +880,7 @@ export default function UsersPage() {
                         emptyMessage="Aucun membre trouvé." 
                         onEdit={handleEdit} 
                         onDelete={openDeleteDialog} 
-                        currentUser={currentUser}
+                        currentUser={currentUser!}
                         counselors={assignableCounselors}
                         onAssign={handleAssignCounselor}
                     />
@@ -889,7 +903,7 @@ export default function UsersPage() {
                                         onDelete={openDeleteDialog}
                                         onConvert={handleConvert}
                                         onStatusChange={handleStatusChange}
-                                        currentUser={currentUser} 
+                                        currentUser={currentUser!} 
                                         counselors={[]} 
                                         onAssign={() => {}}
                                     />
@@ -916,7 +930,7 @@ export default function UsersPage() {
                                 onDelete={openDeleteDialog}
                                 onConvert={handleConvert}
                                 onStatusChange={handleStatusChange}
-                                currentUser={currentUser} 
+                                currentUser={currentUser!} 
                                 counselors={[]} 
                                 onAssign={() => {}}
                             />
