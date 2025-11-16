@@ -264,6 +264,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo,
                 agencyId: agency.id,
+                baseUrl: window.location.origin, // Pass client-side origin
             });
 
             if (result.success) {
@@ -607,3 +608,5 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
+
+    

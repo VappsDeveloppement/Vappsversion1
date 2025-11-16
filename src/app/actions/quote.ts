@@ -1,3 +1,4 @@
+
 'use server';
 
 import { z } from 'zod';
@@ -65,6 +66,7 @@ const sendQuoteSchema = z.object({
     emailSettings: emailSettingsSchema,
     legalInfo: legalInfoSchema,
     agencyId: z.string(),
+    baseUrl: z.string().url(), // Added baseUrl
 });
 
 
@@ -79,7 +81,7 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
     }
 
-    const { quote, emailSettings, legalInfo, agencyId } = validation.data;
+    const { quote, emailSettings, legalInfo, agencyId, baseUrl } = validation.data;
 
     try {
         // 1. Generate PDF
@@ -217,7 +219,7 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         const pdfBuffer = doc.output('arraybuffer');
         
         // Construct the public URL for the quote
-        const quoteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/quote/${quote.id}`;
+        const quoteUrl = `${baseUrl}/quote/${quote.id}`;
 
         // 2. Send email
         const transporter = nodemailer.createTransport({
@@ -252,3 +254,5 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }
+
+    
