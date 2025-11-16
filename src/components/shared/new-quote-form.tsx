@@ -17,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { useAgency } from '@/context/agency-provider';
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, ChevronDown, Send, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
@@ -37,6 +37,9 @@ type User = {
   firstName: string;
   lastName: string;
   email: string;
+  address?: string;
+  zipCode?: string;
+  city?: string;
 };
 
 type Contract = {
@@ -48,7 +51,15 @@ type Contract = {
 type Quote = {
     id: string;
     quoteNumber: string;
-    clientInfo: { name: string; id: string; email: string; };
+    validationCode: string;
+    clientInfo: {
+        id: string;
+        name: string;
+        email: string;
+        address?: string;
+        zipCode?: string;
+        city?: string;
+    };
     issueDate: string;
     expiryDate?: string;
     total: number;
@@ -74,6 +85,7 @@ const quoteItemSchema = z.object({
 
 const quoteFormSchema = z.object({
     quoteNumber: z.string().min(1, "Le numéro de devis est requis."),
+    validationCode: z.string(),
     clientId: z.string().min(1, "Un client doit être sélectionné."),
     status: z.enum(["draft", "sent", "accepted", "rejected"]),
     issueDate: z.date({ required_error: "La date d'émission est requise."}),
@@ -125,6 +137,20 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
     const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
 
+    const generateQuoteNumber = async () => {
+        if (!agency) return `DEVIS-${new Date().getFullYear()}-001`;
+        const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
+        const q = query(quotesCollectionRef);
+        const querySnapshot = await getDocs(q);
+        const year = new Date().getFullYear();
+        const yearQuotes = querySnapshot.docs.filter(doc => doc.data().quoteNumber.startsWith(`DEVIS-${year}-`));
+        const nextId = (yearQuotes.length + 1).toString().padStart(3, '0');
+        return `DEVIS-${year}-${nextId}`;
+    };
+    
+    const generateValidationCode = () => {
+        return Math.random().toString(36).substring(2, 8).toUpperCase();
+    }
 
     const form = useForm<z.infer<typeof quoteFormSchema>>({
         resolver: zodResolver(quoteFormSchema),
@@ -135,7 +161,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
             contractId: initialData.contractId || 'none'
         } : {
-            quoteNumber: `DEVIS-${new Date().getFullYear()}-`,
+            quoteNumber: '',
+            validationCode: '',
             status: 'draft',
             issueDate: new Date(),
             items: [],
@@ -144,6 +171,13 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             contractId: 'none',
         }
     });
+
+    React.useEffect(() => {
+        if (!initialData && agency) {
+            generateQuoteNumber().then(num => form.setValue('quoteNumber', num));
+            form.setValue('validationCode', generateValidationCode());
+        }
+    }, [!initialData, agency]);
     
     React.useEffect(() => {
         if (initialData) {
@@ -200,6 +234,9 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 id: selectedClient.id,
                 name: `${selectedClient.firstName} ${selectedClient.lastName}`,
                 email: selectedClient.email,
+                address: selectedClient.address,
+                zipCode: selectedClient.zipCode,
+                city: selectedClient.city,
             },
             contractId: selectedContract?.id,
             contractTitle: selectedContract?.title,
@@ -245,7 +282,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
         if (quoteId && agency && selectedClient) {
             const quoteRef = doc(firestore, 'agencies', agency.id, 'quotes', quoteId);
-            const quoteDataForEmail = {
+            const quoteDataForEmail: any = {
                 ...values,
                 id: quoteId,
                 issueDate: values.issueDate.toISOString().split('T')[0],
@@ -254,6 +291,9 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                     id: selectedClient.id,
                     name: `${selectedClient.firstName} ${selectedClient.lastName}`,
                     email: selectedClient.email,
+                    address: selectedClient.address,
+                    zipCode: selectedClient.zipCode,
+                    city: selectedClient.city,
                 },
                 contractId: values.contractId,
                 contractTitle: contracts?.find(c => c.id === values.contractId)?.title,
@@ -265,7 +305,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo,
                 agencyId: agency.id,
-                baseUrl: window.location.origin, // Pass client-side origin
             });
 
             if (result.success) {
@@ -315,7 +354,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                     render={({ field }) => (
                                         <FormItem className='mt-2'>
                                             <FormControl>
-                                                <Input placeholder="N° DEVIS-2024-001" className="text-right" {...field}/>
+                                                <Input placeholder="Génération..." className="text-right" {...field} readOnly />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -576,7 +615,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                     <div className="text-muted-foreground space-y-1">
                                         <p><strong>Nom:</strong> {selectedClient.firstName} {selectedClient.lastName}</p>
                                         <p><strong>Email:</strong> {selectedClient.email}</p>
-                                        {/* TODO: Add more client details */}
+                                        {selectedClient.address && <p><strong>Adresse:</strong> {selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</p>}
                                     </div>
                                 ) : (
                                     <p className="text-muted-foreground">Sélectionnez un client pour voir ses informations.</p>
@@ -609,5 +648,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
-
-    
