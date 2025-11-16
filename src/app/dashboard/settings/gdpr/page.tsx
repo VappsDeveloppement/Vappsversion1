@@ -66,10 +66,15 @@ export default function GdprPage() {
 
   const gdprRequestsCollectionRef = useMemoFirebase(() => {
     if (!agency) return null;
-    return query(collection(firestore, 'gdpr_requests'), where('agencyId', '==', agency.id), where('status', '!=', 'closed'));
+    return query(collection(firestore, 'gdpr_requests'), where('agencyId', '==', agency.id));
   }, [agency, firestore]);
 
-  const { data: gdprRequests, isLoading: areGdprRequestsLoading } = useCollection<GdprRequest>(gdprRequestsCollectionRef);
+  const { data: allGdprRequests, isLoading: areGdprRequestsLoading } = useCollection<GdprRequest>(gdprRequestsCollectionRef);
+
+  const gdprRequests = useMemo(() => {
+      if (!allGdprRequests) return [];
+      return allGdprRequests.filter(req => req.status !== 'closed');
+  }, [allGdprRequests])
 
   const agencyUsersQuery = useMemoFirebase(() => {
     if (!agency?.id) return null;
