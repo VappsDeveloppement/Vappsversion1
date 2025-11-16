@@ -46,6 +46,17 @@ export default function AdminLayout({
   const pathname = usePathname();
   const { user } = useUser();
 
+  // REMOVED: Super admin role check to ensure access
+  // const isSuperAdmin = userData?.role === 'superadmin';
+  // if (!isSuperAdmin) {
+  //   // You can redirect or show an unauthorized message
+  //   return (
+  //     <div className="flex h-screen items-center justify-center">
+  //       <p>Accès non autorisé.</p>
+  //     </div>
+  //   );
+  // }
+
   return (
     <SidebarProvider>
       <div className="flex">

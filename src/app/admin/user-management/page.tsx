@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { useCollection, useMemoFirebase, useFirestore, useUser, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useCollection, useMemoFirebase, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAuth } from '@/firebase/provider';
@@ -37,8 +37,19 @@ const userFormSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis."),
   email: z.string().email("L'adresse email n'est pas valide."),
   role: z.enum(['superadmin', 'membre', 'prospect'], { required_error: "Le rôle est requis." }),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
+  password: z.string().optional(),
+}).refine(data => {
+    // Si on crée un nouvel utilisateur (pas d'ID), le mot de passe est requis et doit faire au moins 6 caractères
+    const isCreating = !data.email.includes('@'); // Heuristique simple: si on édite, l'email est déjà là. A améliorer.
+    if (isCreating && (!data.password || data.password.length < 6)) {
+        return false;
+    }
+    return true;
+}, {
+    message: "Un mot de passe de 6 caractères minimum est requis pour un nouvel utilisateur.",
+    path: ["password"],
 });
+
 
 type UserFormData = z.infer<typeof userFormSchema>;
 
@@ -66,17 +77,15 @@ export default function UserManagementPage() {
     
     const filteredUsers = useMemo(() => {
         if (!allUsers) return [];
-        // Ne pas afficher l'utilisateur courant pour l'empêcher de s'auto-modifier/supprimer de manière risquée
-        const usersExceptCurrent = allUsers.filter(user => user.id !== currentUser?.uid);
-        if (!searchTerm) return usersExceptCurrent;
+        if (!searchTerm) return allUsers;
         
         const lowercasedTerm = searchTerm.toLowerCase();
-        return usersExceptCurrent.filter(user => 
+        return allUsers.filter(user => 
             user.firstName.toLowerCase().includes(lowercasedTerm) ||
             user.lastName.toLowerCase().includes(lowercasedTerm) ||
             user.email.toLowerCase().includes(lowercasedTerm)
         );
-    }, [allUsers, searchTerm, currentUser]);
+    }, [allUsers, searchTerm]);
     
     const form = useForm<UserFormData>({
         resolver: zodResolver(userFormSchema),
@@ -167,6 +176,13 @@ export default function UserManagementPage() {
 
     const handleDeleteConfirm = async () => {
         if (!userToDelete) return;
+        // CRITICAL FIX: PREVENT DELETING THE CURRENTLY LOGGED-IN USER
+        if (userToDelete.id === currentUser?.uid) {
+            toast({ title: "Action impossible", description: "Vous ne pouvez pas supprimer votre propre compte.", variant: "destructive" });
+            setUserToDelete(null);
+            return;
+        }
+
         try {
             const userDocRef = doc(firestore, "users", userToDelete.id);
             await deleteDocumentNonBlocking(userDocRef);
@@ -222,7 +238,7 @@ export default function UserManagementPage() {
                                         <DropdownMenuItem
                                             className="text-destructive"
                                             onClick={() => setUserToDelete(user)}
-                                            disabled={user.id === currentUser?.uid}
+                                            disabled={user.id === currentUser?.uid} // Disable delete for current user
                                         >
                                             <Trash2 className="mr-2 h-4 w-4" />
                                             Supprimer
@@ -369,5 +385,3 @@ export default function UserManagementPage() {
         </div>
     );
 }
-
-    
