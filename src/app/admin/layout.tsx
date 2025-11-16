@@ -30,8 +30,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/firebase";
 import { useFirestore } from "@/firebase/provider";
-import { doc } from "firebase/firestore";
-import { useDoc, useMemoFirebase } from "@/firebase";
+import { doc, query, collection, where } from "firebase/firestore";
+import { useDoc, useCollection, useMemoFirebase } from "@/firebase";
 import { useMemo, useEffect } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -60,8 +60,8 @@ export default function AdminLayout({
   }, [firestore, user]);
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
-
-  const isSuperAdmin = useMemo(() => userData?.role === 'superadmin', [userData]);
+  
+  const isSuperAdmin = userData?.role === 'superadmin';
 
   useEffect(() => {
     if (!isUserLoading && !isUserDataLoading && !isSuperAdmin) {
