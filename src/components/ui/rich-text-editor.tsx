@@ -19,6 +19,7 @@ import { Button } from './button'
 import UnderlineExtension from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
 import Heading from '@tiptap/extension-heading'
+import ListItem from '@tiptap/extension-list-item'
 
 const Toolbar = ({ editor }: { editor: Editor | null }) => {
   if (!editor) {
@@ -136,6 +137,7 @@ export const RichTextEditor = ({ content, onChange, placeholder }: RichTextEdito
       Heading.configure({
         levels: [2], // Only allow H2
       }),
+      ListItem,
     ],
     content: content,
     onUpdate: ({ editor }) => {
