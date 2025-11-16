@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Loader2, Trash2 } from 'lucide-react';
+import { PlusCircle, Loader2, Trash2, Edit } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -32,7 +32,7 @@ const superAdminFormSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
   email: z.string().email("L'adresse email n'est pas valide."),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
 });
 
 export default function SuperAdminsPage() {
@@ -43,6 +43,7 @@ export default function SuperAdminsPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userToDelete, setUserToDelete] = useState<SuperAdmin | null>(null);
+  const [editingUser, setEditingUser] = useState<SuperAdmin | null>(null);
 
   const superAdminsQuery = useMemoFirebase(() => {
     return query(collection(firestore, 'users'), where('role', '==', 'superadmin'));
@@ -60,36 +61,72 @@ export default function SuperAdminsPage() {
     },
   });
 
+  useEffect(() => {
+    if (isDialogOpen && editingUser) {
+      form.reset({
+        firstName: editingUser.firstName,
+        lastName: editingUser.lastName,
+        email: editingUser.email,
+        password: "",
+      });
+    } else if (isDialogOpen && !editingUser) {
+      form.reset({
+        firstName: "",
+        lastName: "",
+        email: "",
+        password: "",
+      });
+    }
+  }, [isDialogOpen, editingUser, form]);
+
+
   const onSubmit = async (values: z.infer<typeof superAdminFormSchema>) => {
     setIsSubmitting(true);
     try {
-      // 1. Create user in Firebase Auth
-      const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
-      const user = userCredential.user;
+      if (editingUser) {
+        // Update user
+        const userDocRef = doc(firestore, 'users', editingUser.id);
+        await setDocumentNonBlocking(userDocRef, {
+            firstName: values.firstName,
+            lastName: values.lastName,
+            email: values.email, // Note: This only changes the Firestore record, not Firebase Auth email.
+        }, { merge: true });
+        toast({ title: 'Succès', description: 'Le Super Admin a été mis à jour.' });
+        
+      } else {
+        // Create user
+        const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
+        const user = userCredential.user;
 
-      // 2. Create user document in Firestore
-      const userDocRef = doc(firestore, 'users', user.uid);
-      await setDocumentNonBlocking(userDocRef, {
-        firstName: values.firstName,
-        lastName: values.lastName,
-        email: values.email,
-        role: 'superadmin',
-        dateJoined: new Date().toISOString(),
-      }, {});
+        const userDocRef = doc(firestore, 'users', user.uid);
+        await setDocumentNonBlocking(userDocRef, {
+            firstName: values.firstName,
+            lastName: values.lastName,
+            email: values.email,
+            role: 'superadmin',
+            dateJoined: new Date().toISOString(),
+        }, {});
+        toast({ title: 'Succès', description: 'Le Super Admin a été créé avec succès.' });
+      }
 
-      toast({ title: 'Succès', description: 'Le Super Admin a été créé avec succès.' });
       setIsDialogOpen(false);
-      form.reset();
+      setEditingUser(null);
+
     } catch (error: any) {
-      console.error("Error creating super admin:", error);
+      console.error("Error saving super admin:", error);
       let errorMessage = "Une erreur est survenue.";
-      if (error.code === 'auth/email-already-in-use') {
+      if (error.code === 'auth/email-already-in-use' && !editingUser) {
         errorMessage = "Cette adresse e-mail est déjà utilisée.";
       }
       toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
     } finally {
       setIsSubmitting(false);
     }
+  };
+  
+  const handleEdit = (user: SuperAdmin) => {
+    setEditingUser(user);
+    setIsDialogOpen(true);
   };
 
   const handleDeleteConfirm = async () => {
@@ -107,6 +144,13 @@ export default function SuperAdminsPage() {
       setUserToDelete(null);
     }
   };
+  
+  const handleOpenDialog = (open: boolean) => {
+      setIsDialogOpen(open);
+      if (!open) {
+          setEditingUser(null);
+      }
+  }
 
   return (
     <div className="space-y-8">
@@ -115,7 +159,7 @@ export default function SuperAdminsPage() {
           <h1 className="text-3xl font-bold font-headline">Gestion des Super Admins</h1>
           <p className="text-muted-foreground">Créez et gérez les administrateurs de la plateforme.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <Dialog open={isDialogOpen} onOpenChange={handleOpenDialog}>
           <DialogTrigger asChild>
             <Button>
               <PlusCircle className="mr-2 h-4 w-4" />
@@ -124,9 +168,9 @@ export default function SuperAdminsPage() {
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Créer un Super Admin</DialogTitle>
+              <DialogTitle>{editingUser ? "Modifier le" : "Créer un"} Super Admin</DialogTitle>
               <DialogDescription>
-                Cet utilisateur aura un accès complet à toutes les fonctionnalités de la plateforme.
+                 {editingUser ? "Modifiez les informations ci-dessous." : "Cet utilisateur aura un accès complet à toutes les fonctionnalités de la plateforme."}
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
@@ -140,15 +184,20 @@ export default function SuperAdminsPage() {
                     )} />
                 </div>
                 <FormField control={form.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="super.admin@vapps.com" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="super.admin@vapps.com" {...field} readOnly={!!editingUser} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="password" render={({ field }) => (
-                    <FormItem><FormLabel>Mot de passe</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem>
+                        <FormLabel>Mot de passe</FormLabel>
+                        <FormControl><Input type="password" {...field} disabled={!!editingUser} /></FormControl>
+                        <FormMessage />
+                        {editingUser && <p className='text-xs text-muted-foreground pt-1'>La modification du mot de passe n'est pas disponible.</p>}
+                    </FormItem>
                 )} />
                 <DialogFooter>
                   <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Créer l'utilisateur
+                    {editingUser ? "Sauvegarder" : "Créer l'utilisateur"}
                   </Button>
                 </DialogFooter>
               </form>
@@ -188,6 +237,9 @@ export default function SuperAdminsPage() {
                     <TableCell>{admin.email}</TableCell>
                     <TableCell>{new Date(admin.dateJoined).toLocaleDateString()}</TableCell>
                     <TableCell className="text-right">
+                       <Button variant="ghost" size="icon" onClick={() => handleEdit(admin)}>
+                        <Edit className="h-4 w-4" />
+                      </Button>
                       <Button variant="ghost" size="icon" onClick={() => setUserToDelete(admin)}>
                         <Trash2 className="h-4 w-4 text-destructive" />
                       </Button>
