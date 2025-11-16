@@ -46,9 +46,7 @@ const mainMenuItems = [
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
   { href: "/dashboard/billing", label: "Facturation & Devis", icon: <CreditCard /> },
-  { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
-  { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
-  { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
+  { href: "/dashboard/settings/users", label: "Administration", icon: <Settings /> },
 ];
 
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
@@ -125,7 +123,7 @@ export default function DashboardLayout({
                {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
-                    <SidebarMenuButton isActive={pathname === item.href}>
+                    <SidebarMenuButton isActive={pathname.startsWith(item.href) && item.href !== '/dashboard' ? true : pathname === item.href}>
                         {item.icon}
                         <span>{item.label}</span>
                     </SidebarMenuButton>
@@ -160,6 +158,8 @@ export default function DashboardLayout({
                 <AvatarImage src={user?.photoURL ?? undefined} />
                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
+              <div className="flex-1 overflow-hidden">
+              </div>
               <Link href="/">
                 <Button variant="ghost" size="icon">
                   <LogOut className="h-4 w-4" />
