@@ -33,19 +33,6 @@ service cloud.firestore {
        let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
        return isSignedIn() && userDoc.agencyId == agencyId && (userDoc.role == 'admin' || userDoc.role == 'dpo');
      }
-     
-    /**
-     * @description Checks if the user is a staff member (conseiller, admin, dpo, superadmin).
-     * @returns {boolean} True if the user is a staff member.
-     */
-    function isStaff() {
-        if (!isSignedIn()) {
-          return false;
-        }
-        let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
-        return userDoc.role == 'conseiller' || userDoc.role == 'admin' || userDoc.role == 'dpo' || userDoc.role == 'superadmin';
-    }
-
 
     // Allow public read for agency personalization, but restrict write access
     match /agencies/{agencyId} {
@@ -116,15 +103,6 @@ service cloud.firestore {
       allow update: if isSignedIn() && request.auth.uid == userId 
                       && request.resource.data.role == resource.data.role
                       && request.resource.data.agencyId == resource.data.agencyId;
-      
-      // Counselor Assignment Rule
-      allow write: if request.resource.data.role == 'membre' && isStaff() &&
-                   (
-                     // SuperAdmins/Admins can assign anyone of a non-superadmin role
-                     (isAgencyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.agencyId) && get(/databases/$(database)/documents/users/$(request.resource.data.counselorId)).data.role != 'superadmin') ||
-                     // Counselors can assign themselves
-                     (request.auth.uid == request.resource.data.counselorId)
-                   );
     }
     
     match /users/{userId}/{path=**} {
