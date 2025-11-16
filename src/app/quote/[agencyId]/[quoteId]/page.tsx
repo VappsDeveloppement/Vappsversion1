@@ -70,8 +70,14 @@ export default function PublicQuotePage() {
     }, [firestore, agencyId, quoteId]);
     
     const { data: quote, isLoading, error } = useDoc<Quote>(quoteRef);
-    const { personalization, agency } = useAgency();
 
+    const agencyDocRef = useMemoFirebase(() => {
+        if (!agencyId) return null;
+        return doc(firestore, `agencies/${agencyId}`);
+    }, [firestore, agencyId]);
+    const { data: agencyData } = useDoc(agencyDocRef);
+
+    const personalization = agencyData?.personalization;
 
     const handleStatusUpdate = async (status: 'accepted' | 'rejected') => {
         if (!quote || !quoteRef) return;
@@ -105,12 +111,12 @@ export default function PublicQuotePage() {
     };
 
      const generateAndSendInvoice = async () => {
-        if (!quote || !agency || !personalization) {
+        if (!quote || !agencyId || !personalization) {
             toast({ title: "Erreur", description: "Données de devis ou d'agence manquantes.", variant: "destructive" });
             return;
         }
 
-        const invoicesCollectionRef = collection(firestore, 'agencies', agency.id, 'invoices');
+        const invoicesCollectionRef = collection(firestore, 'agencies', agencyId as string, 'invoices');
         const q = query(invoicesCollectionRef);
         const querySnapshot = await getDocs(q);
         const year = new Date().getFullYear();
@@ -125,7 +131,7 @@ export default function PublicQuotePage() {
         const invoiceData: any = {
             invoiceNumber,
             quoteNumber: quote.quoteNumber,
-            agencyId: agency.id,
+            agencyId: agencyId,
             clientId: quote.clientInfo.id,
             clientInfo: quote.clientInfo,
             issueDate: issueDate.toISOString(),
