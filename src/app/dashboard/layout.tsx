@@ -30,12 +30,11 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@/firebase";
+import { useUser, useMemoFirebase, useCollection, useDoc } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import React, { useMemo } from "react";
 import { useFirestore } from "@/firebase/provider";
-import { doc } from "firebase/firestore";
-import { useDoc, useMemoFirebase } from "@/firebase";
+import { collection, doc, query, where } from "firebase/firestore";
 import {
   Accordion,
   AccordionContent,
@@ -221,12 +220,26 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const membershipsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'memberships'), where('userId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: memberships, isLoading: areMembershipsLoading } = useCollection(membershipsQuery);
   
-  // This logic is simplified; a real app would have more robust logic to find the user's primary agency.
-  // For now, it defaults to the main agency. A more complex implementation could be added later.
-  const agencyId = 'vapps-agency';
-  
-  if (isUserLoading) {
+  const isLoading = isUserLoading || areMembershipsLoading;
+
+  const agencyId = useMemo(() => {
+    if (isLoading || !memberships || memberships.length === 0) {
+      return 'vapps-agency'; // Default agency
+    }
+    // Return the first agency found for the user.
+    return memberships[0].agencyId;
+  }, [isLoading, memberships]);
+
+  if (isLoading) {
      return (
         <div className="flex h-screen items-center justify-center">
             <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
