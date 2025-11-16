@@ -6,7 +6,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   CalendarDays,
-  CreditCard,
   LayoutDashboard,
   LogOut,
   MessageSquare,
@@ -14,8 +13,9 @@ import {
   Shield,
   FileText,
   Paintbrush,
-  ChevronDown,
   UserCog,
+  CreditCard,
+  LifeBuoy
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -36,8 +36,6 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { cn } from "@/lib/utils";
 import React, { useMemo } from "react";
 import { useFirestore } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
@@ -47,14 +45,13 @@ const menuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
-  { href: "/dashboard/billing", label: "Facturation", icon: <CreditCard /> },
+  { href: "/dashboard/billing", label: "Facturation & Devis", icon: <CreditCard /> },
+  { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
+  { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
+  { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
+  { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> },
 ];
 
-const settingsMenuItems = [
-    { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
-    { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
-    { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
-]
 
 export default function DashboardLayout({
   children,
@@ -72,7 +69,8 @@ export default function DashboardLayout({
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
-  const isSettingsOpen = React.useState(pathname.startsWith('/dashboard/settings'));
+  const isSuperAdmin = userData?.role === 'superadmin';
+
   const [isMounted, setIsMounted] = React.useState(false);
 
   React.useEffect(() => {
@@ -137,44 +135,19 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
-                <Collapsible open={isSettingsOpen[0]} onOpenChange={isSettingsOpen[1]}>
-                    <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/settings")}>
-                                <Shield />
-                                <span>Administration</span>
-                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isSettingsOpen[0] && "rotate-180")} />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                    </SidebarMenuItem>
-                    <CollapsibleContent>
-                        <SidebarMenuSub>
-                            {settingsMenuItems.map((item) => (
-                                <SidebarMenuItem key={item.href}>
-                                    <Link href={item.href} passHref>
-                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
-                                          <span>
-                                            {item.icon}
-                                            <span>{item.label}</span>
-                                          </span>
-                                        </SidebarMenuSubButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenuSub>
-                    </CollapsibleContent>
-                </Collapsible>
             </SidebarMenu>
-             <SidebarMenu className="mt-auto">
-                <SidebarMenuItem>
-                    <Link href="/admin">
-                         <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
-                             <UserCog />
-                            <span>Admin Platforme</span>
-                        </SidebarMenuButton>
-                    </Link>
-                </SidebarMenuItem>
-             </SidebarMenu>
+             {isSuperAdmin && (
+                <SidebarMenu className="mt-auto">
+                    <SidebarMenuItem>
+                        <Link href="/admin">
+                            <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
+                                <UserCog />
+                                <span>Admin Platforme</span>
+                            </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                </SidebarMenu>
+             )}
           </SidebarContent>
           <SidebarFooter>
             <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">

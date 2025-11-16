@@ -29,8 +29,10 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@/firebase";
+import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
+import { doc } from "firebase/firestore";
+import React, { useEffect } from "react";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
@@ -47,12 +49,30 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
 
-  if (isUserLoading) {
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+  const isLoading = isUserLoading || isUserDataLoading;
+
+  useEffect(() => {
+    // If loading is finished and there's no user or the user is not a superadmin, redirect.
+    if (!isLoading && (!user || userData?.role !== 'superadmin')) {
+      router.push('/dashboard');
+    }
+  }, [isLoading, user, userData, router]);
+
+  if (isLoading || !user || userData?.role !== 'superadmin') {
     return (
         <div className="flex h-screen items-center justify-center">
-            <Skeleton className="h-96 w-full max-w-4xl" />
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
         </div>
     );
   }
