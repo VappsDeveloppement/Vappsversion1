@@ -7,8 +7,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useAgency } from "@/context/agency-provider";
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
 import React, { useMemo, useState } from "react";
-import { collection, query, where, doc } from "firebase/firestore";
-import { useAuth, useFirestore } from "@/firebase/provider";
+import { collection, query, where, doc, getDocs } from "firebase/firestore";
+import { useAuth, useFirestore, useUser as useFirebaseUser } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -21,7 +21,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat, AlertTriangle } from "lucide-react";
+import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat, AlertTriangle, UserCheck, UserPlus } from "lucide-react";
 import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -36,7 +36,7 @@ type User = {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'admin' | 'superadmin' | 'conseiller' | 'membre' | 'prospect' | 'dpo';
+  role: 'admin' | 'superadmin' | 'conseiller' | 'membre' | 'dpo';
   dateJoined: string;
   phone: string;
   address?: string;
@@ -47,6 +47,7 @@ type User = {
   status?: 'new' | 'contacted' | 'not_interested';
   origin?: string;
   message?: string;
+  counselorId?: string;
 };
 
 const baseUserFormSchema = z.object({
@@ -111,7 +112,7 @@ const prospectStatusText: Record<NonNullable<User['status']>, string> = {
 };
 
 // Component to render the user table
-const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert, onStatusChange, onView }: {
+const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert, onStatusChange, onView, counselors, onAssignCounselor, currentUser }: {
     users: User[],
     isLoading: boolean,
     emptyMessage: string,
@@ -120,7 +121,12 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
     onConvert?: (user: User) => void,
     onStatusChange?: (user: User, status: User['status']) => void,
     onView?: (user: User) => void,
+    counselors?: User[],
+    onAssignCounselor?: (memberId: string, counselorId: string | null) => void,
+    currentUser: User | null;
 }) => {
+  const isCurrentUserAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+
   if (isLoading) {
     return (
       <Table>
@@ -129,6 +135,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
+            {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
             {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
             <TableHead>Date d'inscription</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -140,7 +147,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
               <TableCell><Skeleton className="h-5 w-24" /></TableCell>
               <TableCell><Skeleton className="h-5 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-              {users[0]?.role === 'prospect' && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
+              {(users[0]?.role === 'membre' || users[0]?.role === 'prospect') && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
             </TableRow>
@@ -165,65 +172,96 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
           <TableHead>Nom</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Rôle</TableHead>
+          {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
           {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
           <TableHead>Date d'inscription</TableHead>
           <TableHead className="text-right">Actions</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {users.map(user => (
-          <TableRow key={user.id}>
-            <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
-            <TableCell>{user.email}</TableCell>
-            <TableCell>
-              <Badge variant={user.role === 'admin' || user.role === 'superadmin' ? 'default' : 'secondary'}>
-                {user.role}
-              </Badge>
-            </TableCell>
-             {user.role === 'prospect' && (
-                <TableCell>
-                    {user.status && (
-                        <Badge variant={prospectStatusVariant[user.status]}>
-                            {prospectStatusText[user.status]}
+        {users.map(user => {
+            const assignedCounselor = user.counselorId ? counselors?.find(c => c.id === user.counselorId) : null;
+            return (
+                <TableRow key={user.id}>
+                    <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                        <Badge variant={user.role === 'admin' || user.role === 'superadmin' ? 'default' : 'secondary'}>
+                            {user.role}
                         </Badge>
+                    </TableCell>
+                    {user.role === 'membre' && (
+                        <TableCell>
+                            {assignedCounselor ? `${assignedCounselor.firstName} ${assignedCounselor.lastName}` : <Badge variant="outline">Non assigné</Badge>}
+                        </TableCell>
                     )}
-                </TableCell>
-            )}
-            <TableCell>
-              {user.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}
-            </TableCell>
-            <TableCell className="text-right">
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        {onView && <DropdownMenuItem onClick={() => onView(user)}><Info className="mr-2 h-4 w-4" /> Voir les informations</DropdownMenuItem>}
-                        {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
-                        {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
-                        {onStatusChange && (
-                            <DropdownMenuSub>
-                                <DropdownMenuSubTrigger>Changer le statut</DropdownMenuSubTrigger>
-                                <DropdownMenuPortal>
-                                    <DropdownMenuSubContent>
-                                        <DropdownMenuItem onClick={() => onStatusChange(user, 'new')}>Nouveau</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onStatusChange(user, 'contacted')}>Contacté</DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => onStatusChange(user, 'not_interested')}>Non intéressé</DropdownMenuItem>
-                                    </DropdownMenuSubContent>
-                                </DropdownMenuPortal>
-                            </DropdownMenuSub>
-                        )}
-                        <DropdownMenuItem onClick={() => onDelete(user)} className="text-destructive">
-                             <Trash2 className="mr-2 h-4 w-4" />
-                            Supprimer
-                        </DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
-            </TableCell>
-          </TableRow>
-        ))}
+                    {user.role === 'prospect' && (
+                        <TableCell>
+                            {user.status && (
+                                <Badge variant={prospectStatusVariant[user.status]}>
+                                    {prospectStatusText[user.status]}
+                                </Badge>
+                            )}
+                        </TableCell>
+                    )}
+                    <TableCell>
+                        {user.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreHorizontal className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                {onView && <DropdownMenuItem onClick={() => onView(user)}><Info className="mr-2 h-4 w-4" /> Voir les informations</DropdownMenuItem>}
+                                {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
+                                {user.role === 'membre' && onAssignCounselor && (isCurrentUserAdmin || currentUser?.role === 'conseiller') && (
+                                    <>
+                                     {isCurrentUserAdmin && (
+                                        <DropdownMenuSub>
+                                            <DropdownMenuSubTrigger><UserCheck className="mr-2 h-4 w-4" />Assigner un conseiller</DropdownMenuSubTrigger>
+                                            <DropdownMenuPortal>
+                                                <DropdownMenuSubContent>
+                                                    <DropdownMenuItem onClick={() => onAssignCounselor(user.id, null)}>Aucun (retirer)</DropdownMenuItem>
+                                                    {counselors?.map(c => (
+                                                        <DropdownMenuItem key={c.id} onClick={() => onAssignCounselor(user.id, c.id)}>{c.firstName} {c.lastName}</DropdownMenuItem>
+                                                    ))}
+                                                </DropdownMenuSubContent>
+                                            </DropdownMenuPortal>
+                                        </DropdownMenuSub>
+                                     )}
+                                     {currentUser?.role === 'conseiller' && !user.counselorId && (
+                                        <DropdownMenuItem onClick={() => onAssignCounselor(user.id, currentUser.id)}>
+                                            <UserPlus className="mr-2 h-4 w-4" />
+                                            S'assigner ce membre
+                                        </DropdownMenuItem>
+                                     )}
+                                    </>
+                                )}
+                                {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
+                                {onStatusChange && (
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>Changer le statut</DropdownMenuSubTrigger>
+                                        <DropdownMenuPortal>
+                                            <DropdownMenuSubContent>
+                                                <DropdownMenuItem onClick={() => onStatusChange(user, 'new')}>Nouveau</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => onStatusChange(user, 'contacted')}>Contacté</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => onStatusChange(user, 'not_interested')}>Non intéressé</DropdownMenuItem>
+                                            </DropdownMenuSubContent>
+                                        </DropdownMenuPortal>
+                                    </DropdownMenuSub>
+                                )}
+                                <DropdownMenuItem onClick={() => onDelete(user)} className="text-destructive">
+                                    <Trash2 className="mr-2 h-4 w-4" />
+                                    Supprimer
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </TableCell>
+                </TableRow>
+            )})}
       </TableBody>
     </Table>
   );
@@ -234,6 +272,7 @@ export default function UsersPage() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
   const auth = useAuth();
+  const { user: currentUser } = useFirebaseUser();
   const { toast } = useToast();
 
   const [adminSearch, setAdminSearch] = useState('');
@@ -259,6 +298,12 @@ export default function UsersPage() {
   }, [agency, firestore]);
 
   const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
+  const { data: counselorsData } = useCollection<User>(
+    useMemoFirebase(() => {
+        if (!agency) return null;
+        return query(collection(firestore, 'users'), where('agencyId', '==', agency.id), where('role', 'in', ['conseiller', 'admin', 'superadmin']));
+    }, [agency, firestore])
+  );
 
   const isLoading = isAgencyLoading || areUsersLoading;
 
@@ -360,6 +405,19 @@ export default function UsersPage() {
     setUserToDelete(user);
   };
 
+  const handleAssignCounselor = async (memberId: string, counselorId: string | null) => {
+    const userDocRef = doc(firestore, "users", memberId);
+    try {
+        await setDocumentNonBlocking(userDocRef, { counselorId }, { merge: true });
+        const member = users?.find(u => u.id === memberId);
+        const counselor = counselorsData?.find(c => c.id === counselorId);
+        const message = counselorId ? `Le membre ${member?.firstName} a été assigné à ${counselor?.firstName}.` : `L'assignation de ${member?.firstName} a été retirée.`;
+        toast({ title: "Assignation mise à jour", description: message });
+    } catch (error) {
+        toast({ title: "Erreur", description: "Impossible de mettre à jour l'assignation.", variant: "destructive" });
+    }
+  };
+
   async function handleCreateUser(values: z.infer<typeof adminFormSchema> | z.infer<typeof conseillerFormSchema> | z.infer<typeof membreFormSchema>) {
     if (!agency) {
         toast({ title: "Erreur", description: "L'agence n'a pas été trouvée.", variant: "destructive" });
@@ -453,6 +511,7 @@ export default function UsersPage() {
   const newProspects = useMemo(() => prospects.filter(p => p.status === 'new'), [prospects]);
   const otherProspects = useMemo(() => prospects.filter(p => p.status !== 'new'), [prospects]);
 
+  const currentConnectedUser = users?.find(u => u.id === currentUser?.uid) || null;
 
   return (
     <div className="space-y-8">
@@ -566,7 +625,7 @@ export default function UsersPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
-                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
+                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentConnectedUser} />
               </div>
             </TabsContent>
 
@@ -646,7 +705,7 @@ export default function UsersPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
+                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentConnectedUser}/>
                 </div>
             </TabsContent>
 
@@ -744,7 +803,16 @@ export default function UsersPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <UserTable users={membres} isLoading={isLoading} emptyMessage="Aucun membre trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
+                    <UserTable 
+                        users={membres} 
+                        isLoading={isLoading} 
+                        emptyMessage="Aucun membre trouvé." 
+                        onEdit={handleEdit} 
+                        onDelete={openDeleteDialog} 
+                        counselors={counselorsData || []}
+                        onAssignCounselor={handleAssignCounselor}
+                        currentUser={currentConnectedUser}
+                    />
                 </div>
             </TabsContent>
 
@@ -764,6 +832,7 @@ export default function UsersPage() {
                                         onDelete={openDeleteDialog}
                                         onConvert={handleConvert}
                                         onStatusChange={handleStatusChange}
+                                        currentUser={currentConnectedUser}
                                     />
                                 </div>
                             </AlertDescription>
@@ -788,6 +857,7 @@ export default function UsersPage() {
                                 onDelete={openDeleteDialog}
                                 onConvert={handleConvert}
                                 onStatusChange={handleStatusChange}
+                                currentUser={currentConnectedUser}
                             />
                         </CardContent>
                     </Card>
