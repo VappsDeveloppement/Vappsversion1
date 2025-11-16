@@ -1,14 +1,15 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useMemoFirebase, useCollection } from "@/firebase";
-import { collection, query } from "firebase/firestore";
+import { useMemoFirebase, useCollection, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { collection, query, doc, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, PlusCircle, Edit, Trash2, FileText, Video } from "lucide-react";
+import { MessageSquare, PlusCircle, Edit, Trash2, FileText, Video, BookOpen, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -18,6 +19,9 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+
 
 type SupportRequest = {
   id: string;
@@ -48,7 +52,7 @@ const faqFormSchema = z.object({
   question: z.string().min(1, 'La question est requise.'),
   content: z.string().min(50, 'Le contenu doit avoir au moins 50 caractères.'),
   videoUrl: z.string().url('Veuillez entrer une URL de vidéo valide.').optional().or(z.literal('')),
-  pdfs: z.array(z.object({
+  pdfUrls: z.array(z.object({
     name: z.string().min(1, "Le nom du document est requis."),
     url: z.string().url("Veuillez entrer une URL valide."),
   })).optional()
@@ -56,22 +60,85 @@ const faqFormSchema = z.object({
 
 type FaqFormData = z.infer<typeof faqFormSchema>;
 
+type FaqItem = FaqFormData & {
+  id: string;
+  scope: 'general' | 'agency';
+  agencyId?: string;
+};
+
 function GeneralFaqManager() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
   const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
+
+  const generalFaqQuery = useMemoFirebase(() => {
+    return query(
+      collection(firestore, 'faq_items'),
+      where('scope', '==', 'general')
+    );
+  }, [firestore]);
+
+  const { data: faqItems, isLoading: areFaqsLoading } = useCollection<FaqItem>(generalFaqQuery);
 
   const form = useForm<FaqFormData>({
     resolver: zodResolver(faqFormSchema),
-    defaultValues: { category: '', question: '', content: '', pdfs: [] },
+    defaultValues: { category: '', question: '', content: '', videoUrl: '', pdfUrls: [] },
   });
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
-    name: "pdfs",
+    name: "pdfUrls",
   });
 
-  const onSubmit = (data: FaqFormData) => {
-    console.log(data);
-    setIsSheetOpen(false);
+  const handleNew = () => {
+    setEditingFaq(null);
+    form.reset({ category: '', question: '', content: '', videoUrl: '', pdfUrls: [] });
+    setIsSheetOpen(true);
+  };
+
+  const handleEdit = (faqItem: FaqItem) => {
+    setEditingFaq(faqItem);
+    form.reset({
+      ...faqItem,
+      pdfUrls: faqItem.pdfUrls || []
+    });
+    setIsSheetOpen(true);
+  };
+
+  const handleDelete = (faqId: string) => {
+      const faqDocRef = doc(firestore, 'faq_items', faqId);
+      deleteDocumentNonBlocking(faqDocRef);
+      toast({ title: 'Question supprimée', description: 'La question a été retirée de la FAQ générale.' });
+  };
+
+
+  const onSubmit = async (data: FaqFormData) => {
+    setIsSubmitting(true);
+    
+    const faqData = { ...data, scope: 'general' as const };
+
+    try {
+      if (editingFaq) {
+        const faqDocRef = doc(firestore, 'faq_items', editingFaq.id);
+        await setDocumentNonBlocking(faqDocRef, faqData, { merge: true });
+        toast({ title: 'Question mise à jour', description: 'La question a été mise à jour dans la FAQ générale.' });
+      } else {
+        const faqCollectionRef = collection(firestore, 'faq_items');
+        await addDocumentNonBlocking(faqCollectionRef, faqData);
+        toast({ title: 'Question ajoutée', description: 'La nouvelle question a été ajoutée à la FAQ générale.' });
+      }
+      setIsSheetOpen(false);
+      setEditingFaq(null);
+      form.reset();
+    } catch (error) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'Erreur', description: 'Une erreur est survenue.' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -79,19 +146,19 @@ function GeneralFaqManager() {
       <CardHeader>
         <div className="flex justify-between items-start">
             <div>
-              <CardTitle>Gestion de la FAQ</CardTitle>
-              <CardDescription>Créez et modifiez les questions-réponses pour la page d'aide.</CardDescription>
+              <CardTitle>Gestion de la FAQ Générale</CardTitle>
+              <CardDescription>Créez et modifiez les questions-réponses pour la page d'aide de la plateforme.</CardDescription>
             </div>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
               <SheetTrigger asChild>
-                <Button>
+                <Button onClick={handleNew}>
                   <PlusCircle className="mr-2 h-4 w-4" />
                   Ajouter une question
                 </Button>
               </SheetTrigger>
               <SheetContent className="sm:max-w-3xl w-full overflow-y-auto">
                 <SheetHeader>
-                  <SheetTitle>Ajouter/Modifier une question</SheetTitle>
+                  <SheetTitle>{editingFaq ? 'Modifier' : 'Ajouter'} une question</SheetTitle>
                 </SheetHeader>
                 <Form {...form}>
                   <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
@@ -133,10 +200,10 @@ function GeneralFaqManager() {
                       <div className="space-y-2 mt-2">
                         {fields.map((field, index) => (
                           <div key={field.id} className="flex gap-2 items-center">
-                            <FormField control={form.control} name={`pdfs.${index}.name`} render={({ field }) => (
+                            <FormField control={form.control} name={`pdfUrls.${index}.name`} render={({ field }) => (
                               <Input {...field} placeholder="Nom du document" className="flex-1" />
                             )} />
-                            <FormField control={form.control} name={`pdfs.${index}.url`} render={({ field }) => (
+                            <FormField control={form.control} name={`pdfUrls.${index}.url`} render={({ field }) => (
                               <Input {...field} placeholder="URL du PDF" className="flex-1" />
                             )} />
                             <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
@@ -151,7 +218,10 @@ function GeneralFaqManager() {
                     </div>
                     <SheetFooter className="pt-6">
                       <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                      <Button type="submit">Sauvegarder</Button>
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Sauvegarder
+                      </Button>
                     </SheetFooter>
                   </form>
                 </Form>
@@ -160,11 +230,61 @@ function GeneralFaqManager() {
         </div>
       </CardHeader>
       <CardContent>
-          <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg text-center">
-              <MessageSquare className="h-12 w-12 text-muted-foreground" />
-              <h3 className="mt-4 text-lg font-semibold">Aucune question dans la FAQ</h3>
-              <p className="mt-2 text-sm text-muted-foreground">Cliquez sur "Ajouter une question" pour commencer.</p>
-          </div>
+          {areFaqsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : faqItems && faqItems.length > 0 ? (
+            <Accordion type="single" collapsible className="w-full">
+              {faqItems.map((item) => (
+                <AccordionItem value={item.id} key={item.id}>
+                  <AccordionTrigger>{item.question}</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.content }} />
+                    {item.videoUrl && (
+                      <div className="mt-4">
+                        <iframe
+                          className="w-full aspect-video rounded-lg"
+                          src={item.videoUrl}
+                          title={item.question}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        ></iframe>
+                      </div>
+                    )}
+                    {item.pdfUrls && item.pdfUrls.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <h4 className="font-semibold">Documents associés :</h4>
+                        <ul className="list-disc pl-5">
+                          {item.pdfUrls.map((pdf, index) => (
+                            <li key={index}>
+                              <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                {pdf.name}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="mt-6 flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4"/>Modifier</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="mr-2 h-4 w-4"/>Supprimer</Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">Aucune question dans la FAQ</h3>
+                <p className="mt-2 text-sm text-muted-foreground">Cliquez sur "Ajouter une question" pour commencer.</p>
+            </div>
+          )}
       </CardContent>
     </Card>
   )
@@ -247,3 +367,5 @@ export default function SupportPage() {
         </div>
     );
 }
+
+    

@@ -41,9 +41,78 @@ type FaqFormData = z.infer<typeof faqFormSchema>;
 
 type FaqItem = FaqFormData & {
   id: string;
-  agencyId: string;
+  agencyId?: string;
   scope: 'general' | 'agency';
 };
+
+function GeneralFaqViewer() {
+    const firestore = useFirestore();
+    const generalFaqQuery = useMemoFirebase(() => {
+        return query(collection(firestore, 'faq_items'), where('scope', '==', 'general'));
+    }, [firestore]);
+
+    const { data: faqItems, isLoading } = useCollection<FaqItem>(generalFaqQuery);
+
+    if (isLoading) {
+        return (
+            <div className="space-y-2">
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+                <Skeleton className="h-12 w-full" />
+            </div>
+        );
+    }
+    
+    if (!faqItems || faqItems.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">La FAQ est vide</h3>
+                <p className="mt-2 text-sm text-muted-foreground">Aucune question n'a été ajoutée à la FAQ générale pour le moment.</p>
+            </div>
+        );
+    }
+
+    return (
+        <Accordion type="single" collapsible className="w-full">
+            {faqItems.map((item) => (
+                <AccordionItem value={item.id} key={item.id}>
+                    <AccordionTrigger>{item.question}</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.content }} />
+                         {item.videoUrl && (
+                            <div className="mt-4">
+                                <iframe
+                                className="w-full aspect-video rounded-lg"
+                                src={item.videoUrl}
+                                title={item.question}
+                                frameBorder="0"
+                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                allowFullScreen
+                                ></iframe>
+                            </div>
+                        )}
+                        {item.pdfUrls && item.pdfUrls.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                                <h4 className="font-semibold">Documents associés :</h4>
+                                <ul className="list-disc pl-5">
+                                {item.pdfUrls.map((pdf, index) => (
+                                    <li key={index}>
+                                    <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-2">
+                                        <FileText className="h-4 w-4" />
+                                        {pdf.name}
+                                    </a>
+                                    </li>
+                                ))}
+                                </ul>
+                            </div>
+                        )}
+                    </AccordionContent>
+                </AccordionItem>
+            ))}
+        </Accordion>
+    );
+}
 
 function AgencyFaqManager() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
@@ -340,11 +409,7 @@ export default function AgencySupportPage() {
                             </div>
                         </CardHeader>
                         <CardContent>
-                             <div className="flex flex-col items-center justify-center h-96 border-2 border-dashed rounded-lg text-center">
-                                <MessageSquare className="h-12 w-12 text-muted-foreground" />
-                                <h3 className="mt-4 text-lg font-semibold">FAQ Générale en cours de construction</h3>
-                                <p className="mt-2 text-sm text-muted-foreground">Cette section affichera bientôt la FAQ gérée par les administrateurs de la plateforme.</p>
-                            </div>
+                             <GeneralFaqViewer />
                         </CardContent>
                     </Card>
                 </TabsContent>
