@@ -32,7 +32,7 @@ type User = {
   email: string;
   role: 'superadmin' | 'membre'; // Global role
   dateJoined: string;
-  phone: string;
+  phone?: string;
   address?: string;
   zipCode?: string;
   city?: string;
@@ -54,9 +54,9 @@ const baseUserSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis."),
   email: z.string().email("L'adresse email n'est pas valide."),
   phone: z.string().min(1, "Le téléphone est requis."),
-  address: z.string().min(1, "L'adresse est requise."),
-  zipCode: z.string().min(1, "Le code postal est requis."),
-  city: z.string().min(1, "La ville est requise."),
+  address: z.string().optional(),
+  zipCode: z.string().optional(),
+  city: z.string().optional(),
   role: z.enum(['admin', 'dpo', 'conseiller', 'moderateur', 'membre'], { required_error: "Le rôle dans l'agence est requis." }),
   password: z.string().optional(),
 }).refine(data => {
@@ -68,8 +68,6 @@ const baseUserSchema = z.object({
     message: "Un mot de passe de 6 caractères minimum est requis pour un nouvel utilisateur.",
     path: ["password"],
 });
-
-type UserFormData = z.infer<typeof baseUserSchema>;
 
 
 export default function UsersPage() {
@@ -120,7 +118,7 @@ export default function UsersPage() {
     });
   }, [users, memberships, searchTerm]);
   
-  const form = useForm<UserFormData>({
+  const form = useForm<z.infer<typeof baseUserSchema>>({
     resolver: zodResolver(baseUserSchema),
     defaultValues: {
         id: '',
@@ -143,7 +141,7 @@ export default function UsersPage() {
         firstName: user.firstName,
         lastName: user.lastName,
         email: user.email,
-        phone: user.phone,
+        phone: user.phone || '',
         address: user.address || '',
         zipCode: user.zipCode || '',
         city: user.city || '',
@@ -178,7 +176,7 @@ export default function UsersPage() {
     setIsFormOpen(true);
   };
   
-  const onSubmit = async (values: UserFormData) => {
+  const onSubmit = async (values: z.infer<typeof baseUserSchema>) => {
     if (!agency) return;
     setIsSubmitting(true);
 
@@ -195,10 +193,6 @@ export default function UsersPage() {
                 zipCode: values.zipCode,
                 city: values.city,
             }, { merge: true });
-
-            if (values.password) {
-               toast({variant: 'destructive', title: "Info", description: "La mise à jour du mot de passe doit se faire via les fonctions d'administration Firebase. Cette fonctionnalité n'est pas implémentée ici."})
-            }
 
         } else { // Creating
             const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
@@ -267,7 +261,6 @@ export default function UsersPage() {
     }
   };
 
-
   return (
     <div className="space-y-8">
       <div>
@@ -285,9 +278,57 @@ export default function UsersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)} 
                 className="max-w-sm" 
               />
-              <Button onClick={handleNew}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un utilisateur
-              </Button>
+              <Dialog open={isFormOpen} onOpenChange={handleOpenDialog}>
+                  <DialogTrigger asChild>
+                      <Button onClick={handleNew}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un utilisateur
+                      </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle>{editingUser ? "Modifier l'utilisateur" : "Créer un nouvel utilisateur"}</DialogTitle>
+                    </DialogHeader>
+                    <Form {...form}>
+                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-2">
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                          <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        </div>
+                        <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                        </div>
+                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle dans l'agence</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="dpo">DPO</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem><SelectItem value="membre">Membre</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField
+                          control={form.control}
+                          name="password"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
+                              <FormControl>
+                                <div className="relative">
+                                  <Input type={showPassword ? 'text' : 'password'} {...field} />
+                                  <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                                </div>
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <DialogFooter>
+                          <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
+                          <Button type="submit" disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            {editingUser ? 'Sauvegarder les modifications' : "Créer l'utilisateur"}
+                          </Button>
+                        </DialogFooter>
+                      </form>
+                    </Form>
+                  </DialogContent>
+              </Dialog>
           </div>
         </CardHeader>
         <CardContent>
@@ -331,53 +372,6 @@ export default function UsersPage() {
           </Table>
         </CardContent>
       </Card>
-
-      <Dialog open={isFormOpen} onOpenChange={handleOpenDialog}>
-        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{editingUser ? "Modifier l'utilisateur" : "Créer un nouvel utilisateur"}</DialogTitle>
-          </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-2">
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-              </div>
-              <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-              <div className="grid grid-cols-2 gap-4">
-                <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-              </div>
-              <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle dans l'agence</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="dpo">DPO</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem><SelectItem value="membre">Membre</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
-                    <FormControl>
-                      <div className="relative">
-                        <Input type={showPassword ? 'text' : 'password'} {...field} />
-                        <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
-                      </div>
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editingUser ? 'Sauvegarder les modifications' : "Créer l'utilisateur"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
-        </DialogContent>
-      </Dialog>
       
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
