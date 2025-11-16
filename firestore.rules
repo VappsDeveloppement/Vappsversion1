@@ -1,5 +1,4 @@
 
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -54,7 +53,8 @@ service cloud.firestore {
     // GDPR requests can be created by anyone, but only read/managed by admins of the concerned agency
     match /gdpr_requests/{requestId} {
         allow create: if true;
-        allow read, list, write, update, delete: if isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
+        allow list: if isSignedIn() && request.query.where.agencyId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId;
+        allow read, write, update, delete: if isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
     }
     
     match /users/{userId} {
@@ -75,6 +75,3 @@ service cloud.firestore {
     }
   }
 }
-
-
-
