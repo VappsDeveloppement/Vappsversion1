@@ -71,179 +71,11 @@ const baseUserSchema = z.object({
 
 type UserFormData = z.infer<typeof baseUserSchema>;
 
-const UserForm = ({ open, setOpen, editingUser }: { open: boolean, setOpen: (o: boolean) => void, editingUser: (User & { membership?: Membership }) | null }) => {
-    const { agency } = useAgency();
-    const firestore = useFirestore();
-    const auth = useAuth();
-    const { toast } = useToast();
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-
-    const form = useForm<UserFormData>({
-        resolver: zodResolver(baseUserSchema),
-        defaultValues: {
-            id: '',
-            firstName: '',
-            lastName: '',
-            email: '',
-            phone: '',
-            address: '',
-            zipCode: '',
-            city: '',
-            role: 'membre',
-            password: '',
-        }
-    });
-    
-    useEffect(() => {
-        if (editingUser) {
-            form.reset({
-                id: editingUser.id,
-                firstName: editingUser.firstName,
-                lastName: editingUser.lastName,
-                email: editingUser.email,
-                phone: editingUser.phone,
-                address: editingUser.address || '',
-                zipCode: editingUser.zipCode || '',
-                city: editingUser.city || '',
-                role: editingUser.membership?.role || 'membre',
-                password: '',
-            });
-        } else {
-            form.reset({
-                id: '',
-                firstName: '',
-                lastName: '',
-                email: '',
-                phone: '',
-                address: '',
-                zipCode: '',
-                city: '',
-                role: 'membre',
-                password: '',
-            });
-        }
-    }, [editingUser, form]);
-
-
-    const handleClose = () => {
-      setOpen(false);
-      form.reset();
-    };
-
-    const onSubmit = async (values: UserFormData) => {
-        if (!agency) return;
-
-        setIsSubmitting(true);
-        try {
-            let userId = editingUser?.id;
-
-            if (editingUser) { // Updating
-                const userDocRef = doc(firestore, "users", userId!);
-                await setDocumentNonBlocking(userDocRef, {
-                    firstName: values.firstName,
-                    lastName: values.lastName,
-                    phone: values.phone,
-                    address: values.address,
-                    zipCode: values.zipCode,
-                    city: values.city,
-                }, { merge: true });
-
-                if (values.password) {
-                   toast({variant: 'destructive', title: "Info", description: "La mise à jour du mot de passe doit se faire via les fonctions d'administration Firebase. Cette fonctionnalité n'est pas implémentée ici."})
-                }
-
-            } else { // Creating
-                const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
-                userId = userCredential.user.uid;
-
-                const userDocRef = doc(firestore, "users", userId);
-                await setDocumentNonBlocking(userDocRef, {
-                    id: userId,
-                    firstName: values.firstName,
-                    lastName: values.lastName,
-                    email: values.email,
-                    phone: values.phone,
-                    address: values.address,
-                    zipCode: values.zipCode,
-                    city: values.city,
-                    role: 'membre', // Global role is always 'membre'
-                    dateJoined: new Date().toISOString(),
-                }, {});
-            }
-
-            const membershipRef = doc(firestore, 'memberships', `${userId}_${agency.id}`);
-            await setDocumentNonBlocking(membershipRef, {
-                userId,
-                agencyId: agency.id,
-                role: values.role,
-            }, { merge: true });
-
-            toast({ title: "Succès", description: `Utilisateur ${editingUser ? 'modifié' : 'créé'} avec succès.` });
-            handleClose();
-
-        } catch (error: any) {
-            console.error("Error saving user:", error);
-            const message = error.code === 'auth/email-already-in-use' ? "Cet email est déjà utilisé." : error.message;
-            toast({ title: "Erreur", description: message, variant: "destructive" });
-        } finally {
-            setIsSubmitting(false);
-        }
-    }
-
-    return (
-        <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                <DialogHeader>
-                    <DialogTitle>{editingUser ? "Modifier l'utilisateur" : "Créer un nouvel utilisateur"}</DialogTitle>
-                </DialogHeader>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-2">
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        </div>
-                        <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <div className="grid grid-cols-2 gap-4">
-                            <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                            <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        </div>
-                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle dans l'agence</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="dpo">DPO</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem><SelectItem value="membre">Membre</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                        <FormField
-                            control={form.control}
-                            name="password"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Input type={showPassword ? 'text' : 'password'} {...field} />
-                                            <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff/> : <Eye/>}</Button>
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <DialogFooter>
-                            <Button type="button" variant="outline" onClick={handleClose}>Annuler</Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {editingUser ? 'Sauvegarder les modifications' : 'Créer l'utilisateur'}
-                            </Button>
-                        </DialogFooter>
-                    </form>
-                </Form>
-            </DialogContent>
-        </Dialog>
-    );
-};
 
 export default function UsersPage() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
+  const auth = useAuth();
   const { user: firebaseAuthUser, isUserLoading: isAuthLoading } = useFirebaseUser();
   const { toast } = useToast();
 
@@ -251,6 +83,8 @@ export default function UsersPage() {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<(User & { membership?: Membership }) | null>(null);
   const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const membershipsQuery = useMemoFirebase(() => {
     if (!agency) return null;
@@ -263,7 +97,7 @@ export default function UsersPage() {
 
   const usersQuery = useMemoFirebase(() => {
     if (agencyUserIds.length === 0) return null;
-    return query(collection(firestore, 'users'), where('id', 'in', agencyUserIds));
+    return query(collection(firestore, 'users'), where('id', 'in', agencyUserIds.slice(0, 30)));
   }, [agencyUserIds]);
 
   const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
@@ -285,11 +119,125 @@ export default function UsersPage() {
         );
     });
   }, [users, memberships, searchTerm]);
+  
+  const form = useForm<UserFormData>({
+    resolver: zodResolver(baseUserSchema),
+    defaultValues: {
+        id: '',
+        firstName: '',
+        lastName: '',
+        email: '',
+        phone: '',
+        address: '',
+        zipCode: '',
+        city: '',
+        role: 'membre',
+        password: '',
+    }
+  });
 
   const handleEdit = (user: User & { membership?: Membership }) => {
     setEditingUser(user);
+    form.reset({
+        id: user.id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+        phone: user.phone,
+        address: user.address || '',
+        zipCode: user.zipCode || '',
+        city: user.city || '',
+        role: user.membership?.role || 'membre',
+        password: '',
+    });
     setIsFormOpen(true);
   };
+  
+  const handleOpenDialog = (open: boolean) => {
+    setIsFormOpen(open);
+    if(!open) {
+      setEditingUser(null);
+      form.reset();
+    }
+  }
+
+  const handleNew = () => {
+    setEditingUser(null);
+    form.reset({
+      id: '',
+      firstName: '',
+      lastName: '',
+      email: '',
+      phone: '',
+      address: '',
+      zipCode: '',
+      city: '',
+      role: 'membre',
+      password: '',
+    });
+    setIsFormOpen(true);
+  };
+  
+  const onSubmit = async (values: UserFormData) => {
+    if (!agency) return;
+    setIsSubmitting(true);
+
+    try {
+        let userId = editingUser?.id;
+
+        if (editingUser) { // Updating
+            const userDocRef = doc(firestore, "users", userId!);
+            await setDocumentNonBlocking(userDocRef, {
+                firstName: values.firstName,
+                lastName: values.lastName,
+                phone: values.phone,
+                address: values.address,
+                zipCode: values.zipCode,
+                city: values.city,
+            }, { merge: true });
+
+            if (values.password) {
+               toast({variant: 'destructive', title: "Info", description: "La mise à jour du mot de passe doit se faire via les fonctions d'administration Firebase. Cette fonctionnalité n'est pas implémentée ici."})
+            }
+
+        } else { // Creating
+            const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
+            userId = userCredential.user.uid;
+
+            const userDocRef = doc(firestore, "users", userId);
+            await setDocumentNonBlocking(userDocRef, {
+                id: userId,
+                firstName: values.firstName,
+                lastName: values.lastName,
+                email: values.email,
+                phone: values.phone,
+                address: values.address,
+                zipCode: values.zipCode,
+                city: values.city,
+                role: 'membre', // Global role is always 'membre'
+                dateJoined: new Date().toISOString(),
+            }, {});
+        }
+
+        const membershipRef = doc(firestore, 'memberships', `${userId}_${agency.id}`);
+        await setDocumentNonBlocking(membershipRef, {
+            userId,
+            agencyId: agency.id,
+            role: values.role,
+        }, { merge: true });
+
+        toast({ title: "Succès", description: `Utilisateur ${editingUser ? 'modifié' : 'créé'} avec succès.` });
+        setIsFormOpen(false);
+
+    } catch (error: any) {
+        console.error("Error saving user:", error);
+        const message = error.code === 'auth/email-already-in-use' ? "Cet email est déjà utilisé." : "Une erreur est survenue lors de la sauvegarde.";
+        toast({ title: "Erreur", description: message, variant: "destructive" });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
 
   const handleDeleteConfirm = async () => {
     if (!userToDelete || !agency) return;
@@ -303,7 +251,7 @@ export default function UsersPage() {
         const allMembershipsQuery = query(collection(firestore, 'memberships'), where('userId', '==', userToDelete.id));
         const allMembershipsSnap = await getDocs(allMembershipsQuery);
         
-        if (allMembershipsSnap.size <= 1) { // It was the last one
+        if (allMembershipsSnap.size <= 1) { 
             const userRef = doc(firestore, 'users', userToDelete.id);
             await deleteDocumentNonBlocking(userRef);
             toast({ title: "Utilisateur supprimé", description: "L'utilisateur et son adhésion à l'agence ont été supprimés." });
@@ -337,7 +285,7 @@ export default function UsersPage() {
                 onChange={(e) => setSearchTerm(e.target.value)} 
                 className="max-w-sm" 
               />
-              <Button onClick={() => { setEditingUser(null); setIsFormOpen(true); }}>
+              <Button onClick={handleNew}>
                 <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un utilisateur
               </Button>
           </div>
@@ -384,7 +332,52 @@ export default function UsersPage() {
         </CardContent>
       </Card>
 
-      {isFormOpen && <UserForm open={isFormOpen} setOpen={setIsFormOpen} editingUser={editingUser} />}
+      <Dialog open={isFormOpen} onOpenChange={handleOpenDialog}>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{editingUser ? "Modifier l'utilisateur" : "Créer un nouvel utilisateur"}</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-2">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+              </div>
+              <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
+              <div className="grid grid-cols-2 gap-4">
+                <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+                <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
+              </div>
+              <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle dans l'agence</FormLabel><Select onValueChange={field.onChange} defaultValue={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="dpo">DPO</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem><SelectItem value="membre">Membre</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+              <FormField
+                control={form.control}
+                name="password"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
+                    <FormControl>
+                      <div className="relative">
+                        <Input type={showPassword ? 'text' : 'password'} {...field} />
+                        <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                      </div>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {editingUser ? 'Sauvegarder les modifications' : "Créer l'utilisateur"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
       
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
