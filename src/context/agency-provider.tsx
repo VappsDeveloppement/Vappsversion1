@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
@@ -344,24 +343,20 @@ const defaultPersonalization: Personalization = {
     }
 };
 
-const defaultAgency: {id: string, name: string, personalization: Personalization} = {
-    id: 'vapps-agency',
-    name: 'VApps Agency',
-    personalization: defaultPersonalization
-};
+interface AgencyProviderProps {
+    children: ReactNode;
+    agencyId?: string;
+}
 
-
-export const AgencyProvider = ({ children }: { children: ReactNode }) => {
+export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProviderProps) => {
     const { firestore, isUserLoading } = useFirebase();
     const [personalization, setPersonalization] = useState<Personalization>(defaultPersonalization);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
 
-    // This is the single source of truth for the model application.
-    const agencyId = 'vapps-agency'; 
+    const agencyIdToLoad = agencyIdProp || 'vapps-agency'; 
 
     useEffect(() => {
-        // Wait until Firebase auth state is determined
         if (isUserLoading) {
             return;
         }
@@ -373,7 +368,7 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
         }
 
         setIsLoading(true);
-        const agencyDocRef = doc(firestore, 'agencies', agencyId);
+        const agencyDocRef = doc(firestore, 'agencies', agencyIdToLoad);
         
         const unsubscribe = onSnapshot(agencyDocRef, (docSnap) => {
             if (docSnap.exists()) {
@@ -387,8 +382,8 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                 const mergedSections = codeSections.map(codeSection => {
                     const savedSection = savedSectionsMap.get(codeSection.id);
                     return savedSection ? { ...codeSection, ...savedSection } : codeSection;
-                }).filter(section => section.id !== 'footer'); // Explicitly remove footer from selectable sections
-                
+                }).filter(section => section.id !== 'footer');
+
                 const finalSections = mergedSections.sort((a, b) => {
                     const aIndex = savedSections.findIndex((s: Section) => s.id === a.id);
                     const bIndex = savedSections.findIndex((s: Section) => s.id === b.id);
@@ -396,10 +391,10 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
                     if (a.isLocked && !b.isLocked) return -1;
                     if (!a.isLocked && b.isLocked) return 1;
 
-                    if (aIndex === -1 && bIndex === -1) return 0; // both new
-                    if (aIndex === -1) return 1; // a is new, b is not
-                    if (bIndex === -1) return -1; // b is new, a is not
-                    return aIndex - bIndex; // both exist, maintain order
+                    if (aIndex === -1 && bIndex === -1) return 0;
+                    if (aIndex === -1) return 1;
+                    if (bIndex === -1) return -1;
+                    return aIndex - bIndex;
                 });
 
 
@@ -474,12 +469,12 @@ export const AgencyProvider = ({ children }: { children: ReactNode }) => {
         });
 
         return () => unsubscribe();
-    }, [firestore, isUserLoading]);
+    }, [firestore, isUserLoading, agencyIdToLoad]);
 
     const agency = useMemo(() => {
         if (!personalization) return null;
-        return { id: agencyId, name: 'Vapps Principal', personalization };
-    }, [personalization]);
+        return { id: agencyIdToLoad, name: personalization.legalInfo?.companyName || 'Agence', personalization };
+    }, [personalization, agencyIdToLoad]);
 
 
     const value = {
@@ -499,5 +494,3 @@ export const useAgency = (): AgencyContextType => {
     }
     return context;
 };
-
-    

@@ -42,6 +42,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
+import { AgencyProvider } from "@/context/agency-provider";
+
 
 const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
@@ -59,7 +61,7 @@ const administrationMenuItems = [
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
 
 
-export default function DashboardLayout({
+function DashboardLayoutContent({
   children,
 }: {
   children: React.ReactNode;
@@ -210,5 +212,31 @@ export default function DashboardLayout({
         </SidebarInset>
       </div>
     </SidebarProvider>
+  );
+}
+
+export default function DashboardLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const { user, isUserLoading } = useUser();
+  
+  // This logic is simplified; a real app would have more robust logic to find the user's primary agency.
+  // For now, it defaults to the main agency. A more complex implementation could be added later.
+  const agencyId = 'vapps-agency';
+  
+  if (isUserLoading) {
+     return (
+        <div className="flex h-screen items-center justify-center">
+            <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
+        </div>
+    );
+  }
+
+  return (
+      <AgencyProvider agencyId={agencyId}>
+          <DashboardLayoutContent>{children}</DashboardLayoutContent>
+      </AgencyProvider>
   );
 }
