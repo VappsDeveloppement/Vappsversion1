@@ -54,6 +54,7 @@ const settingsMenuItems = [
     { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
     { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
     { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
+    { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> },
 ]
 
 const apiMenuItems = [
