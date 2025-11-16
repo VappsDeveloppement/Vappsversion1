@@ -156,15 +156,9 @@ export default function DashboardLayout({
               </Avatar>
               <div className="flex-1 overflow-hidden">
                 {isUserLoading ? (
-                  <div className="space-y-1">
-                    <Skeleton className="h-4 w-24" />
-                    <Skeleton className="h-3 w-32" />
-                  </div>
+                  <Skeleton className="h-4 w-24" />
                 ) : (
-                  <>
-                    <p className="font-semibold text-sm truncate">{user?.displayName || "User"}</p>
-                    <p className="text-xs text-muted-foreground truncate">{user?.email || "No email"}</p>
-                  </>
+                  <p className="font-semibold text-sm truncate">{user?.displayName || "Utilisateur"}</p>
                 )}
               </div>
               <Link href="/">
