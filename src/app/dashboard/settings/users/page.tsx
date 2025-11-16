@@ -21,7 +21,7 @@ import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat, AlertTriangle, UserCheck, UserPlus } from "lucide-react";
+import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2, Info, Repeat, AlertTriangle, UserCheck, UserPlus, UserCog } from "lucide-react";
 import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
 import { createUserWithEmailAndPassword } from "firebase/auth";
@@ -221,7 +221,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                     <>
                                      {isCurrentUserAdmin && (
                                         <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger><UserCheck className="mr-2 h-4 w-4" />Assigner un conseiller</DropdownMenuSubTrigger>
+                                            <DropdownMenuSubTrigger><UserCog className="mr-2 h-4 w-4" />Assigner/Réassigner</DropdownMenuSubTrigger>
                                             <DropdownMenuPortal>
                                                 <DropdownMenuSubContent>
                                                     <DropdownMenuItem onClick={() => onAssignCounselor(user.id, null)}>Aucun (retirer)</DropdownMenuItem>
@@ -272,7 +272,7 @@ export default function UsersPage() {
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user: currentUser } = useFirebaseUser();
+  const { user: firebaseAuthUser } = useFirebaseUser();
   const { toast } = useToast();
 
   const [adminSearch, setAdminSearch] = useState('');
@@ -465,6 +465,13 @@ export default function UsersPage() {
           dataToSave.dateJoined = new Date().toISOString();
         }
 
+        if (!editingUser && values.role === 'membre') {
+            const creator = users?.find(u => u.id === firebaseAuthUser?.uid);
+            if (creator && ['admin', 'superadmin', 'conseiller'].includes(creator.role)) {
+                dataToSave.counselorId = creator.id;
+            }
+        }
+        
         await setDocumentNonBlocking(userDocRef, dataToSave, { merge: true });
 
         toast({ title: "Succès", description: `L'utilisateur a été ${editingUser ? 'modifié' : 'créé'}.` });
@@ -511,7 +518,7 @@ export default function UsersPage() {
   const newProspects = useMemo(() => prospects.filter(p => p.status === 'new'), [prospects]);
   const otherProspects = useMemo(() => prospects.filter(p => p.status !== 'new'), [prospects]);
 
-  const currentConnectedUser = users?.find(u => u.id === currentUser?.uid) || null;
+  const currentConnectedUser = users?.find(u => u.id === firebaseAuthUser?.uid) || null;
 
   return (
     <div className="space-y-8">
