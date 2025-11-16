@@ -214,17 +214,17 @@ const defaultPersonalization = {
       mainText: "Chez Vapps, nous croyons qu'il n'existe pas de chemin unique. C'est pourquoi nous proposons une approche holistique et inclusive, qui prend en compte votre personnalité, vos compétences, vos envies et vos contraintes.",
       pillarsSectionTitle: "Les piliers de notre accompagnement",
       pillars: [
-        { id: `pillar-${Date.now()}-1`, title: "Notre Méthode", description: "Une approche structurée en 4 étapes pour garantir votre succès.", imageUrl: null as string | null },
-        { id: `pillar-${Date.now()}-2`, title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion.", imageUrl: null as string | null },
-        { id: `pillar-${Date.now()}-3`, title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble.", imageUrl: null as string | null },
+        { id: `pillar-${Date.now()}-1`, title: "Notre Méthode", description: "Une approche structurée en 4 étapes pour garantir votre succès.", imageUrl: null },
+        { id: `pillar-${Date.now()}-2`, title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion.", imageUrl: null },
+        { id: `pillar-${Date.now()}-3`, title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble.", imageUrl: null },
       ],
       showExpertises: true,
       expertisesSectionTitle: "Nos expertises sectorielles",
       expertises: [
-        { id: `expertise-${Date.now()}-1`, title: "Secteur Tech", description: "Conseils pour les métiers du numérique.", imageUrl: null as string | null },
-        { id: `expertise-${Date.now()}-2`, title: "Secteur Santé", description: "Évoluer dans le domaine de la santé.", imageUrl: null as string | null },
-        { id: `expertise-${Date.now()}-3`, title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise.", imageUrl: null as string | null },
-        { id: `expertise-${Date.now()}-4`, title: "Management", description: "Devenir un manager bienveillant et efficace.", imageUrl: null as string | null },
+        { id: `expertise-${Date.now()}-1`, title: "Secteur Tech", description: "Conseils pour les métiers du numérique.", imageUrl: null },
+        { id: `expertise-${Date.now()}-2`, title: "Secteur Santé", description: "Évoluer dans le domaine de la santé.", imageUrl: null },
+        { id: `expertise-${Date.now()}-3`, title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise.", imageUrl: null },
+        { id: `expertise-${Date.now()}-4`, title: "Management", description: "Devenir un manager bienveillant et efficace.", imageUrl: null },
       ]
     },
     parcoursSection: {
@@ -852,7 +852,7 @@ export default function PersonalizationPage() {
 
 
       <Tabs defaultValue="info-legales">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5">
           <TabsTrigger value="info-legales">Infos Légales</TabsTrigger>
           <TabsTrigger value="apparence">Apparence</TabsTrigger>
           <TabsTrigger value="accueil">Page d'accueil</TabsTrigger>
