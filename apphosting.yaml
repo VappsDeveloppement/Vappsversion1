@@ -8,3 +8,6 @@ runConfig:
 # This is a common configuration for single-page applications and Next.js apps.
 # The backend will handle all routing.
 servingBackend: nextjs-app
+rewrites:
+  - source: /**
+    destination: /
