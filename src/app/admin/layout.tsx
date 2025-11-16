@@ -118,7 +118,7 @@ export default function AdminLayout({
                 <AvatarFallback>A</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
-                <p className="font-semibold text-sm truncate">{user?.displayName || "Super Admin"}</p>
+                <p className="font-semibold text-sm truncate">{user?.displayName || userData?.firstName || "Super Admin"}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <Link href="/">
