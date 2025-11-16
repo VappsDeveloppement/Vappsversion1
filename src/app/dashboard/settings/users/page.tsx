@@ -217,28 +217,24 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                             <DropdownMenuContent align="end">
                                 {onView && <DropdownMenuItem onClick={() => onView(user)}><Info className="mr-2 h-4 w-4" /> Voir les informations</DropdownMenuItem>}
                                 {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
-                                {user.role === 'membre' && onAssignCounselor && (
-                                    <>
-                                     {isCurrentUserAdminOrHigher && (
-                                        <DropdownMenuSub>
-                                            <DropdownMenuSubTrigger><UserCog className="mr-2 h-4 w-4" />Assigner/Réassigner</DropdownMenuSubTrigger>
-                                            <DropdownMenuPortal>
-                                                <DropdownMenuSubContent>
-                                                    <DropdownMenuItem onClick={() => onAssignCounselor(user.id, null)}>Aucun (retirer)</DropdownMenuItem>
-                                                    {counselors?.map(c => (
-                                                        <DropdownMenuItem key={c.id} onClick={() => onAssignCounselor(user.id, c.id)}>{c.firstName} {c.lastName}</DropdownMenuItem>
-                                                    ))}
-                                                </DropdownMenuSubContent>
-                                            </DropdownMenuPortal>
-                                        </DropdownMenuSub>
-                                     )}
-                                     {currentUser?.role === 'conseiller' && !user.counselorId && (
-                                        <DropdownMenuItem onClick={() => onAssignCounselor(user.id, currentUser.id)}>
-                                            <UserPlus className="mr-2 h-4 w-4" />
-                                            S'assigner ce membre
-                                        </DropdownMenuItem>
-                                     )}
-                                    </>
+                                {user.role === 'membre' && onAssignCounselor && isCurrentUserAdminOrHigher && (
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger><UserCog className="mr-2 h-4 w-4" />Assigner/Réassigner</DropdownMenuSubTrigger>
+                                        <DropdownMenuPortal>
+                                            <DropdownMenuSubContent>
+                                                <DropdownMenuItem onClick={() => onAssignCounselor(user.id, null)}>Aucun (retirer)</DropdownMenuItem>
+                                                {counselors?.map(c => (
+                                                    <DropdownMenuItem key={c.id} onClick={() => onAssignCounselor(user.id, c.id)}>{c.firstName} {c.lastName}</DropdownMenuItem>
+                                                ))}
+                                            </DropdownMenuSubContent>
+                                        </DropdownMenuPortal>
+                                    </DropdownMenuSub>
+                                )}
+                                {user.role === 'membre' && onAssignCounselor && currentUser?.role === 'conseiller' && !user.counselorId && (
+                                    <DropdownMenuItem onClick={() => onAssignCounselor(user.id, currentUser.id)}>
+                                        <UserPlus className="mr-2 h-4 w-4" />
+                                        S'assigner ce membre
+                                    </DropdownMenuItem>
                                 )}
                                 {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
                                 {onStatusChange && (
@@ -915,3 +911,4 @@ export default function UsersPage() {
     </div>
   );
 }
+
