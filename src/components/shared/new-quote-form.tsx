@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React from 'react';
@@ -138,14 +137,17 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
 
     const generateQuoteNumber = async () => {
-        if (!agency) return `DEVIS-${new Date().getFullYear()}-001`;
+        if (!agency) return `DEVIS-${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}-0001`;
         const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
         const q = query(quotesCollectionRef);
         const querySnapshot = await getDocs(q);
-        const year = new Date().getFullYear();
-        const yearQuotes = querySnapshot.docs.filter(doc => doc.data().quoteNumber.startsWith(`DEVIS-${year}-`));
-        const nextId = (yearQuotes.length + 1).toString().padStart(3, '0');
-        return `DEVIS-${year}-${nextId}`;
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = (now.getMonth() + 1).toString().padStart(2, '0');
+        const prefix = `DEVIS-${year}-${month}-`;
+        const monthQuotes = querySnapshot.docs.filter(doc => doc.data().quoteNumber.startsWith(prefix));
+        const nextId = (monthQuotes.length + 1).toString().padStart(4, '0');
+        return `${prefix}${nextId}`;
     };
     
     const generateValidationCode = () => {
@@ -306,7 +308,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo,
                 agencyId: agency.id,
-                baseUrl: window.location.origin
             });
 
             if (result.success) {
@@ -650,3 +651,5 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
+
+    
