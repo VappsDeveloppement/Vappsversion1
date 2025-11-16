@@ -18,6 +18,7 @@ import { CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAgency } from '@/context/agency-provider';
 import { sendInvoice } from '@/app/actions/invoice';
+import Link from 'next/link';
 
 type Quote = {
     id: string;
@@ -298,6 +299,9 @@ export default function PublicQuotePage() {
                             {quote.status === 'rejected' && (
                                 <p className="text-destructive font-medium">Ce devis a été refusé.</p>
                            )}
+                           <Button asChild className="mt-4">
+                               <Link href="/">Retour au site</Link>
+                           </Button>
                          </CardFooter>
                     ) : (
                          <CardFooter className="p-8 bg-muted/50 border-t flex-col sm:flex-row items-center justify-between gap-6">

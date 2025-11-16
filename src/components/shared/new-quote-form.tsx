@@ -253,7 +253,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             } else {
                 const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
                 const newDocRef = doc(quotesCollectionRef);
-                await setDocumentNonBlocking(newDocRef, quoteData, {});
+                await setDocumentNonBlocking(newDocRef, { ...quoteData, id: newDocRef.id }, {});
                 toast({ title: "Devis créé", description: "Le devis a été sauvegardé avec succès."});
                 return newDocRef.id;
             }
@@ -306,6 +306,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo,
                 agencyId: agency.id,
+                baseUrl: window.location.origin
             });
 
             if (result.success) {
