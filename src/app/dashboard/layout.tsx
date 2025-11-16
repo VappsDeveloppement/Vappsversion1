@@ -30,6 +30,7 @@ import {
   SidebarInset,
   SidebarMenuSub,
   SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from "@/components/ui/sidebar";
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
