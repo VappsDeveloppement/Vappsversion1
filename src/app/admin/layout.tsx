@@ -1,16 +1,14 @@
 
-
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   LogOut,
   Users,
   Home,
   LayoutGrid,
   LifeBuoy,
-  UserCog,
   PanelsTopLeft,
   Mails,
 } from "lucide-react";
@@ -33,13 +31,13 @@ import { useUser, useDoc, useMemoFirebase, useFirestore } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { doc } from "firebase/firestore";
 import React, { useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
   { href: "/admin/page-builder", label: "Page Builder", icon: <PanelsTopLeft /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
   { href: "/admin/user-management", label: "User Management", icon: <Users /> },
-  { href: "/admin/super-admins", label: "Super Admins", icon: <UserCog /> },
   { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
 ];
 
@@ -49,6 +47,7 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
 
@@ -61,9 +60,14 @@ export default function AdminLayout({
 
   const isLoading = isUserLoading || isUserDataLoading;
 
-  // No redirection logic here anymore. Access is open for any connected user.
+  useEffect(() => {
+    if (!isLoading && userData?.role !== 'superadmin') {
+      router.push('/dashboard');
+    }
+  }, [isLoading, userData, router]);
 
-  if (isLoading) {
+
+  if (isLoading || userData?.role !== 'superadmin') {
     return (
         <div className="flex h-screen items-center justify-center">
             <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
