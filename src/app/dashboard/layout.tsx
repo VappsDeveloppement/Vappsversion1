@@ -15,10 +15,7 @@ import {
   FileText,
   Paintbrush,
   ChevronDown,
-  Home,
-  DatabaseZap,
   LayoutTemplate,
-  LifeBuoy,
   UserCog,
 } from "lucide-react";
 import {
@@ -42,7 +39,10 @@ import { useUser } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import React from "react";
+import React, { useMemo } from "react";
+import { useFirestore } from "@/firebase/provider";
+import { doc } from "firebase/firestore";
+import { useDoc, useMemoFirebase } from "@/firebase";
 
 const menuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
@@ -55,13 +55,6 @@ const settingsMenuItems = [
     { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Paintbrush /> },
     { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
     { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <FileText /> },
-    { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> },
-]
-
-const apiMenuItems = [
-    { href: "/dashboard/api/agency", label: "Vue d'ensemble", icon: <LayoutTemplate /> },
-    { href: "/dashboard/api/support", label: "Support Technique", icon: <LifeBuoy /> },
-    { href: "/dashboard/api/super-admins", label: "Super Admins", icon: <UserCog /> },
 ]
 
 export default function DashboardLayout({
@@ -71,10 +64,19 @@ export default function DashboardLayout({
 }) {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
 
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+  const isSuperAdmin = useMemo(() => userData?.role === 'superadmin', [userData]);
+  
   const isModelAgencyPath = menuItems.some(item => pathname.startsWith(item.href)) || pathname.startsWith('/dashboard/settings');
 
-  const [isApiOpen, setIsApiOpen] = React.useState(pathname.startsWith('/dashboard/api'));
   const [isModelAgencyOpen, setIsModelAgencyOpen] = React.useState(isModelAgencyPath);
   const [isSettingsOpen, setIsSettingsOpen] = React.useState(pathname.startsWith('/dashboard/settings'));
   const [isMounted, setIsMounted] = React.useState(false);
@@ -86,8 +88,10 @@ export default function DashboardLayout({
   const getInitials = (email?: string | null) => {
     return email ? email.charAt(0).toUpperCase() : 'U';
   }
+  
+  const isLoading = isUserLoading || isUserDataLoading || !isMounted;
 
-  if (!isMounted) {
+  if (isLoading) {
     return (
         <SidebarProvider>
             <div className="flex">
@@ -138,33 +142,6 @@ export default function DashboardLayout({
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
-                 <Collapsible open={isApiOpen} onOpenChange={setIsApiOpen}>
-                    <SidebarMenuItem>
-                        <CollapsibleTrigger asChild>
-                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/api")}>
-                                <DatabaseZap />
-                                <span>GESTION API</span>
-                                <ChevronDown className={cn("ml-auto h-4 w-4 transition-transform", isApiOpen && "rotate-180")} />
-                            </SidebarMenuButton>
-                        </CollapsibleTrigger>
-                    </SidebarMenuItem>
-                    <CollapsibleContent>
-                        <SidebarMenuSub>
-                            {apiMenuItems.map((item) => (
-                                <SidebarMenuItem key={item.href}>
-                                    <Link href={item.href} passHref>
-                                        <SidebarMenuSubButton asChild isActive={pathname === item.href}>
-                                          <span>
-                                            {item.icon}
-                                            <span>{item.label}</span>
-                                          </span>
-                                        </SidebarMenuSubButton>
-                                    </Link>
-                                </SidebarMenuItem>
-                            ))}
-                        </SidebarMenuSub>
-                    </CollapsibleContent>
-                </Collapsible>
               
                 <Collapsible open={isModelAgencyOpen} onOpenChange={setIsModelAgencyOpen}>
                     <SidebarMenuItem>
@@ -184,7 +161,7 @@ export default function DashboardLayout({
                                 <SidebarMenuSubButton asChild isActive={pathname === item.href}>
                                    <span>
                                     {item.icon}
-                                    <span className="text-black">{item.label}</span>
+                                    <span>{item.label}</span>
                                    </span>
                                 </SidebarMenuSubButton>
                               </Link>
@@ -224,14 +201,16 @@ export default function DashboardLayout({
                 </Collapsible>
             </SidebarMenu>
              <SidebarMenu className="mt-auto">
-                <SidebarMenuItem>
-                    <Link href="/admin">
-                         <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
-                             <Users />
-                            <span>Admin Area</span>
-                        </SidebarMenuButton>
-                    </Link>
-                </SidebarMenuItem>
+                {isSuperAdmin && (
+                  <SidebarMenuItem>
+                      <Link href="/admin">
+                           <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
+                               <UserCog />
+                              <span>Admin Platforme</span>
+                          </SidebarMenuButton>
+                      </Link>
+                  </SidebarMenuItem>
+                )}
              </SidebarMenu>
           </SidebarContent>
           <SidebarFooter>

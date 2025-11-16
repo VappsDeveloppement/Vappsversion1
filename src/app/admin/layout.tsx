@@ -2,16 +2,16 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  CreditCard,
-  LayoutGrid,
   LogOut,
-  Mails,
-  PanelsTopLeft,
-  Settings,
   Users,
   Home,
+  LayoutGrid,
+  LifeBuoy,
+  UserCog,
+  PanelsTopLeft,
+  Mails,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -28,12 +28,20 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
+import { useUser } from "@/firebase";
+import { useFirestore } from "@/firebase/provider";
+import { doc } from "firebase/firestore";
+import { useDoc, useMemoFirebase } from "@/firebase";
+import { useMemo, useEffect } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
   { href: "/admin/page-builder", label: "Page Builder", icon: <PanelsTopLeft /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
   { href: "/admin/user-management", label: "User Management", icon: <Users /> },
+  { href: "/admin/super-admins", label: "Super Admins", icon: <UserCog /> },
+  { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
 ];
 
 export default function AdminLayout({
@@ -42,6 +50,32 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+  const isSuperAdmin = useMemo(() => userData?.role === 'superadmin', [userData]);
+
+  useEffect(() => {
+    if (!isUserLoading && !isUserDataLoading && !isSuperAdmin) {
+      router.push('/dashboard');
+    }
+  }, [isUserLoading, isUserDataLoading, isSuperAdmin, router]);
+
+  if (isUserLoading || isUserDataLoading || !isSuperAdmin) {
+    return (
+        <div className="flex h-screen items-center justify-center">
+            <Skeleton className="h-96 w-full max-w-4xl" />
+        </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -50,7 +84,7 @@ export default function AdminLayout({
           <SidebarHeader>
             <div className="flex justify-between items-center">
                 <Logo />
-                <p className="px-2 py-1 text-xs font-semibold rounded-md bg-accent text-accent-foreground">Admin</p>
+                <p className="px-2 py-1 text-xs font-semibold rounded-md bg-destructive text-destructive-foreground">Super Admin</p>
             </div>
           </SidebarHeader>
           <SidebarContent>
@@ -84,8 +118,8 @@ export default function AdminLayout({
                 <AvatarFallback>A</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
-                <p className="font-semibold text-sm truncate">Admin User</p>
-                <p className="text-xs text-muted-foreground truncate">admin@vapps.com</p>
+                <p className="font-semibold text-sm truncate">{user?.displayName || "Super Admin"}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <Link href="/">
                 <Button variant="ghost" size="icon">

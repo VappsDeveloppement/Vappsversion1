@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAuth, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useAuth, useFirestore, useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from '@/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -17,7 +18,6 @@ import { Input } from '@/components/ui/input';
 import { PlusCircle, Loader2, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { useAgency } from '@/context/agency-provider';
 
 type SuperAdmin = {
   id: string;
@@ -39,7 +39,7 @@ export default function SuperAdminsPage() {
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const { agency } = useAgency();
+  const { user: currentUser } = useUser();
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -83,32 +83,22 @@ export default function SuperAdminsPage() {
 
 
   const onSubmit = async (values: z.infer<typeof superAdminFormSchema>) => {
-    if (!agency) {
-      toast({ title: 'Erreur', description: 'Agence principale non trouvée.', variant: 'destructive' });
-      return;
-    }
     setIsSubmitting(true);
     try {
       if (editingUser) {
-        // Update user
         const userDocRef = doc(firestore, 'users', editingUser.id);
         await setDocumentNonBlocking(userDocRef, {
             firstName: values.firstName,
             lastName: values.lastName,
             email: values.email,
-            agencyId: agency.id, // Ensure agencyId is present on update
         }, { merge: true });
         
-        // Note: Password update for other users requires Admin SDK (backend function).
-        // This is a placeholder for a future backend implementation.
         if (values.password) {
             toast({ title: 'Mise à jour du mot de passe', description: "La fonctionnalité de mise à jour du mot de passe d'un autre utilisateur nécessite une configuration côté serveur (Admin SDK) qui n'est pas implémentée ici." });
         }
-
         toast({ title: 'Succès', description: 'Le Super Admin a été mis à jour.' });
         
       } else {
-        // Create user
         const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
         const user = userCredential.user;
 
@@ -119,14 +109,11 @@ export default function SuperAdminsPage() {
             email: values.email,
             role: 'superadmin',
             dateJoined: new Date().toISOString(),
-            agencyId: agency.id, // Assign to main agency
         }, {});
         toast({ title: 'Succès', description: 'Le Super Admin a été créé avec succès.' });
       }
-
       setIsDialogOpen(false);
       setEditingUser(null);
-
     } catch (error: any) {
       console.error("Error saving super admin:", error);
       let errorMessage = "Une erreur est survenue.";
@@ -149,8 +136,6 @@ export default function SuperAdminsPage() {
     try {
       const userDocRef = doc(firestore, "users", userToDelete.id);
       await deleteDocumentNonBlocking(userDocRef);
-      // Note: Deleting from Firebase Auth should be done via a backend function for security.
-      // This client-side action only removes the Firestore document.
       toast({ title: "Utilisateur supprimé", description: "Le Super Admin a été supprimé de Firestore." });
     } catch (error) {
       console.error("Error deleting super admin:", error);
@@ -166,6 +151,10 @@ export default function SuperAdminsPage() {
           setEditingUser(null);
       }
   }
+  
+  const filteredSuperAdmins = useMemo(() => {
+    return superAdmins?.filter(admin => admin.id !== currentUser?.uid);
+  }, [superAdmins, currentUser]);
 
   return (
     <div className="space-y-8">
@@ -268,8 +257,8 @@ export default function SuperAdminsPage() {
                     <TableCell className="text-right"><Skeleton className="h-8 w-8 ml-auto" /></TableCell>
                   </TableRow>
                 ))
-              ) : superAdmins && superAdmins.length > 0 ? (
-                superAdmins.map((admin) => (
+              ) : filteredSuperAdmins && filteredSuperAdmins.length > 0 ? (
+                filteredSuperAdmins.map((admin) => (
                   <TableRow key={admin.id}>
                     <TableCell className="font-medium">{admin.firstName} {admin.lastName}</TableCell>
                     <TableCell>{admin.email}</TableCell>
@@ -287,7 +276,7 @@ export default function SuperAdminsPage() {
               ) : (
                 <TableRow>
                   <TableCell colSpan={4} className="h-24 text-center">
-                    Aucun Super Admin trouvé.
+                    Aucun autre Super Admin trouvé.
                   </TableCell>
                 </TableRow>
               )}
