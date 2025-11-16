@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -15,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { PlusCircle, Loader2, Trash2, Edit } from 'lucide-react';
+import { PlusCircle, Loader2, Trash2, Edit, Eye, EyeOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
@@ -44,6 +43,7 @@ export default function SuperAdminsPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [userToDelete, setUserToDelete] = useState<SuperAdmin | null>(null);
   const [editingUser, setEditingUser] = useState<SuperAdmin | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const superAdminsQuery = useMemoFirebase(() => {
     return query(collection(firestore, 'users'), where('role', '==', 'superadmin'));
@@ -115,7 +115,7 @@ export default function SuperAdminsPage() {
     } catch (error: any) {
       console.error("Error saving super admin:", error);
       let errorMessage = "Une erreur est survenue.";
-      if (error.code === 'auth/email-already-in-use' && !editingUser) {
+      if (error.code === 'auth/email-already-in-use') {
         errorMessage = "Cette adresse e-mail est déjà utilisée.";
       }
       toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
@@ -188,10 +188,22 @@ export default function SuperAdminsPage() {
                 )} />
                 <FormField control={form.control} name="password" render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Mot de passe</FormLabel>
-                        <FormControl><Input type="password" {...field} disabled={!!editingUser} /></FormControl>
+                        <FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
+                        <FormControl>
+                            <div className="relative">
+                                <Input type={showPassword ? "text" : "password"} {...field} />
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                                  onClick={() => setShowPassword(!showPassword)}
+                                >
+                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                </Button>
+                            </div>
+                        </FormControl>
                         <FormMessage />
-                        {editingUser && <p className='text-xs text-muted-foreground pt-1'>La modification du mot de passe n'est pas disponible.</p>}
                     </FormItem>
                 )} />
                 <DialogFooter>
