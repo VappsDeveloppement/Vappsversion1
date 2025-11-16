@@ -37,7 +37,7 @@ const userFormSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis."),
   email: z.string().email("L'adresse email n'est pas valide."),
   role: z.enum(['superadmin', 'membre', 'prospect'], { required_error: "Le rôle est requis." }),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères.").optional().or(z.literal('')),
+  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -88,18 +88,24 @@ export default function UserManagementPage() {
     });
 
     useEffect(() => {
-        if (isDialogOpen && editingUser) {
-            form.reset({ ...editingUser, password: '' });
-        } else if (isDialogOpen && !editingUser) {
-            form.reset({
-                firstName: '',
-                lastName: '',
-                email: '',
-                role: 'membre',
-                password: '',
-            });
+        if (isDialogOpen) {
+            if (editingUser) {
+                form.reset({
+                    ...editingUser,
+                    password: '' // Ne pas pré-remplir le mot de passe
+                });
+            } else {
+                form.reset({
+                    firstName: '',
+                    lastName: '',
+                    email: '',
+                    role: 'membre',
+                    password: '',
+                });
+            }
         }
     }, [isDialogOpen, editingUser, form]);
+
 
     const handleOpenDialog = (open: boolean) => {
         setIsDialogOpen(open);
@@ -117,6 +123,7 @@ export default function UserManagementPage() {
         setIsSubmitting(true);
         try {
             if (editingUser) {
+                // La modification d'un utilisateur ne change pas son mot de passe ici
                 const userDocRef = doc(firestore, 'users', editingUser.id);
                 await setDocumentNonBlocking(userDocRef, {
                     firstName: values.firstName,
@@ -126,6 +133,7 @@ export default function UserManagementPage() {
                 }, { merge: true });
                 toast({ title: 'Succès', description: 'L\'utilisateur a été mis à jour.' });
             } else {
+                // Création d'un nouvel utilisateur avec mot de passe
                 if (!values.password) {
                     toast({ variant: 'destructive', title: 'Erreur', description: 'Un mot de passe est requis pour un nouvel utilisateur.' });
                     setIsSubmitting(false);
@@ -289,22 +297,20 @@ export default function UserManagementPage() {
                                         <FormMessage />
                                     </FormItem>
                                 )} />
-                                {!editingUser && (
-                                    <FormField control={form.control} name="password" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Mot de passe</FormLabel>
-                                            <FormControl>
-                                                <div className="relative">
-                                                    <Input type={showPassword ? "text" : "password"} {...field} />
-                                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                    </Button>
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                )}
+                                <FormField control={form.control} name="password" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Mot de passe {editingUser && '(Laisser vide pour ne pas changer)'}</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input type={showPassword ? "text" : "password"} {...field} />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
                                 <DialogFooter>
                                     <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
                                     <Button type="submit" disabled={isSubmitting}>
