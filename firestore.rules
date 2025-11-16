@@ -17,12 +17,13 @@ service cloud.firestore {
       allow list, write, update, delete: if isSignedIn();
     }
     
-    // WARNING: DEVELOPMENT ONLY for other collections
-    // These rules are insecure and allow any authenticated user to read/write anywhere else.
-    // This is to facilitate rapid development of the application model.
-    // These rules MUST be replaced with granular, secure rules before production for other collections.
-    match /{path=**} {
-      // This rule will not match /agencies/{agencyId} because more specific rules take precedence.
+    match /users/{userId}/{path=**} {
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Fallback for other collections. This is for development.
+    // Secure these rules before production.
+    match /{document=**} {
       allow read, write: if isSignedIn();
     }
   }
