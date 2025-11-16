@@ -7,7 +7,7 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Users, FileText, Receipt, ArrowRight } from 'lucide-react';
+import { Users, FileText, Receipt, ArrowRight, Wallet } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Progress } from '@/components/ui/progress';
 
@@ -19,10 +19,12 @@ type User = {
 
 type Quote = {
   id: string;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected';
 };
 
 type Invoice = {
   id: string;
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
 };
 
 const StatCard = ({ title, value, description, icon: Icon, isLoading }: { title: string, value: string | number, description?: string, icon: React.ElementType, isLoading: boolean }) => {
@@ -53,6 +55,50 @@ const StatCard = ({ title, value, description, icon: Icon, isLoading }: { title:
         </Card>
     );
 };
+
+const MultiStatCard = ({ title, stats, icon: Icon, isLoading }: { title: string, stats: {label: string, value: number}[], icon: React.ElementType, isLoading: boolean }) => {
+    if (isLoading) {
+        return (
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                    <Skeleton className="h-4 w-4" />
+                </CardHeader>
+                <CardContent className="pt-4">
+                   <div className="space-y-4">
+                       <div className="flex justify-between items-center">
+                           <Skeleton className="h-4 w-2/3" />
+                           <Skeleton className="h-6 w-1/4" />
+                       </div>
+                       <div className="flex justify-between items-center">
+                           <Skeleton className="h-4 w-2/3" />
+                           <Skeleton className="h-6 w-1/4" />
+                       </div>
+                   </div>
+                </CardContent>
+            </Card>
+        );
+    }
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                <Icon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="pt-4">
+                <div className="space-y-2">
+                    {stats.map(stat => (
+                        <div key={stat.label} className="flex justify-between items-baseline">
+                            <p className="text-sm text-muted-foreground">{stat.label}</p>
+                            <p className="text-xl font-bold">{stat.value}</p>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+    );
+};
+
 
 const ConversionCard = ({ title, description, total, converted, conversionRate, isLoading, fromLabel, toLabel }: { title: string, description: string, total: number, converted: number, conversionRate: number, isLoading: boolean, fromLabel: string, toLabel: string }) => {
     if (isLoading) {
@@ -130,13 +176,15 @@ export default function DashboardPage() {
     const newProspectsCount = prospects.filter(p => p.status === 'new').length;
     const totalProspectsCount = prospects.length;
     const totalMembersCount = members.length;
-    const totalQuotesCount = quotes?.length || 0;
-    const totalInvoicesCount = invoices?.length || 0;
+    
+    const unvalidatedQuotesCount = quotes?.filter(q => q.status === 'draft' || q.status === 'sent').length || 0;
+    const unpaidInvoicesCount = invoices?.filter(i => i.status === 'pending' || i.status === 'overdue').length || 0;
+
 
     const totalLeads = totalProspectsCount + totalMembersCount;
     const prospectToMemberConversion = totalLeads > 0 ? (totalMembersCount / totalLeads) * 100 : 0;
     
-    const quoteToInvoiceConversion = totalQuotesCount > 0 ? (totalInvoicesCount / totalQuotesCount) * 100 : 0;
+    const quoteToInvoiceConversion = (quotes?.length || 0) > 0 ? ((invoices?.length || 0) / (quotes?.length || 0)) * 100 : 0;
 
     return (
         <div className="space-y-8">
@@ -145,12 +193,21 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Voici un aperçu de votre activité commerciale.</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                  <StatCard 
                     title="Nouveaux Prospects"
                     value={newProspectsCount}
                     description="Demandes en attente de traitement."
                     icon={Users}
+                    isLoading={isLoading}
+                />
+                <MultiStatCard
+                    title="Actions en attente"
+                    stats={[
+                        { label: "Devis non validés", value: unvalidatedQuotesCount },
+                        { label: "Factures non réglées", value: unpaidInvoicesCount },
+                    ]}
+                    icon={Wallet}
                     isLoading={isLoading}
                 />
                 <ConversionCard
@@ -166,8 +223,8 @@ export default function DashboardPage() {
                  <ConversionCard
                     title="Conversion Devis → Factures"
                     description="Performance de la transformation des devis en factures."
-                    total={totalQuotesCount}
-                    converted={totalInvoicesCount}
+                    total={quotes?.length || 0}
+                    converted={invoices?.length || 0}
                     fromLabel="Devis"
                     toLabel="Factures"
                     conversionRate={quoteToInvoiceConversion}

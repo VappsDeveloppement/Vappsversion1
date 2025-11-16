@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -32,12 +32,14 @@ import { Input } from '@/components/ui/input';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { sendInvoice } from '@/app/actions/invoice';
 import { sendQuote } from '@/app/actions/quote';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 
 
 type Quote = {
     id: string;
     quoteNumber: string;
-    clientInfo: { name: string; id: string; email: string; };
+    clientInfo: { name: string; id: string; email: string; address?: string; zipCode?: string; city?: string; };
     issueDate: string;
     expiryDate?: string;
     total: number;
@@ -300,19 +302,38 @@ export default function BillingPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSending, setIsSending] = React.useState<string | null>(null);
+    const [showUnvalidatedQuotesOnly, setShowUnvalidatedQuotesOnly] = useState(false);
+    const [showUnpaidInvoicesOnly, setShowUnpaidInvoicesOnly] = useState(false);
+
 
     const quotesQuery = useMemoFirebase(() => {
         if (!agency) return null;
         return collection(firestore, 'agencies', agency.id, 'quotes');
     }, [agency, firestore]);
 
-    const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
+    const { data: allQuotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
+
+    const quotes = useMemo(() => {
+        if (!allQuotes) return [];
+        if (showUnvalidatedQuotesOnly) {
+            return allQuotes.filter(q => q.status === 'draft' || q.status === 'sent');
+        }
+        return allQuotes;
+    }, [allQuotes, showUnvalidatedQuotesOnly]);
     
     const invoicesQuery = useMemoFirebase(() => {
         if (!agency) return null;
         return collection(firestore, 'agencies', agency.id, 'invoices');
     }, [agency, firestore]);
-    const { data: invoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
+    const { data: allInvoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
+
+    const invoices = useMemo(() => {
+        if (!allInvoices) return [];
+        if (showUnpaidInvoicesOnly) {
+            return allInvoices.filter(i => i.status === 'pending' || i.status === 'overdue');
+        }
+        return allInvoices;
+    }, [allInvoices, showUnpaidInvoicesOnly]);
     
     const isLoading = isAgencyLoading || areQuotesLoading || areInvoicesLoading;
     
@@ -531,10 +552,9 @@ export default function BillingPage() {
         doc.setFontSize(10);
         doc.setTextColor(100);
         doc.text(quote.clientInfo.email, 15, 67);
-        // @ts-ignore
-        if (quote.clientInfo.address) {
-          // @ts-ignore
-          doc.text(`${quote.clientInfo.address}, ${quote.clientInfo.zipCode} ${quote.clientInfo.city}`, 15, 72);
+        if (quote.clientInfo.address && quote.clientInfo.zipCode && quote.clientInfo.city) {
+            doc.text(`${quote.clientInfo.address}`, 15, 72);
+            doc.text(`${quote.clientInfo.zipCode} ${quote.clientInfo.city}`, 15, 77);
         }
 
         // Table
@@ -704,7 +724,6 @@ export default function BillingPage() {
     const handleManualValidation = async (quote: Quote) => {
         if (!agency) return;
 
-        // Check if a quote is already accepted.
         const existingInvoice = invoices?.find(inv => inv.quoteNumber === quote.quoteNumber);
         if (quote.status === 'accepted' || existingInvoice) {
             toast({ title: "Déjà traité", description: "Ce devis a déjà été accepté et facturé.", variant: "default" });
@@ -792,6 +811,14 @@ export default function BillingPage() {
                                         </div>
                                     </DialogContent>
                                 </Dialog>
+                            </div>
+                            <div className="flex items-center space-x-2 pt-4">
+                                <Switch
+                                    id="unvalidated-quotes-filter"
+                                    checked={showUnvalidatedQuotesOnly}
+                                    onCheckedChange={setShowUnvalidatedQuotesOnly}
+                                />
+                                <Label htmlFor="unvalidated-quotes-filter">Afficher uniquement les devis non validés</Label>
                             </div>
                         </CardHeader>
                         <CardContent>
@@ -885,6 +912,14 @@ export default function BillingPage() {
                                     <CardTitle>Gestion des Factures</CardTitle>
                                     <CardDescription>Consultez et gérez vos factures.</CardDescription>
                                 </div>
+                            </div>
+                            <div className="flex items-center space-x-2 pt-4">
+                                <Switch
+                                    id="unpaid-invoices-filter"
+                                    checked={showUnpaidInvoicesOnly}
+                                    onCheckedChange={setShowUnpaidInvoicesOnly}
+                                />
+                                <Label htmlFor="unpaid-invoices-filter">Afficher uniquement les factures non réglées</Label>
                             </div>
                         </CardHeader>
                         <CardContent>
