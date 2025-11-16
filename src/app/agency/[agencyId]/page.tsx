@@ -3,9 +3,11 @@
 
 import React from 'react';
 import { AgencyPage } from '@/components/shared/agency-page';
+import { useParams } from 'next/navigation';
 
-export default function AgencyPublicPage({ params }: { params: { agencyId: string } }) {
-  const { agencyId } = params;
+export default function AgencyPublicPage() {
+  const params = useParams();
+  const agencyId = params.agencyId as string;
 
   if (!agencyId) {
     return (
