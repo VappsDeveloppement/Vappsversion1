@@ -221,7 +221,12 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     const watchTax = form.watch("tax");
 
     React.useEffect(() => {
-        const subtotal = watchItems.reduce((acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
+        if (!watchItems) return;
+        const subtotal = watchItems.reduce((acc, item) => {
+            const quantity = Number(item.quantity) || 0;
+            const unitPrice = Number(item.unitPrice) || 0;
+            return acc + quantity * unitPrice;
+        }, 0);
         const total = subtotal * (1 + (Number(watchTax) || 0) / 100);
         form.setValue('subtotal', subtotal);
         form.setValue('total', total);
@@ -317,7 +322,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo,
                 agencyId: agency.id,
-                baseUrl: window.location.origin
             });
 
             if (result.success) {
@@ -574,36 +578,24 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                     )}
                                 </TableBody>
                             </Table>
-                            <DropdownMenu>
+                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                     <Button type="button" variant="outline" size="sm" className="mt-4">
                                         <PlusCircle className="mr-2 h-4 w-4"/>
-                                        Ajouter une ligne
+                                        Ajouter un plan
                                         <ChevronDown className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent>
-                                    <DropdownMenuItem onClick={() => append({ description: "", quantity: 1, unitPrice: 0, total: 0 })}>
-                                        Ligne personnalisée
-                                    </DropdownMenuItem>
-                                    <DropdownMenuSub>
-                                        <DropdownMenuSubTrigger>
-                                            Ajouter depuis un plan
-                                        </DropdownMenuSubTrigger>
-                                        <DropdownMenuPortal>
-                                            <DropdownMenuSubContent>
-                                                {(plans && plans.length > 0) ? (
-                                                    plans.map((plan) => (
-                                                        <DropdownMenuItem key={plan.id} onClick={() => addPlanAsItem(plan)}>
-                                                            {plan.name} ({plan.price}€)
-                                                        </DropdownMenuItem>
-                                                    ))
-                                                ) : (
-                                                    <DropdownMenuItem disabled>Aucun plan trouvé</DropdownMenuItem>
-                                                )}
-                                            </DropdownMenuSubContent>
-                                        </DropdownMenuPortal>
-                                    </DropdownMenuSub>
+                                    {(plans && plans.length > 0) ? (
+                                        plans.map((plan) => (
+                                            <DropdownMenuItem key={plan.id} onClick={() => addPlanAsItem(plan)}>
+                                                {plan.name} ({plan.price}€)
+                                            </DropdownMenuItem>
+                                        ))
+                                    ) : (
+                                        <DropdownMenuItem disabled>Aucun plan trouvé</DropdownMenuItem>
+                                    )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
                         </div>
@@ -663,6 +655,17 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                 </FormItem>
                             )}
                         />
+                         <FormField
+                            control={form.control}
+                            name="validationCode"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <Label>Code de validation</Label>
+                                    <Input {...field} readOnly />
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </div>
                 </div>
                 <div className="flex justify-end gap-2 pt-6 border-t">
@@ -677,5 +680,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
-
-    
