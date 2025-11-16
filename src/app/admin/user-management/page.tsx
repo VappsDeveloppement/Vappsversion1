@@ -5,12 +5,11 @@ import React, { useMemo, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { useCollection, useMemoFirebase, useDoc } from '@/firebase';
+import { collection, query, doc } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
 
 type User = {
     id: string;
@@ -23,13 +22,26 @@ type User = {
 
 export default function UserManagementPage() {
     const firestore = useFirestore();
-    const { isUserLoading } = useUser();
+    const { user, isUserLoading } = useUser();
     const [searchTerm, setSearchTerm] = useState('');
 
+    const userProfileRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [user, firestore]);
+
+    const { data: userProfile, isLoading: isProfileLoading } = useDoc(userProfileRef);
+
+    const isSuperAdmin = userProfile?.role === 'superadmin';
+
     const usersQuery = useMemoFirebase(() => {
-        if (isUserLoading || !firestore) return null; // Ne pas exécuter la requête si l'utilisateur charge
+        // Condition cruciale : Ne lancer la requête que si l'utilisateur est chargé, non-null,
+        // que son profil est chargé, et qu'il est bien un superadmin.
+        if (isUserLoading || isProfileLoading || !isSuperAdmin) {
+            return null;
+        }
         return query(collection(firestore, 'users'));
-    }, [firestore, isUserLoading]);
+    }, [firestore, isUserLoading, isProfileLoading, isSuperAdmin]);
 
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
     
@@ -45,7 +57,63 @@ export default function UserManagementPage() {
         );
     }, [allUsers, searchTerm]);
     
-    const isLoading = isUserLoading || areUsersLoading;
+    const isLoading = isUserLoading || isProfileLoading || areUsersLoading;
+
+    const renderContent = () => {
+        if (isLoading) {
+            return (
+                <TableBody>
+                    {[...Array(5)].map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell colSpan={5}>
+                                <Skeleton className="h-8 w-full" />
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            );
+        }
+
+        if (!isSuperAdmin && !isUserLoading) {
+             return (
+                <TableBody>
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center text-destructive">
+                            Accès refusé. Vous devez être un super-administrateur.
+                        </TableCell>
+                    </TableRow>
+                </TableBody>
+            );
+        }
+
+        if (filteredUsers.length > 0) {
+            return (
+                <TableBody>
+                    {filteredUsers.map((user) => (
+                       <TableRow key={user.id}>
+                           <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
+                           <TableCell>{user.email}</TableCell>
+                           <TableCell><Badge variant={user.role === 'superadmin' ? 'default' : 'secondary'}>{user.role}</Badge></TableCell>
+                           <TableCell>{new Date(user.dateJoined).toLocaleDateString()}</TableCell>
+                           <TableCell className="text-right">
+                               {/* Action buttons will go here */}
+                           </TableCell>
+                       </TableRow>
+                   ))}
+                </TableBody>
+            );
+        }
+
+        return (
+            <TableBody>
+                <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                        Aucun utilisateur trouvé.
+                    </TableCell>
+               </TableRow>
+            </TableBody>
+        );
+    }
 
     return (
         <div className="space-y-8">
@@ -62,6 +130,7 @@ export default function UserManagementPage() {
                             placeholder="Search users by name or email..." 
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
+                            disabled={!isSuperAdmin}
                         />
                     </div>
                 </CardHeader>
@@ -76,35 +145,7 @@ export default function UserManagementPage() {
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
-                        <TableBody>
-                           {isLoading ? (
-                                [...Array(5)].map((_, i) => (
-                                    <TableRow key={i}>
-                                        <TableCell colSpan={5}>
-                                            <Skeleton className="h-8 w-full" />
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                           ) : filteredUsers.length > 0 ? (
-                               filteredUsers.map((user) => (
-                                   <TableRow key={user.id}>
-                                       <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
-                                       <TableCell>{user.email}</TableCell>
-                                       <TableCell><Badge variant={user.role === 'superadmin' ? 'default' : 'secondary'}>{user.role}</Badge></TableCell>
-                                       <TableCell>{new Date(user.dateJoined).toLocaleDateString()}</TableCell>
-                                       <TableCell className="text-right">
-                                           {/* Action buttons will go here */}
-                                       </TableCell>
-                                   </TableRow>
-                               ))
-                           ) : (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-24 text-center">
-                                        No users found.
-                                    </TableCell>
-                               </TableRow>
-                           )}
-                        </TableBody>
+                        {renderContent()}
                     </Table>
                 </CardContent>
             </Card>
