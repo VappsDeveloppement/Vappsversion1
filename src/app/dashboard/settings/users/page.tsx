@@ -26,7 +26,7 @@ import { validateUser } from "@/app/actions/user";
 import { Textarea } from "@/components/ui/textarea";
 import { createUserWithEmailAndPassword } from "firebase/auth";
 import { randomBytes } from "crypto";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuPortal } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 
@@ -125,7 +125,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
     onAssignCounselor?: (memberId: string, counselorId: string | null) => void,
     currentUser: User | null;
 }) => {
-  const isCurrentUserAdmin = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
+  const isCurrentUserAdminOrHigher = currentUser?.role === 'admin' || currentUser?.role === 'superadmin';
 
   if (isLoading) {
     return (
@@ -219,7 +219,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                 {onEdit && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
                                 {user.role === 'membre' && onAssignCounselor && (
                                     <>
-                                     {isCurrentUserAdmin && (
+                                     {isCurrentUserAdminOrHigher && (
                                         <DropdownMenuSub>
                                             <DropdownMenuSubTrigger><UserCog className="mr-2 h-4 w-4" />Assigner/Réassigner</DropdownMenuSubTrigger>
                                             <DropdownMenuPortal>
