@@ -77,8 +77,14 @@ type Quote = {
 
 const quoteItemSchema = z.object({
     description: z.string().min(1, "La description est requise."),
-    quantity: z.number().min(0.1, "La quantité doit être supérieure à 0."),
-    unitPrice: z.number().min(0, "Le prix doit être positif."),
+    quantity: z.preprocess(
+      (val) => (typeof val === 'string' ? parseFloat(val) : val),
+      z.number().min(0.1, "La quantité doit être supérieure à 0.")
+    ),
+    unitPrice: z.preprocess(
+      (val) => (typeof val === 'string' ? parseFloat(val) : val),
+      z.number().min(0, "Le prix doit être positif.")
+    ),
     total: z.number(),
 });
 
@@ -91,7 +97,10 @@ const quoteFormSchema = z.object({
     expiryDate: z.date().optional(),
     items: z.array(quoteItemSchema).min(1, "Le devis doit contenir au moins un article."),
     notes: z.string().optional(),
-    tax: z.number().min(0),
+    tax: z.preprocess(
+      (val) => (typeof val === 'string' ? parseFloat(val) : val),
+      z.number().min(0)
+    ),
     subtotal: z.number(),
     total: z.number(),
     contractId: z.string().optional(),
@@ -137,7 +146,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
 
     const generateQuoteNumber = async () => {
-        if (!agency) return `DEVIS-${new Date().getFullYear()}-${(new Date().getMonth() + 1).toString().padStart(2, '0')}-0001`;
+        if (!agency) return `DEVIS-${new Date().getFullYear()}-0001`;
         const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
         const q = query(quotesCollectionRef);
         const querySnapshot = await getDocs(q);
@@ -179,7 +188,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             generateQuoteNumber().then(num => form.setValue('quoteNumber', num));
             form.setValue('validationCode', generateValidationCode());
         }
-    }, [!initialData, agency]);
+    }, [!initialData, agency, form]);
     
     React.useEffect(() => {
         if (initialData) {
@@ -212,8 +221,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     const watchTax = form.watch("tax");
 
     React.useEffect(() => {
-        const subtotal = watchItems.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0);
-        const total = subtotal * (1 + watchTax / 100);
+        const subtotal = watchItems.reduce((acc, item) => acc + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0);
+        const total = subtotal * (1 + (Number(watchTax) || 0) / 100);
         form.setValue('subtotal', subtotal);
         form.setValue('total', total);
     }, [watchItems, watchTax, form]);
@@ -308,6 +317,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo,
                 agencyId: agency.id,
+                baseUrl: window.location.origin
             });
 
             if (result.success) {
@@ -525,16 +535,28 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                     {fields.map((item, index) => (
                                         <TableRow key={item.id}>
                                             <TableCell>
-                                                <Input {...form.register(`items.${index}.description`)} placeholder="Description de l'article" />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.description`}
+                                                    render={({ field }) => <Input {...field} placeholder="Description de l'article" />}
+                                                />
                                             </TableCell>
                                             <TableCell>
-                                                <Input type="number" {...form.register(`items.${index}.quantity`, { valueAsNumber: true })} placeholder="1" />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.quantity`}
+                                                    render={({ field }) => <Input type="number" {...field} placeholder="1" />}
+                                                />
                                             </TableCell>
                                             <TableCell>
-                                                <Input type="number" {...form.register(`items.${index}.unitPrice`, { valueAsNumber: true })} placeholder="100.00" />
+                                                <FormField
+                                                    control={form.control}
+                                                    name={`items.${index}.unitPrice`}
+                                                    render={({ field }) => <Input type="number" {...field} placeholder="100.00" />}
+                                                />
                                             </TableCell>
                                             <TableCell className="text-right">
-                                                {((watchItems[index]?.quantity || 0) * (watchItems[index]?.unitPrice || 0)).toFixed(2)} €
+                                                {((Number(watchItems[index]?.quantity) || 0) * (Number(watchItems[index]?.unitPrice) || 0)).toFixed(2)} €
                                             </TableCell>
                                              <TableCell>
                                                 <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
@@ -595,17 +617,21 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             <CardContent className="space-y-4">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Sous-total HT</span>
-                                    <span>{form.getValues('subtotal')?.toFixed(2) || '0.00'} €</span>
+                                    <span>{form.watch('subtotal')?.toFixed(2) || '0.00'} €</span>
                                 </div>
                                 {isVatSubject && (
-                                     <div className="flex justify-between items-center">
+                                    <div className="flex justify-between items-center">
                                         <Label htmlFor='tax'>TVA (%)</Label>
-                                        <Input id="tax" type="number" {...form.register('tax', { valueAsNumber: true })} className="w-24 h-8" />
+                                        <FormField
+                                            control={form.control}
+                                            name="tax"
+                                            render={({ field }) => <Input id="tax" type="number" {...field} className="w-24 h-8" />}
+                                        />
                                     </div>
                                 )}
                                  <div className="flex justify-between font-bold text-lg border-t pt-4">
                                     <span>Total {isVatSubject ? 'TTC' : ''}</span>
-                                    <span>{form.getValues('total')?.toFixed(2) || '0.00'} €</span>
+                                    <span>{form.watch('total')?.toFixed(2) || '0.00'} €</span>
                                  </div>
                             </CardContent>
                         </Card>
