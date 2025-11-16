@@ -57,7 +57,7 @@ const StatCard = ({ title, value, description, icon: Icon, isLoading }: { title:
 const ConversionCard = ({ title, description, total, converted, conversionRate, isLoading, fromLabel, toLabel }: { title: string, description: string, total: number, converted: number, conversionRate: number, isLoading: boolean, fromLabel: string, toLabel: string }) => {
     if (isLoading) {
         return (
-            <Card className="col-span-1 md:col-span-2 lg:col-span-1">
+            <Card className="col-span-1 md:col-span-1">
                 <CardHeader>
                     <Skeleton className="h-6 w-1/2" />
                     <Skeleton className="h-4 w-3/4" />
@@ -69,7 +69,7 @@ const ConversionCard = ({ title, description, total, converted, conversionRate, 
         )
     }
     return (
-        <Card className="col-span-1 md:col-span-2 lg:col-span-1">
+        <Card className="col-span-1 md:col-span-1">
             <CardHeader>
                 <CardTitle>{title}</CardTitle>
                 <CardDescription>{description}</CardDescription>
@@ -145,7 +145,7 @@ export default function DashboardPage() {
                 <p className="text-muted-foreground">Voici un aperçu de votre activité commerciale.</p>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-1 lg:grid-cols-3">
                  <StatCard 
                     title="Nouveaux Prospects"
                     value={newProspectsCount}
