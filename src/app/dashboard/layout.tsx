@@ -9,9 +9,6 @@ import {
   LogOut,
   MessageSquare,
   Users,
-  FileText,
-  Paintbrush,
-  UserCog,
   CreditCard,
   LifeBuoy,
   Settings,
@@ -42,16 +39,24 @@ import React, { useMemo } from "react";
 import { useFirestore } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { useDoc, useMemoFirebase } from "@/firebase";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 
 const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
   { href: "/dashboard/billing", label: "Facturation & Devis", icon: <CreditCard /> },
-  { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
-  { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Palette /> },
-  { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
-  { href: "/dashboard/settings/users", label: "Administration", icon: <Settings /> },
+];
+
+const administrationMenuItems = [
+    { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
+    { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Palette /> },
+    { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
 ];
 
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
@@ -82,6 +87,8 @@ export default function DashboardLayout({
   }, []);
   
   const isLoading = isUserLoading || isUserDataLoading || !isMounted;
+  
+  const isAdministrationPathActive = administrationMenuItems.some(item => pathname === item.href);
 
   if (isLoading) {
     return (
@@ -128,32 +135,52 @@ export default function DashboardLayout({
                {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
-                    <SidebarMenuButton isActive={pathname.startsWith(item.href) && item.href !== '/dashboard' ? true : pathname === item.href}>
+                    <SidebarMenuButton isActive={pathname === item.href}>
                         {item.icon}
                         <span>{item.label}</span>
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
               ))}
-              <SidebarMenuItem>
-                  <Link href={supportMenuItem.href}>
-                    <SidebarMenuButton isActive={pathname === supportMenuItem.href}>
-                        {supportMenuItem.icon}
-                        <span>{supportMenuItem.label}</span>
-                    </SidebarMenuButton>
-                  </Link>
-              </SidebarMenuItem>
+                <Accordion type="single" collapsible defaultValue={isAdministrationPathActive ? "admin-menu" : undefined} className="w-full">
+                    <AccordionItem value="admin-menu" className="border-none">
+                        <AccordionTrigger className="[&[data-state=open]>div>div>svg]:rotate-180 hover:no-underline p-0">
+                             <SidebarMenuButton className="w-full" isActive={isAdministrationPathActive}>
+                                <Settings/>
+                                <span>Administration</span>
+                            </SidebarMenuButton>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-0 pl-6 space-y-1">
+                            {administrationMenuItems.map(item => (
+                               <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname === item.href}>
+                                 {React.cloneElement(item.icon, { className: "h-4 w-4"})}
+                                 <span>{item.label}</span>
+                               </Link>
+                            ))}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </SidebarMenu>
             
             <SidebarMenu className="mt-auto">
                 <SidebarMenuItem>
-                    <Link href="/admin">
-                        <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
-                            <UserCog />
-                            <span>Admin Platforme</span>
-                        </SidebarMenuButton>
-                    </Link>
+                  <Link href={supportMenuItem.href}>
+                    <SidebarMenuButton isActive={pathname === supportMenuItem.href}>
+                        {supportMenuItem.icon}
+                        <span>Support</span>
+                    </SidebarMenuButton>
+                  </Link>
                 </SidebarMenuItem>
+                 {isSuperAdmin && (
+                    <SidebarMenuItem>
+                        <Link href="/admin">
+                            <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
+                                <Users />
+                                <span>Admin Platforme</span>
+                            </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                 )}
             </SidebarMenu>
              
           </SidebarContent>
@@ -164,6 +191,8 @@ export default function DashboardLayout({
                 <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'U'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
+                <p className="font-semibold text-sm truncate">{userData?.firstName || user?.displayName || 'Utilisateur'}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
               <Link href="/">
                 <Button variant="ghost" size="icon">
