@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Logo } from "./logo";
@@ -144,7 +145,7 @@ export function Footer() {
                                 <Button>Envoyer</Button>
                                 <Dialog>
                                     <DialogTrigger asChild>
-                                        <Button variant="outline">Valider un devis</Button>
+                                        <Button>Valider un devis</Button>
                                     </DialogTrigger>
                                     <QuoteValidationForm />
                                 </Dialog>
