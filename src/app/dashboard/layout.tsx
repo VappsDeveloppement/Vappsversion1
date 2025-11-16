@@ -19,6 +19,7 @@ import {
   DatabaseZap,
   LayoutTemplate,
   LifeBuoy,
+  UserCog,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -58,8 +59,9 @@ const settingsMenuItems = [
 ]
 
 const apiMenuItems = [
-    { href: "/dashboard/api/agency", label: "Vue d'ensemble", icon: <DatabaseZap /> },
-    { href: "/dashboard/api/support", label: "Support", icon: <LifeBuoy /> },
+    { href: "/dashboard/api/agency", label: "Vue d'ensemble", icon: <LayoutTemplate /> },
+    { href: "/dashboard/api/support", label: "Support Technique", icon: <LifeBuoy /> },
+    { href: "/dashboard/api/super-admins", label: "Super Admins", icon: <UserCog /> },
 ]
 
 export default function DashboardLayout({
