@@ -1,4 +1,5 @@
 
+
 {
   "entities": {
     "User": {
@@ -30,7 +31,16 @@
         },
         "role": {
           "type": "string",
+          "enum": ["admin", "superadmin", "dpo", "conseiller", "membre", "prospect"],
           "description": "The role of the user (e.g., admin, superadmin, coach, client, prospect)."
+        },
+        "counselorId": {
+            "type": "string",
+            "description": "The ID of the user assigned as the counselor for this member."
+        },
+        "counselorName": {
+            "type": "string",
+            "description": "The name of the assigned counselor, for display purposes."
         },
         "dateJoined": {
           "type": "string",

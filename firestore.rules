@@ -33,6 +33,16 @@ service cloud.firestore {
        let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
        return isSignedIn() && userDoc.agencyId == agencyId && (userDoc.role == 'admin' || userDoc.role == 'dpo');
      }
+     
+    /**
+     * @description Checks if the user is a staff member (conseiller, admin, dpo, superadmin).
+     * @returns {boolean} True if the user is a staff member.
+     */
+    function isStaff() {
+        let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+        return isSignedIn() && (userDoc.role == 'conseiller' || userDoc.role == 'admin' || userDoc.role == 'dpo' || userDoc.role == 'superadmin');
+    }
+
 
     // Allow public read for agency personalization, but restrict write access
     match /agencies/{agencyId} {
@@ -88,10 +98,27 @@ service cloud.firestore {
     match /users/{userId} {
       // Superadmins can do anything to any user.
       allow read, write: if isSuperAdmin();
-      // Users can manage their own data.
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      
       // Admins can manage all users within their agency.
       allow read, write: if isAgencyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.agencyId);
+      
+      // A user can read their own profile.
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      
+      // A user can update their own profile, but cannot change their role or agencyId.
+      allow update: if isSignedIn() && request.auth.uid == userId 
+                      && request.resource.data.role == resource.data.role
+                      && request.resource.data.agencyId == resource.data.agencyId;
+      
+      // Counselor Assignment Rule
+      allow write: if request.resource.data.role == 'membre' && isStaff() &&
+                   (
+                     // SuperAdmins/Admins can assign anyone of a non-superadmin role
+                     (isAgencyAdmin(resource.data.agencyId) && get(/databases/$(database)/documents/users/$(request.resource.data.counselorId)).data.role != 'superadmin') ||
+                     (isSuperAdmin()) ||
+                     // Counselors can assign themselves
+                     (request.auth.uid == request.resource.data.counselorId)
+                   );
     }
     
     match /users/{userId}/{path=**} {

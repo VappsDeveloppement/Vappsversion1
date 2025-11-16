@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -46,6 +47,8 @@ type User = {
   origin?: string;
   message?: string;
   agencyId: string;
+  counselorId?: string;
+  counselorName?: string;
 };
 
 const baseUserFormSchema = z.object({
@@ -110,7 +113,7 @@ const prospectStatusText: Record<NonNullable<User['status']>, string> = {
 };
 
 // Component to render the user table
-const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert, onStatusChange, onView }: {
+const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert, onStatusChange, onView, currentUser, counselors, onAssign }: {
     users: User[],
     isLoading: boolean,
     emptyMessage: string,
@@ -119,6 +122,9 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
     onConvert?: (user: User) => void,
     onStatusChange?: (user: User, status: User['status']) => void,
     onView?: (user: User) => void
+    currentUser: User,
+    counselors: User[],
+    onAssign: (member: User, counselorId: string | null) => void;
 }) => {
   if (isLoading) {
     return (
@@ -128,6 +134,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
             <TableHead>Nom</TableHead>
             <TableHead>Email</TableHead>
             <TableHead>Rôle</TableHead>
+            {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
             {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
             <TableHead>Date d'inscription</TableHead>
             <TableHead className="text-right">Actions</TableHead>
@@ -139,6 +146,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
               <TableCell><Skeleton className="h-5 w-24" /></TableCell>
               <TableCell><Skeleton className="h-5 w-32" /></TableCell>
               <TableCell><Skeleton className="h-5 w-16" /></TableCell>
+              {users[0]?.role === 'membre' && <TableCell><Skeleton className="h-5 w-24" /></TableCell>}
               {users[0]?.role === 'prospect' && <TableCell><Skeleton className="h-5 w-20" /></TableCell>}
               <TableCell><Skeleton className="h-5 w-28" /></TableCell>
               <TableCell><Skeleton className="h-5 w-8 ml-auto" /></TableCell>
@@ -156,6 +164,9 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
       </div>
     );
   }
+  
+  const isCurrentUserAdminOrHigher = currentUser.role === 'admin' || currentUser.role === 'superadmin';
+  const isCurrentUserConseiller = currentUser.role === 'conseiller';
 
   return (
     <Table>
@@ -164,6 +175,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
           <TableHead>Nom</TableHead>
           <TableHead>Email</TableHead>
           <TableHead>Rôle</TableHead>
+          {users[0]?.role === 'membre' && <TableHead>Conseiller</TableHead>}
           {users[0]?.role === 'prospect' && <TableHead>Statut</TableHead>}
           <TableHead>Date d'inscription</TableHead>
           <TableHead className="text-right">Actions</TableHead>
@@ -171,6 +183,8 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
       </TableHeader>
       <TableBody>
         {users.map(user => {
+            const canAssign = user.role === 'membre' && (isCurrentUserAdminOrHigher || isCurrentUserConseiller);
+            
             return (
                 <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
@@ -180,6 +194,7 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                             {user.role}
                         </Badge>
                     </TableCell>
+                    {user.role === 'membre' && <TableCell>{user.counselorName || 'Non assigné'}</TableCell>}
                     {user.role === 'prospect' && (
                         <TableCell>
                             {user.status && (
@@ -204,6 +219,32 @@ const UserTable = ({ users, isLoading, emptyMessage, onEdit, onDelete, onConvert
                                 {onEdit && user.role !== 'superadmin' && <DropdownMenuItem onClick={() => onEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>}
                                 
                                 {onConvert && <DropdownMenuItem onClick={() => onConvert(user)}><Repeat className="mr-2 h-4 w-4" /> Convertir en Membre</DropdownMenuItem>}
+                                
+                                {canAssign && (
+                                    <DropdownMenuSub>
+                                        <DropdownMenuSubTrigger>Assigner/Réassigner</DropdownMenuSubTrigger>
+                                        <DropdownMenuPortal>
+                                            <DropdownMenuSubContent>
+                                                {isCurrentUserAdminOrHigher && (
+                                                  <>
+                                                    <DropdownMenuItem onClick={() => onAssign(user, null)}>Aucun (retirer)</DropdownMenuItem>
+                                                    {counselors.map(c => (
+                                                        <DropdownMenuItem key={c.id} onClick={() => onAssign(user, c.id)}>
+                                                          {c.firstName} {c.lastName} ({c.role})
+                                                        </DropdownMenuItem>
+                                                    ))}
+                                                  </>
+                                                )}
+                                                {isCurrentUserConseiller && !user.counselorId && (
+                                                    <DropdownMenuItem onClick={() => onAssign(user, currentUser.id)}>
+                                                        S'assigner
+                                                    </DropdownMenuItem>
+                                                )}
+                                            </DropdownMenuSubContent>
+                                        </DropdownMenuPortal>
+                                    </DropdownMenuSub>
+                                )}
+
                                 {onStatusChange && (
                                     <DropdownMenuSub>
                                         <DropdownMenuSubTrigger>Changer le statut</DropdownMenuSubTrigger>
@@ -283,6 +324,10 @@ export default function UsersPage() {
 
     return combined;
   }, [agencyUsers, superAdminsData]);
+  
+  const currentUser = useMemo(() => {
+      return users.find(u => u.id === firebaseAuthUser?.uid);
+  }, [users, firebaseAuthUser]);
 
 
   const adminForm = useForm<z.infer<typeof adminFormSchema>>({
@@ -347,7 +392,6 @@ export default function UsersPage() {
         });
         setIsAdminFormOpen(true);
     } else if (user.role === 'superadmin') {
-        // SuperAdmins are managed elsewhere
         toast({ title: "Action non autorisée", description: "Les Super Admins ne peuvent être modifiés que depuis la page de gestion des Super Admins.", variant: "destructive" });
     } else if (user.role === 'conseiller') {
         conseillerForm.reset({
@@ -371,8 +415,6 @@ export default function UsersPage() {
     try {
         const userDocRef = doc(firestore, "users", userToDelete.id);
         await deleteDocumentNonBlocking(userDocRef);
-        // Note: Deleting from Firebase Auth requires a backend function for security.
-        // This part is omitted as it can't be done securely from the client.
         toast({ title: "Utilisateur supprimé", description: "L'utilisateur a été supprimé de Firestore." });
     } catch (error) {
         console.error("Error deleting user:", error);
@@ -387,8 +429,8 @@ export default function UsersPage() {
   };
 
   async function handleCreateUser(values: z.infer<typeof adminFormSchema> | z.infer<typeof conseillerFormSchema> | z.infer<typeof membreFormSchema>) {
-    if (!agency) {
-        toast({ title: "Erreur", description: "L'agence n'a pas été trouvée.", variant: "destructive" });
+    if (!agency || !currentUser) {
+        toast({ title: "Erreur", description: "L'agence ou l'utilisateur actuel n'a pas été trouvé.", variant: "destructive" });
         return;
     }
     setIsSubmitting(true);
@@ -431,6 +473,10 @@ export default function UsersPage() {
 
         if(!editingUser) {
           dataToSave.dateJoined = new Date().toISOString();
+           if (values.role === 'membre' && (currentUser.role === 'conseiller' || currentUser.role === 'admin' || currentUser.role === 'superadmin')) {
+                dataToSave.counselorId = currentUser.id;
+                dataToSave.counselorName = `${currentUser.firstName} ${currentUser.lastName}`;
+            }
         }
         
         await setDocumentNonBlocking(userDocRef, dataToSave, { merge: true });
@@ -459,6 +505,32 @@ export default function UsersPage() {
     }
   }
 
+  const handleAssignCounselor = async (member: User, counselorId: string | null) => {
+      if (!agency || !currentUser) return;
+      
+      const memberDocRef = doc(firestore, 'users', member.id);
+      
+      let counselorName: string | null = null;
+      if (counselorId) {
+          const counselor = users.find(u => u.id === counselorId);
+          if (counselor) {
+              counselorName = `${counselor.firstName} ${counselor.lastName}`;
+          }
+      }
+      
+      try {
+          await setDocumentNonBlocking(memberDocRef, {
+              counselorId: counselorId || null,
+              counselorName: counselorName || null,
+          }, { merge: true });
+          toast({ title: 'Assignation réussie', description: `${member.firstName} a été assigné à ${counselorName || 'personne'}.` });
+      } catch (error) {
+          console.error('Failed to assign counselor:', error);
+          toast({ title: 'Erreur', description: "L'assignation a échoué.", variant: 'destructive' });
+      }
+  };
+
+
   const filterUsers = (data: User[] | null, roles: string[], searchTerm: string) => {
     if (!data) return [];
     return data.filter(user => 
@@ -478,6 +550,26 @@ export default function UsersPage() {
 
   const newProspects = useMemo(() => prospects.filter(p => p.status === 'new'), [prospects]);
   const otherProspects = useMemo(() => prospects.filter(p => p.status !== 'new'), [prospects]);
+  
+  const assignableCounselors = useMemo(() => {
+    if (!currentUser) return [];
+    if (currentUser.role === 'superadmin') {
+      return users.filter(u => u.role === 'conseiller' || u.role === 'admin' || u.role === 'superadmin');
+    }
+    if (currentUser.role === 'admin') {
+      return users.filter(u => u.role === 'conseiller' || u.role === 'admin');
+    }
+    return [];
+  }, [users, currentUser]);
+
+
+  if (!currentUser) {
+      return (
+        <div className="flex items-center justify-center h-full">
+            <Loader2 className="h-8 w-8 animate-spin" />
+        </div>
+      )
+  }
 
   return (
     <div className="space-y-8">
@@ -590,7 +682,7 @@ export default function UsersPage() {
                         </DialogContent>
                     </Dialog>
                 </div>
-                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
+                <UserTable users={admins} isLoading={isLoading} emptyMessage="Aucun admin ou DPO trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentUser} counselors={[]} onAssign={() => {}} />
               </div>
             </TabsContent>
 
@@ -670,7 +762,7 @@ export default function UsersPage() {
                             </DialogContent>
                         </Dialog>
                     </div>
-                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} />
+                    <UserTable users={conseillers} isLoading={isLoading} emptyMessage="Aucun conseiller trouvé." onEdit={handleEdit} onDelete={openDeleteDialog} currentUser={currentUser} counselors={[]} onAssign={() => {}}/>
                 </div>
             </TabsContent>
 
@@ -774,6 +866,9 @@ export default function UsersPage() {
                         emptyMessage="Aucun membre trouvé." 
                         onEdit={handleEdit} 
                         onDelete={openDeleteDialog} 
+                        currentUser={currentUser}
+                        counselors={assignableCounselors}
+                        onAssign={handleAssignCounselor}
                     />
                 </div>
             </TabsContent>
@@ -794,6 +889,9 @@ export default function UsersPage() {
                                         onDelete={openDeleteDialog}
                                         onConvert={handleConvert}
                                         onStatusChange={handleStatusChange}
+                                        currentUser={currentUser} 
+                                        counselors={[]} 
+                                        onAssign={() => {}}
                                     />
                                 </div>
                             </AlertDescription>
@@ -818,6 +916,9 @@ export default function UsersPage() {
                                 onDelete={openDeleteDialog}
                                 onConvert={handleConvert}
                                 onStatusChange={handleStatusChange}
+                                currentUser={currentUser} 
+                                counselors={[]} 
+                                onAssign={() => {}}
                             />
                         </CardContent>
                     </Card>
