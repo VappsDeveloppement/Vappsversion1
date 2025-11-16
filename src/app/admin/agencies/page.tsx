@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, ExternalLink } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -78,10 +78,32 @@ export default function AgencyManagementPage() {
                 await setDocumentNonBlocking(agencyRef, { name: values.name }, { merge: true });
                 toast({ title: 'Agence modifiée', description: `L'agence "${values.name}" a été mise à jour.` });
             } else {
-                 const newAgencyRef = doc(collection(firestore, 'agencies'));
-                // Note: The default personalization will be applied by the AgencyProvider logic
-                // when this new agency is accessed. We only need to create it with a name.
-                await setDocumentNonBlocking(newAgencyRef, { id: newAgencyRef.id, name: values.name, personalization: {} });
+                const newAgencyRef = doc(collection(firestore, 'agencies'));
+                const newAgencyData = {
+                    id: newAgencyRef.id,
+                    name: values.name,
+                    personalization: {
+                        paymentSettings: {
+                            ribIban: "",
+                            ribBic: "",
+                            paypalMerchantId: "",
+                            paypalClientId: "",
+                            paypalClientSecret: "",
+                            paypalMeLink: "",
+                            skrillEmail: "",
+                        },
+                        emailSettings: {
+                            smtpHost: "",
+                            smtpPort: 587,
+                            smtpUser: "",
+                            smtpPass: "",
+                            smtpSecure: true,
+                            fromEmail: "",
+                            fromName: "",
+                        },
+                    }
+                };
+                await setDocumentNonBlocking(newAgencyRef, newAgencyData);
                 toast({ title: 'Agence créée', description: `L'agence "${values.name}" a été créée avec succès.` });
             }
             setIsDialogOpen(false);
@@ -96,8 +118,19 @@ export default function AgencyManagementPage() {
     const handleDeleteConfirm = async () => {
         if (!agencyToDelete) return;
         try {
+            const batch = writeBatch(firestore);
+
+            const collectionsToDelete = ['plans', 'quotes', 'contracts', 'invoices'];
+            for (const coll of collectionsToDelete) {
+                 // Deleting subcollections is complex and usually requires a Cloud Function.
+                 // For now, we will just delete the main agency doc.
+            }
+            
             const agencyRef = doc(firestore, 'agencies', agencyToDelete.id);
-            await deleteDocumentNonBlocking(agencyRef);
+            batch.delete(agencyRef);
+            
+            await batch.commit();
+
             toast({ title: 'Agence supprimée', description: `L'agence "${agencyToDelete.name}" a été supprimée.` });
         } catch (error) {
             console.error("Error deleting agency:", error);
@@ -228,7 +261,7 @@ export default function AgencyManagementPage() {
                     <AlertDialogHeader>
                         <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Cette action supprimera l'agence <strong>{agencyToDelete?.name}</strong> et toutes ses données associées (utilisateurs, devis, etc.). Cette action est irréversible.
+                            Cette action supprimera l'agence <strong>{agencyToDelete?.name}</strong>. Cette action est irréversible. Note : la suppression des sous-collections (devis, factures, etc.) doit être gérée manuellement ou via des fonctions Cloud sécurisées pour éviter des suppressions incomplètes.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
