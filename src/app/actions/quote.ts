@@ -64,6 +64,7 @@ const sendQuoteSchema = z.object({
     quote: quoteSchema,
     emailSettings: emailSettingsSchema,
     legalInfo: legalInfoSchema,
+    agencyId: z.string(),
 });
 
 
@@ -78,7 +79,7 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
     }
 
-    const { quote, emailSettings, legalInfo } = validation.data;
+    const { quote, emailSettings, legalInfo, agencyId } = validation.data;
 
     try {
         // 1. Generate PDF
@@ -214,6 +215,9 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         }
 
         const pdfBuffer = doc.output('arraybuffer');
+        
+        // Construct the public URL for the quote
+        const quoteUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/quote/${quote.id}`;
 
         // 2. Send email
         const transporter = nodemailer.createTransport({
@@ -230,8 +234,8 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             from: `"${emailSettings.fromName}" <${emailSettings.fromEmail}>`,
             to: quote.clientInfo.email,
             subject: `Votre devis n° ${quote.quoteNumber} de la part de ${emailSettings.fromName}`,
-            text: `Bonjour ${quote.clientInfo.name},\n\nVeuillez trouver ci-joint votre devis n° ${quote.quoteNumber}.\n\nCordialement,\n${emailSettings.fromName}`,
-            html: `<p>Bonjour ${quote.clientInfo.name},</p><p>Veuillez trouver ci-joint votre devis n° ${quote.quoteNumber}.</p><p>Cordialement,<br/>${emailSettings.fromName}</p>`,
+            text: `Bonjour ${quote.clientInfo.name},\n\nVeuillez trouver ci-joint votre devis n° ${quote.quoteNumber}.\n\nPour le consulter et le valider en ligne, veuillez cliquer sur le lien suivant : ${quoteUrl}\n\nCordialement,\n${emailSettings.fromName}`,
+            html: `<p>Bonjour ${quote.clientInfo.name},</p><p>Veuillez trouver ci-joint votre devis n° ${quote.quoteNumber} au format PDF.</p><p>Pour consulter et valider ce devis directement en ligne, veuillez cliquer sur le bouton ci-dessous :</p><p><a href="${quoteUrl}" style="display: inline-block; padding: 12px 24px; font-size: 16px; color: white; background-color: #2563eb; text-decoration: none; border-radius: 6px;">Consulter le devis</a></p><p>Cordialement,<br/>${emailSettings.fromName}</p>`,
             attachments: [
                 {
                     filename: `devis-${quote.quoteNumber}.pdf`,

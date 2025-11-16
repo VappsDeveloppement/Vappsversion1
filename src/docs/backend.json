@@ -324,7 +324,9 @@
         "notes": { "type": "string" },
         "contractId": { "type": "string", "description": "ID of the attached contract template." },
         "contractTitle": { "type": "string", "description": "Title of the attached contract." },
-        "contractContent": { "type": "string", "description": "Snapshot of the contract HTML content." }
+        "contractContent": { "type": "string", "description": "Snapshot of the contract HTML content." },
+        "signature": { "type": "string", "description": "The name entered by the client as a signature." },
+        "signedDate": { "type": "string", "format": "date-time", "description": "Timestamp of when the quote was signed." }
       },
       "required": ["id", "quoteNumber", "agencyId", "clientId", "issueDate", "status", "items", "total"]
     },

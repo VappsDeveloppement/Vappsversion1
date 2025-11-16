@@ -1,6 +1,11 @@
 import type {NextConfig} from 'next';
 
 const nextConfig: NextConfig = {
+  env: {
+    NEXT_PUBLIC_BASE_URL: process.env.NODE_ENV === 'production' 
+      ? 'https://vapps-saas-template.web.app' // Replace with your production URL
+      : 'http://localhost:9002',
+  },
   /* config options here */
   typescript: {
     ignoreBuildErrors: true,

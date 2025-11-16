@@ -60,6 +60,7 @@ type Quote = {
     contractId?: string;
     contractContent?: string;
     contractTitle?: string;
+    agencyId: string;
 }
 
 
@@ -212,7 +213,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 return initialData.id;
             } else {
                 const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
-                const newDocRef = await addDocumentNonBlocking(quotesCollectionRef, quoteData);
+                const newDocRef = doc(quotesCollectionRef);
+                await setDocumentNonBlocking(newDocRef, quoteData, {});
                 toast({ title: "Devis créé", description: "Le devis a été sauvegardé avec succès."});
                 return newDocRef.id;
             }
@@ -260,7 +262,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             const result = await sendQuote({
                 quote: quoteDataForEmail,
                 emailSettings: personalization.emailSettings,
-                legalInfo: personalization.legalInfo
+                legalInfo: personalization.legalInfo,
+                agencyId: agency.id,
             });
 
             if (result.success) {
