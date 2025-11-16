@@ -1,5 +1,4 @@
 
-
 {
   "entities": {
     "User": {
@@ -102,7 +101,7 @@
         "agencyId": { "type": "string", "description": "The ID of the agency." },
         "role": {
           "type": "string",
-          "enum": ["admin", "dpo", "conseiller", "membre"],
+          "enum": ["admin", "dpo", "conseiller", "moderateur", "membre"],
           "description": "The role of the user within this specific agency."
         },
         "counselorId": {
@@ -711,4 +710,3 @@
     "reasoning": "The Firestore structure is updated to support a true multi-agency model. The `agencyId` field is removed from the `User` entity. A new top-level `memberships` collection is introduced to create a many-to-many relationship between users and agencies. Each document in `memberships` links a `userId` to an `agencyId` and specifies the user's `role` within that agency. This allows a single user account to belong to multiple agencies with different roles. Security rules will be updated to check for the existence and role within these membership documents, rather than relying on a field on the user document."
   }
 }
-
