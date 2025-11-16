@@ -169,7 +169,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             clientId: initialData.clientInfo.id,
             issueDate: new Date(initialData.issueDate),
             expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
-            contractId: initialData.contractId || 'none'
+            contractId: initialData.contractId || undefined
         } : {
             quoteNumber: '',
             validationCode: '',
@@ -178,7 +178,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             items: [],
             notes: '',
             tax: defaultTaxRate,
-            contractId: 'none',
+            contractId: undefined,
         }
     });
 
@@ -196,7 +196,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 clientId: initialData.clientInfo.id,
                 issueDate: new Date(initialData.issueDate),
                 expiryDate: initialData.expiryDate ? new Date(initialData.expiryDate) : undefined,
-                contractId: initialData.contractId || 'none',
+                contractId: initialData.contractId || undefined,
                 validationCode: initialData.validationCode || generateValidationCode(),
             });
         } else {
@@ -685,4 +685,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
-
