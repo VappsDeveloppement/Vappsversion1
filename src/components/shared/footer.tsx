@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Logo } from "./logo";
@@ -9,10 +8,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Briefcase, ExternalLink, GitBranch, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
 import Link from "next/link";
 import React from "react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAgency } from "@/context/agency-provider";
 import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
+import { Label } from "../ui/label";
 
 const iconMap: { [key: string]: React.ComponentType<any> } = {
     GitBranch,
@@ -25,6 +25,36 @@ const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Linkedin,
     Instagram,
 };
+
+function QuoteValidationForm() {
+    return (
+        <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+                <DialogTitle>Valider un devis</DialogTitle>
+                <DialogDescription>
+                    Veuillez saisir le numéro du devis et le code de validation que vous avez reçus.
+                </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="quote-number" className="text-right">
+                        N° de devis
+                    </Label>
+                    <Input id="quote-number" placeholder="DEVIS-2024-..." className="col-span-3" />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="validation-code" className="text-right">
+                        Code
+                    </Label>
+                    <Input id="validation-code" placeholder="Code secret" className="col-span-3" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button type="submit">Vérifier</Button>
+            </DialogFooter>
+        </DialogContent>
+    )
+}
 
 export function Footer() {
     const { personalization } = useAgency();
@@ -110,9 +140,15 @@ export function Footer() {
                                 placeholder="Votre message..." 
                                 className="bg-gray-800 border-gray-700 text-white placeholder:text-gray-500 min-h-[100px]" 
                             />
-                            <Button>
-                                Envoyer
-                            </Button>
+                             <div className="flex gap-2">
+                                <Button>Envoyer</Button>
+                                <Dialog>
+                                    <DialogTrigger asChild>
+                                        <Button variant="outline">Valider un devis</Button>
+                                    </DialogTrigger>
+                                    <QuoteValidationForm />
+                                </Dialog>
+                            </div>
                         </form>
                     </div>
 
