@@ -239,10 +239,12 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             return;
         }
 
-        const selectedContract = values.contractId ? contracts?.find(c => c.id === values.contractId) : undefined;
+        const finalContractId = values.contractId === 'none' ? undefined : values.contractId;
+        const selectedContract = finalContractId ? contracts?.find(c => c.id === finalContractId) : undefined;
 
         const quoteData = {
             ...values,
+            contractId: finalContractId,
             issueDate: values.issueDate.toISOString().split('T')[0], // format as YYYY-MM-DD
             expiryDate: values.expiryDate?.toISOString().split('T')[0],
             agencyId: agency.id,
@@ -255,7 +257,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 zipCode: selectedClient.zipCode,
                 city: selectedClient.city,
             },
-            contractId: selectedContract?.id,
             contractTitle: selectedContract?.title,
             contractContent: selectedContract?.content,
         };
@@ -298,7 +299,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         const quoteId = await handleSaveQuote(values);
 
         if (quoteId && agency && selectedClient) {
-            const quoteRef = doc(firestore, 'agencies', agency.id, 'quotes', quoteId);
+            const finalContractId = values.contractId === 'none' ? undefined : values.contractId;
+            
             const quoteDataForEmail: any = {
                 ...values,
                 id: quoteId,
@@ -312,9 +314,9 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                     zipCode: selectedClient.zipCode,
                     city: selectedClient.city,
                 },
-                contractId: values.contractId,
-                contractTitle: contracts?.find(c => c.id === values.contractId)?.title,
-                contractContent: contracts?.find(c => c.id === values.contractId)?.content,
+                contractId: finalContractId,
+                contractTitle: contracts?.find(c => c.id === finalContractId)?.title,
+                contractContent: contracts?.find(c => c.id === finalContractId)?.content,
             };
 
             const result = await sendQuote({
@@ -326,6 +328,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
             if (result.success) {
                 // Update status on the client side after successful email send
+                const quoteRef = doc(firestore, 'agencies', agency.id, 'quotes', quoteId);
                 await setDocumentNonBlocking(quoteRef, { status: 'sent' }, { merge: true });
                 toast({ title: "E-mail envoyé", description: `Le devis a été envoyé à ${selectedClient.email}.`});
                 setOpen(false);
@@ -455,14 +458,14 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <Label>Contrat (Optionnel)</Label>
-                                    <Select onValueChange={field.onChange} value={field.value} defaultValue="">
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value || 'none'}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Attacher un modèle de contrat..." />
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            <SelectItem value="">Aucun contrat</SelectItem>
+                                            <SelectItem value="none">Aucun contrat</SelectItem>
                                             {(contracts || []).map((contract) => (
                                                 <SelectItem key={contract.id} value={contract.id}>
                                                     {contract.title}
@@ -680,5 +683,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
-
-    
