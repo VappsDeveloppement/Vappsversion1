@@ -139,7 +139,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     }, [agency, firestore]);
     const { data: contracts, isLoading: areContractsLoading } = useCollection<Contract>(contractsQuery);
 
-    const [selectedClient, setSelectedClient] = React.useState<User | null>(null);
     const [isClientPopoverOpen, setIsClientPopoverOpen] = React.useState(false);
 
     const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
@@ -192,10 +191,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     
     React.useEffect(() => {
         if (initialData) {
-            const client = clients?.find(c => c.id === initialData.clientInfo.id);
-            if (client) {
-                setSelectedClient(client);
-            }
             form.reset({
                 ...initialData,
                 clientId: initialData.clientInfo.id,
@@ -234,6 +229,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
 
     const handleSaveQuote = async (values: z.infer<typeof quoteFormSchema>): Promise<string | undefined> => {
+        const selectedClient = clients?.find(c => c.id === values.clientId);
         if (!agency || !selectedClient) {
             toast({ title: "Erreur", description: "Agence ou client manquant.", variant: "destructive"});
             return;
@@ -251,7 +247,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             agencyInfo: personalization.legalInfo,
             clientInfo: {
                 id: selectedClient.id,
-                name: `${'selectedClient.firstName'} ${selectedClient.lastName}`,
+                name: `${selectedClient.firstName} ${selectedClient.lastName}`,
                 email: selectedClient.email,
                 address: selectedClient.address,
                 zipCode: selectedClient.zipCode,
@@ -296,6 +292,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         }
 
         const values = form.getValues();
+        const selectedClient = clients?.find(c => c.id === values.clientId);
+
         const quoteId = await handleSaveQuote(values);
 
         if (quoteId && agency && selectedClient) {
@@ -308,7 +306,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 expiryDate: values.expiryDate?.toISOString().split('T')[0],
                 clientInfo: {
                     id: selectedClient.id,
-                    name: `${'selectedClient.firstName'} ${selectedClient.lastName}`,
+                    name: `${selectedClient.firstName} ${selectedClient.lastName}`,
                     email: selectedClient.email,
                     address: selectedClient.address,
                     zipCode: selectedClient.zipCode,
@@ -351,6 +349,11 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
             total: plan.price
         });
     }
+
+    const watchClientId = form.watch('clientId');
+    const selectedClient = React.useMemo(() => {
+        return clients?.find(c => c.id === watchClientId);
+    }, [watchClientId, clients]);
     
     return (
         <Form {...form}>
@@ -410,8 +413,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                                                 key={client.id}
                                                                 value={`${client.firstName} ${client.lastName}`}
                                                                 onSelect={() => {
-                                                                    field.onChange(client.id);
-                                                                    setSelectedClient(client);
+                                                                    form.setValue('clientId', client.id);
                                                                     setIsClientPopoverOpen(false);
                                                                 }}
                                                             >
@@ -458,7 +460,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             render={({ field }) => (
                                 <FormItem>
                                     <Label>Contrat (Optionnel)</Label>
-                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value || 'none'}>
+                                    <Select onValueChange={field.onChange} value={field.value || 'none'} defaultValue={field.value || 'none'}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Attacher un modèle de contrat..." />
@@ -683,3 +685,5 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
+
+    
