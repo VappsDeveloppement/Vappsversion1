@@ -90,7 +90,7 @@ export default function SuperAdminsPage() {
         await setDocumentNonBlocking(userDocRef, {
             firstName: values.firstName,
             lastName: values.lastName,
-            // Email cannot be changed from client-side for other users for security reasons.
+            email: values.email,
         }, { merge: true });
         
         // Note: Password update for other users requires Admin SDK (backend function).
@@ -199,8 +199,6 @@ export default function SuperAdminsPage() {
                                 type="email" 
                                 placeholder="super.admin@vapps.com" 
                                 {...field} 
-                                readOnly={!!editingUser} 
-                                className={editingUser ? 'bg-muted/50 cursor-not-allowed' : ''}
                             />
                         </FormControl>
                         <FormMessage />
