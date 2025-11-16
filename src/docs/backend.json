@@ -248,47 +248,35 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Invoice",
       "type": "object",
-      "description": "Represents an invoice for coaching sessions or other services.",
+      "description": "Represents an invoice for coaching sessions or other services, generated from an accepted quote.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the invoice."
+        "id": { "type": "string", "description": "Unique identifier for the invoice." },
+        "invoiceNumber": { "type": "string", "description": "The user-facing invoice number." },
+        "agencyId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientInfo": { "type": "object", "description": "A snapshot of the client's information." },
+        "quoteNumber": { "type": "string", "description": "The number of the original quote." },
+        "issueDate": { "type": "string", "format": "date" },
+        "dueDate": { "type": "string", "format": "date" },
+        "status": { "type": "string", "enum": ["pending", "paid", "overdue", "cancelled"], "description": "The status of the invoice." },
+        "items": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "description": { "type": "string" },
+              "quantity": { "type": "number" },
+              "unitPrice": { "type": "number" },
+              "total": { "type": "number" }
+            },
+            "required": ["description", "quantity", "unitPrice", "total"]
+          }
         },
-        "clientId": {
-          "type": "string",
-          "description": "Reference to User who is the client for the invoice. (Relationship: User 1:N Invoice)"
-        },
-        "issueDate": {
-          "type": "string",
-          "description": "The date the invoice was issued.",
-          "format": "date-time"
-        },
-        "dueDate": {
-          "type": "string",
-          "description": "The date the invoice is due.",
-          "format": "date-time"
-        },
-        "amount": {
-          "type": "number",
-          "description": "The total amount due on the invoice."
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the invoice (e.g., pending, paid, overdue)."
-        },
-        "description": {
-          "type": "string",
-          "description": "Description of the invoice content"
-        }
+        "subtotal": { "type": "number" },
+        "tax": { "type": "number" },
+        "total": { "type": "number" }
       },
-      "required": [
-        "id",
-        "clientId",
-        "issueDate",
-        "dueDate",
-        "amount",
-        "status"
-      ]
+      "required": ["id", "invoiceNumber", "agencyId", "clientId", "quoteNumber", "issueDate", "dueDate", "status", "items", "total"]
     },
     "Quote": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -298,6 +286,7 @@
       "properties": {
         "id": { "type": "string", "description": "Unique identifier for the quote." },
         "quoteNumber": { "type": "string", "description": "The user-facing quote number." },
+        "validationCode": { "type": "string", "description": "A secret code for the client to validate the quote." },
         "agencyId": { "type": "string" },
         "clientId": { "type": "string" },
         "clientInfo": { "type": "object", "description": "A snapshot of the client's information at the time of quote creation." },
@@ -328,7 +317,7 @@
         "signature": { "type": "string", "description": "The name entered by the client as a signature." },
         "signedDate": { "type": "string", "format": "date-time", "description": "Timestamp of when the quote was signed." }
       },
-      "required": ["id", "quoteNumber", "agencyId", "clientId", "issueDate", "status", "items", "total"]
+      "required": ["id", "quoteNumber", "validationCode", "agencyId", "clientId", "issueDate", "status", "items", "total"]
     },
     "Contract": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -523,7 +512,7 @@
           "description": "Stores quotes for a specific agency."
         }
       },
-       {
+      {
         "path": "/agencies/{agencyId}/contracts/{contractId}",
         "definition": {
           "entityName": "Contract",
@@ -531,6 +520,16 @@
             "$ref": "#/backend/entities/Contract"
           },
           "description": "Stores contract templates for a specific agency."
+        }
+      },
+      {
+        "path": "/agencies/{agencyId}/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Stores invoices for a specific agency, often generated after a quote is accepted."
         }
       },
       {
@@ -551,16 +550,6 @@
             "$ref": "#/backend/entities/Message"
           },
           "description": "Stores messages for a specific user. Path-based ownership secures message access."
-        }
-      },
-      {
-        "path": "/users/{userId}/invoices/{invoiceId}",
-        "definition": {
-          "entityName": "Invoice",
-          "schema": {
-            "$ref": "#/backend/entities/Invoice"
-          },
-          "description": "Stores invoices for a specific user. Path-based ownership ensures secure invoice management."
         }
       },
       {
@@ -594,6 +583,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans`, `quotes`, and `contracts` are nested under each agency to manage pricing tiers, estimates, and legal document templates on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
+    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans`, `quotes`, `contracts`, and `invoices` are nested under each agency to manage pricing tiers, estimates, legal documents, and billing on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
   }
 }

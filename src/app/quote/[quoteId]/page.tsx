@@ -1,9 +1,10 @@
+
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { useParams } from 'next/navigation';
-import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import React, { useState, useMemo, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection, getDocs, query, where } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -15,12 +16,13 @@ import { Badge } from '@/components/ui/badge';
 import { Logo } from '@/components/shared/logo';
 import { CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
+import { useAgency } from '@/context/agency-provider';
+import { sendInvoice } from '@/app/actions/invoice';
 
 type Quote = {
     id: string;
     quoteNumber: string;
-    clientInfo: { name: string; id: string; email: string; };
+    clientInfo: { name: string; id: string; email: string; address?: string; zipCode?: string; city?: string; };
     agencyId: string;
     agencyInfo: any;
     issueDate: string;
@@ -51,51 +53,24 @@ const statusText: Record<Quote['status'], string> = {
 };
 
 
-export default function QuoteValidationPage() {
+export default function PublicQuotePage() {
     const params = useParams();
-    const quoteId = params.quoteId as string;
+    const router = useRouter();
+    const { agencyId, quoteId } = params;
+    
     const firestore = useFirestore();
     const { toast } = useToast();
     
     const [signatureName, setSignatureName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState<'accept' | 'reject' | false>(false);
 
-    // This is a temporary solution for the prototype to derive the agencyId.
-    // In a real multi-tenant app, the agency ID would likely be part of the URL
-    // or resolved through a custom domain.
-    const [agencyId, setAgencyId] = useState<string | null>(null);
-
     const quoteRef = useMemoFirebase(() => {
-        // The query depends on agencyId, which is set asynchronously.
         if (!agencyId || !quoteId) return null;
         return doc(firestore, `agencies/${agencyId}/quotes/${quoteId}`);
     }, [firestore, agencyId, quoteId]);
     
     const { data: quote, isLoading, error } = useDoc<Quote>(quoteRef);
-
-    // Effect to set the agencyId from the quote data once it's loaded
-    useEffect(() => {
-        if (quote && !agencyId) {
-            setAgencyId(quote.agencyId);
-        }
-    }, [quote, agencyId]);
-
-    // This is a placeholder for the prototype. We need to fetch the quote first
-    // to know which agency it belongs to. This is not ideal for performance.
-    const tempQuoteRef = useMemoFirebase(() => {
-      // We don't know the agency, so we guess the default one to try and fetch the quote.
-      // This is brittle. The agency ID should be in the URL.
-      if (!quoteId) return null;
-      return doc(firestore, `agencies/vapps-agency/quotes/${quoteId}`);
-    }, [firestore, quoteId])
-
-    const { data: tempQuote, isLoading: isTempLoading } = useDoc<Quote>(tempQuoteRef);
-    
-    useEffect(() => {
-      if (tempQuote && !agencyId) {
-        setAgencyId(tempQuote.agencyId);
-      }
-    }, [tempQuote, agencyId]);
+    const { personalization, agency } = useAgency();
 
 
     const handleStatusUpdate = async (status: 'accepted' | 'rejected') => {
@@ -115,6 +90,9 @@ export default function QuoteValidationPage() {
                 title: `Devis ${status === 'accepted' ? 'accepté' : 'refusé'}`,
                 description: "Le statut du devis a été mis à jour.",
             });
+            if (status === 'accepted') {
+                await generateAndSendInvoice();
+            }
         } catch (e) {
             toast({
                 title: "Erreur",
@@ -126,7 +104,59 @@ export default function QuoteValidationPage() {
         }
     };
 
-    if (isLoading || isTempLoading) {
+     const generateAndSendInvoice = async () => {
+        if (!quote || !agency || !personalization) {
+            toast({ title: "Erreur", description: "Données de devis ou d'agence manquantes.", variant: "destructive" });
+            return;
+        }
+
+        const invoicesCollectionRef = collection(firestore, 'agencies', agency.id, 'invoices');
+        const q = query(invoicesCollectionRef);
+        const querySnapshot = await getDocs(q);
+        const year = new Date().getFullYear();
+        const yearInvoices = querySnapshot.docs.filter(doc => doc.data().invoiceNumber.startsWith(`FACT-${year}-`));
+        const nextId = (yearInvoices.length + 1).toString().padStart(3, '0');
+        const invoiceNumber = `FACT-${year}-${nextId}`;
+
+        const issueDate = new Date();
+        const dueDate = new Date();
+        dueDate.setDate(issueDate.getDate() + 30); // Due in 30 days
+
+        const invoiceData: any = {
+            invoiceNumber,
+            quoteNumber: quote.quoteNumber,
+            agencyId: agency.id,
+            clientId: quote.clientInfo.id,
+            clientInfo: quote.clientInfo,
+            issueDate: issueDate.toISOString(),
+            dueDate: dueDate.toISOString(),
+            items: quote.items,
+            subtotal: quote.subtotal,
+            tax: quote.tax,
+            total: quote.total,
+            status: 'pending',
+        };
+        
+        const newInvoiceRef = doc(invoicesCollectionRef);
+        invoiceData.id = newInvoiceRef.id;
+        
+        await setDocumentNonBlocking(newInvoiceRef, invoiceData, {});
+        
+        const sendResult = await sendInvoice({
+            invoice: invoiceData,
+            emailSettings: personalization.emailSettings,
+            legalInfo: personalization.legalInfo,
+            paymentSettings: personalization.paymentSettings,
+        });
+
+        if (sendResult.success) {
+            toast({ title: "Facture envoyée", description: `La facture ${invoiceNumber} a été envoyée au client.` });
+        } else {
+            toast({ title: "Erreur d'envoi de la facture", description: sendResult.error, variant: "destructive" });
+        }
+    };
+
+    if (isLoading) {
         return (
             <div className="min-h-screen bg-muted/30 p-4 sm:p-8 flex items-center justify-center">
                 <Card className="w-full max-w-4xl p-8">
@@ -148,6 +178,7 @@ export default function QuoteValidationPage() {
                     </CardHeader>
                     <CardContent>
                         <p className="text-muted-foreground">Le lien de ce devis est peut-être invalide ou le devis a été supprimé.</p>
+                         <Button onClick={() => router.push('/')} className="mt-4">Retour à l'accueil</Button>
                     </CardContent>
                  </Card>
             </div>
@@ -190,6 +221,7 @@ export default function QuoteValidationPage() {
                             <p className="text-sm font-semibold text-muted-foreground">CLIENT</p>
                             <p className="font-medium">{quote.clientInfo.name}</p>
                             <p className="text-muted-foreground">{quote.clientInfo.email}</p>
+                            {quote.clientInfo.address && <p className="text-sm text-muted-foreground">{quote.clientInfo.address}, {quote.clientInfo.zipCode} {quote.clientInfo.city}</p>}
                         </div>
                     </CardHeader>
                     <CardContent className="p-8">

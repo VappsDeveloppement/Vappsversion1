@@ -6,14 +6,18 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Briefcase, ExternalLink, GitBranch, Facebook, Twitter, Linkedin, Instagram } from "lucide-react";
+import { Briefcase, ExternalLink, GitBranch, Facebook, Twitter, Linkedin, Instagram, Loader2 } from "lucide-react";
 import Link from "next/link";
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAgency } from "@/context/agency-provider";
 import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
 import { Label } from "../ui/label";
+import { useFirestore } from "@/firebase/provider";
+import { collection, query, where, getDocs } from "firebase/firestore";
+import { useRouter } from "next/navigation";
+import { useToast } from "@/hooks/use-toast";
 
 const iconMap: { [key: string]: React.ComponentType<any> } = {
     GitBranch,
@@ -28,6 +32,41 @@ const socialIconMap: { [key: string]: React.ComponentType<any> } = {
 };
 
 function QuoteValidationForm() {
+    const [quoteNumber, setQuoteNumber] = useState('');
+    const [validationCode, setValidationCode] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
+    const firestore = useFirestore();
+    const router = useRouter();
+    const { toast } = useToast();
+    const { agency } = useAgency();
+
+    const handleVerification = async () => {
+        if (!quoteNumber || !validationCode || !agency) {
+            toast({ title: "Erreur", description: "Veuillez remplir tous les champs.", variant: "destructive" });
+            return;
+        }
+        setIsLoading(true);
+
+        try {
+            const quotesRef = collection(firestore, `agencies/${agency.id}/quotes`);
+            const q = query(quotesRef, where("quoteNumber", "==", quoteNumber.trim()), where("validationCode", "==", validationCode.trim()));
+            
+            const querySnapshot = await getDocs(q);
+
+            if (querySnapshot.empty) {
+                toast({ title: "Introuvable", description: "Aucun devis ne correspond à ces informations.", variant: "destructive" });
+            } else {
+                const quoteDoc = querySnapshot.docs[0];
+                router.push(`/quote/${agency.id}/${quoteDoc.id}`);
+            }
+        } catch (error) {
+            console.error("Error verifying quote:", error);
+            toast({ title: "Erreur", description: "Une erreur est survenue lors de la vérification.", variant: "destructive" });
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     return (
         <DialogContent className="sm:max-w-[425px]">
             <DialogHeader>
@@ -41,20 +80,23 @@ function QuoteValidationForm() {
                     <Label htmlFor="quote-number" className="text-right">
                         N° de devis
                     </Label>
-                    <Input id="quote-number" placeholder="DEVIS-2024-..." className="col-span-3" />
+                    <Input id="quote-number" placeholder="DEVIS-2024-..." className="col-span-3" value={quoteNumber} onChange={(e) => setQuoteNumber(e.target.value)} />
                 </div>
                 <div className="grid grid-cols-4 items-center gap-4">
                     <Label htmlFor="validation-code" className="text-right">
                         Code
                     </Label>
-                    <Input id="validation-code" placeholder="Code secret" className="col-span-3" />
+                    <Input id="validation-code" placeholder="Code secret" className="col-span-3" value={validationCode} onChange={(e) => setValidationCode(e.target.value)} />
                 </div>
             </div>
             <DialogFooter>
-                <Button type="submit">Vérifier</Button>
+                <Button type="button" onClick={handleVerification} disabled={isLoading}>
+                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Vérifier
+                </Button>
             </DialogFooter>
         </DialogContent>
-    )
+    );
 }
 
 export function Footer() {
