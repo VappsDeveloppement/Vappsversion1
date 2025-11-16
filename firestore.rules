@@ -15,6 +15,12 @@ service cloud.firestore {
     match /agencies/{agencyId} {
       allow get: if true;
       allow list, write, update, delete: if isSignedIn();
+
+      // Allow public read for plans, but restrict write access
+      match /plans/{planId} {
+        allow get, list: if true;
+        allow write, update, delete: if isSignedIn();
+      }
     }
     
     match /users/{userId}/{path=**} {
