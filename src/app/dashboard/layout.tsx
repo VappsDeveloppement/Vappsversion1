@@ -15,6 +15,8 @@ import {
   CreditCard,
   LifeBuoy,
   Settings,
+  ShieldCheck,
+  Palette,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -46,6 +48,9 @@ const mainMenuItems = [
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
   { href: "/dashboard/billing", label: "Facturation & Devis", icon: <CreditCard /> },
+  { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
+  { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Palette /> },
+  { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
   { href: "/dashboard/settings/users", label: "Administration", icon: <Settings /> },
 ];
 
