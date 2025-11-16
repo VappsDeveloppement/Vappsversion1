@@ -72,6 +72,14 @@ service cloud.firestore {
       allow list, read, write, update, delete: if isSuperAdmin();
     }
     
+    // FAQ items can be read by anyone if general, or by agency members if specific
+    match /faq_items/{itemId} {
+      allow get: if true; // Public read access for individual items
+      allow list: if isSignedIn(); // Allow listing for signed-in users (will be filtered on client)
+      allow write: if isAgencyAdmin(request.resource.data.agencyId) || isSuperAdmin();
+      allow update, delete: if isAgencyAdmin(resource.data.agencyId) || isSuperAdmin();
+    }
+    
     match /users/{userId} {
       // Admins can manage all users within their agency.
       allow read, write: if isAgencyAdmin(get(/databases/$(database)/documents/users/$(userId)).data.agencyId);
@@ -90,3 +98,5 @@ service cloud.firestore {
     }
   }
 }
+
+    

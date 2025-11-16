@@ -526,7 +526,7 @@
         "question": { "type": "string", "description": "The FAQ question." },
         "content": { "type": "string", "description": "The answer content in HTML format." },
         "videoUrl": { "type": "string", "format": "uri", "description": "URL of an associated video." },
-        "pdfUrls": { "type": "array", "items": { "type": "string", "format": "uri" }, "description": "List of URLs to associated PDF documents." },
+        "pdfUrls": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "url": { "type": "string", "format": "uri" } } }, "description": "List of URLs to associated PDF documents." },
         "scope": { "type": "string", "enum": ["general", "agency"], "description": "Defines if the FAQ is for the whole platform or a specific agency." },
         "agencyId": { "type": "string", "description": "The ID of the agency this FAQ item belongs to, if scope is 'agency'." }
       },
@@ -683,3 +683,5 @@
     "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans`, `quotes`, `contracts`, and `invoices` are nested under each agency to manage pricing tiers, estimates, legal documents, and billing on a per-agency basis. A new top-level `faq_items` collection is added to store all FAQ content, distinguished by a `scope` field ('general' or 'agency'). This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
   }
 }
+
+    
