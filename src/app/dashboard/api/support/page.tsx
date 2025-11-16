@@ -9,7 +9,7 @@ import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { MessageSquare, PlusCircle, Edit, Trash2, FileText, Video, BookOpen, Loader2 } from "lucide-react";
+import { MessageSquare, PlusCircle, Edit, Trash2, FileText, Video, BookOpen, Loader2, Check, Info } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -21,6 +21,7 @@ import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 
 type SupportRequest = {
@@ -293,12 +294,31 @@ function GeneralFaqManager() {
 
 export default function SupportPage() {
     const firestore = useFirestore();
+    const { toast } = useToast();
+    const [requestToView, setRequestToView] = useState<SupportRequest | null>(null);
+    const [isProcessing, setIsProcessing] = useState(false);
 
     const supportRequestsCollectionRef = useMemoFirebase(() => {
-        return query(collection(firestore, 'support_requests'));
+        return query(collection(firestore, 'support_requests'), where('status', '!=', 'closed'));
     }, [firestore]);
 
     const { data: supportRequests, isLoading } = useCollection<SupportRequest>(supportRequestsCollectionRef);
+
+    const handleMarkAsClosed = async () => {
+      if (!requestToView) return;
+      setIsProcessing(true);
+      try {
+        const requestRef = doc(firestore, 'support_requests', requestToView.id);
+        await setDocumentNonBlocking(requestRef, { status: 'closed' }, { merge: true });
+        toast({ title: 'Demande fermée', description: 'La demande a été marquée comme traitée.' });
+        setRequestToView(null);
+      } catch (error) {
+        console.error(error);
+        toast({ title: 'Erreur', description: 'Impossible de fermer la demande.', variant: 'destructive' });
+      } finally {
+        setIsProcessing(false);
+      }
+    };
 
     return (
         <div className="space-y-8">
@@ -332,7 +352,9 @@ export default function SupportPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {isLoading ? (
-                                        <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                                        [...Array(3)].map((_, i) => (
+                                          <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                                        ))
                                     ) : supportRequests && supportRequests.length > 0 ? (
                                         supportRequests.map(request => (
                                         <TableRow key={request.id}>
@@ -344,14 +366,14 @@ export default function SupportPage() {
                                             <TableCell>{new Date(request.createdAt).toLocaleDateString('fr-FR')}</TableCell>
                                             <TableCell><Badge variant={statusVariant[request.status]}>{statusText[request.status]}</Badge></TableCell>
                                             <TableCell className="text-right">
-                                                {/* Actions to be implemented */}
+                                               <Button variant="outline" size="sm" onClick={() => setRequestToView(request)}>Traiter</Button>
                                             </TableCell>
                                         </TableRow>
                                         ))
                                     ) : (
                                         <TableRow>
                                         <TableCell colSpan={5} className="h-24 text-center">
-                                            Aucune demande de support.
+                                            Aucune demande de support en cours.
                                         </TableCell>
                                         </TableRow>
                                     )}
@@ -364,8 +386,40 @@ export default function SupportPage() {
                      <GeneralFaqManager />
                 </TabsContent>
             </Tabs>
+
+            <Dialog open={!!requestToView} onOpenChange={(open) => !open && setRequestToView(null)}>
+              <DialogContent className="sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Détails de la demande</DialogTitle>
+                  <DialogDescription>
+                    Demande de {requestToView?.name} concernant "{requestToView?.subject}".
+                  </DialogDescription>
+                </DialogHeader>
+                {requestToView && (
+                  <div className="space-y-4 py-4 text-sm">
+                    <div className="space-y-1">
+                      <p className="font-medium">Informations du demandeur</p>
+                      <p className="text-muted-foreground">
+                        {requestToView.name}<br />
+                        {requestToView.email}<br />
+                        {requestToView.phone}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="font-medium">Message</p>
+                      <p className="text-muted-foreground p-3 border rounded-md bg-muted whitespace-pre-wrap">{requestToView.message}</p>
+                    </div>
+                  </div>
+                )}
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setRequestToView(null)}>Fermer</Button>
+                  <Button onClick={handleMarkAsClosed} disabled={isProcessing}>
+                    {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    <Check className="mr-2 h-4 w-4" /> Marquer comme traité
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
         </div>
     );
 }
-
-    
