@@ -18,6 +18,7 @@ import {
   Home,
   DatabaseZap,
   LayoutTemplate,
+  LifeBuoy,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -57,6 +58,7 @@ const settingsMenuItems = [
 
 const apiMenuItems = [
     { href: "/dashboard/api/agency", label: "Vue d'ensemble", icon: <DatabaseZap /> },
+    { href: "/dashboard/api/support", label: "Support", icon: <LifeBuoy /> },
 ]
 
 export default function DashboardLayout({

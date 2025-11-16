@@ -19,6 +19,15 @@ service cloud.firestore {
        let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
        return isSignedIn() && userDoc.agencyId == agencyId && (userDoc.role == 'admin' || userDoc.role == 'superadmin' || userDoc.role == 'dpo');
      }
+     
+    /**
+     * @description Checks if the user is a superadmin.
+     * @returns {boolean} True if the user is a superadmin, false otherwise.
+     */
+     function isSuperAdmin() {
+       let userDoc = get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+       return isSignedIn() && userDoc.role == 'superadmin';
+     }
 
     // Allow public read for agency personalization, but restrict write access
     match /agencies/{agencyId} {
@@ -53,8 +62,14 @@ service cloud.firestore {
     // GDPR requests can be created by anyone, but only read/managed by admins of the concerned agency
     match /gdpr_requests/{requestId} {
         allow create: if true;
-        allow list: if isSignedIn() && request.query.where.agencyId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId;
+        allow list: if isSignedIn() && request.query.agencyId == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.agencyId;
         allow read, write, update, delete: if isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
+    }
+    
+    // Support requests are managed by superadmins
+    match /support_requests/{requestId} {
+      allow create: if true;
+      allow list, read, write, update, delete: if isSuperAdmin();
     }
     
     match /users/{userId} {

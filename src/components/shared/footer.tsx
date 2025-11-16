@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Logo } from "./logo";
@@ -122,28 +121,31 @@ export function Footer() {
         setIsContactLoading(true);
 
         try {
+            let collectionName = '';
+            let data: any = {};
+            let successMessage = '';
+
             if (contactSubject === "Demande d'information") {
-                const usersCollectionRef = collection(firestore, 'users');
+                collectionName = 'users';
                 const nameParts = contactName.split(' ');
                 const firstName = nameParts.shift() || contactName;
                 const lastName = nameParts.join(' ') || '-';
-
-                await addDocumentNonBlocking(usersCollectionRef, {
+                data = {
                     firstName,
                     lastName,
                     email: contactEmail,
                     phone: contactPhone,
-                    message: contactMessage, // Save the message
+                    message: contactMessage,
                     role: 'prospect',
                     agencyId: agency?.id,
                     dateJoined: new Date().toISOString(),
                     origin: 'Footer Contact Form',
                     status: 'new'
-                });
-                toast({ title: "Demande envoyée", description: "Merci ! Vous avez été ajouté à notre liste de prospects." });
+                };
+                successMessage = "Merci ! Votre demande a été envoyée et vous avez été ajouté à notre liste de prospects.";
             } else if (contactSubject === "Données Personnelles") {
-                const requestsCollectionRef = collection(firestore, 'gdpr_requests');
-                await addDocumentNonBlocking(requestsCollectionRef, {
+                collectionName = 'gdpr_requests';
+                 data = {
                     name: contactName,
                     email: contactEmail,
                     phone: contactPhone,
@@ -152,15 +154,36 @@ export function Footer() {
                     agencyId: agency?.id,
                     status: 'new',
                     createdAt: new Date().toISOString(),
-                });
-                toast({ title: "Demande envoyée", description: "Votre demande concernant vos données personnelles a bien été prise en compte." });
+                };
+                successMessage = "Votre demande concernant vos données personnelles a bien été prise en compte.";
+            } else if (contactSubject === "Support") {
+                 collectionName = 'support_requests';
+                 data = {
+                    name: contactName,
+                    email: contactEmail,
+                    phone: contactPhone,
+                    subject: contactSubject,
+                    message: contactMessage,
+                    agencyId: agency?.id,
+                    status: 'new',
+                    createdAt: new Date().toISOString(),
+                };
+                successMessage = "Votre demande de support a été envoyée. Notre équipe vous répondra bientôt.";
             }
-             // Reset form
-            setContactName('');
-            setContactEmail('');
-            setContactPhone('');
-            setContactSubject('');
-            setContactMessage('');
+            
+            if (collectionName) {
+                const collectionRef = collection(firestore, collectionName);
+                await addDocumentNonBlocking(collectionRef, data);
+                toast({ title: "Demande envoyée", description: successMessage });
+
+                // Reset form
+                setContactName('');
+                setContactEmail('');
+                setContactPhone('');
+                setContactSubject('');
+                setContactMessage('');
+            }
+
         } catch (error) {
             console.error("Error submitting contact form:", error);
             toast({ title: "Erreur", description: "Une erreur est survenue.", variant: "destructive" });
