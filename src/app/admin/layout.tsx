@@ -9,8 +9,8 @@ import {
   Home,
   LayoutGrid,
   LifeBuoy,
-  PanelsTopLeft,
   Mails,
+  Briefcase,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -32,7 +32,7 @@ import React from "react";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
-  { href: "/admin/page-builder", label: "Page Builder", icon: <PanelsTopLeft /> },
+  { href: "/admin/agencies", label: "Gestion des agences", icon: <Briefcase /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
   { href: "/admin/user-management", label: "User Management", icon: <Users /> },
   { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
