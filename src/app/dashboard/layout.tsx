@@ -141,11 +141,9 @@ export default function DashboardLayout({
               ))}
                 <Accordion type="single" collapsible defaultValue={isAdministrationPathActive ? "admin-menu" : undefined} className="w-full">
                     <AccordionItem value="admin-menu" className="border-none">
-                        <AccordionTrigger asChild>
-                            <SidebarMenuButton className="w-full" isActive={isAdministrationPathActive}>
-                                <Settings/>
-                                <span>Administration</span>
-                            </SidebarMenuButton>
+                        <AccordionTrigger className="w-full flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] text-black hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50" data-active={isAdministrationPathActive}>
+                            <Settings className="h-4 w-4 shrink-0"/>
+                            <span className="truncate flex-1">Administration</span>
                         </AccordionTrigger>
                         <AccordionContent className="p-0 pl-6 space-y-1">
                             {administrationMenuItems.map(item => (
