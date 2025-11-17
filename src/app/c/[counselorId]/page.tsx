@@ -16,6 +16,8 @@ import { CounselorServicesSection } from '@/components/shared/counselor-services
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
+import { useAgency } from '@/context/agency-provider';
+import Link from 'next/link';
 
 
 type CounselorProfile = {
@@ -34,6 +36,7 @@ export default function CounselorPublicPage() {
   const params = useParams();
   const counselorId = params.counselorId as string;
   const firestore = useFirestore();
+  const { personalization } = useAgency();
 
   const counselorDocRef = useMemoFirebase(() => {
     if (!counselorId) return null;
@@ -64,9 +67,14 @@ export default function CounselorPublicPage() {
   const showAboutSection = counselor.miniSite?.aboutSection?.enabled !== false;
   const showInterestsSection = counselor.miniSite?.interestsSection?.enabled !== false;
   const showServicesSection = counselor.miniSite?.servicesSection?.enabled !== false;
-  const showPricingSection = counselor.miniSite?.pricingSection?.enabled !== false;
   const showCtaSection = counselor.miniSite?.ctaSection?.enabled !== false;
+  const showPricingSection = counselor.miniSite?.pricingSection?.enabled !== false;
   const showContactSection = counselor.miniSite?.contactSection?.enabled !== false;
+
+  const copyrightText = personalization?.copyrightText || "Vapps.";
+  const copyrightUrl = personalization?.copyrightUrl || "/";
+  const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
+  const primaryColor = counselor.miniSite?.hero?.primaryColor || '#10B981';
 
   return (
     <div className="bg-muted/30 min-h-screen">
@@ -80,6 +88,9 @@ export default function CounselorPublicPage() {
         {showPricingSection && <CounselorPricingSection counselor={counselor} />}
         {showContactSection && <CounselorContactSection counselor={counselor} />}
       </main>
+      <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
+        <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
+      </footer>
     </div>
   );
 }
