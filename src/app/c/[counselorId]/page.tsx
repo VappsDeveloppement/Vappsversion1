@@ -10,6 +10,7 @@ import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent } from '@/components/ui/card';
 import { CounselorHero } from '@/components/shared/counselor-hero';
+import { AboutMeSection } from '@/components/shared/about-me-section';
 
 type CounselorProfile = {
     id: string;
@@ -81,12 +82,14 @@ export default function CounselorPublicPage() {
   }
 
   const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
+  const showAboutSection = counselor.miniSite?.aboutSection?.enabled !== false;
 
   return (
     <div className="bg-muted/30 min-h-screen">
       <CounselorHero counselor={counselor} />
       <main>
         {showAttentionSection && <AttentionSection counselor={counselor} />}
+        {showAboutSection && <AboutMeSection counselor={counselor} />}
       </main>
     </div>
   );

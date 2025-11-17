@@ -55,6 +55,14 @@
           "type": "string",
           "description": "The user's city."
         },
+        "commercialName": {
+            "type": "string",
+            "description": "The user's commercial or business name, if applicable."
+        },
+        "siret": {
+            "type": "string",
+            "description": "The user's SIRET number for their business."
+        },
         "socialSecurityNumber": {
           "type": "string",
           "description": "The user's social security number."
@@ -98,6 +106,45 @@
         "publicBio": {
             "type": "string",
             "description": "Public-facing biography for the counselor's profile page."
+        },
+        "miniSite": {
+            "type": "object",
+            "description": "Personalization settings for the counselor's mini-site.",
+            "properties": {
+                "hero": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" },
+                        "ctaText": { "type": "string" },
+                        "ctaLink": { "type": "string" },
+                        "showPhoto": { "type": "boolean" },
+                        "bgColor": { "type": "string" },
+                        "bgImageUrl": { "type": "string", "format": "uri" },
+                        "showPhone": { "type": "boolean" },
+                        "showLocation": { "type": "boolean" }
+                    }
+                },
+                "attentionSection": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean" },
+                        "title": { "type": "string" },
+                        "text": { "type": "string" }
+                    }
+                },
+                "aboutSection": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean"},
+                    "imageUrl": { "type": "string", "format": "uri"},
+                    "videoUrl": { "type": "string", "format": "uri"},
+                    "mediaText": { "type": "string"},
+                    "title": { "type": "string"},
+                    "text": { "type": "string"}
+                  }
+                }
+            }
         }
       },
       "required": [

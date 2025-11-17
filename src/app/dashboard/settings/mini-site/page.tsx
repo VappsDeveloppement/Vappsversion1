@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2 } from 'lucide-react';
+import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2, Info } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -23,6 +23,8 @@ import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import Image from 'next/image';
+import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
+import { AboutMeSection } from '@/components/shared/about-me-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -50,9 +52,19 @@ const attentionSchema = z.object({
   text: z.string().optional(),
 });
 
+const aboutSchema = z.object({
+    enabled: z.boolean().default(true),
+    imageUrl: z.string().optional(),
+    videoUrl: z.string().optional(),
+    mediaText: z.string().optional(),
+    title: z.string().optional(),
+    text: z.string().optional(),
+});
+
 const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
+    aboutSection: aboutSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -74,6 +86,14 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         enabled: true,
         title: 'Attention',
         text: 'Ce conseiller n\'a pas encore rédigé de biographie.'
+    },
+    aboutSection: {
+        enabled: true,
+        imageUrl: '',
+        videoUrl: '',
+        mediaText: '',
+        title: 'À propos de moi',
+        text: '',
     }
 };
 
@@ -291,111 +311,138 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
     );
 }
 
-function AttentionSettingsTab({ control, userData }: { control: any, userData: any }) {
+function SectionsSettingsTab({ control, userData }: { control: any, userData: any }) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const aboutImageRef = useRef<HTMLInputElement>(null);
 
     const userDocRef = useMemoFirebase(() => {
         if (!user) return null;
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
 
-    const form = useForm<z.infer<typeof attentionSchema>>({
-        resolver: zodResolver(attentionSchema),
-        defaultValues: defaultMiniSiteConfig.attentionSection,
+    const form = useForm<{ attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema> }>({
+        resolver: zodResolver(z.object({ attentionSection: attentionSchema, aboutSection: aboutSchema })),
+        defaultValues: {
+            attentionSection: defaultMiniSiteConfig.attentionSection,
+            aboutSection: defaultMiniSiteConfig.aboutSection
+        },
         control,
     });
-    
-    const onSubmit = async (data: z.infer<typeof attentionSchema>) => {
+
+    const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
+    useEffect(() => {
+        setAboutImagePreview(form.getValues('aboutSection.imageUrl'));
+    }, [form.getValues('aboutSection.imageUrl')]);
+
+    const onSubmit = async (data: { attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema> }) => {
         if (!userDocRef) return;
         setIsSubmitting(true);
         try {
             await setDocumentNonBlocking(userDocRef, {
                 miniSite: {
                     ...(userData?.miniSite || {}),
-                    attentionSection: data,
+                    attentionSection: data.attentionSection,
+                    aboutSection: data.aboutSection,
                 },
             }, { merge: true });
-            toast({ title: "Paramètres enregistrés", description: "Votre section 'Attention' a été mise à jour." });
+            toast({ title: "Paramètres enregistrés", description: "Vos sections ont été mises à jour." });
         } catch (error) {
             toast({ title: "Erreur", description: "Impossible de sauvegarder les paramètres.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
     };
-
+    
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Section "Attention"</CardTitle>
-                <CardDescription>
-                    Gérez le contenu de la section "Attention". Si le titre et le texte sont vides, la section n'apparaîtra pas.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <FormField
-                            control={form.control}
-                            name="enabled"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                    <div className="space-y-0.5">
-                                        <FormLabel className="text-base">
-                                            Afficher la section "Attention"
-                                        </FormLabel>
-                                        <FormDescription>
-                                            Si cette option est désactivée, la section n'apparaîtra pas sur votre page.
-                                        </FormDescription>
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                 <Accordion type="multiple" defaultValue={['attention', 'about']} className="w-full space-y-4">
+                    <AccordionItem value="attention" className="border rounded-lg bg-background">
+                         <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Attention"</AccordionTrigger>
+                         <AccordionContent className="p-4 border-t">
+                            <div className="space-y-6">
+                                <FormField
+                                    control={form.control}
+                                    name="attentionSection.enabled"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                            <div className="space-y-0.5">
+                                                <FormLabel className="text-base">Afficher la section</FormLabel>
+                                                <FormDescription>Désactivez pour masquer cette section de votre page.</FormDescription>
+                                            </div>
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField control={form.control} name="attentionSection.title" render={({ field }) => (
+                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )} />
+                                <FormField control={form.control} name="attentionSection.text" render={({ field }) => (
+                                    <FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} rows={5}/></FormControl><FormMessage /></FormItem>
+                                )} />
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    
+                    <AccordionItem value="about" className="border rounded-lg bg-background">
+                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "À Propos"</AccordionTrigger>
+                        <AccordionContent className="p-4 border-t">
+                             <div className="space-y-6">
+                                <FormField control={form.control} name="aboutSection.enabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )} />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="space-y-4">
+                                        <h4 className="font-medium text-center">Colonne de gauche (Média)</h4>
+                                        <FormField control={form.control} name="aboutSection.videoUrl" render={({ field }) => (
+                                            <FormItem><FormLabel>URL Vidéo (YouTube)</FormLabel><FormControl><Input {...field} placeholder="https://youtube.com/embed/..."/></FormControl><FormMessage /><FormDescription>Prioritaire sur l'image si renseigné.</FormDescription></FormItem>
+                                        )}/>
+                                        <div className="flex items-center"><div className="flex-grow border-t"></div><span className="flex-shrink mx-4 text-muted-foreground text-sm">OU</span><div className="flex-grow border-t"></div></div>
+                                        <div>
+                                            <Label>Image</Label>
+                                            <div className="mt-2 flex items-center gap-4">
+                                                <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                                    {aboutImagePreview ? <Image src={aboutImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                                </div>
+                                                <input type="file" ref={aboutImageRef} onChange={async (e) => {const f=e.target.files?.[0]; if(f) {const b=await toBase64(f); setAboutImagePreview(b); form.setValue('aboutSection.imageUrl', b)}}} className="hidden" accept="image/*" />
+                                                <div className="flex flex-col gap-1">
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => aboutImageRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => { setAboutImagePreview(''); form.setValue('aboutSection.imageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <FormField control={form.control} name="aboutSection.mediaText" render={({ field }) => (
+                                            <FormItem><FormLabel>Texte sous le média</FormLabel><FormControl><Textarea {...field} rows={3}/></FormControl><FormMessage /></FormItem>
+                                        )}/>
                                     </div>
-                                    <FormControl>
-                                        <Switch
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="title"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Titre de la section</FormLabel>
-                                    <FormControl>
-                                        <Input {...field} placeholder="Titre de la section Attention" />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <FormField
-                            control={form.control}
-                            name="text"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Texte de la section</FormLabel>
-                                    <FormControl>
-                                        <Textarea {...field} placeholder="Contenu de la section Attention..." rows={5}/>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
-                         <div className="flex justify-end pt-6 border-t">
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Enregistrer les modifications
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+                                    <div className="space-y-4">
+                                        <h4 className="font-medium text-center">Colonne de droite (Texte)</h4>
+                                        <FormField control={form.control} name="aboutSection.title" render={({ field }) => (
+                                            <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                        <FormField control={form.control} name="aboutSection.text" render={({ field }) => (
+                                            <FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} rows={8}/></FormControl><FormMessage /></FormItem>
+                                        )}/>
+                                    </div>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+                <div className="flex justify-end pt-6 border-t">
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Enregistrer les modifications
+                    </Button>
+                </div>
+            </form>
+        </Form>
     )
 }
 
@@ -406,6 +453,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             ...userData?.miniSite,
             hero: formData.hero,
             attentionSection: formData.attentionSection,
+            aboutSection: formData.aboutSection,
         }
     };
 
@@ -419,7 +467,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
           </SheetHeader>
           <div className="h-[calc(100vh-80px)] overflow-y-auto bg-muted">
              <CounselorHero counselor={counselorPreviewData} />
-             {/* Other sections will be previewed here */}
+             {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
           </div>
         </SheetContent>
     )
@@ -502,7 +550,7 @@ export default function MiniSitePage() {
           <HeroSettingsTab control={form.control} userData={userData} />
         </TabsContent>
         <TabsContent value="personal-page">
-          <AttentionSettingsTab control={form.control} userData={userData} />
+          <SectionsSettingsTab control={form.control} userData={userData} />
         </TabsContent>
         <TabsContent value="visual-identity">
           {/* Placeholder for future implementation */}
