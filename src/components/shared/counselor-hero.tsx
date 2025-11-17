@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -70,8 +71,8 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                         </div>
                     )}
                     <div className={cn(
-                        "text-center flex flex-col items-center",
-                        showPhoto ? "md:col-span-2 md:items-start md:text-left" : "md:col-span-3"
+                        "flex flex-col items-center text-center",
+                        showPhoto ? "md:col-span-2" : "md:col-span-3"
                     )}>
                         <h1 className="text-4xl md:text-5xl font-bold text-white">{title}</h1>
                         <p className="text-xl text-white/90 mt-4">{subtitle}</p>
