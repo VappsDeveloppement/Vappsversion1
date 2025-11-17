@@ -38,6 +38,7 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
     const selectedPlansQuery = useMemoFirebase(() => {
         if (!planIds || planIds.length === 0) return null;
         const plansCollectionRef = collection(firestore, 'plans');
+        // This query correctly fetches the specific plans selected by the counselor for their mini-site.
         return query(plansCollectionRef, where(documentId(), 'in', planIds));
     }, [firestore, planIds]);
 
@@ -46,6 +47,12 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
     if (!enabled) {
         return null;
     }
+
+    // Sort plans to match the order in planIds if possible
+    const sortedPlans = useMemo(() => {
+        if (!plans || !planIds) return [];
+        return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
+    }, [plans, planIds]);
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
@@ -61,9 +68,9 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
                             <Card key={i} className="flex flex-col h-full"><CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader><CardContent className="flex-1"><Skeleton className="h-24 w-full" /></CardContent><CardFooter><Skeleton className="h-10 w-full" /></CardFooter></Card>
                         ))}
                     </div>
-                ) : plans && plans.length > 0 ? (
+                ) : sortedPlans && sortedPlans.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
-                        {plans.map((plan) => (
+                        {sortedPlans.map((plan) => (
                             <Card key={plan.id} className={cn("flex flex-col h-full shadow-lg", plan.isFeatured && "border-primary border-2 relative")}>
                                 {plan.isFeatured && (
                                     <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
@@ -100,12 +107,10 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
                     </div>
                 ) : (
                     <div className="text-center text-muted-foreground">
-                        <p>Aucune formule n'est actuellement disponible.</p>
+                        <p>Aucune formule sélectionnée pour l'affichage.</p>
                     </div>
                 )}
             </div>
         </section>
     );
 }
-
-    
