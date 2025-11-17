@@ -81,9 +81,12 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                         <p className="mt-6 text-base text-white/80 max-w-2xl">
                            {counselor.publicBio || 'Biographie non disponible.'}
                         </p>
-                        <div className="mt-8">
+                        <div className="mt-8 flex flex-wrap justify-center gap-4">
                             <Button size="lg" asChild style={{ backgroundColor: primaryColor }}>
                                 <Link href={ctaLink}>{ctaText}</Link>
+                            </Button>
+                             <Button size="lg" asChild variant="outline" className="bg-transparent text-white border-white hover:bg-white hover:text-black">
+                                <Link href="/application">Mon Espace</Link>
                             </Button>
                         </div>
                         <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-2 text-white/80 text-sm">
