@@ -28,7 +28,7 @@ const AboutMeSection = ({ counselor }: { counselor: CounselorProfile }) => (
         <div className="container mx-auto px-4">
              <Card>
                 <CardContent className="p-6 md:p-10">
-                    <h2 className="text-3xl font-bold mb-6 text-center">À propos de moi</h2>
+                    <h2 className="text-3xl font-bold mb-6 text-center">Attention</h2>
                     <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg text-center max-w-3xl mx-auto">
                         {counselor.publicBio || 'Ce conseiller n\'a pas encore rédigé de biographie.'}
                     </p>

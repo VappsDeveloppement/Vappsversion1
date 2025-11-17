@@ -314,7 +314,7 @@ function AboutSettingsTab({ control, userData }: { control: any, userData: any }
                     about: data,
                 },
             }, { merge: true });
-            toast({ title: "Paramètres enregistrés", description: "Votre section 'À Propos' a été mise à jour." });
+            toast({ title: "Paramètres enregistrés", description: "Votre section 'Attention' a été mise à jour." });
         } catch (error) {
             toast({ title: "Erreur", description: "Impossible de sauvegarder les paramètres.", variant: "destructive" });
         } finally {
@@ -325,7 +325,7 @@ function AboutSettingsTab({ control, userData }: { control: any, userData: any }
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Section "À Propos de Moi"</CardTitle>
+                <CardTitle>Section "Attention"</CardTitle>
                 <CardDescription>
                     Activez ou désactivez cette section. Le contenu est tiré de votre biographie publique que vous pouvez modifier sur la page de votre profil.
                 </CardDescription>
@@ -340,7 +340,7 @@ function AboutSettingsTab({ control, userData }: { control: any, userData: any }
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                                     <div className="space-y-0.5">
                                         <FormLabel className="text-base">
-                                            Afficher la section "À propos de moi"
+                                            Afficher la section "Attention"
                                         </FormLabel>
                                         <FormDescription>
                                             Si cette option est désactivée, la section n'apparaîtra pas sur votre page.
