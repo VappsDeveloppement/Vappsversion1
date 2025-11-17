@@ -25,6 +25,7 @@ import { CounselorHero } from '@/components/shared/counselor-hero';
 import Image from 'next/image';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { AboutMeSection } from '@/components/shared/about-me-section';
+import { AttentionSection } from '@/components/shared/attention-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -467,6 +468,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
           </SheetHeader>
           <div className="h-[calc(100vh-80px)] overflow-y-auto bg-muted">
              <CounselorHero counselor={counselorPreviewData} />
+             {counselorPreviewData.miniSite.attentionSection?.enabled && <AttentionSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
           </div>
         </SheetContent>
@@ -492,8 +494,9 @@ export default function MiniSitePage() {
   useEffect(() => {
     if (userData?.miniSite) {
         form.reset({
-            ...defaultMiniSiteConfig,
-            ...userData.miniSite
+            hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
+            attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
+            aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
         });
     } else {
         form.reset(defaultMiniSiteConfig);
@@ -532,7 +535,7 @@ export default function MiniSitePage() {
         </div>
       </div>
       <Tabs defaultValue="hero-content">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="hero-content">
             <Text className="mr-2 h-4 w-4" />
             Contenu Héro
@@ -541,19 +544,12 @@ export default function MiniSitePage() {
             <FileText className="mr-2 h-4 w-4" />
             Sections de la Page
           </TabsTrigger>
-          <TabsTrigger value="visual-identity" disabled>
-            <Palette className="mr-2 h-4 w-4" />
-            Identité Visuelle
-          </TabsTrigger>
         </TabsList>
         <TabsContent value="hero-content">
           <HeroSettingsTab control={form.control} userData={userData} />
         </TabsContent>
         <TabsContent value="personal-page">
           <SectionsSettingsTab control={form.control} userData={userData} />
-        </TabsContent>
-        <TabsContent value="visual-identity">
-          {/* Placeholder for future implementation */}
         </TabsContent>
       </Tabs>
     </div>

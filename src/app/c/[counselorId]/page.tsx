@@ -8,9 +8,10 @@ import { useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent } from '@/components/ui/card';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
+import { AttentionSection } from '@/components/shared/attention-section';
+
 
 type CounselorProfile = {
     id: string;
@@ -21,33 +22,6 @@ type CounselorProfile = {
     publicBio?: string;
     photoUrl?: string;
     miniSite?: any;
-};
-
-// Placeholder for Attention section
-const AttentionSection = ({ counselor }: { counselor: CounselorProfile }) => {
-    const attentionConfig = counselor.miniSite?.attentionSection || {};
-
-    if (!attentionConfig.enabled || (!attentionConfig.title && !attentionConfig.text)) {
-        return null;
-    }
-    
-    const title = attentionConfig.title || "Attention";
-    const text = attentionConfig.text || counselor.publicBio || 'Ce conseiller n\'a pas encore rédigé de biographie.';
-
-    return (
-        <section className="py-16 bg-background">
-            <div className="container mx-auto px-4">
-                 <Card>
-                    <CardContent className="p-6 md:p-10 text-center">
-                        <h2 className="text-3xl font-bold mb-6">{title}</h2>
-                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg max-w-3xl mx-auto">
-                            {text}
-                        </p>
-                    </CardContent>
-                </Card>
-            </div>
-        </section>
-    );
 };
 
 
