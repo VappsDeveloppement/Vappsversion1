@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
@@ -15,11 +15,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Palette, FileText, Text, Link as LinkIcon, Eye } from 'lucide-react';
+import { Loader2, Palette, FileText, Text, Eye } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { CounselorHero } from '@/components/shared/counselor-hero';
 
 
 const heroSchema = z.object({
@@ -42,7 +44,7 @@ const defaultMiniSiteConfig = {
     },
 };
 
-function HeroSettingsTab() {
+function HeroSettingsTab({ control, userData }: { control: any, userData: any }) {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -53,27 +55,19 @@ function HeroSettingsTab() {
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
     
-    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
-
     const form = useForm<HeroFormData>({
         resolver: zodResolver(heroSchema),
-        defaultValues: defaultMiniSiteConfig.hero
+        defaultValues: defaultMiniSiteConfig.hero,
+        control
     });
     
-    useEffect(() => {
-        if (userData?.miniSite?.hero) {
-            form.reset(userData.miniSite.hero);
-        } else {
-            form.reset(defaultMiniSiteConfig.hero);
-        }
-    }, [userData, form]);
-
     const onSubmit = async (data: HeroFormData) => {
         if (!userDocRef) return;
         setIsSubmitting(true);
         try {
             await setDocumentNonBlocking(userDocRef, {
                 miniSite: {
+                    ...(userData?.miniSite || {}),
                     hero: data,
                 },
             }, { merge: true });
@@ -84,10 +78,6 @@ function HeroSettingsTab() {
             setIsSubmitting(false);
         }
     };
-
-    if (isUserLoading || isUserDataLoading) {
-        return <p>Chargement...</p>;
-    }
 
     return (
         <Card>
@@ -182,8 +172,61 @@ function HeroSettingsTab() {
     );
 }
 
+function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
+    const counselorPreviewData = {
+        ...(userData || {}),
+        miniSite: {
+            ...userData?.miniSite,
+            hero: formData,
+        }
+    };
+
+    return (
+        <SheetContent className="w-full sm:max-w-full lg:w-[80vw] p-0">
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle>Aperçu de la page</SheetTitle>
+            <SheetDescription>
+              Ceci est une prévisualisation de votre page publique. Les modifications apparaissent en temps réel.
+            </SheetDescription>
+          </SheetHeader>
+          <div className="h-[calc(100vh-80px)] overflow-y-auto">
+             <CounselorHero counselor={counselorPreviewData} />
+             {/* Other sections will be previewed here */}
+          </div>
+        </SheetContent>
+    )
+}
+
 export default function MiniSitePage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+  const form = useForm({
+    resolver: zodResolver(heroSchema), // Only for one tab for now
+    defaultValues: defaultMiniSiteConfig.hero
+  });
+  
+  useEffect(() => {
+    if (userData?.miniSite?.hero) {
+        form.reset(userData.miniSite.hero);
+    } else {
+        form.reset(defaultMiniSiteConfig.hero);
+    }
+  }, [userData, form]);
+  
+  const watchedFormData = useWatch({ control: form.control });
+
+  if (isUserLoading || isUserDataLoading) {
+      return <div>Chargement...</div>
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-start">
@@ -193,14 +236,21 @@ export default function MiniSitePage() {
             Gérez l'apparence et le contenu de votre page publique de conseiller.
             </p>
         </div>
-        {user && (
-            <Button variant="outline" asChild>
-                <Link href={`/c/${user.uid}`} target="_blank">
-                    <Eye className="mr-2" />
-                    Voir ma page publique
-                </Link>
-            </Button>
-        )}
+         <div className="flex items-center gap-2">
+            <Sheet>
+                <SheetTrigger asChild>
+                    <Button variant="outline"><Eye className="mr-2" /> Aperçu</Button>
+                </SheetTrigger>
+                <PreviewPanel formData={watchedFormData} userData={userData} />
+            </Sheet>
+            {user && (
+                <Button asChild>
+                    <Link href={`/c/${user.uid}`} target="_blank">
+                        Ouvrir la page publique
+                    </Link>
+                </Button>
+            )}
+        </div>
       </div>
       <Tabs defaultValue="hero-content">
         <TabsList className="grid w-full grid-cols-3">
@@ -218,7 +268,7 @@ export default function MiniSitePage() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="hero-content">
-          <HeroSettingsTab />
+          <HeroSettingsTab control={form.control} userData={userData} />
         </TabsContent>
         <TabsContent value="visual-identity">
           {/* Placeholder for future implementation */}
