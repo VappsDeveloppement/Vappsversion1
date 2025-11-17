@@ -184,7 +184,7 @@ export function PlanManagement() {
     
     const planData = {
       ...data,
-      features: data.features.map(f => f.value),
+      features: data.features ? data.features.map(f => f.value) : [],
       counselorId: user.uid,
       isFeatured: false, // Counselor plans are not featured globally
     };
@@ -443,3 +443,5 @@ export function PlanManagement() {
     </Card>
   );
 }
+
+    
