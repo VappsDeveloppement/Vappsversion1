@@ -30,9 +30,9 @@ service cloud.firestore {
       allow list, write, update, delete: if isSuperAdmin();
     }
     
-    // Plans are globally managed by superadmin
+    // Plans are globally managed by superadmin but publicly readable
     match /plans/{planId} {
-      allow get, list: if isSignedIn();
+      allow get, list: if true;
       allow create, update, delete: if isSuperAdmin();
     }
 
