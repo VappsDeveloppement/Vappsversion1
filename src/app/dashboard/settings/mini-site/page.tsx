@@ -3,12 +3,12 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, query, where, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -29,6 +29,9 @@ import { AttentionSection } from '@/components/shared/attention-section';
 import { InterestsSection } from '@/components/shared/interests-section';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
+import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
+import type { Plan } from '@/components/shared/plan-management';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -98,6 +101,14 @@ const ctaSchema = z.object({
   bgImageUrl: z.string().optional(),
 });
 
+const pricingSchema = z.object({
+  enabled: z.boolean().default(true),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  planIds: z.array(z.string()).max(3, "Vous pouvez sélectionner jusqu'à 3 formules.").default([]),
+});
+
+
 const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
@@ -105,6 +116,7 @@ const miniSiteSchema = z.object({
     interestsSection: interestsSchema,
     servicesSection: servicesSchema,
     ctaSection: ctaSchema,
+    pricingSection: pricingSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -161,6 +173,12 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         buttonLink: '#contact',
         bgColor: '#fafafa',
         bgImageUrl: '',
+    },
+    pricingSection: {
+        enabled: true,
+        title: 'Mes Formules',
+        subtitle: 'Des accompagnements adaptés à vos besoins.',
+        planIds: [],
     }
 };
 
@@ -424,6 +442,13 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     const serviceImageRefs = useRef<(HTMLInputElement | null)[]>([]);
     const ctaImageRef = useRef<HTMLInputElement>(null);
 
+    const plansQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: counselorPlans } = useCollection<Plan>(plansQuery);
+
+
     const userDocRef = useMemoFirebase(() => {
         if (!user) return null;
         return doc(firestore, 'users', user.uid);
@@ -434,7 +459,8 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         aboutSection: z.infer<typeof aboutSchema>, 
         interestsSection: z.infer<typeof interestsSchema>, 
         servicesSection: z.infer<typeof servicesSchema>,
-        ctaSection: z.infer<typeof ctaSchema> 
+        ctaSection: z.infer<typeof ctaSchema>,
+        pricingSection: z.infer<typeof pricingSchema>,
     }>({
         resolver: zodResolver(z.object({ 
             attentionSection: attentionSchema, 
@@ -442,6 +468,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
             interestsSection: interestsSchema, 
             servicesSection: servicesSchema,
             ctaSection: ctaSchema,
+            pricingSection: pricingSchema,
         })),
         defaultValues: {
             attentionSection: defaultMiniSiteConfig.attentionSection,
@@ -449,6 +476,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
             interestsSection: defaultMiniSiteConfig.interestsSection,
             servicesSection: defaultMiniSiteConfig.servicesSection,
             ctaSection: defaultMiniSiteConfig.ctaSection,
+            pricingSection: defaultMiniSiteConfig.pricingSection,
         },
         control,
     });
@@ -490,6 +518,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                     interestsSection: interestsData,
                     servicesSection: data.servicesSection,
                     ctaSection: data.ctaSection,
+                    pricingSection: data.pricingSection,
                 },
             }, { merge: true });
             toast({ title: "Paramètres enregistrés", description: "Vos sections ont été mises à jour." });
@@ -503,7 +532,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests', 'services', 'cta']} className="w-full space-y-4">
+                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests', 'services', 'pricing', 'cta']} className="w-full space-y-4">
                     <AccordionItem value="attention" className="border rounded-lg bg-background">
                          <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Attention"</AccordionTrigger>
                          <AccordionContent className="p-4 border-t">
@@ -666,6 +695,87 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                             </div>
                         </AccordionContent>
                     </AccordionItem>
+                    
+                    <AccordionItem value="pricing" className="border rounded-lg bg-background">
+                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Formules"</AccordionTrigger>
+                        <AccordionContent className="p-4 border-t">
+                            <div className="space-y-6">
+                                <FormField control={form.control} name="pricingSection.enabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Affichez vos formules sur votre page.</FormDescription></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="pricingSection.title" render={({ field }) => (
+                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="pricingSection.subtitle" render={({ field }) => (
+                                    <FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField
+                                  control={form.control}
+                                  name="pricingSection.planIds"
+                                  render={() => (
+                                    <FormItem>
+                                      <div className="mb-4">
+                                        <FormLabel className="text-base">Formules à afficher</FormLabel>
+                                        <FormDescription>
+                                          Sélectionnez jusqu'à 3 modèles de prestation à afficher.
+                                        </FormDescription>
+                                      </div>
+                                      <div className="space-y-2">
+                                      {counselorPlans && counselorPlans.length > 0 ? counselorPlans.map((plan) => (
+                                        <FormField
+                                          key={plan.id}
+                                          control={form.control}
+                                          name="pricingSection.planIds"
+                                          render={({ field }) => {
+                                            return (
+                                              <FormItem
+                                                key={plan.id}
+                                                className="flex flex-row items-start space-x-3 space-y-0"
+                                              >
+                                                <FormControl>
+                                                  <Checkbox
+                                                    checked={field.value?.includes(plan.id)}
+                                                    onCheckedChange={(checked) => {
+                                                      const currentValue = field.value || [];
+                                                      if (checked) {
+                                                        if (currentValue.length < 3) {
+                                                          field.onChange([...currentValue, plan.id]);
+                                                        } else {
+                                                            toast({ title: "Limite atteinte", description: "Vous ne pouvez sélectionner que 3 formules au maximum.", variant: "destructive" });
+                                                            // Revert checkbox state visually if limit is reached
+                                                            const checkbox = document.getElementById(`plan-${plan.id}`) as HTMLInputElement;
+                                                            if (checkbox) checkbox.checked = false;
+                                                        }
+                                                      } else {
+                                                        field.onChange(
+                                                          currentValue.filter(
+                                                            (value) => value !== plan.id
+                                                          )
+                                                        );
+                                                      }
+                                                    }}
+                                                    id={`plan-${plan.id}`}
+                                                  />
+                                                </FormControl>
+                                                <FormLabel className="font-normal">
+                                                  {plan.name} ({plan.price}€)
+                                                </FormLabel>
+                                              </FormItem>
+                                            )
+                                          }}
+                                        />
+                                      )) : <p className="text-sm text-muted-foreground">Aucun modèle de prestation trouvé. Créez-en un dans l'onglet Facturation.</p>}
+                                      </div>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
 
                     <AccordionItem value="cta" className="border rounded-lg bg-background">
                         <AccordionTrigger className="p-4 font-medium hover:no-underline">Section Appel à l'Action (CTA)</AccordionTrigger>
@@ -740,6 +850,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
                 features: formData.interestsSection.features.map((f: {value: string}) => f.value),
             },
             servicesSection: formData.servicesSection,
+            pricingSection: formData.pricingSection,
             ctaSection: formData.ctaSection,
         }
     };
@@ -758,6 +869,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.interestsSection?.enabled && <InterestsSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.servicesSection?.enabled && <CounselorServicesSection counselor={counselorPreviewData} />}
+             {counselorPreviewData.miniSite.pricingSection?.enabled && <CounselorPricingSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
           </div>
         </SheetContent>
@@ -800,6 +912,7 @@ export default function MiniSitePage() {
               services: servicesData,
             },
             ctaSection: { ...defaultMiniSiteConfig.ctaSection, ...(userData.miniSite.ctaSection || {}) },
+            pricingSection: { ...defaultMiniSiteConfig.pricingSection, ...(userData.miniSite.pricingSection || {})},
         });
     } else {
         form.reset(defaultMiniSiteConfig);
@@ -858,3 +971,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
