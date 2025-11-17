@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -301,7 +300,7 @@ export default function BillingPage() {
     const [quoteToDelete, setQuoteToDelete] = React.useState<Quote | null>(null);
     const [invoiceToDelete, setInvoiceToDelete] = React.useState<Invoice | null>(null);
     const { agency, isLoading: isAgencyLoading, personalization } = useAgency();
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSending, setIsSending] = React.useState<string | null>(null);
@@ -362,7 +361,7 @@ export default function BillingPage() {
         return filteredInvoices;
     }, [allInvoices, showUnpaidInvoicesOnly, invoiceSearch]);
     
-    const isLoading = isAgencyLoading || areQuotesLoading || areInvoicesLoading;
+    const isLoading = isAgencyLoading || areQuotesLoading || areInvoicesLoading || isUserLoading;
     
     const handleEdit = (quote: Quote) => {
         setEditingQuote(quote);
@@ -768,13 +767,13 @@ export default function BillingPage() {
     };
     
     const handleResendQuote = async (quote: Quote) => {
-        if (!user || !personalization) return;
+        if (!user || !personalization || !agency) return;
         setIsSending(quote.id);
         const result = await sendQuote({
             quote,
             emailSettings: personalization.emailSettings,
             legalInfo: personalization.legalInfo,
-            agencyId: agency?.id || 'vapps-agency'
+            agencyId: agency.id,
         });
         if (result.success) {
             toast({ title: 'Devis renvoyé', description: `Le devis ${quote.quoteNumber} a été renvoyé.` });
@@ -831,10 +830,16 @@ export default function BillingPage() {
                                             <DialogTitle>{editingQuote ? 'Modifier le Devis' : 'Nouveau Devis'}</DialogTitle>
                                         </DialogHeader>
                                         <div className="flex-1 overflow-y-auto pr-6 -mr-6">
-                                            <NewQuoteForm 
-                                              setOpen={setIsQuoteFormOpen} 
-                                              initialData={editingQuote}
-                                            />
+                                            {!isUserLoading && user ? (
+                                                <NewQuoteForm 
+                                                  setOpen={setIsQuoteFormOpen} 
+                                                  initialData={editingQuote}
+                                                />
+                                            ) : (
+                                                <div className="flex justify-center items-center h-full">
+                                                    <Loader2 className="h-8 w-8 animate-spin" />
+                                                </div>
+                                            )}
                                         </div>
                                     </DialogContent>
                                 </Dialog>
@@ -1081,3 +1086,5 @@ export default function BillingPage() {
         </div>
     );
 }
+
+    

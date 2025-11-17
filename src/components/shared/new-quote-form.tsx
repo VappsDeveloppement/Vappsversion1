@@ -17,7 +17,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useAgency } from '@/context/agency-provider';
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useUser } from '@/firebase/provider';
 import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, ChevronDown, Send, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
@@ -31,7 +31,7 @@ import type { Plan } from './plan-management';
 import { sendQuote } from '@/app/actions/quote';
 
 
-type User = {
+type ClientUser = {
   id: string;
   firstName: string;
   lastName: string;
@@ -70,7 +70,7 @@ type Quote = {
     contractId?: string;
     contractContent?: string;
     contractTitle?: string;
-    agencyId: string;
+    counselorId: string;
     agencyInfo?: any;
 }
 
@@ -114,40 +114,40 @@ interface NewQuoteFormProps {
 
 export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     const { agency, personalization } = useAgency();
+    const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSending, setIsSending] = React.useState(false);
     
     // Fetch clients
     const usersQuery = useMemoFirebase(() => {
-        if (!agency) return null;
-        return query(collection(firestore, 'users'), where('agencyId', '==', agency.id), where('role', 'in', ['membre', 'prospect']));
-    }, [agency, firestore]);
-    const { data: clients, isLoading: areClientsLoading } = useCollection<User>(usersQuery);
+        if (!user || !user.uid) return null;
+        return query(collection(firestore, 'users'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<ClientUser>(usersQuery);
 
     // Fetch plans
     const plansQuery = useMemoFirebase(() => {
-        if (!agency) return null;
-        return collection(firestore, 'agencies', agency.id, 'plans');
-    }, [agency, firestore]);
+        return collection(firestore, 'plans');
+    }, [firestore]);
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansQuery);
     
     // Fetch contracts
     const contractsQuery = useMemoFirebase(() => {
-        if (!agency) return null;
-        return collection(firestore, 'agencies', agency.id, 'contracts');
-    }, [agency, firestore]);
+        if (!user || !user.uid) return null;
+        return query(collection(firestore, 'contracts'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
     const { data: contracts, isLoading: areContractsLoading } = useCollection<Contract>(contractsQuery);
 
     const [isClientPopoverOpen, setIsClientPopoverOpen] = React.useState(false);
 
-    const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
-    const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
+    const isVatSubject = personalization?.legalInfo?.isVatSubject ?? false;
+    const defaultTaxRate = isVatSubject ? (parseFloat(personalization?.legalInfo?.vatRate) || 20) : 0;
 
     const generateQuoteNumber = async () => {
-        if (!agency) return `DEVIS-${new Date().getFullYear()}-0001`;
-        const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
-        const q = query(quotesCollectionRef);
+        if (!user) return `DEVIS-${new Date().getFullYear()}-0001`;
+        const quotesCollectionRef = collection(firestore, 'quotes');
+        const q = query(quotesCollectionRef, where("counselorId", "==", user.uid));
         const querySnapshot = await getDocs(q);
         const now = new Date();
         const year = now.getFullYear();
@@ -183,11 +183,11 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     });
 
     React.useEffect(() => {
-        if (!initialData && agency) {
+        if (!initialData && user) {
             generateQuoteNumber().then(num => form.setValue('quoteNumber', num));
             form.setValue('validationCode', generateValidationCode());
         }
-    }, [!initialData, agency, form]);
+    }, [!initialData, user, form]);
     
     React.useEffect(() => {
         if (initialData) {
@@ -200,11 +200,11 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 validationCode: initialData.validationCode || generateValidationCode(),
             });
         } else {
-             const isVatSubject = agency?.personalization?.legalInfo?.isVatSubject ?? false;
-            const defaultTaxRate = isVatSubject ? (parseFloat(agency?.personalization?.legalInfo?.vatRate) || 20) : 0;
+            const isVatSubject = personalization?.legalInfo?.isVatSubject ?? false;
+            const defaultTaxRate = isVatSubject ? (parseFloat(personalization?.legalInfo?.vatRate) || 20) : 0;
             form.setValue('tax', defaultTaxRate);
         }
-    }, [initialData, agency, form, clients]);
+    }, [initialData, personalization, form, clients]);
 
 
     const { fields, append, remove } = useFieldArray({
@@ -230,8 +230,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
     const handleSaveQuote = async (values: z.infer<typeof quoteFormSchema>): Promise<string | undefined> => {
         const selectedClient = clients?.find(c => c.id === values.clientId);
-        if (!agency || !selectedClient) {
-            toast({ title: "Erreur", description: "Agence ou client manquant.", variant: "destructive"});
+        if (!user || !selectedClient) {
+            toast({ title: "Erreur", description: "Conseiller ou client manquant.", variant: "destructive"});
             return;
         }
 
@@ -240,12 +240,12 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
         const quoteData = {
             ...values,
+            counselorId: user.uid,
             contractId: isContractSelected ? values.contractId : undefined,
             contractTitle: isContractSelected ? selectedContract?.title : undefined,
             contractContent: isContractSelected ? selectedContract?.content : undefined,
             issueDate: values.issueDate.toISOString().split('T')[0], // format as YYYY-MM-DD
             expiryDate: values.expiryDate?.toISOString().split('T')[0],
-            agencyId: agency.id,
             agencyInfo: personalization.legalInfo,
             clientInfo: {
                 id: selectedClient.id,
@@ -259,12 +259,12 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         
         try {
             if (initialData) {
-                const quoteDocRef = doc(firestore, 'agencies', agency.id, 'quotes', initialData.id);
+                const quoteDocRef = doc(firestore, 'quotes', initialData.id);
                 await setDocumentNonBlocking(quoteDocRef, quoteData, { merge: true });
                 toast({ title: "Devis mis à jour", description: "Le devis a été sauvegardé avec succès."});
                 return initialData.id;
             } else {
-                const quotesCollectionRef = collection(firestore, 'agencies', agency.id, 'quotes');
+                const quotesCollectionRef = collection(firestore, 'quotes');
                 const newDocRef = doc(quotesCollectionRef);
                 await setDocumentNonBlocking(newDocRef, { ...quoteData, id: newDocRef.id }, {});
                 toast({ title: "Devis créé", description: "Le devis a été sauvegardé avec succès."});
@@ -296,7 +296,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
         const quoteId = await handleSaveQuote(values);
 
-        if (quoteId && agency && selectedClient) {
+        if (quoteId && user && selectedClient && agency) {
             const isContractSelected = values.contractId && values.contractId !== 'none';
             
             const quoteDataForEmail: any = {
@@ -326,7 +326,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
             if (result.success) {
                 // Update status on the client side after successful email send
-                const quoteRef = doc(firestore, 'agencies', agency.id, 'quotes', quoteId);
+                const quoteRef = doc(firestore, 'quotes', quoteId);
                 await setDocumentNonBlocking(quoteRef, { status: 'sent' }, { merge: true });
                 toast({ title: "E-mail envoyé", description: `Le devis a été envoyé à ${selectedClient.email}.`});
                 setOpen(false);
@@ -363,10 +363,10 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                         {/* Main Quote Editor */}
                         <div className="grid grid-cols-2 gap-8">
                             <div>
-                                <h3 className="font-semibold">{agency?.personalization.legalInfo?.companyName || 'Votre Agence'}</h3>
+                                <h3 className="font-semibold">{personalization.legalInfo?.companyName || 'Votre Nom'}</h3>
                                 <p className="text-sm text-muted-foreground">
-                                    {agency?.personalization.legalInfo?.addressStreet}<br/>
-                                    {agency?.personalization.legalInfo?.addressZip} {agency?.personalization.legalInfo?.addressCity}
+                                    {personalization.legalInfo?.addressStreet}<br/>
+                                    {personalization.legalInfo?.addressZip} {personalization.legalInfo?.addressCity}
                                 </p>
                             </div>
                             <div className="text-right">
@@ -685,3 +685,5 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
+
+    
