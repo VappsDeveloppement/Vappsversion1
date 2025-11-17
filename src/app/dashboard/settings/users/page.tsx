@@ -1,415 +1,146 @@
+"use client";
 
-'use client';
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
-import React, { useMemo, useState, useEffect } from "react";
-import { collection, query, where, doc, getDocs } from "firebase/firestore";
-import { useAuth, useFirestore, useUser as useFirebaseUser } from "@/firebase/provider";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  LogOut,
+  Users,
+  Home,
+  LayoutGrid,
+  LifeBuoy,
+  Mails,
+  CreditCard,
+  Palette,
+  ShieldCheck,
+  UserCircle
+} from "lucide-react";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+  SidebarTrigger,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { Logo } from "@/components/shared/logo";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useToast } from "@/hooks/use-toast";
-import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2 } from "lucide-react";
-import { Textarea } from "@/components/ui/textarea";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import { useUser, useAuth } from "@/firebase";
+import React from "react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-type User = {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  role: 'superadmin' | 'membre'; // Global role
-  dateJoined: string;
-  phone?: string;
-  address?: string;
-  zipCode?: string;
-  city?: string;
-  socialSecurityNumber?: string;
-  franceTravailId?: string;
-  message?: string;
-};
+const adminMenuItems = [
+  { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
+  { href: "/admin/billing", label: "Facturation & Devis", icon: <CreditCard /> },
+  { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
+  { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
+];
 
-type Membership = {
-    id: string;
-    userId: string;
-    agencyId: string;
-    role: 'admin' | 'dpo' | 'conseiller' | 'membre';
-}
+const settingsMenuItems = [
+    { href: "/admin/settings/profile", label: "Mon Profil Public", icon: <UserCircle /> },
+    { href: "/admin/settings/users", label: "Utilisateurs", icon: <Users /> },
+    { href: "/admin/settings/personalization", label: "Personnalisation", icon: <Palette /> },
+    { href: "/admin/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
+]
 
-const baseUserSchema = z.object({
-  id: z.string().optional(),
-  firstName: z.string().min(1, "Le prénom est requis."),
-  lastName: z.string().min(1, "Le nom est requis."),
-  email: z.string().email("L'adresse email n'est pas valide."),
-  phone: z.string().optional(),
-  address: z.string().optional(),
-  zipCode: z.string().optional(),
-  city: z.string().optional(),
-  role: z.enum(['admin', 'dpo', 'conseiller', 'membre'], { required_error: "Le rôle dans l'agence est requis." }),
-  password: z.string().optional(),
-}).refine(data => {
-    if (!data.id && (!data.password || data.password.length < 6)) {
-        return false;
-    }
-    return true;
-}, {
-    message: "Un mot de passe de 6 caractères minimum est requis pour un nouvel utilisateur.",
-    path: ["password"],
-});
-
-
-export default function UsersPage() {
-  const { agency, isLoading: isAgencyLoading } = useAgency();
-  const firestore = useFirestore();
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const { user } = useUser();
   const auth = useAuth();
-  const { user: firebaseAuthUser, isUserLoading: isAuthLoading } = useFirebaseUser();
-  const { toast } = useToast();
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState('all');
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingUser, setEditingUser] = useState<(User & { membership?: Membership }) | null>(null);
-  const [userToDelete, setUserToDelete] = useState<User | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
-
-  const membershipsQuery = useMemoFirebase(() => {
-    if (!agency) return null;
-    return query(collection(firestore, 'memberships'), where('agencyId', '==', agency.id));
-  }, [agency, firestore]);
-
-  const { data: memberships, isLoading: areMembershipsLoading } = useCollection<Membership>(membershipsQuery);
-
-  const agencyUserIds = useMemo(() => memberships?.map(m => m.userId) || [], [memberships]);
-
-  const usersQuery = useMemoFirebase(() => {
-    if (agencyUserIds.length === 0) return null;
-    return query(collection(firestore, 'users'), where('id', 'in', agencyUserIds.slice(0, 30)));
-  }, [agencyUserIds]);
-
-  const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
-
-  const isLoading = isAgencyLoading || isAuthLoading || areMembershipsLoading || areUsersLoading;
-
-  const usersWithRoles = useMemo(() => {
-    if (!users || !memberships) return [];
-    
-    let processedUsers = users.map(user => {
-        const membership = memberships.find(m => m.userId === user.id);
-        return { ...user, membership };
-    });
-
-    if (roleFilter !== 'all') {
-        processedUsers = processedUsers.filter(u => u.membership?.role === roleFilter);
-    }
-    
-    if (searchTerm) {
-        const lowerSearch = searchTerm.toLowerCase();
-        processedUsers = processedUsers.filter(user => 
-            (user.firstName.toLowerCase().includes(lowerSearch)) ||
-            (user.lastName.toLowerCase().includes(lowerSearch)) ||
-            (user.email.toLowerCase().includes(lowerSearch))
-        );
-    }
-
-    return processedUsers;
-  }, [users, memberships, searchTerm, roleFilter]);
+  const router = useRouter();
   
-  const form = useForm<z.infer<typeof baseUserSchema>>({
-    resolver: zodResolver(baseUserSchema),
-    defaultValues: {
-        id: '',
-        firstName: '',
-        lastName: '',
-        email: '',
-        phone: '',
-        address: '',
-        zipCode: '',
-        city: '',
-        role: 'membre',
-        password: '',
-    }
-  });
+  const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
-  const handleEdit = (user: User & { membership?: Membership }) => {
-    setEditingUser(user);
-    form.reset({
-        id: user.id,
-        firstName: user.firstName,
-        lastName: user.lastName,
-        email: user.email,
-        phone: user.phone || '',
-        address: user.address || '',
-        zipCode: user.zipCode || '',
-        city: user.city || '',
-        role: user.membership?.role || 'membre',
-        password: '',
-    });
-    setIsFormOpen(true);
-  };
-  
-  const handleOpenDialog = (open: boolean) => {
-    setIsFormOpen(open);
-    if(!open) {
-      setEditingUser(null);
-      form.reset();
-    }
-  }
-
-  const handleNew = () => {
-    setEditingUser(null);
-    form.reset({
-      id: '',
-      firstName: '',
-      lastName: '',
-      email: '',
-      phone: '',
-      address: '',
-      zipCode: '',
-      city: '',
-      role: 'membre',
-      password: '',
-    });
-    setIsFormOpen(true);
-  };
-  
-  const onSubmit = async (values: z.infer<typeof baseUserSchema>) => {
-    if (!agency) return;
-    setIsSubmitting(true);
-
-    try {
-        let userId = editingUser?.id;
-
-        if (editingUser) { // Updating
-            const userDocRef = doc(firestore, "users", userId!);
-            await setDocumentNonBlocking(userDocRef, {
-                firstName: values.firstName,
-                lastName: values.lastName,
-                phone: values.phone,
-                address: values.address,
-                zipCode: values.zipCode,
-                city: values.city,
-            }, { merge: true });
-
-        } else { // Creating
-            const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password!);
-            userId = userCredential.user.uid;
-
-            const userDocRef = doc(firestore, "users", userId);
-            await setDocumentNonBlocking(userDocRef, {
-                id: userId,
-                firstName: values.firstName,
-                lastName: values.lastName,
-                email: values.email,
-                phone: values.phone,
-                address: values.address,
-                zipCode: values.zipCode,
-                city: values.city,
-                role: 'membre', // Global role is always 'membre'
-                dateJoined: new Date().toISOString(),
-            }, {});
-        }
-
-        const membershipRef = doc(firestore, 'memberships', `${userId}_${agency.id}`);
-        await setDocumentNonBlocking(membershipRef, {
-            userId,
-            agencyId: agency.id,
-            role: values.role,
-        }, { merge: true });
-
-        toast({ title: "Succès", description: `Utilisateur ${editingUser ? 'modifié' : 'créé'} avec succès.` });
-        setIsFormOpen(false);
-
-    } catch (error: any) {
-        console.error("Error saving user:", error);
-        const message = error.code === 'auth/email-already-in-use' ? "Cet email est déjà utilisé." : "Une erreur est survenue lors de la sauvegarde.";
-        toast({ title: "Erreur", description: message, variant: "destructive" });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-
-  const handleDeleteConfirm = async () => {
-    if (!userToDelete || !agency) return;
-    try {
-        const membershipToDelete = memberships?.find(m => m.userId === userToDelete.id);
-        if (membershipToDelete) {
-            const membershipRef = doc(firestore, 'memberships', membershipToDelete.id);
-            await deleteDocumentNonBlocking(membershipRef);
-        }
-        
-        const allMembershipsQuery = query(collection(firestore, 'memberships'), where('userId', '==', userToDelete.id));
-        const allMembershipsSnap = await getDocs(allMembershipsQuery);
-        
-        if (allMembershipsSnap.size <= 1) { 
-            const userRef = doc(firestore, 'users', userToDelete.id);
-            await deleteDocumentNonBlocking(userRef);
-            toast({ title: "Utilisateur supprimé", description: "L'utilisateur et son adhésion à l'agence ont été supprimés." });
-        } else {
-            toast({ title: "Adhésion supprimée", description: "L'utilisateur a été retiré de votre agence." });
-        }
-        
-    } catch (error) {
-        console.error("Error deleting user membership:", error);
-        toast({ title: "Erreur", description: "Impossible de supprimer l'adhésion de l'utilisateur.", variant: "destructive" });
-    } finally {
-        setUserToDelete(null);
-    }
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/');
   };
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline">Utilisateurs</h1>
-        <p className="text-muted-foreground">Gérez les utilisateurs et leurs permissions pour l'agence : **{agency?.name || '...'}**</p>
-      </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Gestion des utilisateurs de l'agence</CardTitle>
-          <CardDescription>Invitez, modifiez ou supprimez des utilisateurs.</CardDescription>
-          <div className="flex justify-between items-center pt-4">
-              <div className="flex gap-4">
-                  <Input 
-                    placeholder="Rechercher par nom ou email..." 
-                    value={searchTerm} 
-                    onChange={(e) => setSearchTerm(e.target.value)} 
-                    className="w-full sm:w-[300px]" 
-                  />
-                  <Select value={roleFilter} onValueChange={setRoleFilter}>
-                    <SelectTrigger className="w-[180px]">
-                        <SelectValue placeholder="Filtrer par rôle" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">Tous les rôles</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="dpo">DPO</SelectItem>
-                        <SelectItem value="conseiller">Conseiller</SelectItem>
-                        <SelectItem value="membre">Membre</SelectItem>
-                    </SelectContent>
-                  </Select>
+    <SidebarProvider>
+      <div className="flex">
+        <Sidebar>
+          <SidebarHeader>
+            <div className="flex justify-between items-center">
+                <Logo />
+                <p className="px-2 py-1 text-xs font-semibold rounded-md bg-destructive text-destructive-foreground">Super Admin</p>
+            </div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarMenu>
+              {adminMenuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href}>
+                    <SidebarMenuButton isActive={pathname === item.href}>
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+               <Accordion type="single" collapsible defaultValue={activeSettingsPath ? "settings-menu" : undefined} className="w-full">
+                    <AccordionItem value="settings-menu" className="border-none">
+                        <AccordionTrigger className="w-full flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] text-black hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50" data-active={activeSettingsPath}>
+                            <Users className="h-4 w-4 shrink-0"/>
+                            <span className="truncate flex-1">Administration</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-0 pl-6 space-y-1">
+                            {settingsMenuItems.map(item => (
+                               <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
+                                 {React.cloneElement(item.icon, { className: "h-4 w-4"})}
+                                 <span>{item.label}</span>
+                               </Link>
+                            ))}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </SidebarMenu>
+            <SidebarMenu className="mt-auto">
+                <SidebarMenuItem>
+                    <Link href="/dashboard">
+                        <SidebarMenuButton>
+                            <Home />
+                            <span>Retour à l'app</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">
+              <Avatar>
+                <AvatarImage src="https://picsum.photos/seed/admin-avatar/40/40" data-ai-hint="admin avatar" />
+                <AvatarFallback>A</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden">
+                <p className="font-semibold text-sm truncate">Super Admin</p>
               </div>
-              <Dialog open={isFormOpen} onOpenChange={handleOpenDialog}>
-                  <DialogTrigger asChild>
-                      <Button onClick={handleNew}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un utilisateur
-                      </Button>
-                  </DialogTrigger>
-                  <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle>{editingUser ? "Modifier l'utilisateur" : "Créer un nouvel utilisateur"}</DialogTitle>
-                    </DialogHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pr-2">
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                          <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        </div>
-                        <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                          <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
-                        </div>
-                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle dans l'agence</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="admin">Admin</SelectItem><SelectItem value="dpo">DPO</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                        <FormField
-                          control={form.control}
-                          name="password"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
-                              <FormControl>
-                                <div className="relative">
-                                  <Input type={showPassword ? 'text' : 'password'} {...field} />
-                                  <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
-                                </div>
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <DialogFooter>
-                          <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
-                          <Button type="submit" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            {editingUser ? 'Sauvegarder les modifications' : "Créer l'utilisateur"}
-                          </Button>
-                        </DialogFooter>
-                      </form>
-                    </Form>
-                  </DialogContent>
-              </Dialog>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nom</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Rôle</TableHead>
-                <TableHead>Date d'inscription</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                [...Array(5)].map((_, i) => (
-                    <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-                ))
-              ) : usersWithRoles.length > 0 ? (
-                usersWithRoles.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>{user.membership && <Badge>{user.membership.role}</Badge>}</TableCell>
-                    <TableCell>{user.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => handleEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setUserToDelete(user)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Supprimer</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun utilisateur trouvé pour cette agence.</TableCell></TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-      
-      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    Cette action supprimera l'utilisateur de cette agence. S'il n'est rattaché à aucune autre agence, son compte entier sera supprimé. Cette action est irréversible.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </div>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset>
+            <header className="flex items-center justify-between p-4 border-b md:justify-end">
+                <div className="md:hidden">
+                    <Logo />
+                </div>
+                <SidebarTrigger className="md:hidden" />
+            </header>
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
+                {children}
+            </main>
+        </SidebarInset>
+      </div>
+    </SidebarProvider>
   );
 }

@@ -1,476 +1,146 @@
+"use client";
 
-
-'use client';
-
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import {
+  LogOut,
+  Users,
+  Home,
+  LayoutGrid,
+  LifeBuoy,
+  Mails,
+  CreditCard,
+  Palette,
+  ShieldCheck,
+  UserCircle
+} from "lucide-react";
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+  SidebarTrigger,
+  SidebarInset,
+} from "@/components/ui/sidebar";
+import { Logo } from "@/components/shared/logo";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useAgency } from "@/context/agency-provider";
-import { useToast } from "@/hooks/use-toast";
-import { useAuth, useFirestore } from "@/firebase/provider";
-import { collection, doc, query, where, getDocs } from "firebase/firestore";
-import { setDocumentNonBlocking, useCollection, useMemoFirebase, deleteDocumentNonBlocking } from "@/firebase";
-import React, { useEffect, useMemo, useState } from "react";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { AlertTriangle, User, Users, Check, Edit, Trash2, Loader2, Info } from "lucide-react";
-import { differenceInDays } from "date-fns";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { useRouter } from "next/navigation";
-import { sendGdprEmail } from "@/app/actions/gdpr";
+import { useUser, useAuth } from "@/firebase";
+import React from "react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
+const adminMenuItems = [
+  { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
+  { href: "/admin/billing", label: "Facturation & Devis", icon: <CreditCard /> },
+  { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
+  { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
+];
 
-const defaultGdprSettings = {
-  inactivityAlertDays: 365,
-  dpoName: "",
-  dpoEmail: "",
-  dpoPhone: "",
-  dpoAddress: "",
-};
+const settingsMenuItems = [
+    { href: "/admin/settings/profile", label: "Mon Profil Public", icon: <UserCircle /> },
+    { href: "/admin/settings/users", label: "Utilisateurs", icon: <Users /> },
+    { href: "/admin/settings/personalization", label: "Personnalisation", icon: <Palette /> },
+    { href: "/admin/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
+]
 
-type GdprRequest = {
-  id: string;
-  name: string;
-  email: string;
-  phone: string;
-  subject: string;
-  message: string;
-  status: 'new' | 'in_progress' | 'closed';
-  createdAt: string;
-  agencyId: string;
-};
-
-type UserData = {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    lastSignInTime?: string;
-    gdprReportedAt?: string;
-};
-
-export default function GdprPage() {
-  const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
-  const { toast } = useToast();
-  const firestore = useFirestore();
+export default function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const pathname = usePathname();
+  const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
-  const [settings, setSettings] = useState(personalization?.gdprSettings || defaultGdprSettings);
-  const [userToDelete, setUserToDelete] = useState<UserData | null>(null);
-  const [requestToProcess, setRequestToProcess] = useState<GdprRequest | null>(null);
-  const [isProcessing, setIsProcessing] = useState<boolean>(false);
-
-
-  const gdprRequestsCollectionRef = useMemoFirebase(() => {
-    if (!agency) return null;
-    return query(collection(firestore, 'gdpr_requests'), where('agencyId', '==', agency.id));
-  }, [agency, firestore]);
-
-  const { data: allGdprRequests, isLoading: areGdprRequestsLoading } = useCollection<GdprRequest>(gdprRequestsCollectionRef);
-
-  const gdprRequests = useMemo(() => {
-      if (!allGdprRequests) return [];
-      return allGdprRequests.filter(req => req.status !== 'closed');
-  }, [allGdprRequests])
-
-  const membershipsQuery = useMemoFirebase(() => {
-    if (!agency) return null;
-    return query(collection(firestore, 'memberships'), where('agencyId', '==', agency.id));
-  }, [agency, firestore]);
-  const { data: memberships, isLoading: areMembershipsLoading } = useCollection(membershipsQuery);
-
-  const agencyUserIds = useMemo(() => {
-    if (!memberships) return [];
-    return memberships.map((m: any) => m.userId);
-  }, [memberships]);
-
-  const agencyUsersQuery = useMemoFirebase(() => {
-    if (!agencyUserIds || agencyUserIds.length === 0) return null;
-    const usersCollectionRef = collection(firestore, 'users');
-    return query(usersCollectionRef, where('__name__', 'in', agencyUserIds));
-  }, [agencyUserIds, firestore]);
   
-  const { data: agencyUsers, isLoading: areUsersLoading } = useCollection<UserData>(agencyUsersQuery);
-  
-  const userForRequest = useMemo(() => {
-    if (!requestToProcess || !agencyUsers) return null;
-    return agencyUsers.find(u => u.email === requestToProcess.email) || null;
-  }, [requestToProcess, agencyUsers]);
+  const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
-
-  const inactiveUsers = useMemo(() => {
-    if (!agencyUsers || !settings.inactivityAlertDays) return [];
-
-    const now = new Date();
-    return agencyUsers.filter(user => {
-      const lastActiveDate = user.gdprReportedAt ? new Date(user.gdprReportedAt) : (user.lastSignInTime ? new Date(user.lastSignInTime) : null);
-      if (!lastActiveDate) return false; 
-
-      return differenceInDays(now, lastActiveDate) > settings.inactivityAlertDays;
-    });
-  }, [agencyUsers, settings.inactivityAlertDays]);
-
-
-  useEffect(() => {
-    if (personalization?.gdprSettings) {
-      setSettings(prev => ({ ...defaultGdprSettings, ...prev, ...personalization.gdprSettings }));
-    }
-  }, [personalization]);
-  
-  const handleFieldChange = (field: string, value: any) => {
-    setSettings(prev => ({ ...prev, [field]: value }));
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/');
   };
-
-  const handleSave = () => {
-    if (!agency) {
-      toast({ title: "Erreur", description: "Agence non trouvée.", variant: "destructive" });
-      return;
-    }
-    const agencyRef = doc(firestore, 'agencies', agency.id);
-    setDocumentNonBlocking(agencyRef, { personalization: { gdprSettings: settings } }, { merge: true });
-    toast({ title: "Paramètres enregistrés", description: "Vos paramètres RGPD ont été sauvegardés." });
-  };
-  
-  const handleReportUser = (user: UserData) => {
-    const userRef = doc(firestore, 'users', user.id);
-    setDocumentNonBlocking(userRef, { gdprReportedAt: new Date().toISOString() }, { merge: true });
-    toast({ title: "Alerte reportée", description: `L'alerte pour ${user.firstName} ${user.lastName} a été reportée.`});
-  };
-
-  const handleDeleteUserConfirm = async () => {
-    if (!userToDelete) return;
-    const userRef = doc(firestore, 'users', userToDelete.id);
-    await deleteDocumentNonBlocking(userRef);
-    toast({ title: "Utilisateur supprimé", description: `Les données de ${userToDelete.firstName} ${userToDelete.lastName} ont été supprimées de Firestore.`});
-    setUserToDelete(null);
-  }
-
-  const handleMarkRequestAsClosed = async () => {
-    if (!requestToProcess) return;
-    setIsProcessing(true);
-    try {
-        await sendGdprEmail({
-            emailSettings: personalization.emailSettings,
-            recipientEmail: requestToProcess.email,
-            recipientName: requestToProcess.name,
-            subject: 'Votre demande a été traitée',
-            textBody: `Bonjour ${requestToProcess.name},\n\nVotre demande concernant vos données personnelles a été traitée par nos services.\n\nCordialement,\n${personalization.emailSettings.fromName}`,
-            htmlBody: `<p>Bonjour ${requestToProcess.name},</p><p>Votre demande concernant vos données personnelles a été traitée par nos services.</p><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
-        });
-        
-        const requestRef = doc(firestore, 'gdpr_requests', requestToProcess.id);
-        await setDocumentNonBlocking(requestRef, { status: 'closed' }, { merge: true });
-        
-        toast({ title: "Demande traitée", description: "La demande a été marquée comme fermée et un e-mail a été envoyé."});
-        setRequestToProcess(null);
-    } catch (e) {
-        toast({ title: "Erreur", description: "Impossible de traiter la demande.", variant: "destructive" });
-    } finally {
-        setIsProcessing(false);
-    }
-  };
-
-  const handleGoToUserEdit = () => {
-    if (!userForRequest) return;
-    router.push('/dashboard/settings/users');
-    setRequestToProcess(null);
-    toast({ title: "Redirection", description: `Veuillez rechercher ${userForRequest.email} dans la liste pour le modifier.`})
-  };
-
-  const handleDeleteUserAccount = async () => {
-      if (!userForRequest) return;
-      setIsProcessing(true);
-      try {
-          await sendGdprEmail({
-              emailSettings: personalization.emailSettings,
-              recipientEmail: userForRequest.email,
-              recipientName: `${userForRequest.firstName} ${userForRequest.lastName}`,
-              subject: 'Confirmation de suppression de votre compte',
-              textBody: `Bonjour ${userForRequest.firstName},\n\nConformément à votre demande, nous vous confirmons que votre compte et vos données personnelles associées vont être supprimés de notre plateforme.\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
-              htmlBody: `<p>Bonjour ${userForRequest.firstName},</p><p>Conformément à votre demande, nous vous confirmons que votre compte et vos données personnelles associées vont être supprimés de notre plateforme.</p><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
-          });
-
-          // Delete user document
-          const userRef = doc(firestore, 'users', userForRequest.id);
-          await deleteDocumentNonBlocking(userRef);
-          
-          // Close the GDPR request
-          const requestRef = doc(firestore, 'gdpr_requests', requestToProcess!.id);
-          await setDocumentNonBlocking(requestRef, { status: 'closed' }, { merge: true });
-
-          toast({ title: "Compte supprimé", description: `L'utilisateur ${userForRequest.email} a été supprimé.` });
-          setRequestToProcess(null);
-
-      } catch (e) {
-          toast({ title: "Erreur", description: "Impossible de supprimer le compte.", variant: "destructive" });
-      } finally {
-          setIsProcessing(false);
-      }
-  }
-
-
-  const isLoading = isAgencyLoading || areUsersLoading;
-
-  if (isAgencyLoading) {
-    return (
-       <div className="space-y-8">
-            <h1 className="text-3xl font-bold font-headline">Gestion RGPD</h1>
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-1/3" />
-                    <Skeleton className="h-4 w-2/3" />
-                </CardHeader>
-                <CardContent>
-                    <Skeleton className="h-64 w-full" />
-                </CardContent>
-            </Card>
-        </div>
-    )
-  }
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline">Gestion RGPD</h1>
-        <p className="text-muted-foreground">
-          Gérez les données, la conformité RGPD et les demandes des utilisateurs de l'agence.
-        </p>
+    <SidebarProvider>
+      <div className="flex">
+        <Sidebar>
+          <SidebarHeader>
+            <div className="flex justify-between items-center">
+                <Logo />
+                <p className="px-2 py-1 text-xs font-semibold rounded-md bg-destructive text-destructive-foreground">Super Admin</p>
+            </div>
+          </SidebarHeader>
+          <SidebarContent>
+            <SidebarMenu>
+              {adminMenuItems.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <Link href={item.href}>
+                    <SidebarMenuButton isActive={pathname === item.href}>
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </Link>
+                </SidebarMenuItem>
+              ))}
+               <Accordion type="single" collapsible defaultValue={activeSettingsPath ? "settings-menu" : undefined} className="w-full">
+                    <AccordionItem value="settings-menu" className="border-none">
+                        <AccordionTrigger className="w-full flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] text-black hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50" data-active={activeSettingsPath}>
+                            <Users className="h-4 w-4 shrink-0"/>
+                            <span className="truncate flex-1">Administration</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-0 pl-6 space-y-1">
+                            {settingsMenuItems.map(item => (
+                               <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
+                                 {React.cloneElement(item.icon, { className: "h-4 w-4"})}
+                                 <span>{item.label}</span>
+                               </Link>
+                            ))}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
+            </SidebarMenu>
+            <SidebarMenu className="mt-auto">
+                <SidebarMenuItem>
+                    <Link href="/dashboard">
+                        <SidebarMenuButton>
+                            <Home />
+                            <span>Retour à l'app</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarContent>
+          <SidebarFooter>
+            <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">
+              <Avatar>
+                <AvatarImage src="https://picsum.photos/seed/admin-avatar/40/40" data-ai-hint="admin avatar" />
+                <AvatarFallback>A</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 overflow-hidden">
+                <p className="font-semibold text-sm truncate">Super Admin</p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </SidebarFooter>
+        </Sidebar>
+        <SidebarInset>
+            <header className="flex items-center justify-between p-4 border-b md:justify-end">
+                <div className="md:hidden">
+                    <Logo />
+                </div>
+                <SidebarTrigger className="md:hidden" />
+            </header>
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 bg-muted/30">
+                {children}
+            </main>
+        </SidebarInset>
       </div>
-       <Card>
-        <CardHeader>
-          <CardTitle>Demandes "Données Personnelles"</CardTitle>
-          <CardDescription>Liste des demandes soumises via le formulaire de contact.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Demandeur</TableHead>
-                <TableHead>Message</TableHead>
-                <TableHead>Date</TableHead>
-                <TableHead>Statut</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {areGdprRequestsLoading ? (
-                <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-              ) : gdprRequests && gdprRequests.length > 0 ? (
-                gdprRequests.map(request => (
-                  <TableRow key={request.id}>
-                    <TableCell>
-                      <div className="font-medium">{request.name}</div>
-                      <div className="text-sm text-muted-foreground">{request.email}</div>
-                      <div className="text-sm text-muted-foreground">{request.phone}</div>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">{request.message}</TableCell>
-                    <TableCell>{new Date(request.createdAt).toLocaleDateString('fr-FR')}</TableCell>
-                    <TableCell><Badge variant={request.status === 'new' ? 'destructive' : 'secondary'}>{request.status}</Badge></TableCell>
-                    <TableCell className="text-right">
-                       <Button variant="outline" size="sm" onClick={() => setRequestToProcess(request)}>Traiter</Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
-                    Aucune demande relative aux données personnelles.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Paramètres de conformité RGPD</CardTitle>
-          <CardDescription>Configurez les alertes et les informations du Délégué à la Protection des Données (DPO).</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <section>
-            <h3 className="text-lg font-semibold border-b pb-2 mb-4">Rétention des données</h3>
-            <div className="space-y-2 max-w-sm">
-              <Label htmlFor="inactivity-alert">Délai d'alerte pour inactivité (en jours)</Label>
-              <Input 
-                id="inactivity-alert" 
-                type="number" 
-                value={settings.inactivityAlertDays}
-                onChange={e => handleFieldChange('inactivityAlertDays', parseInt(e.target.value, 10))}
-                placeholder="Ex: 365"
-              />
-              <p className="text-xs text-muted-foreground">
-                Définit le nombre de jours d'inactivité d'un compte avant qu'une alerte de nettoyage des données ne soit générée.
-              </p>
-            </div>
-          </section>
-
-          <section>
-            <h3 className="text-lg font-semibold border-b pb-2 mb-4">Coordonnées du DPO</h3>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <Label htmlFor="dpo-name">Nom du DPO</Label>
-                  <Input 
-                    id="dpo-name" 
-                    value={settings.dpoName}
-                    onChange={e => handleFieldChange('dpoName', e.target.value)}
-                    placeholder="Jean Dupont" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dpo-email">Email du DPO</Label>
-                  <Input 
-                    id="dpo-email" 
-                    type="email" 
-                    value={settings.dpoEmail}
-                    onChange={e => handleFieldChange('dpoEmail', e.target.value)}
-                    placeholder="dpo@agence.com" 
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                 <div className="space-y-2">
-                  <Label htmlFor="dpo-phone">Téléphone du DPO</Label>
-                  <Input 
-                    id="dpo-phone" 
-                    type="tel"
-                    value={settings.dpoPhone}
-                    onChange={e => handleFieldChange('dpoPhone', e.target.value)}
-                    placeholder="01 23 45 67 89" 
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dpo-address">Adresse du DPO</Label>
-                  <Input 
-                    id="dpo-address" 
-                    value={settings.dpoAddress}
-                    onChange={e => handleFieldChange('dpoAddress', e.target.value)}
-                    placeholder="123 Rue de la Conformité, 75001 Paris" 
-                  />
-                </div>
-              </div>
-            </div>
-          </section>
-
-          <div className="flex justify-end pt-6 border-t">
-            <Button onClick={handleSave}>Enregistrer les modifications</Button>
-          </div>
-        </CardContent>
-      </Card>
-      
-       <Card>
-        <CardHeader>
-          <CardTitle>Alertes d'inactivité</CardTitle>
-          <CardDescription>
-            Liste des utilisateurs considérés comme inactifs selon le délai de {settings.inactivityAlertDays} jours.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Utilisateur</TableHead>
-                <TableHead>Dernière activité</TableHead>
-                <TableHead className="text-right">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {isLoading ? (
-                <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-              ) : inactiveUsers.length > 0 ? (
-                inactiveUsers.map(user => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="font-medium">{user.firstName} {user.lastName}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                    </TableCell>
-                    <TableCell>
-                      {user.lastSignInTime ? new Date(user.lastSignInTime).toLocaleDateString('fr-FR') : (user.gdprReportedAt ? `Reporté le ${new Date(user.gdprReportedAt).toLocaleDateString('fr-FR')}` : 'Inconnue')}
-                    </TableCell>
-                    <TableCell className="text-right space-x-2">
-                      <Button variant="outline" size="sm" onClick={() => handleReportUser(user)}>Reporter</Button>
-                      <Button variant="destructive" size="sm" onClick={() => setUserToDelete(user)}>Supprimer</Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                    Aucun utilisateur inactif.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
-        <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
-                <AlertDialogDescription>
-                   Cette action supprimera l'utilisateur <strong>{userToDelete?.firstName} {userToDelete?.lastName}</strong> de la base de données Firestore. La suppression du compte d'authentification doit être effectuée manuellement depuis la console Firebase pour des raisons de sécurité.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Annuler</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteUserConfirm} className="bg-destructive hover:bg-destructive/90">Confirmer la suppression</AlertDialogAction>
-            </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      
-      <Dialog open={!!requestToProcess} onOpenChange={open => !open && setRequestToProcess(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Traiter la demande RGPD</DialogTitle>
-            <DialogDescription>
-              Demande de {requestToProcess?.name} concernant "{requestToProcess?.subject}".
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4 py-4 text-sm">
-            <div className="space-y-1">
-              <p className="font-medium">Informations du demandeur</p>
-              <p className="text-muted-foreground">
-                {requestToProcess?.name}<br />
-                {requestToProcess?.email}<br />
-                {requestToProcess?.phone}
-              </p>
-            </div>
-            <div className="space-y-1">
-              <p className="font-medium">Message</p>
-              <p className="text-muted-foreground p-3 border rounded-md bg-muted whitespace-pre-wrap">{requestToProcess?.message}</p>
-            </div>
-             {userForRequest && (
-                <div className="space-y-1 pt-4 border-t">
-                    <p className="font-medium flex items-center gap-2"><Info className="h-4 w-4 text-blue-500" /> Un compte utilisateur est associé à cet e-mail.</p>
-                </div>
-             )}
-          </div>
-          <DialogFooter className="flex-col sm:flex-row gap-2">
-            {userForRequest && (
-                <>
-                <Button variant="destructive" onClick={handleDeleteUserAccount} disabled={isProcessing}>
-                    {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer le Compte
-                </Button>
-                <Button variant="secondary" onClick={handleGoToUserEdit} disabled={isProcessing}>
-                    <Edit className="mr-2 h-4 w-4" /> Modifier l'Utilisateur
-                </Button>
-                </>
-            )}
-             <Button onClick={handleMarkRequestAsClosed} disabled={isProcessing}>
-                {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                <Check className="mr-2 h-4 w-4" /> Marquer comme traité
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </SidebarProvider>
   );
 }

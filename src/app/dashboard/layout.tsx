@@ -9,13 +9,8 @@ import {
   LayoutDashboard,
   LogOut,
   MessageSquare,
-  Users,
-  CreditCard,
   LifeBuoy,
-  Settings,
-  ShieldCheck,
-  Palette,
-  UserCircle,
+  Users,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -37,33 +32,12 @@ import { Skeleton } from "@/components/ui/skeleton";
 import React, { useMemo } from "react";
 import { useFirestore, useAuth } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
-import { useAgency } from "@/context/agency-provider";
 
 
 const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
-  { href: "/dashboard/billing", label: "Facturation & Devis", icon: <CreditCard /> },
-];
-
-const counselorMenuItems = [
-    { href: "/dashboard/settings/profile", label: "Mon Profil Public", icon: <UserCircle /> },
-    { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
-    { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Palette /> },
-    { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
-]
-
-const administrationMenuItems = [
-    { href: "/dashboard/settings/users", label: "Utilisateurs", icon: <Users /> },
-    { href: "/dashboard/settings/personalization", label: "Personnalisation", icon: <Palette /> },
-    { href: "/dashboard/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
 ];
 
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
@@ -98,12 +72,8 @@ export default function DashboardLayout({
   
   const isLoading = isUserLoading || isUserDataLoading || !isMounted;
   
-  const activeSettingsPath = isConseiller ? counselorMenuItems.some(item => pathname === item.href) : administrationMenuItems.some(item => pathname === item.href);
-  const settingsMenu = isConseiller ? counselorMenuItems : administrationMenuItems;
-
   const handleLogout = async () => {
     await auth.signOut();
-    // For a counselor, redirect to their public page, otherwise to the main page.
     const redirectUrl = isConseiller && user ? `/c/${user.uid}` : '/';
     router.push(redirectUrl);
   };
@@ -160,22 +130,6 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
-                <Accordion type="single" collapsible defaultValue={activeSettingsPath ? "settings-menu" : undefined} className="w-full">
-                    <AccordionItem value="settings-menu" className="border-none">
-                        <AccordionTrigger className="w-full flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] text-black hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50" data-active={activeSettingsPath}>
-                            <Settings className="h-4 w-4 shrink-0"/>
-                            <span className="truncate flex-1">Administration</span>
-                        </AccordionTrigger>
-                        <AccordionContent className="p-0 pl-6 space-y-1">
-                            {settingsMenu.map(item => (
-                               <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname === item.href}>
-                                 {React.cloneElement(item.icon, { className: "h-4 w-4"})}
-                                 <span>{item.label}</span>
-                               </Link>
-                            ))}
-                        </AccordionContent>
-                    </AccordionItem>
-                </Accordion>
             </SidebarMenu>
             
             <SidebarMenu className="mt-auto">

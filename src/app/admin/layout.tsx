@@ -10,6 +10,10 @@ import {
   LayoutGrid,
   LifeBuoy,
   Mails,
+  CreditCard,
+  Palette,
+  ShieldCheck,
+  UserCircle
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -28,13 +32,21 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser, useAuth } from "@/firebase";
 import React from "react";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
+  { href: "/admin/billing", label: "Facturation & Devis", icon: <CreditCard /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
-  { href: "/admin/user-management", label: "User Management", icon: <Users /> },
   { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
 ];
+
+const settingsMenuItems = [
+    { href: "/admin/settings/profile", label: "Mon Profil Public", icon: <UserCircle /> },
+    { href: "/admin/settings/users", label: "Utilisateurs", icon: <Users /> },
+    { href: "/admin/settings/personalization", label: "Personnalisation", icon: <Palette /> },
+    { href: "/admin/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
+]
 
 export default function AdminLayout({
   children,
@@ -45,6 +57,8 @@ export default function AdminLayout({
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  
+  const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -73,6 +87,22 @@ export default function AdminLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
+               <Accordion type="single" collapsible defaultValue={activeSettingsPath ? "settings-menu" : undefined} className="w-full">
+                    <AccordionItem value="settings-menu" className="border-none">
+                        <AccordionTrigger className="w-full flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] text-black hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50" data-active={activeSettingsPath}>
+                            <Users className="h-4 w-4 shrink-0"/>
+                            <span className="truncate flex-1">Administration</span>
+                        </AccordionTrigger>
+                        <AccordionContent className="p-0 pl-6 space-y-1">
+                            {settingsMenuItems.map(item => (
+                               <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
+                                 {React.cloneElement(item.icon, { className: "h-4 w-4"})}
+                                 <span>{item.label}</span>
+                               </Link>
+                            ))}
+                        </AccordionContent>
+                    </AccordionItem>
+                </Accordion>
             </SidebarMenu>
             <SidebarMenu className="mt-auto">
                 <SidebarMenuItem>
