@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -27,6 +26,10 @@ const profileSchema = z.object({
   publicTitle: z.string().optional(),
   publicBio: z.string().optional(),
   photoUrl: z.string().optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  zipCode: z.string().optional(),
+  city: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -39,6 +42,10 @@ type UserProfile = {
   publicTitle?: string;
   publicBio?: string;
   photoUrl?: string;
+  phone?: string;
+  address?: string;
+  zipCode?: string;
+  city?: string;
 };
 
 // Helper to convert file to Base64
@@ -74,17 +81,25 @@ export default function ProfilePage() {
       publicTitle: '',
       publicBio: '',
       photoUrl: '',
+      phone: '',
+      address: '',
+      zipCode: '',
+      city: '',
     },
   });
   
   useEffect(() => {
     if (userData) {
       form.reset({
-        firstName: userData.firstName,
-        lastName: userData.lastName,
+        firstName: userData.firstName || '',
+        lastName: userData.lastName || '',
         publicTitle: userData.publicTitle || '',
         publicBio: userData.publicBio || '',
         photoUrl: userData.photoUrl || '',
+        phone: userData.phone || '',
+        address: userData.address || '',
+        zipCode: userData.zipCode || '',
+        city: userData.city || '',
       });
       setPhotoPreview(userData.photoUrl || null);
     }
@@ -248,6 +263,63 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
+                <div className="border-t pt-6 space-y-6">
+                    <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Téléphone</FormLabel>
+                        <FormControl>
+                          <Input type="tel" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Adresse</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                     <FormField
+                        control={form.control}
+                        name="zipCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Code Postal</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Ville</FormLabel>
+                            <FormControl>
+                              <Input {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                  </div>
+              </div>
+
 
               <div className="flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>
