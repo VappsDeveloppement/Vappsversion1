@@ -468,7 +468,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
 
     const plansQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid));
+        return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid), where('isPublic', '==', true));
     }, [user, firestore]);
     const { data: counselorPlans } = useCollection<Plan>(plansQuery);
 
@@ -755,7 +755,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                                       <div className="mb-4">
                                         <FormLabel className="text-base">Formules à afficher</FormLabel>
                                         <FormDescription>
-                                          Sélectionnez jusqu'à 3 modèles de prestation à afficher.
+                                          Sélectionnez jusqu'à 3 modèles de prestation à afficher (ils doivent être cochés "publics").
                                         </FormDescription>
                                       </div>
                                       <div className="space-y-2">
@@ -802,7 +802,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                                             )
                                           }}
                                         />
-                                      )) : <p className="text-sm text-muted-foreground">Aucun modèle de prestation trouvé. Créez-en un dans l'onglet Facturation.</p>}
+                                      )) : <p className="text-sm text-muted-foreground">Aucun modèle de prestation public trouvé. Créez-en un et rendez-le public dans l'onglet Facturation.</p>}
                                       </div>
                                       <FormMessage />
                                     </FormItem>

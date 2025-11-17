@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -60,6 +61,7 @@ export type Plan = {
   features: string[];
   appointmentCredits: number;
   isFeatured: boolean;
+  isPublic: boolean;
   imageUrl?: string;
   cta?: string;
   counselorId?: string; // Link to counselor
@@ -80,6 +82,7 @@ const planSchema = z.object({
   ),
   imageUrl: z.string().optional(),
   cta: z.string().optional(),
+  isPublic: z.boolean().default(false).optional(),
 });
 
 type PlanFormData = z.infer<typeof planSchema>;
@@ -118,6 +121,7 @@ export function PlanManagement() {
       appointmentCredits: 0,
       imageUrl: '',
       cta: 'Ajouter au devis',
+      isPublic: false,
     },
   });
 
@@ -150,7 +154,8 @@ export function PlanManagement() {
       features: [],
       appointmentCredits: 0,
       imageUrl: '',
-      cta: 'Ajouter au devis'
+      cta: 'Ajouter au devis',
+      isPublic: false,
     });
     setImagePreview(null);
     setIsSheetOpen(true);
@@ -181,8 +186,7 @@ export function PlanManagement() {
       ...data,
       features: data.features.map(f => f.value),
       counselorId: user.uid,
-      isPublic: false, // Ensure these plans are not public
-      isFeatured: false,
+      isFeatured: false, // Counselor plans are not featured globally
     };
 
     try {
@@ -351,6 +355,27 @@ export function PlanManagement() {
                           </div>
                         </div>
 
+                         <FormField
+                            control={form.control}
+                            name="isPublic"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="text-base">Affichage public</FormLabel>
+                                    <FormDescription>
+                                    Rendre ce modèle sélectionnable sur votre mini-site.
+                                    </FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                        />
+
                         <SheetFooter className="pt-6">
                             <SheetClose asChild>
                                 <Button type="button" variant="outline">Annuler</Button>
@@ -373,6 +398,7 @@ export function PlanManagement() {
               <TableHead>Nom du Modèle</TableHead>
               <TableHead>Prix</TableHead>
               <TableHead>Crédits RDV</TableHead>
+              <TableHead>Public</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -380,7 +406,7 @@ export function PlanManagement() {
             {isLoading ? (
                 [...Array(3)].map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell>
+                        <TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell>
                     </TableRow>
                 ))
             ) : plans && plans.length > 0 ? (
@@ -389,6 +415,11 @@ export function PlanManagement() {
                         <TableCell className="font-medium">{plan.name}</TableCell>
                         <TableCell>{plan.price}€ {plan.period}</TableCell>
                         <TableCell>{plan.appointmentCredits}</TableCell>
+                        <TableCell>
+                           <Badge variant={plan.isPublic ? 'default' : 'secondary'}>
+                              {plan.isPublic ? 'Oui' : 'Non'}
+                           </Badge>
+                        </TableCell>
                         <TableCell className="text-right">
                            <Button variant="ghost" size="icon" onClick={() => handleEdit(plan)}>
                                 <Edit className="h-4 w-4" />
@@ -401,7 +432,7 @@ export function PlanManagement() {
                 ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   Aucun modèle de prestation créé.
                 </TableCell>
               </TableRow>
