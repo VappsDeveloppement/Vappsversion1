@@ -184,19 +184,21 @@ export function PlanManagement() {
     
     const planData = {
       ...data,
-      features: data.features ? data.features.map(f => f.value) : [],
+      features: data.features.map(f => f.value), // Correctly map features
       counselorId: user.uid,
-      isFeatured: false, // Counselor plans are not featured globally
     };
 
     try {
       if (editingPlan) {
         const planDocRef = doc(firestore, 'plans', editingPlan.id);
-        await setDocumentNonBlocking(planDocRef, planData, { merge: true });
+        // Remove isFeatured for counselor-specific plans on update
+        const { isFeatured, ...updateData } = planData;
+        await setDocumentNonBlocking(planDocRef, updateData, { merge: true });
         toast({ title: 'Modèle mis à jour', description: 'Le modèle de prestation a été mis à jour.' });
       } else {
         const plansCollectionRef = collection(firestore, 'plans');
-        await addDocumentNonBlocking(plansCollectionRef, planData);
+        // Add isFeatured: false for new counselor-specific plans
+        await addDocumentNonBlocking(plansCollectionRef, { ...planData, isFeatured: false });
         toast({ title: 'Modèle créé', description: 'Le nouveau modèle de prestation a été créé.' });
       }
       setIsSheetOpen(false);
@@ -443,5 +445,3 @@ export function PlanManagement() {
     </Card>
   );
 }
-
-    

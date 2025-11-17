@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -38,7 +39,6 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
     const selectedPlansQuery = useMemoFirebase(() => {
         if (!planIds || planIds.length === 0) return null;
         const plansCollectionRef = collection(firestore, 'plans');
-        // This query correctly fetches the specific plans selected by the counselor for their mini-site.
         return query(plansCollectionRef, where(documentId(), 'in', planIds));
     }, [firestore, planIds]);
 
@@ -48,7 +48,6 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
         return null;
     }
 
-    // Sort plans to match the order in planIds if possible
     const sortedPlans = useMemo(() => {
         if (!plans || !planIds) return [];
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));

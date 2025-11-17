@@ -730,6 +730,55 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                             </div>
                         </AccordionContent>
                     </AccordionItem>
+
+                    <AccordionItem value="cta" className="border rounded-lg bg-background">
+                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section Appel à l'Action (CTA)</AccordionTrigger>
+                        <AccordionContent className="p-4 border-t">
+                            <div className="space-y-6">
+                                <FormField control={form.control} name="ctaSection.enabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="ctaSection.title" render={({ field }) => (
+                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="ctaSection.subtitle" render={({ field }) => (
+                                    <FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="ctaSection.text" render={({ field }) => (
+                                    <FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="ctaSection.buttonText" render={({ field }) => (
+                                        <FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                    <FormField control={form.control} name="ctaSection.buttonLink" render={({ field }) => (
+                                        <FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField control={form.control} name="ctaSection.bgColor" render={({ field }) => (
+                                        <FormItem><FormLabel>Couleur de fond</FormLabel><FormControl><div className="flex items-center gap-2"><Input type="color" {...field} className="p-1 h-10 w-10" /><Input type="text" {...field} /></div></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                     <div>
+                                        <Label>Image de fond</Label>
+                                        <div className="mt-2 flex items-center gap-4">
+                                            <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                                {ctaImagePreview ? <Image src={ctaImagePreview} alt="Aperçu CTA" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                            </div>
+                                            <input type="file" ref={ctaImageRef} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const b = await toBase64(f); setCtaImagePreview(b); form.setValue('ctaSection.bgImageUrl', b); } }} className="hidden" accept="image/*" />
+                                            <div className="flex flex-col gap-1">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => ctaImageRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => { setCtaImagePreview(null); form.setValue('ctaSection.bgImageUrl', ''); }}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
                     
                     <AccordionItem value="pricing" className="border rounded-lg bg-background">
                         <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Formules"</AccordionTrigger>
@@ -808,55 +857,6 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                                     </FormItem>
                                   )}
                                 />
-                            </div>
-                        </AccordionContent>
-                    </AccordionItem>
-
-                    <AccordionItem value="cta" className="border rounded-lg bg-background">
-                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section Appel à l'Action (CTA)</AccordionTrigger>
-                        <AccordionContent className="p-4 border-t">
-                            <div className="space-y-6">
-                                <FormField control={form.control} name="ctaSection.enabled" render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
-                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                    </FormItem>
-                                )}/>
-                                <FormField control={form.control} name="ctaSection.title" render={({ field }) => (
-                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <FormField control={form.control} name="ctaSection.subtitle" render={({ field }) => (
-                                    <FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <FormField control={form.control} name="ctaSection.text" render={({ field }) => (
-                                    <FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                                )}/>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="ctaSection.buttonText" render={({ field }) => (
-                                        <FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )}/>
-                                    <FormField control={form.control} name="ctaSection.buttonLink" render={({ field }) => (
-                                        <FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )}/>
-                                </div>
-                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField control={form.control} name="ctaSection.bgColor" render={({ field }) => (
-                                        <FormItem><FormLabel>Couleur de fond</FormLabel><FormControl><div className="flex items-center gap-2"><Input type="color" {...field} className="p-1 h-10 w-10" /><Input type="text" {...field} /></div></FormControl><FormMessage /></FormItem>
-                                    )}/>
-                                     <div>
-                                        <Label>Image de fond</Label>
-                                        <div className="mt-2 flex items-center gap-4">
-                                            <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
-                                                {ctaImagePreview ? <Image src={ctaImagePreview} alt="Aperçu CTA" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
-                                            </div>
-                                            <input type="file" ref={ctaImageRef} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const b = await toBase64(f); setCtaImagePreview(b); form.setValue('ctaSection.bgImageUrl', b); } }} className="hidden" accept="image/*" />
-                                            <div className="flex flex-col gap-1">
-                                                <Button type="button" variant="outline" size="sm" onClick={() => ctaImageRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
-                                                <Button type="button" variant="ghost" size="sm" onClick={() => { setCtaImagePreview(null); form.setValue('ctaSection.bgImageUrl', ''); }}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
                             </div>
                         </AccordionContent>
                     </AccordionItem>
@@ -966,8 +966,8 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.interestsSection?.enabled && <InterestsSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.servicesSection?.enabled && <CounselorServicesSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.pricingSection?.enabled && <CounselorPricingSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
+             {counselorPreviewData.miniSite.pricingSection?.enabled && <CounselorPricingSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.contactSection?.enabled && <CounselorContactSection counselor={counselorPreviewData} />}
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
                 <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
