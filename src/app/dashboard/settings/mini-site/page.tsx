@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,14 +15,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Palette, FileText, Text, Eye } from 'lucide-react';
+import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CounselorHero } from '@/components/shared/counselor-hero';
+import Image from 'next/image';
 
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+});
 
 const heroSchema = z.object({
     title: z.string().optional(),
@@ -30,6 +38,8 @@ const heroSchema = z.object({
     ctaText: z.string().optional(),
     ctaLink: z.string().optional(),
     showPhoto: z.boolean().default(false),
+    bgColor: z.string().optional(),
+    bgImageUrl: z.string().optional(),
 });
 
 type HeroFormData = z.infer<typeof heroSchema>;
@@ -41,14 +51,17 @@ const defaultMiniSiteConfig = {
         ctaText: 'Prendre rendez-vous',
         ctaLink: '#contact',
         showPhoto: true,
+        bgColor: '#f1f5f9',
+        bgImageUrl: ''
     },
 };
 
 function HeroSettingsTab({ control, userData }: { control: any, userData: any }) {
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
     
     const userDocRef = useMemoFirebase(() => {
         if (!user) return null;
@@ -60,6 +73,21 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
         defaultValues: defaultMiniSiteConfig.hero,
         control
     });
+
+    const [bgImagePreview, setBgImagePreview] = useState(form.getValues('bgImageUrl'));
+
+    useEffect(() => {
+        setBgImagePreview(form.getValues('bgImageUrl'));
+    }, [form.getValues('bgImageUrl')]);
+
+    const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            setBgImagePreview(base64);
+            form.setValue('bgImageUrl', base64);
+        }
+    };
     
     const onSubmit = async (data: HeroFormData) => {
         if (!userDocRef) return;
@@ -159,6 +187,43 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
                                 </FormItem>
                             )}
                         />
+
+                         <div className="space-y-4 rounded-lg border p-4">
+                            <h4 className="font-medium">Arrière-plan</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="bgColor"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Couleur de fond</FormLabel>
+                                            <FormControl>
+                                                <div className="flex items-center gap-2">
+                                                    <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                    <Input type="text" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <div>
+                                    <FormLabel>Image de fond</FormLabel>
+                                    <div className="mt-2 flex items-center gap-4">
+                                         <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                            {bgImagePreview ? <Image src={bgImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                        </div>
+                                        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+                                        <div className="flex flex-col gap-1">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                            <Button type="button" variant="ghost" size="sm" onClick={() => { setBgImagePreview(''); form.setValue('bgImageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
                         <div className="flex justify-end pt-6 border-t">
                             <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -189,7 +254,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
               Ceci est une prévisualisation de votre page publique. Les modifications apparaissent en temps réel.
             </SheetDescription>
           </SheetHeader>
-          <div className="h-[calc(100vh-80px)] overflow-y-auto">
+          <div className="h-[calc(100vh-80px)] overflow-y-auto bg-muted">
              <CounselorHero counselor={counselorPreviewData} />
              {/* Other sections will be previewed here */}
           </div>
@@ -215,7 +280,10 @@ export default function MiniSitePage() {
   
   useEffect(() => {
     if (userData?.miniSite?.hero) {
-        form.reset(userData.miniSite.hero);
+        form.reset({
+            ...defaultMiniSiteConfig.hero,
+            ...userData.miniSite.hero
+        });
     } else {
         form.reset(defaultMiniSiteConfig.hero);
     }
