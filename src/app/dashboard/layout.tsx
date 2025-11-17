@@ -11,6 +11,7 @@ import {
   MessageSquare,
   LifeBuoy,
   Users,
+  CreditCard,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -38,6 +39,7 @@ const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
+  { href: "/dashboard/billing", label: "Facturation", icon: <CreditCard /> },
 ];
 
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
@@ -123,7 +125,7 @@ export default function DashboardLayout({
                {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.href}>
                   <Link href={item.href}>
-                    <SidebarMenuButton isActive={pathname === item.href}>
+                    <SidebarMenuButton isActive={pathname.startsWith(item.href)}>
                         {item.icon}
                         <span>{item.label}</span>
                     </SidebarMenuButton>

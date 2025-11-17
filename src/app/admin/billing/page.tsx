@@ -6,9 +6,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlusCircle, FileText, ScrollText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye, CheckCircle, Search } from "lucide-react";
+import { PlusCircle, FileText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye, CheckCircle, Search } from "lucide-react";
 import { PlanManagement } from "@/components/shared/plan-management";
-import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { NewQuoteForm } from '@/components/shared/new-quote-form';
@@ -830,7 +829,7 @@ export default function BillingPage() {
                                             <DialogTitle>{editingQuote ? 'Modifier le Devis' : 'Nouveau Devis'}</DialogTitle>
                                         </DialogHeader>
                                         <div className="flex-1 overflow-y-auto pr-6 -mr-6">
-                                            {!isUserLoading && user ? (
+                                            {user ? (
                                                 <NewQuoteForm 
                                                   setOpen={setIsQuoteFormOpen} 
                                                   initialData={editingQuote}
@@ -1087,4 +1086,3 @@ export default function BillingPage() {
     );
 }
 
-    
