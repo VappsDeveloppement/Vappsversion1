@@ -6,7 +6,6 @@ import React, { useState, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useAgency } from '@/context/agency-provider';
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, doc } from 'firebase/firestore';
@@ -64,7 +63,6 @@ export type Plan = {
   isFeatured: boolean;
   isPublic: boolean;
   imageUrl?: string;
-  agencyId: string;
   cta?: string;
 };
 
@@ -98,7 +96,6 @@ const toBase64 = (file: File): Promise<string> =>
 });
 
 export function PlanManagement() {
-  const { agency, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -106,9 +103,9 @@ export function PlanManagement() {
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
 
   const plansCollectionRef = useMemoFirebase(() => {
-    if (!agency) return null;
-    return collection(firestore, 'agencies', agency.id, 'plans');
-  }, [agency, firestore]);
+    if (!firestore) return null;
+    return collection(firestore, 'plans');
+  }, [firestore]);
 
   const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansCollectionRef);
 
@@ -167,8 +164,7 @@ export function PlanManagement() {
   }
 
   const handleDelete = (planId: string) => {
-    if (!agency) return;
-    const planDocRef = doc(firestore, 'agencies', agency.id, 'plans', planId);
+    const planDocRef = doc(firestore, 'plans', planId);
     deleteDocumentNonBlocking(planDocRef);
     toast({ title: 'Plan supprimé', description: 'Le plan a été supprimé avec succès.' });
   };
@@ -184,25 +180,20 @@ export function PlanManagement() {
 
 
   const onSubmit = async (data: PlanFormData) => {
-    if (!agency) {
-      toast({ variant: 'destructive', title: 'Erreur', description: 'Agence non trouvée.' });
-      return;
-    }
     setIsSubmitting(true);
     
     const planData = {
       ...data,
       features: data.features.map(f => f.value),
-      agencyId: agency.id,
     };
 
     try {
       if (editingPlan) {
-        const planDocRef = doc(firestore, 'agencies', agency.id, 'plans', editingPlan.id);
-        setDocumentNonBlocking(planDocRef, planData, { merge: true });
+        const planDocRef = doc(firestore, 'plans', editingPlan.id);
+        await setDocumentNonBlocking(planDocRef, planData, { merge: true });
         toast({ title: 'Plan mis à jour', description: 'Le plan a été mis à jour avec succès.' });
       } else {
-        const plansCollectionRef = collection(firestore, 'agencies', agency.id, 'plans');
+        const plansCollectionRef = collection(firestore, 'plans');
         await addDocumentNonBlocking(plansCollectionRef, planData);
         toast({ title: 'Plan créé', description: 'Le nouveau plan a été créé avec succès.' });
       }
@@ -217,7 +208,7 @@ export function PlanManagement() {
     }
   };
   
-  const isLoading = isAgencyLoading || arePlansLoading;
+  const isLoading = arePlansLoading;
 
   return (
     <Card>
