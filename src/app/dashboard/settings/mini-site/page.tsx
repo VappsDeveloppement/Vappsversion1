@@ -466,11 +466,11 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     const ctaImageRef = useRef<HTMLInputElement>(null);
     const contactImageRef = useRef<HTMLInputElement>(null);
 
-    const plansQuery = useMemoFirebase(() => {
+    const counselorPlansQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid), where('isPublic', '==', true));
+        return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid));
     }, [user, firestore]);
-    const { data: counselorPlans } = useCollection<Plan>(plansQuery);
+    const { data: counselorPlans } = useCollection<Plan>(counselorPlansQuery);
 
 
     const userDocRef = useMemoFirebase(() => {
@@ -755,7 +755,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                                       <div className="mb-4">
                                         <FormLabel className="text-base">Formules à afficher</FormLabel>
                                         <FormDescription>
-                                          Sélectionnez jusqu'à 3 modèles de prestation à afficher (ils doivent être cochés "publics").
+                                          Sélectionnez jusqu'à 3 modèles de prestation à afficher sur votre page.
                                         </FormDescription>
                                       </div>
                                       <div className="space-y-2">
@@ -802,7 +802,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                                             )
                                           }}
                                         />
-                                      )) : <p className="text-sm text-muted-foreground">Aucun modèle de prestation public trouvé. Créez-en un et rendez-le public dans l'onglet Facturation.</p>}
+                                      )) : <p className="text-sm text-muted-foreground">Aucun modèle de prestation trouvé. Créez-en un dans l'onglet Facturation.</p>}
                                       </div>
                                       <FormMessage />
                                     </FormItem>
@@ -966,8 +966,8 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.interestsSection?.enabled && <InterestsSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.servicesSection?.enabled && <CounselorServicesSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.pricingSection?.enabled && <CounselorPricingSection counselor={counselorPreviewData} />}
+             {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.contactSection?.enabled && <CounselorContactSection counselor={counselorPreviewData} />}
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
                 <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
