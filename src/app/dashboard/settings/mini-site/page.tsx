@@ -40,6 +40,8 @@ const heroSchema = z.object({
     showPhoto: z.boolean().default(false),
     bgColor: z.string().optional(),
     bgImageUrl: z.string().optional(),
+    showPhone: z.boolean().default(false),
+    showLocation: z.boolean().default(false),
 });
 
 type HeroFormData = z.infer<typeof heroSchema>;
@@ -52,7 +54,9 @@ const defaultMiniSiteConfig = {
         ctaLink: '#contact',
         showPhoto: true,
         bgColor: '#f1f5f9',
-        bgImageUrl: ''
+        bgImageUrl: '',
+        showPhone: false,
+        showLocation: false,
     },
 };
 
@@ -172,21 +176,54 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
                                 )}
                             />
                         </div>
-                        <FormField
-                            control={form.control}
-                            name="showPhoto"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Afficher ma photo de profil</FormLabel>
-                                        <FormMessage />
-                                    </div>
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
+
+                         <div className="space-y-4 rounded-lg border p-4">
+                            <h4 className="font-medium">Options d'affichage</h4>
+                             <div className="space-y-4">
+                                <FormField
+                                    control={form.control}
+                                    name="showPhoto"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                            <div className="space-y-0.5">
+                                                <FormLabel>Afficher ma photo de profil</FormLabel>
+                                            </div>
+                                            <FormControl>
+                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
+                                    name="showPhone"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                            <div className="space-y-0.5">
+                                                <FormLabel>Afficher mon numéro de téléphone</FormLabel>
+                                            </div>
+                                            <FormControl>
+                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                                 <FormField
+                                    control={form.control}
+                                    name="showLocation"
+                                    render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                            <div className="space-y-0.5">
+                                                <FormLabel>Afficher ma localité</FormLabel>
+                                            </div>
+                                            <FormControl>
+                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                            </FormControl>
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
 
                          <div className="space-y-4 rounded-lg border p-4">
                             <h4 className="font-medium">Arrière-plan</h4>

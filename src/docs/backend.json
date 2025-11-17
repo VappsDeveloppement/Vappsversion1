@@ -119,7 +119,9 @@
                         "ctaLink": { "type": "string" },
                         "showPhoto": { "type": "boolean" },
                         "bgColor": { "type": "string" },
-                        "bgImageUrl": { "type": "string", "format": "uri" }
+                        "bgImageUrl": { "type": "string", "format": "uri" },
+                        "showPhone": { "type": "boolean" },
+                        "showLocation": { "type": "boolean" }
                     }
                 },
                 "sections": {

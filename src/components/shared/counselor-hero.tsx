@@ -7,12 +7,15 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Phone, MapPin } from 'lucide-react';
 
 type CounselorProfile = {
     id: string;
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
+    city?: string;
     publicTitle?: string;
     publicBio?: string;
     photoUrl?: string;
@@ -25,6 +28,8 @@ type CounselorProfile = {
             showPhoto?: boolean;
             bgColor?: string;
             bgImageUrl?: string;
+            showPhone?: boolean;
+            showLocation?: boolean;
         }
     };
 };
@@ -66,17 +71,31 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                     )}
                     <div className={cn(
                         "text-center",
-                        showPhoto ? "md:col-span-2" : "md:col-span-3"
+                        showPhoto ? "md:col-span-2 md:text-left" : "md:col-span-3"
                     )}>
                         <h1 className="text-4xl md:text-5xl font-bold text-white">{title}</h1>
                         <p className="text-xl text-white/90 mt-4">{subtitle}</p>
-                        <p className="mt-6 text-base text-white/80 max-w-2xl mx-auto">
+                        <p className="mt-6 text-base text-white/80 max-w-2xl mx-auto md:mx-0">
                            {counselor.publicBio || 'Biographie non disponible.'}
                         </p>
                         <div className="mt-8">
                             <Button size="lg" asChild>
                                 <Link href={ctaLink}>{ctaText}</Link>
                             </Button>
+                        </div>
+                        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-x-6 gap-y-2 text-white/80 text-sm">
+                            {heroConfig.showPhone && counselor.phone && (
+                                <div className="flex items-center gap-2">
+                                    <Phone className="h-4 w-4" />
+                                    <span>{counselor.phone}</span>
+                                </div>
+                            )}
+                             {heroConfig.showLocation && counselor.city && (
+                                <div className="flex items-center gap-2">
+                                    <MapPin className="h-4 w-4" />
+                                    <span>{counselor.city}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                 </div>
