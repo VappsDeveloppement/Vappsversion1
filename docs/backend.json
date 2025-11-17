@@ -1,4 +1,5 @@
 
+
 {
   "entities": {
     "User": {
@@ -84,6 +85,19 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp for when an admin reports an inactivity alert for this user."
+        },
+        "photoUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL of the user's public profile photo."
+        },
+        "publicTitle": {
+            "type": "string",
+            "description": "Public-facing professional title for the counselor (e.g., 'Coach en développement personnel')."
+        },
+        "publicBio": {
+            "type": "string",
+            "description": "Public-facing biography for the counselor's profile page."
         }
       },
       "required": [
@@ -667,6 +681,7 @@
         }
       }
     ],
-    "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach than nested collections for this model."
+    "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+

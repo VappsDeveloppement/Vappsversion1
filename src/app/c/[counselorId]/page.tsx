@@ -15,7 +15,7 @@ type CounselorProfile = {
     firstName: string;
     lastName: string;
     email: string;
-    // Add other public profile fields here, e.g., bio, photoUrl
+    publicTitle?: string;
     publicBio?: string;
     photoUrl?: string;
 };
@@ -63,7 +63,7 @@ export default function CounselorPublicPage() {
             </AvatarFallback>
           </Avatar>
           <h1 className="text-4xl font-bold">{counselor.firstName} {counselor.lastName}</h1>
-          <p className="text-xl text-muted-foreground">Conseiller en développement personnel et professionnel</p>
+          <p className="text-xl text-muted-foreground">{counselor.publicTitle || 'Conseiller en développement personnel et professionnel'}</p>
         </div>
       </header>
       <main className="container mx-auto p-4 sm:p-8">
