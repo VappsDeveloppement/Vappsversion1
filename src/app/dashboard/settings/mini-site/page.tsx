@@ -45,6 +45,8 @@ const heroSchema = z.object({
     bgImageUrl: z.string().optional(),
     showPhone: z.boolean().default(false),
     showLocation: z.boolean().default(false),
+    primaryColor: z.string().optional(),
+    secondaryColor: z.string().optional(),
 });
 
 const attentionSchema = z.object({
@@ -82,6 +84,8 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         bgImageUrl: '',
         showPhone: false,
         showLocation: false,
+        primaryColor: '#10B981',
+        secondaryColor: '#059669',
     },
     attentionSection: {
         enabled: true,
@@ -297,7 +301,44 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
                                 </div>
                             </div>
                         </div>
-
+                        
+                        <div className="space-y-4 rounded-lg border p-4">
+                            <h4 className="font-medium">Couleurs dominantes</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField
+                                    control={form.control}
+                                    name="primaryColor"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Couleur primaire</FormLabel>
+                                            <FormControl>
+                                                <div className="flex items-center gap-2">
+                                                    <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                    <Input type="text" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="secondaryColor"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Couleur secondaire</FormLabel>
+                                            <FormControl>
+                                                <div className="flex items-center gap-2">
+                                                    <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                    <Input type="text" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
 
                         <div className="flex justify-end pt-6 border-t">
                             <Button type="submit" disabled={isSubmitting}>

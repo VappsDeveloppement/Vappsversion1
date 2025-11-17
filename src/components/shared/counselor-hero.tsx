@@ -31,6 +31,7 @@ type CounselorProfile = {
             bgImageUrl?: string;
             showPhone?: boolean;
             showLocation?: boolean;
+            primaryColor?: string;
         }
     };
 };
@@ -45,6 +46,7 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
     const showPhoto = heroConfig.showPhoto !== false; // Default to true if not set
     const bgColor = heroConfig.bgColor || '#f1f5f9'; // default to muted
     const bgImageUrl = heroConfig.bgImageUrl;
+    const primaryColor = heroConfig.primaryColor || '#10B981';
 
     return (
         <header className="relative py-20 md:py-32" style={{ backgroundColor: bgImageUrl ? 'transparent' : bgColor }}>
@@ -80,7 +82,7 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                            {counselor.publicBio || 'Biographie non disponible.'}
                         </p>
                         <div className="mt-8">
-                            <Button size="lg" asChild>
+                            <Button size="lg" asChild style={{ backgroundColor: primaryColor }}>
                                 <Link href={ctaLink}>{ctaText}</Link>
                             </Button>
                         </div>
