@@ -1,5 +1,4 @@
 
-
 {
   "entities": {
     "User": {
@@ -173,6 +172,19 @@
                       }
                     }
                   }
+                },
+                "ctaSection": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean" },
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" },
+                        "text": { "type": "string" },
+                        "buttonText": { "type": "string" },
+                        "buttonLink": { "type": "string" },
+                        "bgColor": { "type": "string" },
+                        "bgImageUrl": { "type": "string", "format": "uri" }
+                    }
                 }
             }
         }
