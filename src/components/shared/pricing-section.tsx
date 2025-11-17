@@ -15,14 +15,13 @@ import { Skeleton } from "../ui/skeleton";
 
 
 export function PricingSection() {
-    const { agency, isLoading: isAgencyLoading } = useAgency();
+    const { isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
     const publicPlansQuery = useMemoFirebase(() => {
-        if (!agency) return null;
-        const plansCollectionRef = collection(firestore, 'agencies', agency.id, 'plans');
+        const plansCollectionRef = collection(firestore, 'plans');
         return query(plansCollectionRef, where("isPublic", "==", true));
-    }, [agency, firestore]);
+    }, [firestore]);
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
 
