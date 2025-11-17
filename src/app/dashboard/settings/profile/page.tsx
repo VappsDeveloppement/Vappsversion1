@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -30,6 +31,8 @@ const profileSchema = z.object({
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
+  commercialName: z.string().optional(),
+  siret: z.string().optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -46,6 +49,8 @@ type UserProfile = {
   address?: string;
   zipCode?: string;
   city?: string;
+  commercialName?: string;
+  siret?: string;
 };
 
 // Helper to convert file to Base64
@@ -85,6 +90,8 @@ export default function ProfilePage() {
       address: '',
       zipCode: '',
       city: '',
+      commercialName: '',
+      siret: '',
     },
   });
   
@@ -100,6 +107,8 @@ export default function ProfilePage() {
         address: userData.address || '',
         zipCode: userData.zipCode || '',
         city: userData.city || '',
+        commercialName: userData.commercialName || '',
+        siret: userData.siret || '',
       });
       setPhotoPreview(userData.photoUrl || null);
     }
@@ -264,6 +273,34 @@ export default function ProfilePage() {
                 )}
               />
                 <div className="border-t pt-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="commercialName"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Nom commercial (Optionnel)</FormLabel>
+                                <FormControl>
+                                <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="siret"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>SIRET (Optionnel)</FormLabel>
+                                <FormControl>
+                                <Input {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
                     <FormField
                     control={form.control}
                     name="phone"
@@ -334,3 +371,6 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+
+  

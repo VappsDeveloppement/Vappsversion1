@@ -55,6 +55,14 @@
           "type": "string",
           "description": "The user's city."
         },
+        "commercialName": {
+            "type": "string",
+            "description": "The user's commercial or business name, if applicable."
+        },
+        "siret": {
+            "type": "string",
+            "description": "The user's SIRET number for their business."
+        },
         "socialSecurityNumber": {
           "type": "string",
           "description": "The user's social security number."
@@ -724,3 +732,5 @@
   }
 }
 
+
+  
