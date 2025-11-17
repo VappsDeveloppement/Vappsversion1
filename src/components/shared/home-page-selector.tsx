@@ -20,7 +20,7 @@ import { PricingSection } from '@/components/shared/pricing-section';
 import { WhiteLabelSection } from '@/components/shared/white-label-section';
 import { BlogSection } from '@/components/shared/blog-section';
 import { Footer } from '@/components/shared/footer';
-import type { Section, HeroNavLink } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink } from '@/app/admin/settings/personalization/page';
 import { useAgency } from '@/context/agency-provider';
 import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';

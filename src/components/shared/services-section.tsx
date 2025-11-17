@@ -32,7 +32,7 @@ export function ServicesSection() {
                         const imageHint = placeholderImage?.imageHint || 'service';
 
                         return (
-                            <Card key={service.id} className="overflow-hidden group flex flex-col">
+                            <Card key={service.id} className="overflow-hidden group flex flex-col text-center">
                                 <div className="h-48 relative overflow-hidden">
                                     {imageSrc && (
                                         <Image
@@ -44,7 +44,7 @@ export function ServicesSection() {
                                         />
                                     )}
                                 </div>
-                                <CardContent className="p-6 flex-1 flex flex-col">
+                                <CardContent className="p-6 flex-1 flex flex-col items-center">
                                     <h3 className="font-bold text-xl mb-2">{service.title}</h3>
                                     <p className="text-muted-foreground">{service.description}</p>
                                 </CardContent>

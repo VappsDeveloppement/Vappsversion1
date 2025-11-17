@@ -194,7 +194,27 @@
             "copyrightUrl": { "type": "string" },
             "homePageVersion": { "type": "string" },
             "homePageSections": { "type": "array", "items": { "type": "object" } },
-            "legalInfo": { "type": "object" }
+            "legalInfo": { "type": "object" },
+            "servicesSection": {
+              "type": "object",
+              "properties": {
+                "title": { "type": "string" },
+                "subtitle": { "type": "string" },
+                "description": { "type": "string" },
+                "services": { 
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "title": { "type": "string" },
+                      "description": { "type": "string" },
+                      "imageUrl": { "type": "string", "format": "uri" }
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       },
