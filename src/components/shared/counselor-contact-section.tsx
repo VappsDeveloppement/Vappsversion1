@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
-import { Send, Link as LinkIcon } from 'lucide-react';
-import { Card, CardContent } from '../ui/card';
+import { Send, Link as LinkIcon, Calendar } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 type ContactLink = {
     text: string;
@@ -33,7 +33,8 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
     return (
         <section id="contact" className="py-16 sm:py-24 bg-white">
             <div className="container mx-auto px-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12 items-start">
+                    {/* Colonne 1: Infos & Liens */}
                     <div className="text-center md:text-left">
                         {imageUrl && (
                             <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden">
@@ -62,8 +63,28 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                             </div>
                         )}
                     </div>
-                    <Card>
-                        <CardContent className="p-6">
+                    
+                    {/* Colonne 2: Événements */}
+                    <Card className="h-full">
+                        <CardHeader>
+                            <CardTitle className="flex items-center gap-2">
+                                <Calendar className="h-5 w-5" />
+                                Mes événements
+                            </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-sm text-muted-foreground">
+                                Cette section affichera la liste de vos prochains événements.
+                            </p>
+                        </CardContent>
+                    </Card>
+
+                    {/* Colonne 3: Formulaire */}
+                    <Card className="h-full">
+                         <CardHeader>
+                            <CardTitle>Envoyer un message</CardTitle>
+                        </CardHeader>
+                        <CardContent>
                              <form className="space-y-4">
                                 <Input placeholder="Nom & Prénom" />
                                 <Input type="tel" placeholder="Téléphone" />
