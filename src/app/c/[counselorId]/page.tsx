@@ -22,21 +22,32 @@ type CounselorProfile = {
     miniSite?: any;
 };
 
-// Placeholder for About Me section
-const AboutMeSection = ({ counselor }: { counselor: CounselorProfile }) => (
-    <section className="py-16 bg-background">
-        <div className="container mx-auto px-4">
-             <Card>
-                <CardContent className="p-6 md:p-10">
-                    <h2 className="text-3xl font-bold mb-6 text-center">Attention</h2>
-                    <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg text-center max-w-3xl mx-auto">
-                        {counselor.publicBio || 'Ce conseiller n\'a pas encore rédigé de biographie.'}
-                    </p>
-                </CardContent>
-            </Card>
-        </div>
-    </section>
-);
+// Placeholder for Attention section
+const AttentionSection = ({ counselor }: { counselor: CounselorProfile }) => {
+    const attentionConfig = counselor.miniSite?.attentionSection || {};
+
+    if (!attentionConfig.enabled || (!attentionConfig.title && !attentionConfig.text)) {
+        return null;
+    }
+    
+    const title = attentionConfig.title || "Attention";
+    const text = attentionConfig.text || counselor.publicBio || 'Ce conseiller n\'a pas encore rédigé de biographie.';
+
+    return (
+        <section className="py-16 bg-background">
+            <div className="container mx-auto px-4">
+                 <Card>
+                    <CardContent className="p-6 md:p-10 text-center">
+                        <h2 className="text-3xl font-bold mb-6">{title}</h2>
+                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg max-w-3xl mx-auto">
+                            {text}
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
+        </section>
+    );
+};
 
 
 export default function CounselorPublicPage() {
@@ -69,13 +80,13 @@ export default function CounselorPublicPage() {
     );
   }
 
-  const showAboutSection = counselor.miniSite?.about?.enabled !== false;
+  const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
 
   return (
     <div className="bg-muted/30 min-h-screen">
       <CounselorHero counselor={counselor} />
       <main>
-        {showAboutSection && <AboutMeSection counselor={counselor} />}
+        {showAttentionSection && <AttentionSection counselor={counselor} />}
       </main>
     </div>
   );

@@ -44,13 +44,15 @@ const heroSchema = z.object({
     showLocation: z.boolean().default(false),
 });
 
-const aboutSchema = z.object({
+const attentionSchema = z.object({
   enabled: z.boolean().default(true),
+  title: z.string().optional(),
+  text: z.string().optional(),
 });
 
 const miniSiteSchema = z.object({
     hero: heroSchema,
-    about: aboutSchema,
+    attentionSection: attentionSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -68,8 +70,10 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         showPhone: false,
         showLocation: false,
     },
-    about: {
+    attentionSection: {
         enabled: true,
+        title: 'Attention',
+        text: 'Ce conseiller n\'a pas encore rédigé de biographie.'
     }
 };
 
@@ -287,7 +291,7 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
     );
 }
 
-function AboutSettingsTab({ control, userData }: { control: any, userData: any }) {
+function AttentionSettingsTab({ control, userData }: { control: any, userData: any }) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -298,20 +302,20 @@ function AboutSettingsTab({ control, userData }: { control: any, userData: any }
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
 
-    const form = useForm<z.infer<typeof aboutSchema>>({
-        resolver: zodResolver(aboutSchema),
-        defaultValues: defaultMiniSiteConfig.about,
+    const form = useForm<z.infer<typeof attentionSchema>>({
+        resolver: zodResolver(attentionSchema),
+        defaultValues: defaultMiniSiteConfig.attentionSection,
         control,
     });
     
-    const onSubmit = async (data: z.infer<typeof aboutSchema>) => {
+    const onSubmit = async (data: z.infer<typeof attentionSchema>) => {
         if (!userDocRef) return;
         setIsSubmitting(true);
         try {
             await setDocumentNonBlocking(userDocRef, {
                 miniSite: {
                     ...(userData?.miniSite || {}),
-                    about: data,
+                    attentionSection: data,
                 },
             }, { merge: true });
             toast({ title: "Paramètres enregistrés", description: "Votre section 'Attention' a été mise à jour." });
@@ -327,7 +331,7 @@ function AboutSettingsTab({ control, userData }: { control: any, userData: any }
             <CardHeader>
                 <CardTitle>Section "Attention"</CardTitle>
                 <CardDescription>
-                    Activez ou désactivez cette section. Le contenu est tiré de votre biographie publique que vous pouvez modifier sur la page de votre profil.
+                    Gérez le contenu de la section "Attention". Si le titre et le texte sont vides, la section n'apparaîtra pas.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -355,6 +359,33 @@ function AboutSettingsTab({ control, userData }: { control: any, userData: any }
                                 </FormItem>
                             )}
                         />
+                         <FormField
+                            control={form.control}
+                            name="title"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Titre de la section</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} placeholder="Titre de la section Attention" />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="text"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Texte de la section</FormLabel>
+                                    <FormControl>
+                                        <Textarea {...field} placeholder="Contenu de la section Attention..." rows={5}/>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
                          <div className="flex justify-end pt-6 border-t">
                             <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -374,7 +405,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
         miniSite: {
             ...userData?.miniSite,
             hero: formData.hero,
-            about: formData.about,
+            attentionSection: formData.attentionSection,
         }
     };
 
@@ -471,7 +502,7 @@ export default function MiniSitePage() {
           <HeroSettingsTab control={form.control} userData={userData} />
         </TabsContent>
         <TabsContent value="personal-page">
-          <AboutSettingsTab control={form.control} userData={userData} />
+          <AttentionSettingsTab control={form.control} userData={userData} />
         </TabsContent>
         <TabsContent value="visual-identity">
           {/* Placeholder for future implementation */}
