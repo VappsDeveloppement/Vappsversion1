@@ -33,6 +33,11 @@ const profileSchema = z.object({
   city: z.string().optional(),
   commercialName: z.string().optional(),
   siret: z.string().optional(),
+  dashboardTheme: z.object({
+    primaryColor: z.string().optional(),
+    secondaryColor: z.string().optional(),
+    bgColor: z.string().optional(),
+  }).optional(),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
@@ -51,6 +56,11 @@ type UserProfile = {
   city?: string;
   commercialName?: string;
   siret?: string;
+  dashboardTheme?: {
+    primaryColor?: string;
+    secondaryColor?: string;
+    bgColor?: string;
+  };
 };
 
 // Helper to convert file to Base64
@@ -92,6 +102,11 @@ export default function ProfilePage() {
       city: '',
       commercialName: '',
       siret: '',
+      dashboardTheme: {
+        primaryColor: '#10B981',
+        secondaryColor: '#059669',
+        bgColor: '#f1f5f9',
+      },
     },
   });
   
@@ -109,6 +124,11 @@ export default function ProfilePage() {
         city: userData.city || '',
         commercialName: userData.commercialName || '',
         siret: userData.siret || '',
+        dashboardTheme: {
+          primaryColor: userData.dashboardTheme?.primaryColor || '#10B981',
+          secondaryColor: userData.dashboardTheme?.secondaryColor || '#059669',
+          bgColor: userData.dashboardTheme?.bgColor || '#f1f5f9',
+        },
       });
       setPhotoPreview(userData.photoUrl || null);
     }
@@ -178,16 +198,16 @@ export default function ProfilePage() {
           Gérez vos informations personnelles et votre profil public.
         </p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Informations Personnelles & Publiques</CardTitle>
-          <CardDescription>
-            Ces informations sont utilisées pour votre compte et votre page de conseiller.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <Card>
+            <CardHeader>
+              <CardTitle>Informations Personnelles & Publiques</CardTitle>
+              <CardDescription>
+                Ces informations sont utilisées pour votre compte et votre page de conseiller.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -356,18 +376,78 @@ export default function ProfilePage() {
                       />
                   </div>
               </div>
+            </CardContent>
+          </Card>
 
-
-              <div className="flex justify-end">
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Sauvegarder les modifications
-                </Button>
+          <Card>
+            <CardHeader>
+              <CardTitle>Personnalisation du Tableau de Bord</CardTitle>
+              <CardDescription>
+                Choisissez les couleurs de votre espace de travail personnel.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="dashboardTheme.primaryColor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Couleur Primaire</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                              <Input type="color" {...field} className="p-1 h-10 w-10" />
+                              <Input type="text" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name="dashboardTheme.secondaryColor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Couleur Secondaire</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                              <Input type="color" {...field} className="p-1 h-10 w-10" />
+                              <Input type="text" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name="dashboardTheme.bgColor"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Couleur de Fond</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                              <Input type="color" {...field} className="p-1 h-10 w-10" />
+                              <Input type="text" {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-end">
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              Sauvegarder les modifications
+            </Button>
+          </div>
+        </form>
+      </Form>
     </div>
   );
 }

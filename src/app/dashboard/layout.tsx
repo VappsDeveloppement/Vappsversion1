@@ -53,6 +53,43 @@ const profileMenuItems = [
 
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
 
+// Helper function to convert hex to HSL
+const hexToHsl = (hex: string): string => {
+  if (!hex || !/^#([A-Fa-f0-9]{3}){1,2}$/.test(hex)) {
+    return '0 0% 0%'; // fallback for invalid hex
+  }
+
+  let c = hex.substring(1).split('');
+  if (c.length === 3) {
+    c = [c[0], c[0], c[1], c[1], c[2], c[2]];
+  }
+  const num = parseInt(c.join(''), 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  
+  const r_ = r / 255, g_ = g / 255, b_ = b / 255;
+  const max = Math.max(r_, g_, b_), min = Math.min(r_, g_, b_);
+  let h = 0, s = 0, l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r_: h = (g_ - b_) / d + (g_ < b_ ? 6 : 0); break;
+      case g_: h = (b_ - r_) / d + 2; break;
+      case b_: h = (r_ - g_) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  h = Math.round(h * 360);
+  s = Math.round(s * 100);
+  l = Math.round(l * 100);
+
+  return `${h} ${s}% ${l}%`;
+};
+
 
 export default function DashboardLayout({
   children,
@@ -91,6 +128,18 @@ export default function DashboardLayout({
     router.push(redirectUrl);
   };
 
+  const dashboardStyle = useMemo(() => {
+    const theme = userData?.dashboardTheme;
+    if (isConseiller && theme) {
+      return {
+        '--background': theme.bgColor ? hexToHsl(theme.bgColor) : undefined,
+        '--primary': theme.primaryColor ? hexToHsl(theme.primaryColor) : undefined,
+        '--secondary': theme.secondaryColor ? hexToHsl(theme.secondaryColor) : undefined,
+      } as React.CSSProperties;
+    }
+    return {};
+  }, [userData, isConseiller]);
+
   if (isLoading) {
     return (
         <SidebarProvider>
@@ -126,7 +175,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex">
+      <div className="flex" style={dashboardStyle}>
         <Sidebar>
           <SidebarHeader>
             <Logo />

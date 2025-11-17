@@ -206,6 +206,15 @@
                     }
                 }
             }
+        },
+        "dashboardTheme": {
+            "type": "object",
+            "description": "Color personalization settings for the counselor's own dashboard.",
+            "properties": {
+                "primaryColor": { "type": "string" },
+                "secondaryColor": { "type": "string" },
+                "bgColor": { "type": "string" }
+            }
         }
       },
       "required": [
