@@ -15,6 +15,7 @@ import { InterestsSection } from '@/components/shared/interests-section';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
+import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 
 
 type CounselorProfile = {
@@ -65,6 +66,7 @@ export default function CounselorPublicPage() {
   const showServicesSection = counselor.miniSite?.servicesSection?.enabled !== false;
   const showPricingSection = counselor.miniSite?.pricingSection?.enabled !== false;
   const showCtaSection = counselor.miniSite?.ctaSection?.enabled !== false;
+  const showContactSection = counselor.miniSite?.contactSection?.enabled !== false;
 
   return (
     <div className="bg-muted/30 min-h-screen">
@@ -76,6 +78,7 @@ export default function CounselorPublicPage() {
         {showServicesSection && <CounselorServicesSection counselor={counselor} />}
         {showCtaSection && <CounselorCtaSection counselor={counselor} />}
         {showPricingSection && <CounselorPricingSection counselor={counselor} />}
+        {showContactSection && <CounselorContactSection counselor={counselor} />}
       </main>
     </div>
   );
