@@ -70,10 +70,7 @@ export default function AdminLayout({
       <div className="flex">
         <Sidebar>
           <SidebarHeader>
-            <div className="flex justify-between items-center">
-                <Logo />
-                <p className="px-2 py-1 text-xs font-semibold rounded-md bg-destructive text-destructive-foreground">Super Admin</p>
-            </div>
+            <Logo />
           </SidebarHeader>
           <SidebarContent>
             <SidebarMenu>
