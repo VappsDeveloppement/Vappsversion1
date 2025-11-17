@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -73,8 +74,7 @@ export default function CounselorPublicPage() {
     <div className="bg-muted/30 min-h-screen">
       <CounselorHero counselor={counselor} />
       <main>
-        <AboutMeSection counselor={counselor} />
-        {/* Future sections will be rendered here */}
+        {/* About me section removed as it's now integrated in the hero */}
       </main>
     </div>
   );
