@@ -3,10 +3,13 @@
 
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import type { ServiceItem } from "@/app/admin/settings/personalization/page";
+import type { ServiceItem } from "@/app/admin/settings/mini-site/page";
 
 type CounselorProfile = {
     miniSite?: {
+        hero?: {
+            primaryColor?: string;
+        }
         servicesSection?: {
             enabled?: boolean;
             title?: string;
@@ -18,7 +21,10 @@ type CounselorProfile = {
 
 export function CounselorServicesSection({ counselor }: { counselor: CounselorProfile }) {
     const servicesConfig = counselor.miniSite?.servicesSection || {};
+    const heroConfig = counselor.miniSite?.hero || {};
+
     const { enabled, title, subtitle, services } = servicesConfig;
+    const primaryColor = heroConfig.primaryColor || '#10B981';
 
     if (!enabled || !services || services.length === 0) {
         return null;
@@ -29,10 +35,10 @@ export function CounselorServicesSection({ counselor }: { counselor: CounselorPr
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold">{title || "Mes Services"}</h2>
-                    <p className="text-lg text-primary font-semibold mt-2">{subtitle}</p>
+                    <p className="text-lg font-semibold mt-2" style={{ color: primaryColor }}>{subtitle}</p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     {services.map((service) => (
                         <Card key={service.id} className="overflow-hidden group flex flex-col text-center shadow-md hover:shadow-xl transition-shadow duration-300">
                             {service.imageUrl && (
