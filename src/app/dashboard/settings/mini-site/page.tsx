@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2, Info, PlusCircle } from 'lucide-react';
+import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2, Info, PlusCircle, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -32,6 +32,7 @@ import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 import type { Plan } from '@/components/shared/plan-management';
 import { Checkbox } from '@/components/ui/checkbox';
+import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -108,6 +109,19 @@ const pricingSchema = z.object({
   planIds: z.array(z.string()).max(3, "Vous pouvez sélectionner jusqu'à 3 formules.").default([]),
 });
 
+const contactLinkSchema = z.object({
+  text: z.string().min(1, 'Le texte du lien est requis'),
+  url: z.string().url('Veuillez entrer une URL valide'),
+});
+
+const contactSchema = z.object({
+  enabled: z.boolean().default(true),
+  title: z.string().optional(),
+  text: z.string().optional(),
+  imageUrl: z.string().optional(),
+  links: z.array(contactLinkSchema).default([]),
+});
+
 
 const miniSiteSchema = z.object({
     hero: heroSchema,
@@ -117,6 +131,7 @@ const miniSiteSchema = z.object({
     servicesSection: servicesSchema,
     ctaSection: ctaSchema,
     pricingSection: pricingSchema,
+    contactSection: contactSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -179,6 +194,13 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         title: 'Mes Formules',
         subtitle: 'Des accompagnements adaptés à vos besoins.',
         planIds: [],
+    },
+    contactSection: {
+        enabled: true,
+        title: "Contactez-moi",
+        text: "N'hésitez pas à me contacter pour toute question ou pour démarrer votre accompagnement.",
+        imageUrl: "",
+        links: []
     }
 };
 
@@ -441,6 +463,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     const aboutImageRef = useRef<HTMLInputElement>(null);
     const serviceImageRefs = useRef<(HTMLInputElement | null)[]>([]);
     const ctaImageRef = useRef<HTMLInputElement>(null);
+    const contactImageRef = useRef<HTMLInputElement>(null);
 
     const plansQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -461,6 +484,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         servicesSection: z.infer<typeof servicesSchema>,
         ctaSection: z.infer<typeof ctaSchema>,
         pricingSection: z.infer<typeof pricingSchema>,
+        contactSection: z.infer<typeof contactSchema>,
     }>({
         resolver: zodResolver(z.object({ 
             attentionSection: attentionSchema, 
@@ -469,6 +493,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
             servicesSection: servicesSchema,
             ctaSection: ctaSchema,
             pricingSection: pricingSchema,
+            contactSection: contactSchema,
         })),
         defaultValues: {
             attentionSection: defaultMiniSiteConfig.attentionSection,
@@ -477,6 +502,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
             servicesSection: defaultMiniSiteConfig.servicesSection,
             ctaSection: defaultMiniSiteConfig.ctaSection,
             pricingSection: defaultMiniSiteConfig.pricingSection,
+            contactSection: defaultMiniSiteConfig.contactSection,
         },
         control,
     });
@@ -490,16 +516,23 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         control: form.control,
         name: "servicesSection.services",
     });
+    
+    const { fields: contactLinkFields, append: appendContactLink, remove: removeContactLink } = useFieldArray({
+        control: form.control,
+        name: "contactSection.links",
+    });
 
     const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
     const [ctaImagePreview, setCtaImagePreview] = useState(form.getValues('ctaSection.bgImageUrl'));
+    const [contactImagePreview, setContactImagePreview] = useState(form.getValues('contactSection.imageUrl'));
     const watchedServices = useWatch({ control: form.control, name: "servicesSection.services" });
 
 
     useEffect(() => {
         setAboutImagePreview(form.getValues('aboutSection.imageUrl'));
         setCtaImagePreview(form.getValues('ctaSection.bgImageUrl'));
-    }, [form.getValues('aboutSection.imageUrl'), form.getValues('ctaSection.bgImageUrl')]);
+        setContactImagePreview(form.getValues('contactSection.imageUrl'));
+    }, [form.getValues('aboutSection.imageUrl'), form.getValues('ctaSection.bgImageUrl'), form.getValues('contactSection.imageUrl')]);
 
     const onSubmit = async (data: any) => {
         if (!userDocRef) return;
@@ -519,6 +552,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                     servicesSection: data.servicesSection,
                     ctaSection: data.ctaSection,
                     pricingSection: data.pricingSection,
+                    contactSection: data.contactSection,
                 },
             }, { merge: true });
             toast({ title: "Paramètres enregistrés", description: "Vos sections ont été mises à jour." });
@@ -532,7 +566,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests', 'services', 'pricing', 'cta']} className="w-full space-y-4">
+                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests', 'services', 'pricing', 'cta', 'contact']} className="w-full space-y-4">
                     <AccordionItem value="attention" className="border rounded-lg bg-background">
                          <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Attention"</AccordionTrigger>
                          <AccordionContent className="p-4 border-t">
@@ -825,6 +859,60 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                             </div>
                         </AccordionContent>
                     </AccordionItem>
+                    
+                    <AccordionItem value="contact" className="border rounded-lg bg-background">
+                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Contact"</AccordionTrigger>
+                        <AccordionContent className="p-4 border-t">
+                             <div className="space-y-6">
+                                <FormField control={form.control} name="contactSection.enabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="contactSection.title" render={({ field }) => (
+                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="contactSection.text" render={({ field }) => (
+                                    <FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <div>
+                                    <Label>Image</Label>
+                                    <div className="mt-2 flex items-center gap-4">
+                                        <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                            {contactImagePreview ? <Image src={contactImagePreview} alt="Aperçu Contact" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                        </div>
+                                        <input type="file" ref={contactImageRef} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const b = await toBase64(f); setContactImagePreview(b); form.setValue('contactSection.imageUrl', b); } }} className="hidden" accept="image/*" />
+                                        <div className="flex flex-col gap-1">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => contactImageRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                            <Button type="button" variant="ghost" size="sm" onClick={() => { setContactImagePreview(null); form.setValue('contactSection.imageUrl', ''); }}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <Label>Liens personnalisés</Label>
+                                     <div className="space-y-2 mt-2">
+                                        {contactLinkFields.map((field, index) => (
+                                            <div key={field.id} className="flex items-center gap-2">
+                                                <FormField control={form.control} name={`contactSection.links.${index}.text`} render={({ field }) => (
+                                                    <FormItem className="flex-1"><FormControl><Input {...field} placeholder="Texte du lien (ex: Mon Calendly)" /></FormControl></FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name={`contactSection.links.${index}.url`} render={({ field }) => (
+                                                    <FormItem className="flex-1"><FormControl><Input {...field} placeholder="URL complète" /></FormControl></FormItem>
+                                                )}/>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeContactLink(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendContactLink({ text: '', url: '' })} className="mt-2">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un lien
+                                    </Button>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
                 <div className="flex justify-end pt-6 border-t">
                     <Button type="submit" disabled={isSubmitting}>
@@ -852,6 +940,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             servicesSection: formData.servicesSection,
             pricingSection: formData.pricingSection,
             ctaSection: formData.ctaSection,
+            contactSection: formData.contactSection,
         }
     };
 
@@ -871,6 +960,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              {counselorPreviewData.miniSite.servicesSection?.enabled && <CounselorServicesSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.pricingSection?.enabled && <CounselorPricingSection counselor={counselorPreviewData} />}
+             {counselorPreviewData.miniSite.contactSection?.enabled && <CounselorContactSection counselor={counselorPreviewData} />}
           </div>
         </SheetContent>
     )
@@ -913,6 +1003,7 @@ export default function MiniSitePage() {
             },
             ctaSection: { ...defaultMiniSiteConfig.ctaSection, ...(userData.miniSite.ctaSection || {}) },
             pricingSection: { ...defaultMiniSiteConfig.pricingSection, ...(userData.miniSite.pricingSection || {})},
+            contactSection: { ...defaultMiniSiteConfig.contactSection, ...(userData.miniSite.contactSection || {})},
         });
     } else {
         form.reset(defaultMiniSiteConfig);
@@ -971,5 +1062,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
-    

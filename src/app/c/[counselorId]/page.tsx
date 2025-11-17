@@ -83,5 +83,3 @@ export default function CounselorPublicPage() {
     </div>
   );
 }
-
-    
