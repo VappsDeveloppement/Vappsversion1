@@ -27,6 +27,7 @@ import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/
 import { AboutMeSection } from '@/components/shared/about-me-section';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { InterestsSection } from '@/components/shared/interests-section';
+import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -71,11 +72,26 @@ const interestsSchema = z.object({
     features: z.array(z.object({ value: z.string() })).default([]),
 });
 
+const serviceItemSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, "Le titre est requis."),
+  description: z.string().min(1, "La description est requise."),
+  imageUrl: z.string().nullable().optional(),
+});
+
+const servicesSchema = z.object({
+    enabled: z.boolean().default(true),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    services: z.array(serviceItemSchema).max(3, "Vous pouvez ajouter 3 services au maximum.").default([]),
+});
+
 const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
     aboutSection: aboutSchema,
     interestsSection: interestsSchema,
+    servicesSection: servicesSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -112,6 +128,16 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         enabled: true,
         title: 'Mes centres d\'intérêt',
         features: [{ value: 'Coaching individuel' }, { value: 'Bilan de compétences' }, { value: 'Reconversion professionnelle' }]
+    },
+    servicesSection: {
+        enabled: true,
+        title: 'Mes Services',
+        subtitle: 'Découvrez comment je peux vous accompagner',
+        services: [
+            { id: 'service-1', title: 'Service 1', description: 'Description de mon premier service.', imageUrl: null },
+            { id: 'service-2', title: 'Service 2', description: 'Description de mon deuxième service.', imageUrl: null },
+            { id: 'service-3', title: 'Service 3', description: 'Description de mon troisième service.', imageUrl: null },
+        ]
     }
 };
 
@@ -372,18 +398,20 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const aboutImageRef = useRef<HTMLInputElement>(null);
+    const serviceImageRefs = useRef<(HTMLInputElement | null)[]>([]);
 
     const userDocRef = useMemoFirebase(() => {
         if (!user) return null;
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
 
-    const form = useForm<{ attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema>, interestsSection: z.infer<typeof interestsSchema> }>({
-        resolver: zodResolver(z.object({ attentionSection: attentionSchema, aboutSection: aboutSchema, interestsSection: interestsSchema })),
+    const form = useForm<{ attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema>, interestsSection: z.infer<typeof interestsSchema>, servicesSection: z.infer<typeof servicesSchema> }>({
+        resolver: zodResolver(z.object({ attentionSection: attentionSchema, aboutSection: aboutSchema, interestsSection: interestsSchema, servicesSection: servicesSchema })),
         defaultValues: {
             attentionSection: defaultMiniSiteConfig.attentionSection,
             aboutSection: defaultMiniSiteConfig.aboutSection,
             interestsSection: defaultMiniSiteConfig.interestsSection,
+            servicesSection: defaultMiniSiteConfig.servicesSection,
         },
         control,
     });
@@ -393,18 +421,26 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         name: "interestsSection.features",
     });
 
+    const { fields: serviceFields, append: appendService, remove: removeService } = useFieldArray({
+        control: form.control,
+        name: "servicesSection.services",
+    });
+
     const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
+    const watchedServices = useWatch({ control: form.control, name: "servicesSection.services" });
+
+
     useEffect(() => {
         setAboutImagePreview(form.getValues('aboutSection.imageUrl'));
     }, [form.getValues('aboutSection.imageUrl')]);
 
-    const onSubmit = async (data: { attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema>, interestsSection: z.infer<typeof interestsSchema> }) => {
+    const onSubmit = async (data: any) => {
         if (!userDocRef) return;
         setIsSubmitting(true);
         try {
             const interestsData = {
                 ...data.interestsSection,
-                features: data.interestsSection.features.map(f => f.value),
+                features: data.interestsSection.features.map((f: {value: string}) => f.value),
             };
 
             await setDocumentNonBlocking(userDocRef, {
@@ -413,6 +449,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                     attentionSection: data.attentionSection,
                     aboutSection: data.aboutSection,
                     interestsSection: interestsData,
+                    servicesSection: data.servicesSection,
                 },
             }, { merge: true });
             toast({ title: "Paramètres enregistrés", description: "Vos sections ont été mises à jour." });
@@ -426,7 +463,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests']} className="w-full space-y-4">
+                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests', 'services']} className="w-full space-y-4">
                     <AccordionItem value="attention" className="border rounded-lg bg-background">
                          <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Attention"</AccordionTrigger>
                          <AccordionContent className="p-4 border-t">
@@ -538,6 +575,56 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                             </div>
                         </AccordionContent>
                      </AccordionItem>
+                      <AccordionItem value="services" className="border rounded-lg bg-background">
+                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Services"</AccordionTrigger>
+                        <AccordionContent className="p-4 border-t">
+                             <div className="space-y-6">
+                                <FormField control={form.control} name="servicesSection.enabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="servicesSection.title" render={({ field }) => (
+                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="servicesSection.subtitle" render={({ field }) => (
+                                    <FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <div>
+                                    <Label>Cartes de service</Label>
+                                    <div className="space-y-4 mt-2">
+                                        {serviceFields.map((field, index) => (
+                                            <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                                <div className="flex justify-between items-center">
+                                                    <h4 className="font-medium">Service {index + 1}</h4>
+                                                </div>
+                                                <FormField control={form.control} name={`servicesSection.services.${index}.title`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                                )}/>
+                                                <FormField control={form.control} name={`servicesSection.services.${index}.description`} render={({ field }) => (
+                                                    <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2}/></FormControl><FormMessage /></FormItem>
+                                                )}/>
+                                                <div>
+                                                    <Label>Image</Label>
+                                                    <div className="mt-2 flex items-center gap-4">
+                                                        <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                                            {watchedServices?.[index]?.imageUrl && <Image src={watchedServices[index].imageUrl!} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" />}
+                                                        </div>
+                                                        <input type="file" ref={el => serviceImageRefs.current[index] = el} onChange={async (e) => {const f=e.target.files?.[0]; if(f) {const b=await toBase64(f); form.setValue(`servicesSection.services.${index}.imageUrl`, b)}}} className="hidden" accept="image/*" />
+                                                        <div className="flex flex-col gap-1">
+                                                            <Button type="button" variant="outline" size="sm" onClick={() => serviceImageRefs.current[index]?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                            <Button type="button" variant="ghost" size="sm" onClick={() => form.setValue(`servicesSection.services.${index}.imageUrl`, null)}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
                 <div className="flex justify-end pt-6 border-t">
                     <Button type="submit" disabled={isSubmitting}>
@@ -562,6 +649,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
                 ...formData.interestsSection,
                 features: formData.interestsSection.features.map((f: {value: string}) => f.value),
             },
+            servicesSection: formData.servicesSection,
         }
     };
 
@@ -578,6 +666,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              {counselorPreviewData.miniSite.attentionSection?.enabled && <AttentionSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.interestsSection?.enabled && <InterestsSection counselor={counselorPreviewData} />}
+             {counselorPreviewData.miniSite.servicesSection?.enabled && <CounselorServicesSection counselor={counselorPreviewData} />}
           </div>
         </SheetContent>
     )
@@ -602,6 +691,7 @@ export default function MiniSitePage() {
   useEffect(() => {
     if (userData?.miniSite) {
         const interestsFeatures = (userData.miniSite.interestsSection?.features || defaultMiniSiteConfig.interestsSection.features).map((f: any) => typeof f === 'string' ? {value: f} : f);
+        const servicesData = (userData.miniSite.servicesSection?.services || defaultMiniSiteConfig.servicesSection.services).map((s: any) => ({ ...s, imageUrl: s.imageUrl || null }));
 
         form.reset({
             hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
@@ -611,6 +701,11 @@ export default function MiniSitePage() {
               ...defaultMiniSiteConfig.interestsSection,
               ...(userData.miniSite.interestsSection || {}),
               features: interestsFeatures
+            },
+            servicesSection: {
+              ...defaultMiniSiteConfig.servicesSection,
+              ...(userData.miniSite.servicesSection || {}),
+              services: servicesData,
             }
         });
     } else {
@@ -670,4 +765,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
