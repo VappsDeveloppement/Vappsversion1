@@ -44,9 +44,19 @@ const heroSchema = z.object({
     showLocation: z.boolean().default(false),
 });
 
-type HeroFormData = z.infer<typeof heroSchema>;
+const aboutSchema = z.object({
+  enabled: z.boolean().default(true),
+});
 
-const defaultMiniSiteConfig = {
+const miniSiteSchema = z.object({
+    hero: heroSchema,
+    about: aboutSchema,
+});
+
+type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
+
+
+const defaultMiniSiteConfig: MiniSiteFormData = {
     hero: {
         title: 'Donnez un nouvel élan à votre carrière',
         subtitle: 'Un accompagnement personnalisé pour atteindre vos objectifs.',
@@ -58,6 +68,9 @@ const defaultMiniSiteConfig = {
         showPhone: false,
         showLocation: false,
     },
+    about: {
+        enabled: true,
+    }
 };
 
 function HeroSettingsTab({ control, userData }: { control: any, userData: any }) {
@@ -72,7 +85,7 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
     
-    const form = useForm<HeroFormData>({
+    const form = useForm<z.infer<typeof heroSchema>>({
         resolver: zodResolver(heroSchema),
         defaultValues: defaultMiniSiteConfig.hero,
         control
@@ -93,7 +106,7 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
         }
     };
     
-    const onSubmit = async (data: HeroFormData) => {
+    const onSubmit = async (data: z.infer<typeof heroSchema>) => {
         if (!userDocRef) return;
         setIsSubmitting(true);
         try {
@@ -274,12 +287,94 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
     );
 }
 
+function AboutSettingsTab({ control, userData }: { control: any, userData: any }) {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const userDocRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [firestore, user]);
+
+    const form = useForm<z.infer<typeof aboutSchema>>({
+        resolver: zodResolver(aboutSchema),
+        defaultValues: defaultMiniSiteConfig.about,
+        control,
+    });
+    
+    const onSubmit = async (data: z.infer<typeof aboutSchema>) => {
+        if (!userDocRef) return;
+        setIsSubmitting(true);
+        try {
+            await setDocumentNonBlocking(userDocRef, {
+                miniSite: {
+                    ...(userData?.miniSite || {}),
+                    about: data,
+                },
+            }, { merge: true });
+            toast({ title: "Paramètres enregistrés", description: "Votre section 'À Propos' a été mise à jour." });
+        } catch (error) {
+            toast({ title: "Erreur", description: "Impossible de sauvegarder les paramètres.", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Section "À Propos de Moi"</CardTitle>
+                <CardDescription>
+                    Activez ou désactivez cette section. Le contenu est tiré de votre biographie publique que vous pouvez modifier sur la page de votre profil.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                        <FormField
+                            control={form.control}
+                            name="enabled"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel className="text-base">
+                                            Afficher la section "À propos de moi"
+                                        </FormLabel>
+                                        <FormDescription>
+                                            Si cette option est désactivée, la section n'apparaîtra pas sur votre page.
+                                        </FormDescription>
+                                    </div>
+                                    <FormControl>
+                                        <Switch
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                         <div className="flex justify-end pt-6 border-t">
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Enregistrer les modifications
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+    )
+}
+
 function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
     const counselorPreviewData = {
         ...(userData || {}),
         miniSite: {
             ...userData?.miniSite,
-            hero: formData,
+            hero: formData.hero,
+            about: formData.about,
         }
     };
 
@@ -310,19 +405,19 @@ export default function MiniSitePage() {
   
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
-  const form = useForm({
-    resolver: zodResolver(heroSchema), // Only for one tab for now
-    defaultValues: defaultMiniSiteConfig.hero
+  const form = useForm<MiniSiteFormData>({
+    resolver: zodResolver(miniSiteSchema),
+    defaultValues: defaultMiniSiteConfig,
   });
   
   useEffect(() => {
-    if (userData?.miniSite?.hero) {
+    if (userData?.miniSite) {
         form.reset({
-            ...defaultMiniSiteConfig.hero,
-            ...userData.miniSite.hero
+            ...defaultMiniSiteConfig,
+            ...userData.miniSite
         });
     } else {
-        form.reset(defaultMiniSiteConfig.hero);
+        form.reset(defaultMiniSiteConfig);
     }
   }, [userData, form]);
   
@@ -363,22 +458,22 @@ export default function MiniSitePage() {
             <Text className="mr-2 h-4 w-4" />
             Contenu Héro
           </TabsTrigger>
+          <TabsTrigger value="personal-page">
+            <FileText className="mr-2 h-4 w-4" />
+            Sections de la Page
+          </TabsTrigger>
           <TabsTrigger value="visual-identity" disabled>
             <Palette className="mr-2 h-4 w-4" />
             Identité Visuelle
-          </TabsTrigger>
-          <TabsTrigger value="personal-page" disabled>
-            <FileText className="mr-2 h-4 w-4" />
-            Sections de la Page
           </TabsTrigger>
         </TabsList>
         <TabsContent value="hero-content">
           <HeroSettingsTab control={form.control} userData={userData} />
         </TabsContent>
-        <TabsContent value="visual-identity">
-          {/* Placeholder for future implementation */}
-        </TabsContent>
         <TabsContent value="personal-page">
+          <AboutSettingsTab control={form.control} userData={userData} />
+        </TabsContent>
+        <TabsContent value="visual-identity">
           {/* Placeholder for future implementation */}
         </TabsContent>
       </Tabs>

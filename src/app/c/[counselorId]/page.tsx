@@ -69,12 +69,13 @@ export default function CounselorPublicPage() {
     );
   }
 
-  // TODO: Dynamically render sections based on counselor.miniSite.sections
+  const showAboutSection = counselor.miniSite?.about?.enabled !== false;
+
   return (
     <div className="bg-muted/30 min-h-screen">
       <CounselorHero counselor={counselor} />
       <main>
-        <AboutMeSection counselor={counselor} />
+        {showAboutSection && <AboutMeSection counselor={counselor} />}
       </main>
     </div>
   );

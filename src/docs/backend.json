@@ -132,6 +132,12 @@
                         "showLocation": { "type": "boolean" }
                     }
                 },
+                "about": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean" }
+                    }
+                },
                 "sections": {
                     "type": "array",
                     "items": { "type": "object" }
