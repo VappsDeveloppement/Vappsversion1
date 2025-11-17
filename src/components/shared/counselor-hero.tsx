@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 type CounselorProfile = {
     id: string;
@@ -65,11 +66,11 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                     )}
                     <div className={cn(
                         "text-center",
-                        showPhoto ? "md:col-span-2 md:text-left" : "md:col-span-3"
+                        showPhoto ? "md:col-span-2" : "md:col-span-3"
                     )}>
                         <h1 className="text-4xl md:text-5xl font-bold text-white">{title}</h1>
                         <p className="text-xl text-white/90 mt-4">{subtitle}</p>
-                        <p className="mt-6 text-base text-white/80 max-w-2xl mx-auto md:mx-0">
+                        <p className="mt-6 text-base text-white/80 max-w-2xl mx-auto">
                            {counselor.publicBio || 'Biographie non disponible.'}
                         </p>
                         <div className="mt-8">
