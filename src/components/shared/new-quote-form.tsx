@@ -128,8 +128,9 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
     // Fetch plans
     const plansQuery = useMemoFirebase(() => {
-        return collection(firestore, 'plans');
-    }, [firestore]);
+        if (!user) return null;
+        return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansQuery);
     
     // Fetch contracts
@@ -577,7 +578,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                      {fields.length === 0 && (
                                         <TableRow>
                                             <TableCell colSpan={5} className="text-center h-24">
-                                                Aucun article. Ajoutez un plan pour commencer.
+                                                Aucun article. Ajoutez une prestation pour commencer.
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -587,7 +588,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                 <DropdownMenuTrigger asChild>
                                     <Button type="button" variant="outline" size="sm" className="mt-4">
                                         <PlusCircle className="mr-2 h-4 w-4"/>
-                                        Ajouter un plan
+                                        Ajouter une prestation
                                         <ChevronDown className="ml-2 h-4 w-4" />
                                     </Button>
                                 </DropdownMenuTrigger>
@@ -599,7 +600,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                                             </DropdownMenuItem>
                                         ))
                                     ) : (
-                                        <DropdownMenuItem disabled>Aucun plan trouvé</DropdownMenuItem>
+                                        <DropdownMenuItem disabled>Aucun modèle trouvé</DropdownMenuItem>
                                     )}
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -685,5 +686,3 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
-
-    

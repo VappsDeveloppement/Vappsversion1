@@ -440,15 +440,19 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Plan",
       "type": "object",
-      "description": "Represents a pricing plan. Plans are global but can be enabled/disabled by counselors.",
+      "description": "Represents a pricing plan or a prestation model. Can be global, public, or counselor-specific.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the plan."
         },
+        "counselorId": {
+            "type": "string",
+            "description": "The ID of the counselor this plan belongs to (for non-public plans)."
+        },
         "name": {
           "type": "string",
-          "description": "The name of the plan (e.g., 'Essentiel', 'Pro')."
+          "description": "The name of the plan (e.g., 'Essentiel', 'Pro', 'Bilan de compétences')."
         },
         "description": {
           "type": "string",
@@ -465,7 +469,7 @@
         },
         "period": {
           "type": "string",
-          "description": "The billing period (e.g., '/mois', '/an')."
+          "description": "The billing period (e.g., '/mois', '/an', '/prestation')."
         },
         "imageUrl": {
           "type": "string",
@@ -482,7 +486,7 @@
         },
         "isPublic": {
           "type": "boolean",
-          "description": "Whether the plan should be displayed on the public pricing page."
+          "description": "Whether the plan should be displayed on the public pricing page. If false, it's a counselor-specific template."
         }
       },
       "required": ["id", "name", "price", "period"]
@@ -573,7 +577,7 @@
           "schema": {
             "$ref": "#/backend/entities/Plan"
           },
-          "description": "Stores all available pricing plans for the platform."
+          "description": "Stores all available pricing plans and prestation models for the platform. `isPublic` flag determines visibility on the public pricing page. Counselor-specific plans have a `counselorId`."
         }
       },
       {
@@ -684,4 +688,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-

@@ -28,18 +28,13 @@ service cloud.firestore {
     match /agencies/{agencyId} {
       allow get: if true; // Public read for personalization
       allow list, write, update, delete: if isSuperAdmin();
-      
-      // Allow public read of plans, but restrict writes to members of the agency
-      match /plans/{planId} {
-        allow get, list: if true;
-        allow create, update, delete: if isConseiller(request.auth.uid); // Simplified for now
-      }
     }
     
-    // Plans are globally managed by superadmin but publicly readable
+    // Plans can be public (readable by all), or counselor-specific
     match /plans/{planId} {
-      allow get, list: if true;
-      allow create, update, delete: if isSuperAdmin();
+      allow get, list: if resource.data.isPublic == true || (isConseiller(request.auth.uid) && request.query.counselorId == request.auth.uid);
+      allow create: if isSuperAdmin() || (isConseiller(request.auth.uid) && request.resource.data.counselorId == request.auth.uid);
+      allow update, delete: if isSuperAdmin() || (isConseiller(request.auth.uid) && resource.data.counselorId == request.auth.uid);
     }
 
     // GDPR and Support requests managed by superadmin

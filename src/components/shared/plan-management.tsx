@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -7,8 +6,8 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { useFirestore } from '@/firebase/provider';
-import { collection, doc } from 'firebase/firestore';
+import { useFirestore, useUser } from '@/firebase/provider';
+import { collection, doc, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -61,9 +60,9 @@ export type Plan = {
   features: string[];
   appointmentCredits: number;
   isFeatured: boolean;
-  isPublic: boolean;
   imageUrl?: string;
   cta?: string;
+  counselorId?: string; // Link to counselor
 };
 
 const planSchema = z.object({
@@ -79,8 +78,6 @@ const planSchema = z.object({
     (a) => parseInt(z.string().parse(a), 10),
     z.number().int().min(0, 'Les crédits doivent être positifs.')
   ),
-  isFeatured: z.boolean().default(false),
-  isPublic: z.boolean().default(true),
   imageUrl: z.string().optional(),
   cta: z.string().optional(),
 });
@@ -97,15 +94,16 @@ const toBase64 = (file: File): Promise<string> =>
 
 export function PlanManagement() {
   const firestore = useFirestore();
+  const { user } = useUser();
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
 
   const plansCollectionRef = useMemoFirebase(() => {
-    if (!firestore) return null;
-    return collection(firestore, 'plans');
-  }, [firestore]);
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid));
+  }, [firestore, user]);
 
   const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansCollectionRef);
 
@@ -115,13 +113,11 @@ export function PlanManagement() {
       name: '',
       description: '',
       price: 0,
-      period: '/mois',
+      period: '/prestation',
       features: [],
       appointmentCredits: 0,
-      isFeatured: false,
-      isPublic: true,
       imageUrl: '',
-      cta: 'Choisir ce plan',
+      cta: 'Ajouter au devis',
     },
   });
 
@@ -137,9 +133,8 @@ export function PlanManagement() {
     setEditingPlan(plan);
     form.reset({
       ...plan,
-      isPublic: plan.isPublic === undefined ? true : plan.isPublic, // Default to true if undefined
       features: plan.features.map(f => ({ value: f })),
-      cta: plan.cta || 'Choisir ce plan',
+      cta: plan.cta || 'Ajouter au devis',
     });
     setImagePreview(plan.imageUrl || null);
     setIsSheetOpen(true);
@@ -151,22 +146,21 @@ export function PlanManagement() {
       name: '',
       description: '',
       price: 0,
-      period: '/mois',
+      period: '/prestation',
       features: [],
       appointmentCredits: 0,
-      isFeatured: false,
-      isPublic: true,
       imageUrl: '',
-      cta: 'Choisir ce plan'
+      cta: 'Ajouter au devis'
     });
     setImagePreview(null);
     setIsSheetOpen(true);
   }
 
   const handleDelete = (planId: string) => {
+    if(!user) return;
     const planDocRef = doc(firestore, 'plans', planId);
     deleteDocumentNonBlocking(planDocRef);
-    toast({ title: 'Plan supprimé', description: 'Le plan a été supprimé avec succès.' });
+    toast({ title: 'Plan supprimé', description: 'Le modèle de prestation a été supprimé.' });
   };
   
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -180,22 +174,26 @@ export function PlanManagement() {
 
 
   const onSubmit = async (data: PlanFormData) => {
+    if(!user) return;
     setIsSubmitting(true);
     
     const planData = {
       ...data,
       features: data.features.map(f => f.value),
+      counselorId: user.uid,
+      isPublic: false, // Ensure these plans are not public
+      isFeatured: false,
     };
 
     try {
       if (editingPlan) {
         const planDocRef = doc(firestore, 'plans', editingPlan.id);
         await setDocumentNonBlocking(planDocRef, planData, { merge: true });
-        toast({ title: 'Plan mis à jour', description: 'Le plan a été mis à jour avec succès.' });
+        toast({ title: 'Modèle mis à jour', description: 'Le modèle de prestation a été mis à jour.' });
       } else {
         const plansCollectionRef = collection(firestore, 'plans');
         await addDocumentNonBlocking(plansCollectionRef, planData);
-        toast({ title: 'Plan créé', description: 'Le nouveau plan a été créé avec succès.' });
+        toast({ title: 'Modèle créé', description: 'Le nouveau modèle de prestation a été créé.' });
       }
       setIsSheetOpen(false);
       setEditingPlan(null);
@@ -215,21 +213,21 @@ export function PlanManagement() {
       <CardHeader>
         <div className="flex justify-between items-start">
           <div>
-            <CardTitle>Gestion des Plans</CardTitle>
+            <CardTitle>Gestion des Modèles de Prestation</CardTitle>
             <CardDescription>
-              Créez et gérez les plans d'abonnement pour la section "Tarifs" de votre page d'accueil.
+              Créez des prestations réutilisables pour les ajouter rapidement à vos devis.
             </CardDescription>
           </div>
            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetTrigger asChild>
                 <Button onClick={handleNew}>
                     <PlusCircle className="mr-2 h-4 w-4" />
-                    Nouveau Plan
+                    Nouveau Modèle
                 </Button>
             </SheetTrigger>
             <SheetContent className="sm:max-w-2xl w-full overflow-y-auto">
                 <SheetHeader>
-                    <SheetTitle>{editingPlan ? 'Modifier le Plan' : 'Créer un Nouveau Plan'}</SheetTitle>
+                    <SheetTitle>{editingPlan ? 'Modifier le Modèle' : 'Créer un Nouveau Modèle'}</SheetTitle>
                 </SheetHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
@@ -238,9 +236,9 @@ export function PlanManagement() {
                             name="name"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Titre du plan</FormLabel>
+                                    <FormLabel>Titre du modèle</FormLabel>
                                     <FormControl>
-                                        <Input placeholder="Ex: Essentiel" {...field} />
+                                        <Input placeholder="Ex: Bilan de compétences" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -254,7 +252,7 @@ export function PlanManagement() {
                                 <FormItem>
                                     <FormLabel>Prix</FormLabel>
                                     <FormControl>
-                                    <Input type="number" step="0.01" placeholder="29.99" {...field} />
+                                    <Input type="number" step="0.01" placeholder="500.00" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -267,7 +265,7 @@ export function PlanManagement() {
                                 <FormItem>
                                     <FormLabel>Période</FormLabel>
                                     <FormControl>
-                                    <Input placeholder="/mois" {...field} />
+                                    <Input placeholder="/prestation" {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -281,7 +279,7 @@ export function PlanManagement() {
                                 <FormItem>
                                     <FormLabel>Description courte</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Idéal pour commencer..." {...field} />
+                                        <Textarea placeholder="Pour faire le point sur sa carrière..." {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -300,20 +298,6 @@ export function PlanManagement() {
                             </FormItem>
                             )}
                         />
-                        <FormField
-                            control={form.control}
-                            name="cta"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Texte du bouton d'action</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="Choisir ce plan" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-
 
                         <div>
                             <FormLabel>Caractéristiques (puces)</FormLabel>
@@ -343,7 +327,7 @@ export function PlanManagement() {
                         </div>
                         
                         <div>
-                          <FormLabel>Image du plan</FormLabel>
+                          <FormLabel>Image du modèle (optionnel)</FormLabel>
                           <div className="flex items-center gap-4 mt-2">
                             <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
                               {imagePreview ? (
@@ -367,55 +351,13 @@ export function PlanManagement() {
                           </div>
                         </div>
 
-                         <FormField
-                            control={form.control}
-                            name="isPublic"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Afficher publiquement</FormLabel>
-                                        <FormDescription>
-                                            Si activé, ce plan apparaîtra sur la page des tarifs.
-                                        </FormDescription>
-                                    </div>
-                                    <FormControl>
-                                        <Switch
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-
-                         <FormField
-                            control={form.control}
-                            name="isFeatured"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Plan le plus populaire</FormLabel>
-                                        <FormDescription>
-                                            Met en avant ce plan sur la page des tarifs.
-                                        </FormDescription>
-                                    </div>
-                                    <FormControl>
-                                        <Switch
-                                            checked={field.value}
-                                            onCheckedChange={field.onChange}
-                                        />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-
                         <SheetFooter className="pt-6">
                             <SheetClose asChild>
                                 <Button type="button" variant="outline">Annuler</Button>
                             </SheetClose>
                             <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {editingPlan ? 'Sauvegarder' : 'Créer le plan'}
+                                {editingPlan ? 'Sauvegarder' : 'Créer le modèle'}
                             </Button>
                         </SheetFooter>
                     </form>
@@ -428,10 +370,9 @@ export function PlanManagement() {
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Nom du Plan</TableHead>
+              <TableHead>Nom du Modèle</TableHead>
               <TableHead>Prix</TableHead>
-              <TableHead>Statut</TableHead>
-              <TableHead>Populaire</TableHead>
+              <TableHead>Crédits RDV</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -439,11 +380,7 @@ export function PlanManagement() {
             {isLoading ? (
                 [...Array(3)].map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell><Skeleton className="h-5 w-24" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-20" /></TableCell>
-                        <TableCell><Skeleton className="h-5 w-12" /></TableCell>
-                        <TableCell className="text-right"><Skeleton className="h-5 w-16 ml-auto" /></TableCell>
+                        <TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell>
                     </TableRow>
                 ))
             ) : plans && plans.length > 0 ? (
@@ -451,14 +388,7 @@ export function PlanManagement() {
                     <TableRow key={plan.id}>
                         <TableCell className="font-medium">{plan.name}</TableCell>
                         <TableCell>{plan.price}€ {plan.period}</TableCell>
-                        <TableCell>
-                            <Badge variant={plan.isPublic ? 'default' : 'secondary'}>
-                                {plan.isPublic ? 'Public' : 'Privé'}
-                            </Badge>
-                        </TableCell>
-                        <TableCell>
-                            {plan.isFeatured && <Badge>Oui</Badge>}
-                        </TableCell>
+                        <TableCell>{plan.appointmentCredits}</TableCell>
                         <TableCell className="text-right">
                            <Button variant="ghost" size="icon" onClick={() => handleEdit(plan)}>
                                 <Edit className="h-4 w-4" />
@@ -471,8 +401,8 @@ export function PlanManagement() {
                 ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
-                  Aucun plan n'a été créé.
+                <TableCell colSpan={4} className="h-24 text-center">
+                  Aucun modèle de prestation créé.
                 </TableCell>
               </TableRow>
             )}
@@ -482,5 +412,3 @@ export function PlanManagement() {
     </Card>
   );
 }
-
-    

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlusCircle, FileText, MoreHorizontal, Edit, Trash2, Loader2, Send, CreditCard, Eye, CheckCircle, Search } from "lucide-react";
+import { PlanManagement } from "@/components/shared/plan-management";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { NewQuoteForm } from '@/components/shared/new-quote-form';
@@ -793,11 +794,16 @@ export default function BillingPage() {
             </div>
 
             <Tabs defaultValue="quotes">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-4">
+                    <TabsTrigger value="plans">Modèles de Prestation</TabsTrigger>
                     <TabsTrigger value="contracts">Contrats</TabsTrigger>
                     <TabsTrigger value="quotes">Devis</TabsTrigger>
                     <TabsTrigger value="invoices">Factures</TabsTrigger>
                 </TabsList>
+                
+                 <TabsContent value="plans">
+                    <PlanManagement />
+                </TabsContent>
 
                 <TabsContent value="contracts">
                      <ContractManager />
@@ -1079,4 +1085,3 @@ export default function BillingPage() {
         </div>
     );
 }
-
