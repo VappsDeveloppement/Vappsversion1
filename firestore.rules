@@ -3,141 +3,108 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * @description Checks if the user is signed in.
-     * @returns {boolean} True if the user is signed in, false otherwise.
-     */
+    // Helper Functions
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * @description Checks if the user is a superadmin. This is the master key.
-     * @returns {boolean} True if the user has the 'superadmin' role.
-     */
-     function isSuperAdmin() {
-       return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
-     }
+    function isSuperAdmin() {
+      return isSignedIn() && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
 
-    /**
-     * @description Checks if the user is an admin for a specific agency.
-     * @param {string} agencyId - The ID of the agency to check against.
-     * @returns {boolean} True if a membership document exists linking the user to the agency with an 'admin' or 'dpo' role.
-     */
-    function isAgencyAdmin(agencyId) {
-      let membershipPath = /databases/$(database)/documents/memberships/$(request.auth.uid + '_' + agencyId);
-      return isSignedIn() && exists(membershipPath) && (
-        get(membershipPath).data.role == 'admin' ||
-        get(membershipPath).data.role == 'dpo'
-      );
+    function isConseiller(userId) {
+      return exists(/databases/$(database)/documents/users/$(userId)) && get(/databases/$(database)/documents/users/$(userId)).data.role == 'conseiller';
     }
     
-    /**
-     * @description Checks if the user is a member of a specific agency (any role).
-     * @param {string} agencyId - The ID of the agency to check against.
-     * @returns {boolean} True if a membership document exists linking the user to the agency.
-     */
-    function isAgencyMember(agencyId) {
-       let membershipPath = /databases/$(database)/documents/memberships/$(request.auth.uid + '_' + agencyId);
-      return isSignedIn() && exists(membershipPath);
+    function isOwner(userId) {
+        return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Allow public read for agency personalization, but restrict write access
+    function isTheirConseiller(resource) {
+        return isSignedIn() && resource.data.counselorId == request.auth.uid;
+    }
+
+    // Platform-wide settings
     match /agencies/{agencyId} {
-      allow get: if true;
-      allow list, write, update, delete: if isSuperAdmin() || isAgencyAdmin(agencyId);
-
-      // Allow public read for plans, but restrict write access
-      match /plans/{planId} {
-        allow get, list: if true;
-        allow write, update, delete: if isSuperAdmin() || isAgencyAdmin(agencyId);
-      }
-      
-      // Allow public access to view quotes but restrict modification of accepted quotes.
-      match /quotes/{quoteId} {
-        allow get, list: if true;
-        allow create: if isSuperAdmin() || isAgencyAdmin(agencyId);
-        allow update: if (isSuperAdmin() || isAgencyAdmin(agencyId)) && resource.data.status != 'accepted';
-        allow delete: if (isSuperAdmin() || isAgencyAdmin(agencyId)) && !(existsAfter(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)) && getAfter(/databases/$(database)/documents/agencies/$(agencyId)/invoices/$(resource.id)).data.status == 'paid');
-
-      }
-
-      match /contracts/{contractId} {
-        allow get, list: if isSuperAdmin() || isAgencyAdmin(agencyId);
-        allow create, write, update, delete: if isSuperAdmin() || isAgencyAdmin(agencyId);
-      }
-
-      match /invoices/{invoiceId} {
-        allow get, list, write, update, delete: if isSuperAdmin() || isAgencyAdmin(agencyId);
-      }
+      allow get: if true; // Public read for personalization
+      allow list, write, update, delete: if isSuperAdmin();
     }
     
-    // GDPR requests can be created by anyone, but only read/managed by admins of the concerned agency
+    // Plans are globally managed by superadmin
+    match /plans/{planId} {
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSuperAdmin();
+    }
+
+    // GDPR and Support requests managed by superadmin
     match /gdpr_requests/{requestId} {
         allow create: if true;
-        allow list: if isSuperAdmin() || (isSignedIn() && isAgencyMember(request.query.agencyId));
-        allow read, write, update, delete: if isSuperAdmin() || isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId);
+        allow list, read, write, update, delete: if isSuperAdmin();
     }
     
-    // Support requests can be created by any signed-in user and are managed by superadmins
     match /support_requests/{requestId} {
       allow create: if isSignedIn();
       allow list, read, write, update, delete: if isSuperAdmin();
     }
     
-    // FAQ items can be read by anyone if general, or by agency members if specific
+    // FAQ items can be general (superadmin) or counselor-specific
     match /faq_items/{itemId} {
-      allow get: if true; // Public read access for individual items
-      allow list: if isSignedIn(); // Allow listing for signed-in users (will be filtered on client)
-      allow write: if isSuperAdmin() || isAgencyAdmin(request.resource.data.agencyId);
-      allow update, delete: if isSuperAdmin() || isAgencyAdmin(resource.data.agencyId);
+      allow get: if true;
+      allow list: if isSignedIn();
+      allow create: if isSuperAdmin() || (isConseiller(request.auth.uid) && request.resource.data.counselorId == request.auth.uid);
+      allow update, delete: if isSuperAdmin() || (isConseiller(request.auth.uid) && resource.data.counselorId == request.auth.uid);
     }
     
-     // Rules for memberships
-    match /memberships/{membershipId} {
-      // Allow list only for superadmins or admins of the specific agency
-      allow list: if isSuperAdmin() || (isSignedIn() && isAgencyAdmin(request.query.agencyId));
-      
-      // Allow read for superadmins or the user themselves if it's their own membership
-      allow get: if isSuperAdmin() || (isSignedIn() && membershipId.startsWith(request.auth.uid));
-      
-      // Allow create/delete/update for superadmins or admins of the agency
-      allow write: if isSuperAdmin() || (isSignedIn() && (
-        isAgencyAdmin(request.resource.data.agencyId) || isAgencyAdmin(resource.data.agencyId)
-      ));
-    }
-    
+    // Users collection
     match /users/{userId} {
-      // Superadmins can list all users. AgencyAdmins can list users of their agency (enforced by client query)
-      allow list: if isSuperAdmin() || (isSignedIn() && isAgencyMember(request.query.agencyId));
-
-      // Superadmins can do anything to any user.
-      allow read, write: if isSuperAdmin();
-      
-      // An admin can read any user profile in their agency.
-      allow read: if isSignedIn() && isAgencyMember(resource.data.agencyId);
-      
-      // A user can read their own profile.
-      allow get: if isSignedIn() && request.auth.uid == userId;
-      
-      // A user can update their own profile, but cannot change their role.
-      // Agency admins can update profiles of users in their agency.
-      allow update: if (isSignedIn() && request.auth.uid == userId && request.resource.data.role == resource.data.role) || isAgencyAdmin(resource.data.agencyId);
-      
-      // Allow user creation by anyone (prospects, etc.)
+      // Allow creation for prospects/signups
       allow create: if true;
+      
+      // Read access
+      allow get: if isOwner(userId) || isTheirConseiller(resource) || isSuperAdmin();
+      allow list: if isSuperAdmin() || isConseiller(request.auth.uid); // Counselors can list to find their clients
+      
+      // Write access
+      // User can update their own profile (but not change role or counselorId)
+      // Counselor can update their clients' profiles
+      // Superadmin can do anything
+      allow update: if (isOwner(userId) && request.resource.data.role == resource.data.role && request.resource.data.counselorId == resource.data.counselorId)
+                      || (isConseiller(request.auth.uid) && resource.data.counselorId == request.auth.uid)
+                      || isSuperAdmin();
 
-      // Prevent deletion of any superadmin user
-      allow delete: if resource.data.role != 'superadmin';
+      // Only superadmin can delete users for now (to prevent accidental data loss)
+      allow delete: if isSuperAdmin() && resource.data.role != 'superadmin';
+
+      // Subcollections are private to the user
+      match /{allPaths=**} {
+        allow read, write: if isOwner(userId) || isSuperAdmin();
+      }
+    }
+
+    // Contracts are managed by counselors for themselves
+    match /contracts/{contractId} {
+      allow read, list: if isConseiller(request.auth.uid) && request.query.counselorId == request.auth.uid;
+      allow create: if isConseiller(request.auth.uid) && request.resource.data.counselorId == request.auth.uid;
+      allow update, delete: if isConseiller(request.auth.uid) && resource.data.counselorId == request.auth.uid;
+      allow get: if isSuperAdmin(); // Superadmin can read any contract
+    }
+
+    // Quotes are managed by counselors
+    match /quotes/{quoteId} {
+        allow get: if true; // Public access for client validation
+        allow list: if (isConseiller(request.auth.uid) && request.query.counselorId == request.auth.uid) || isSuperAdmin();
+        allow create: if (isConseiller(request.auth.uid) && request.resource.data.counselorId == request.auth.uid) || isSuperAdmin();
+        allow update: if (isConseiller(request.auth.uid) && resource.data.counselorId == request.auth.uid) || isSuperAdmin();
+        allow delete: if (isConseiller(request.auth.uid) && resource.data.counselorId == request.auth.uid) || isSuperAdmin();
     }
     
-    match /users/{userId}/{path=**} {
-      // Superadmins have access to subcollections.
-      allow read, write: if isSuperAdmin();
-      // Users can access their own subcollections.
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+    // Invoices are managed by counselors
+    match /invoices/{invoiceId} {
+        allow get, list: if (isConseiller(request.auth.uid) && (resource.data.counselorId == request.auth.uid || request.query.counselorId == request.auth.uid)) || isSuperAdmin();
+        allow create: if (isConseiller(request.auth.uid) && request.resource.data.counselorId == request.auth.uid) || isSuperAdmin();
+        allow update, delete: if (isConseiller(request.auth.uid) && resource.data.counselorId == request.auth.uid) || isSuperAdmin();
     }
-    
+
     // Fallback for other collections. This is for development.
     // Secure these rules before production.
     match /{document=**} {

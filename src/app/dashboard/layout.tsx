@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -226,36 +227,8 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-
-  const membershipsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'memberships'), where('userId', '==', user.uid));
-  }, [firestore, user]);
-
-  const { data: memberships, isLoading: areMembershipsLoading } = useCollection(membershipsQuery);
-  
-  const isLoading = isUserLoading || areMembershipsLoading;
-
-  const agencyId = useMemo(() => {
-    if (isLoading || !memberships || memberships.length === 0) {
-      return 'vapps-agency'; // Default agency
-    }
-    // Return the first agency found for the user.
-    return memberships[0].agencyId;
-  }, [isLoading, memberships]);
-
-  if (isLoading) {
-     return (
-        <div className="flex h-screen items-center justify-center">
-            <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
-        </div>
-    );
-  }
-
   return (
-      <AgencyProvider agencyId={agencyId}>
+      <AgencyProvider agencyId="vapps-agency">
           <DashboardLayoutContent>{children}</DashboardLayoutContent>
       </AgencyProvider>
   );
