@@ -33,6 +33,7 @@ import { CounselorPricingSection } from '@/components/shared/counselor-pricing-s
 import type { Plan } from '@/components/shared/plan-management';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
+import { useAgency } from '@/context/agency-provider';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -926,6 +927,8 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
 }
 
 function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
+    const { personalization } = useAgency();
+
     const counselorPreviewData = {
         ...(userData || {}),
         miniSite: {
@@ -943,6 +946,11 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             contactSection: formData.contactSection,
         }
     };
+    
+    const copyrightText = personalization?.copyrightText || "Vapps.";
+    const copyrightUrl = personalization?.copyrightUrl || "/";
+    const footerBgColor = formData.hero?.bgColor || '#f1f5f9';
+    const primaryColor = formData.hero?.primaryColor || '#10B981';
 
     return (
         <SheetContent className="w-full sm:max-w-full lg:w-[80vw] p-0">
@@ -961,6 +969,9 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.pricingSection?.enabled && <CounselorPricingSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.contactSection?.enabled && <CounselorContactSection counselor={counselorPreviewData} />}
+             <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
+                <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
+             </footer>
           </div>
         </SheetContent>
     )
