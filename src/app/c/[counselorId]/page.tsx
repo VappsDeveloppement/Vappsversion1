@@ -74,8 +74,8 @@ export default function CounselorPublicPage() {
         {showAboutSection && <AboutMeSection counselor={counselor} />}
         {showInterestsSection && <InterestsSection counselor={counselor} />}
         {showServicesSection && <CounselorServicesSection counselor={counselor} />}
-        {showPricingSection && <CounselorPricingSection counselor={counselor} />}
         {showCtaSection && <CounselorCtaSection counselor={counselor} />}
+        {showPricingSection && <CounselorPricingSection counselor={counselor} />}
       </main>
     </div>
   );
