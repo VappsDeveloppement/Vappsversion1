@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useForm, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2, Info } from 'lucide-react';
+import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2, Info, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -26,6 +26,7 @@ import Image from 'next/image';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
 import { AboutMeSection } from '@/components/shared/about-me-section';
 import { AttentionSection } from '@/components/shared/attention-section';
+import { InterestsSection } from '@/components/shared/interests-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -64,10 +65,17 @@ const aboutSchema = z.object({
     text: z.string().optional(),
 });
 
+const interestsSchema = z.object({
+    enabled: z.boolean().default(true),
+    title: z.string().optional(),
+    features: z.array(z.object({ value: z.string() })).default([]),
+});
+
 const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
     aboutSection: aboutSchema,
+    interestsSection: interestsSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -99,6 +107,11 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         mediaText: '',
         title: 'À propos de moi',
         text: '',
+    },
+    interestsSection: {
+        enabled: true,
+        title: 'Mes centres d\'intérêt',
+        features: [{ value: 'Coaching individuel' }, { value: 'Bilan de compétences' }, { value: 'Reconversion professionnelle' }]
     }
 };
 
@@ -365,13 +378,19 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
 
-    const form = useForm<{ attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema> }>({
-        resolver: zodResolver(z.object({ attentionSection: attentionSchema, aboutSection: aboutSchema })),
+    const form = useForm<{ attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema>, interestsSection: z.infer<typeof interestsSchema> }>({
+        resolver: zodResolver(z.object({ attentionSection: attentionSchema, aboutSection: aboutSchema, interestsSection: interestsSchema })),
         defaultValues: {
             attentionSection: defaultMiniSiteConfig.attentionSection,
-            aboutSection: defaultMiniSiteConfig.aboutSection
+            aboutSection: defaultMiniSiteConfig.aboutSection,
+            interestsSection: defaultMiniSiteConfig.interestsSection,
         },
         control,
+    });
+    
+    const { fields: interestFields, append: appendInterest, remove: removeInterest } = useFieldArray({
+        control: form.control,
+        name: "interestsSection.features",
     });
 
     const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
@@ -379,15 +398,21 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         setAboutImagePreview(form.getValues('aboutSection.imageUrl'));
     }, [form.getValues('aboutSection.imageUrl')]);
 
-    const onSubmit = async (data: { attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema> }) => {
+    const onSubmit = async (data: { attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema>, interestsSection: z.infer<typeof interestsSchema> }) => {
         if (!userDocRef) return;
         setIsSubmitting(true);
         try {
+            const interestsData = {
+                ...data.interestsSection,
+                features: data.interestsSection.features.map(f => f.value),
+            };
+
             await setDocumentNonBlocking(userDocRef, {
                 miniSite: {
                     ...(userData?.miniSite || {}),
                     attentionSection: data.attentionSection,
                     aboutSection: data.aboutSection,
+                    interestsSection: interestsData,
                 },
             }, { merge: true });
             toast({ title: "Paramètres enregistrés", description: "Vos sections ont été mises à jour." });
@@ -401,7 +426,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                 <Accordion type="multiple" defaultValue={['attention', 'about']} className="w-full space-y-4">
+                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests']} className="w-full space-y-4">
                     <AccordionItem value="attention" className="border rounded-lg bg-background">
                          <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Attention"</AccordionTrigger>
                          <AccordionContent className="p-4 border-t">
@@ -476,6 +501,43 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                             </div>
                         </AccordionContent>
                     </AccordionItem>
+
+                     <AccordionItem value="interests" className="border rounded-lg bg-background">
+                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Intérêt"</AccordionTrigger>
+                        <AccordionContent className="p-4 border-t">
+                            <div className="space-y-6">
+                                <FormField control={form.control} name="interestsSection.enabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="interestsSection.title" render={({ field }) => (
+                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <div>
+                                    <Label>Caractéristiques</Label>
+                                    <div className="space-y-2 mt-2">
+                                        {interestFields.map((field, index) => (
+                                            <div key={field.id} className="flex items-center gap-2">
+                                                <FormField control={form.control} name={`interestsSection.features.${index}.value`} render={({ field }) => (
+                                                    <FormItem className="flex-1">
+                                                        <FormControl><Input {...field} placeholder="Caractéristique..." /></FormControl>
+                                                    </FormItem>
+                                                )}/>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeInterest(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendInterest({ value: '' })} className="mt-2">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une caractéristique
+                                    </Button>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                     </AccordionItem>
                 </Accordion>
                 <div className="flex justify-end pt-6 border-t">
                     <Button type="submit" disabled={isSubmitting}>
@@ -496,6 +558,10 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             hero: formData.hero,
             attentionSection: formData.attentionSection,
             aboutSection: formData.aboutSection,
+            interestsSection: {
+                ...formData.interestsSection,
+                features: formData.interestsSection.features.map((f: {value: string}) => f.value),
+            },
         }
     };
 
@@ -511,6 +577,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              <CounselorHero counselor={counselorPreviewData} />
              {counselorPreviewData.miniSite.attentionSection?.enabled && <AttentionSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
+             {counselorPreviewData.miniSite.interestsSection?.enabled && <InterestsSection counselor={counselorPreviewData} />}
           </div>
         </SheetContent>
     )
@@ -534,10 +601,17 @@ export default function MiniSitePage() {
   
   useEffect(() => {
     if (userData?.miniSite) {
+        const interestsFeatures = (userData.miniSite.interestsSection?.features || defaultMiniSiteConfig.interestsSection.features).map((f: any) => typeof f === 'string' ? {value: f} : f);
+
         form.reset({
             hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
             attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
             aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
+            interestsSection: {
+              ...defaultMiniSiteConfig.interestsSection,
+              ...(userData.miniSite.interestsSection || {}),
+              features: interestsFeatures
+            }
         });
     } else {
         form.reset(defaultMiniSiteConfig);
@@ -596,3 +670,4 @@ export default function MiniSitePage() {
     </div>
   );
 }
+

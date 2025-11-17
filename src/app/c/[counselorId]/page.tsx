@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
 import { AttentionSection } from '@/components/shared/attention-section';
+import { InterestsSection } from '@/components/shared/interests-section';
 
 
 type CounselorProfile = {
@@ -57,6 +58,7 @@ export default function CounselorPublicPage() {
 
   const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
   const showAboutSection = counselor.miniSite?.aboutSection?.enabled !== false;
+  const showInterestsSection = counselor.miniSite?.interestsSection?.enabled !== false;
 
   return (
     <div className="bg-muted/30 min-h-screen">
@@ -64,6 +66,7 @@ export default function CounselorPublicPage() {
       <main>
         {showAttentionSection && <AttentionSection counselor={counselor} />}
         {showAboutSection && <AboutMeSection counselor={counselor} />}
+        {showInterestsSection && <InterestsSection counselor={counselor} />}
       </main>
     </div>
   );
