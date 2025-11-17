@@ -29,7 +29,7 @@ type User = {
     firstName: string;
     lastName: string;
     email: string;
-    role: 'superadmin' | 'membre' | 'prospect' | 'admin' | 'dpo' | 'conseiller' | 'moderateur';
+    role: 'superadmin' | 'membre' | 'prospect' | 'admin' | 'dpo' | 'conseiller';
     dateJoined: string;
     phone?: string;
     address?: string;
@@ -45,7 +45,7 @@ const userFormSchema = z.object({
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
-  role: z.enum(['superadmin', 'admin', 'dpo', 'conseiller', 'moderateur', 'membre'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['superadmin', 'admin', 'dpo', 'conseiller', 'membre'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
 }).refine(data => {
     // Si on crée un nouvel utilisateur (pas d'ID), le mot de passe est requis et doit faire au moins 6 caractères
@@ -67,7 +67,6 @@ const roleVariant: Record<User['role'], 'default' | 'secondary' | 'destructive'>
   admin: 'default',
   dpo: 'default',
   conseiller: 'default',
-  moderateur: 'default',
   membre: 'default',
   prospect: 'secondary',
 };
@@ -77,7 +76,6 @@ const roleText: Record<User['role'], string> = {
     admin: 'Admin',
     dpo: 'DPO',
     conseiller: 'Conseiller',
-    moderateur: 'Modérateur',
     membre: 'Membre',
     prospect: 'Prospect',
 };
@@ -370,7 +368,6 @@ export default function UserManagementPage() {
                                                 <SelectItem value="admin">Admin</SelectItem>
                                                 <SelectItem value="dpo">DPO</SelectItem>
                                                 <SelectItem value="conseiller">Conseiller</SelectItem>
-                                                <SelectItem value="moderateur">Modérateur</SelectItem>
                                                 <SelectItem value="membre">Membre</SelectItem>
                                             </SelectContent>
                                         </Select>
@@ -424,7 +421,6 @@ export default function UserManagementPage() {
                                 <SelectItem value="admin">Admin</SelectItem>
                                 <SelectItem value="dpo">DPO</SelectItem>
                                 <SelectItem value="conseiller">Conseiller</SelectItem>
-                                <SelectItem value="moderateur">Modérateur</SelectItem>
                                 <SelectItem value="membre">Membre</SelectItem>
                                 <SelectItem value="prospect">Prospect</SelectItem>
                             </SelectContent>
