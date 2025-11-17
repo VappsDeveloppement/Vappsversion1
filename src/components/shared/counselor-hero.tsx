@@ -70,12 +70,12 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                         </div>
                     )}
                     <div className={cn(
-                        "text-center",
-                        showPhoto ? "md:col-span-2 md:text-left" : "md:col-span-3"
+                        "text-center flex flex-col items-center",
+                        showPhoto ? "md:col-span-2 md:items-start md:text-left" : "md:col-span-3"
                     )}>
                         <h1 className="text-4xl md:text-5xl font-bold text-white">{title}</h1>
                         <p className="text-xl text-white/90 mt-4">{subtitle}</p>
-                        <p className="mt-6 text-base text-white/80 max-w-2xl mx-auto md:mx-0">
+                        <p className="mt-6 text-base text-white/80 max-w-2xl">
                            {counselor.publicBio || 'Biographie non disponible.'}
                         </p>
                         <div className="mt-8">
@@ -83,7 +83,7 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                                 <Link href={ctaLink}>{ctaText}</Link>
                             </Button>
                         </div>
-                        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center md:justify-start gap-x-6 gap-y-2 text-white/80 text-sm">
+                        <div className="mt-6 flex flex-col sm:flex-row items-center justify-center gap-x-6 gap-y-2 text-white/80 text-sm">
                             {heroConfig.showPhone && counselor.phone && (
                                 <div className="flex items-center gap-2">
                                     <Phone className="h-4 w-4" />
