@@ -28,6 +28,7 @@ import { AboutMeSection } from '@/components/shared/about-me-section';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { InterestsSection } from '@/components/shared/interests-section';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
+import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -86,12 +87,24 @@ const servicesSchema = z.object({
     services: z.array(serviceItemSchema).max(3, "Vous pouvez ajouter 3 services au maximum.").default([]),
 });
 
+const ctaSchema = z.object({
+  enabled: z.boolean().default(true),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  text: z.string().optional(),
+  buttonText: z.string().optional(),
+  buttonLink: z.string().optional(),
+  bgColor: z.string().optional(),
+  bgImageUrl: z.string().optional(),
+});
+
 const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
     aboutSection: aboutSchema,
     interestsSection: interestsSchema,
     servicesSection: servicesSchema,
+    ctaSection: ctaSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -138,6 +151,16 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
             { id: 'service-2', title: 'Service 2', description: 'Description de mon deuxième service.', imageUrl: null },
             { id: 'service-3', title: 'Service 3', description: 'Description de mon troisième service.', imageUrl: null },
         ]
+    },
+    ctaSection: {
+        enabled: true,
+        title: 'Prêt à passer à l\'action ?',
+        subtitle: 'Contactez-moi',
+        text: 'Discutons de votre projet et voyons comment nous pouvons travailler ensemble pour atteindre vos objectifs.',
+        buttonText: 'Prendre rendez-vous',
+        buttonLink: '#contact',
+        bgColor: '#fafafa',
+        bgImageUrl: '',
     }
 };
 
@@ -399,19 +422,33 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     const [isSubmitting, setIsSubmitting] = useState(false);
     const aboutImageRef = useRef<HTMLInputElement>(null);
     const serviceImageRefs = useRef<(HTMLInputElement | null)[]>([]);
+    const ctaImageRef = useRef<HTMLInputElement>(null);
 
     const userDocRef = useMemoFirebase(() => {
         if (!user) return null;
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
 
-    const form = useForm<{ attentionSection: z.infer<typeof attentionSchema>, aboutSection: z.infer<typeof aboutSchema>, interestsSection: z.infer<typeof interestsSchema>, servicesSection: z.infer<typeof servicesSchema> }>({
-        resolver: zodResolver(z.object({ attentionSection: attentionSchema, aboutSection: aboutSchema, interestsSection: interestsSchema, servicesSection: servicesSchema })),
+    const form = useForm<{ 
+        attentionSection: z.infer<typeof attentionSchema>, 
+        aboutSection: z.infer<typeof aboutSchema>, 
+        interestsSection: z.infer<typeof interestsSchema>, 
+        servicesSection: z.infer<typeof servicesSchema>,
+        ctaSection: z.infer<typeof ctaSchema> 
+    }>({
+        resolver: zodResolver(z.object({ 
+            attentionSection: attentionSchema, 
+            aboutSection: aboutSchema, 
+            interestsSection: interestsSchema, 
+            servicesSection: servicesSchema,
+            ctaSection: ctaSchema,
+        })),
         defaultValues: {
             attentionSection: defaultMiniSiteConfig.attentionSection,
             aboutSection: defaultMiniSiteConfig.aboutSection,
             interestsSection: defaultMiniSiteConfig.interestsSection,
             servicesSection: defaultMiniSiteConfig.servicesSection,
+            ctaSection: defaultMiniSiteConfig.ctaSection,
         },
         control,
     });
@@ -421,18 +458,20 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         name: "interestsSection.features",
     });
 
-    const { fields: serviceFields, append: appendService, remove: removeService } = useFieldArray({
+    const { fields: serviceFields } = useFieldArray({
         control: form.control,
         name: "servicesSection.services",
     });
 
     const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
+    const [ctaImagePreview, setCtaImagePreview] = useState(form.getValues('ctaSection.bgImageUrl'));
     const watchedServices = useWatch({ control: form.control, name: "servicesSection.services" });
 
 
     useEffect(() => {
         setAboutImagePreview(form.getValues('aboutSection.imageUrl'));
-    }, [form.getValues('aboutSection.imageUrl')]);
+        setCtaImagePreview(form.getValues('ctaSection.bgImageUrl'));
+    }, [form.getValues('aboutSection.imageUrl'), form.getValues('ctaSection.bgImageUrl')]);
 
     const onSubmit = async (data: any) => {
         if (!userDocRef) return;
@@ -450,6 +489,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                     aboutSection: data.aboutSection,
                     interestsSection: interestsData,
                     servicesSection: data.servicesSection,
+                    ctaSection: data.ctaSection,
                 },
             }, { merge: true });
             toast({ title: "Paramètres enregistrés", description: "Vos sections ont été mises à jour." });
@@ -463,7 +503,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     return (
         <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests', 'services']} className="w-full space-y-4">
+                 <Accordion type="multiple" defaultValue={['attention', 'about', 'interests', 'services', 'cta']} className="w-full space-y-4">
                     <AccordionItem value="attention" className="border rounded-lg bg-background">
                          <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Attention"</AccordionTrigger>
                          <AccordionContent className="p-4 border-t">
@@ -575,7 +615,8 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                             </div>
                         </AccordionContent>
                      </AccordionItem>
-                      <AccordionItem value="services" className="border rounded-lg bg-background">
+
+                    <AccordionItem value="services" className="border rounded-lg bg-background">
                         <AccordionTrigger className="p-4 font-medium hover:no-underline">Section "Services"</AccordionTrigger>
                         <AccordionContent className="p-4 border-t">
                              <div className="space-y-6">
@@ -625,6 +666,55 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                             </div>
                         </AccordionContent>
                     </AccordionItem>
+
+                    <AccordionItem value="cta" className="border rounded-lg bg-background">
+                        <AccordionTrigger className="p-4 font-medium hover:no-underline">Section Appel à l'Action (CTA)</AccordionTrigger>
+                        <AccordionContent className="p-4 border-t">
+                            <div className="space-y-6">
+                                <FormField control={form.control} name="ctaSection.enabled" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <FormField control={form.control} name="ctaSection.title" render={({ field }) => (
+                                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="ctaSection.subtitle" render={({ field }) => (
+                                    <FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <FormField control={form.control} name="ctaSection.text" render={({ field }) => (
+                                    <FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                                )}/>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="ctaSection.buttonText" render={({ field }) => (
+                                        <FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                    <FormField control={form.control} name="ctaSection.buttonLink" render={({ field }) => (
+                                        <FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                </div>
+                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField control={form.control} name="ctaSection.bgColor" render={({ field }) => (
+                                        <FormItem><FormLabel>Couleur de fond</FormLabel><FormControl><div className="flex items-center gap-2"><Input type="color" {...field} className="p-1 h-10 w-10" /><Input type="text" {...field} /></div></FormControl><FormMessage /></FormItem>
+                                    )}/>
+                                     <div>
+                                        <Label>Image de fond</Label>
+                                        <div className="mt-2 flex items-center gap-4">
+                                            <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                                {ctaImagePreview ? <Image src={ctaImagePreview} alt="Aperçu CTA" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                            </div>
+                                            <input type="file" ref={ctaImageRef} onChange={async (e) => { const f = e.target.files?.[0]; if (f) { const b = await toBase64(f); setCtaImagePreview(b); form.setValue('ctaSection.bgImageUrl', b); } }} className="hidden" accept="image/*" />
+                                            <div className="flex flex-col gap-1">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => ctaImageRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => { setCtaImagePreview(null); form.setValue('ctaSection.bgImageUrl', ''); }}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </AccordionContent>
+                    </AccordionItem>
                 </Accordion>
                 <div className="flex justify-end pt-6 border-t">
                     <Button type="submit" disabled={isSubmitting}>
@@ -650,6 +740,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
                 features: formData.interestsSection.features.map((f: {value: string}) => f.value),
             },
             servicesSection: formData.servicesSection,
+            ctaSection: formData.ctaSection,
         }
     };
 
@@ -667,6 +758,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.interestsSection?.enabled && <InterestsSection counselor={counselorPreviewData} />}
              {counselorPreviewData.miniSite.servicesSection?.enabled && <CounselorServicesSection counselor={counselorPreviewData} />}
+             {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
           </div>
         </SheetContent>
     )
@@ -706,7 +798,8 @@ export default function MiniSitePage() {
               ...defaultMiniSiteConfig.servicesSection,
               ...(userData.miniSite.servicesSection || {}),
               services: servicesData,
-            }
+            },
+            ctaSection: { ...defaultMiniSiteConfig.ctaSection, ...(userData.miniSite.ctaSection || {}) },
         });
     } else {
         form.reset(defaultMiniSiteConfig);
