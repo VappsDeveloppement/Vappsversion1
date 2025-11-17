@@ -353,6 +353,7 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
     const [personalization, setPersonalization] = useState<Personalization>(defaultPersonalization);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
+    const [agencyData, setAgencyData] = useState<any>(null);
 
     const agencyIdToLoad = agencyIdProp || 'vapps-agency'; 
 
@@ -372,9 +373,10 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
         
         const unsubscribe = onSnapshot(agencyDocRef, (docSnap) => {
             if (docSnap.exists()) {
-                const agencyData = docSnap.data();
+                const fetchedAgencyData = docSnap.data();
+                setAgencyData(fetchedAgencyData);
                 
-                const savedSections = agencyData.personalization?.homePageSections || [];
+                const savedSections = fetchedAgencyData.personalization?.homePageSections || [];
                 const codeSections = defaultHomePageSections;
 
                 const savedSectionsMap = new Map(savedSections.map((s: Section) => [s.id, s]));
@@ -400,58 +402,59 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
 
                 const mergedPersonalization = {
                     ...defaultPersonalization,
-                    ...(agencyData.personalization || {}),
+                    ...(fetchedAgencyData.personalization || {}),
                     homePageSections: finalSections,
                     legalInfo: {
                         ...defaultPersonalization.legalInfo,
-                        ...(agencyData.personalization?.legalInfo || {})
+                        ...(fetchedAgencyData.personalization?.legalInfo || {})
                     },
                     aboutSection: {
                         ...defaultPersonalization.aboutSection,
-                        ...(agencyData.personalization?.aboutSection || {}),
-                        pillars: (agencyData.personalization?.aboutSection?.pillars || defaultPersonalization.aboutSection.pillars).map((p: any, i: number) => ({ ...defaultPersonalization.aboutSection.pillars[i], ...p })),
-                        expertises: (agencyData.personalization?.aboutSection?.expertises || defaultPersonalization.aboutSection.expertises).map((e: any, i: number) => ({ ...defaultPersonalization.aboutSection.expertises[i], ...e })),
+                        ...(fetchedAgencyData.personalization?.aboutSection || {}),
+                        pillars: (fetchedAgencyData.personalization?.aboutSection?.pillars || defaultPersonalization.aboutSection.pillars).map((p: any, i: number) => ({ ...defaultPersonalization.aboutSection.pillars[i], ...p })),
+                        expertises: (fetchedAgencyData.personalization?.aboutSection?.expertises || defaultPersonalization.aboutSection.expertises).map((e: any, i: number) => ({ ...defaultPersonalization.aboutSection.expertises[i], ...e })),
                     },
                     parcoursSection: {
                         ...defaultPersonalization.parcoursSection,
-                        ...(agencyData.personalization?.parcoursSection || {}),
+                        ...(fetchedAgencyData.personalization?.parcoursSection || {}),
                     },
                      ctaSection: {
                         ...defaultPersonalization.ctaSection,
-                        ...(agencyData.personalization?.ctaSection || {}),
+                        ...(fetchedAgencyData.personalization?.ctaSection || {}),
                     },
                     cta2Section: {
                         ...defaultPersonalization.cta2Section,
-                        ...(agencyData.personalization?.cta2Section || {}),
+                        ...(fetchedAgencyData.personalization?.cta2Section || {}),
                     },
                     jobOffersSection: {
                         ...defaultPersonalization.jobOffersSection,
-                        ...(agencyData.personalization?.jobOffersSection || {}),
+                        ...(fetchedAgencyData.personalization?.jobOffersSection || {}),
                     },
                     videoSection: {
                         ...defaultPersonalization.videoSection,
-                        ...(agencyData.personalization?.videoSection || {}),
+                        ...(fetchedAgencyData.personalization?.videoSection || {}),
                     },
                     servicesSection: {
                         ...defaultPersonalization.servicesSection,
-                        ...(agencyData.personalization?.servicesSection || {}),
+                        ...(fetchedAgencyData.personalization?.servicesSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,
-                        ...(agencyData.personalization?.paymentSettings || {})
+                        ...(fetchedAgencyData.personalization?.paymentSettings || {})
                     },
                     emailSettings: {
                         ...defaultPersonalization.emailSettings,
-                        ...(agencyData.personalization?.emailSettings || {})
+                        ...(fetchedAgencyData.personalization?.emailSettings || {})
                     },
                     gdprSettings: {
                         ...defaultPersonalization.gdprSettings,
-                        ...(agencyData.personalization?.gdprSettings || {})
+                        ...(fetchedAgencyData.personalization?.gdprSettings || {})
                     }
                 };
                 setPersonalization(mergedPersonalization);
             } else {
                 setPersonalization(defaultPersonalization);
+                setAgencyData({ id: agencyIdToLoad, name: "VApps", personalization: defaultPersonalization });
             }
             setIsLoading(false);
             setError(null);
@@ -472,9 +475,13 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
     }, [firestore, isUserLoading, agencyIdToLoad]);
 
     const agency = useMemo(() => {
-        if (!personalization) return null;
-        return { id: agencyIdToLoad, name: personalization.legalInfo?.companyName || '...', personalization };
-    }, [personalization, agencyIdToLoad]);
+        if (!agencyData) return null;
+        return { 
+            id: agencyData.id, 
+            name: agencyData.name || '...', 
+            personalization 
+        };
+    }, [agencyData, personalization]);
 
 
     const value = {
@@ -487,6 +494,10 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
     return <AgencyContext.Provider value={value}>{children}</AgencyContext.Provider>;
 };
 
-export const useAgency = (): AgencyContextType | undefined => {
-    return useContext(AgencyContext);
+export function useAgency() {
+    const context = useContext(AgencyContext);
+    if (context === undefined) {
+        throw new Error('useAgency must be used within an AgencyProvider');
+    }
+    return context;
 };

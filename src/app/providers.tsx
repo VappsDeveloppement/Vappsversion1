@@ -1,14 +1,15 @@
-
 'use client';
 
 import { FirebaseClientProvider } from "@/firebase";
+import { AgencyProvider } from "@/context/agency-provider";
 
-// The AgencyProvider is now used within specific pages that need agency context,
-// such as the main homepage and dynamic agency pages, not globally.
+// The AgencyProvider is now used globally to provide context from the single default agency.
 export function Providers({ children }: { children: React.ReactNode }) {
     return (
         <FirebaseClientProvider>
-            {children}
+            <AgencyProvider agencyId="vapps-agency">
+                {children}
+            </AgencyProvider>
         </FirebaseClientProvider>
     );
 }

@@ -43,7 +43,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { AgencyProvider, useAgency } from "@/context/agency-provider";
+import { useAgency } from "@/context/agency-provider";
 
 
 const mainMenuItems = [
@@ -69,7 +69,7 @@ const administrationMenuItems = [
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
 
 
-function DashboardLayoutContent({
+export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
@@ -229,21 +229,5 @@ function DashboardLayoutContent({
         </SidebarInset>
       </div>
     </SidebarProvider>
-  );
-}
-
-export default function DashboardLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  // The logic to determine which agencyId to use is now inside the content
-  // based on the user's role. For Super Admin, it's always 'vapps-agency'.
-  // For others, it needs to be fetched from their profile/memberships.
-  // This top-level provider ensures a fallback.
-  return (
-      <AgencyProvider agencyId="vapps-agency">
-          <DashboardLayoutContent>{children}</DashboardLayoutContent>
-      </AgencyProvider>
   );
 }
