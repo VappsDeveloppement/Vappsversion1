@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -17,7 +18,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Upload, Trash2 } from 'lucide-react';
-import Image from 'next/image';
+import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
@@ -95,7 +97,7 @@ export default function ProfilePage() {
       await setDocumentNonBlocking(userDocRef, data, { merge: true });
       toast({
         title: 'Profil mis à jour',
-        description: 'Votre profil public a été sauvegardé avec succès.',
+        description: 'Vos informations personnelles ont été sauvegardées.',
       });
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -147,16 +149,16 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold font-headline">Mon Profil Public</h1>
+        <h1 className="text-3xl font-bold font-headline">Mes infos & coordonnées</h1>
         <p className="text-muted-foreground">
-          Personnalisez les informations qui seront affichées sur votre page de conseiller.
+          Gérez vos informations personnelles et votre profil public.
         </p>
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Informations Publiques</CardTitle>
+          <CardTitle>Informations Personnelles & Publiques</CardTitle>
           <CardDescription>
-            Ces informations sont visibles par tous les visiteurs de votre page publique.
+            Ces informations sont utilisées pour votre compte et votre page de conseiller.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -220,7 +222,7 @@ export default function ProfilePage() {
                 name="publicTitle"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Titre Professionnel</FormLabel>
+                    <FormLabel>Titre Professionnel (public)</FormLabel>
                     <FormControl>
                       <Input placeholder="Ex: Conseiller en évolution professionnelle" {...field} />
                     </FormControl>
@@ -260,3 +262,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

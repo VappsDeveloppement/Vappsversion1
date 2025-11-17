@@ -12,10 +12,6 @@
           "type": "string",
           "description": "Unique identifier for the user."
         },
-        "agencyId": {
-          "type": "string",
-          "description": "Reference to the Agency the user belongs to. (Relationship: Agency 1:N User)"
-        },
         "firstName": {
           "type": "string",
           "description": "The first name of the user."
@@ -31,7 +27,12 @@
         },
         "role": {
           "type": "string",
-          "description": "The role of the user (e.g., admin, coach, client, prospect)."
+          "enum": ["superadmin", "conseiller", "membre", "prospect"],
+          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'prospect' is a potential user."
+        },
+        "counselorId": {
+            "type": "string",
+            "description": "The ID of the user's assigned counselor. This is the key for data segregation."
         },
         "dateJoined": {
           "type": "string",
@@ -84,25 +85,67 @@
           "type": "string",
           "format": "date-time",
           "description": "Timestamp for when an admin reports an inactivity alert for this user."
+        },
+        "photoUrl": {
+            "type": "string",
+            "format": "uri",
+            "description": "URL of the user's public profile photo."
+        },
+        "publicTitle": {
+            "type": "string",
+            "description": "Public-facing professional title for the counselor (e.g., 'Coach en développement personnel')."
+        },
+        "publicBio": {
+            "type": "string",
+            "description": "Public-facing biography for the counselor's profile page."
+        },
+        "miniSite": {
+            "type": "object",
+            "description": "Personalization settings for the counselor's mini-site.",
+            "properties": {
+                "theme": {
+                    "type": "object",
+                    "properties": {
+                        "primaryColor": { "type": "string" },
+                        "bgColor": { "type": "string" }
+                    }
+                },
+                "hero": {
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" },
+                        "ctaText": { "type": "string" },
+                        "ctaLink": { "type": "string" },
+                        "showPhoto": { "type": "boolean" }
+                    }
+                },
+                "sections": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                },
+                "services": {
+                    "type": "array",
+                    "items": { "type": "object" }
+                }
+            }
         }
       },
       "required": [
-        "agencyId",
         "firstName",
         "lastName",
         "email",
         "role",
-        "dateJoined",
-        "phone"
+        "dateJoined"
       ]
     },
     "Agency": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Agency",
       "type": "object",
-      "description": "Represents an agency on the platform, containing all personalization settings.",
+      "description": "Represents the single, central entity for platform-wide personalization.",
       "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the agency." },
+        "id": { "type": "string", "description": "Unique identifier for the agency (e.g., 'vapps-agency')." },
         "name": { "type": "string", "description": "The name of the agency." },
         "personalization": {
           "type": "object",
@@ -272,7 +315,7 @@
       "properties": {
         "id": { "type": "string", "description": "Unique identifier for the invoice." },
         "invoiceNumber": { "type": "string", "description": "The user-facing invoice number." },
-        "agencyId": { "type": "string" },
+        "counselorId": { "type": "string", "description": "The ID of the counselor who issued the invoice." },
         "clientId": { "type": "string" },
         "clientInfo": { "type": "object", "description": "A snapshot of the client's information." },
         "quoteNumber": { "type": "string", "description": "The number of the original quote." },
@@ -296,7 +339,7 @@
         "tax": { "type": "number" },
         "total": { "type": "number" }
       },
-      "required": ["id", "invoiceNumber", "agencyId", "clientId", "quoteNumber", "issueDate", "dueDate", "status", "items", "total"]
+      "required": ["id", "invoiceNumber", "counselorId", "clientId", "quoteNumber", "issueDate", "dueDate", "status", "items", "total"]
     },
     "Quote": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -307,7 +350,7 @@
         "id": { "type": "string", "description": "Unique identifier for the quote." },
         "quoteNumber": { "type": "string", "description": "The user-facing quote number." },
         "validationCode": { "type": "string", "description": "A secret code for the client to validate the quote." },
-        "agencyId": { "type": "string" },
+        "counselorId": { "type": "string", "description": "The ID of the counselor who created the quote." },
         "clientId": { "type": "string" },
         "clientInfo": { "type": "object", "description": "A snapshot of the client's information at the time of quote creation." },
         "agencyInfo": { "type": "object", "description": "A snapshot of the agency's information." },
@@ -337,20 +380,20 @@
         "signature": { "type": "string", "description": "The name entered by the client as a signature." },
         "signedDate": { "type": "string", "format": "date-time", "description": "Timestamp of when the quote was signed." }
       },
-      "required": ["id", "quoteNumber", "validationCode", "agencyId", "clientId", "issueDate", "status", "items", "total"]
+      "required": ["id", "quoteNumber", "validationCode", "counselorId", "clientId", "issueDate", "status", "items", "total"]
     },
     "Contract": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Contract",
         "type": "object",
-        "description": "Represents a contract template for an agency.",
+        "description": "Represents a contract template for a counselor.",
         "properties": {
             "id": { "type": "string", "description": "Unique identifier for the contract." },
-            "agencyId": { "type": "string", "description": "The ID of the agency this contract belongs to." },
+            "counselorId": { "type": "string", "description": "The ID of the counselor this contract belongs to." },
             "title": { "type": "string", "description": "The title of the contract template." },
             "content": { "type": "string", "description": "The HTML content of the contract." }
         },
-        "required": ["id", "agencyId", "title", "content"]
+        "required": ["id", "counselorId", "title", "content"]
     },
     "Consent": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -428,15 +471,19 @@
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Plan",
       "type": "object",
-      "description": "Represents a pricing plan for the agency.",
+      "description": "Represents a pricing plan or a prestation model. Can be global, public, or counselor-specific.",
       "properties": {
         "id": {
           "type": "string",
           "description": "Unique identifier for the plan."
         },
+        "counselorId": {
+            "type": "string",
+            "description": "The ID of the counselor this plan belongs to (for non-public plans)."
+        },
         "name": {
           "type": "string",
-          "description": "The name of the plan (e.g., 'Essentiel', 'Pro')."
+          "description": "The name of the plan (e.g., 'Essentiel', 'Pro', 'Bilan de compétences')."
         },
         "description": {
           "type": "string",
@@ -453,7 +500,7 @@
         },
         "period": {
           "type": "string",
-          "description": "The billing period (e.g., '/mois', '/an')."
+          "description": "The billing period (e.g., '/mois', '/an', '/prestation')."
         },
         "imageUrl": {
           "type": "string",
@@ -470,14 +517,10 @@
         },
         "isPublic": {
           "type": "boolean",
-          "description": "Whether the plan should be displayed on the public pricing page."
-        },
-        "agencyId": {
-          "type": "string",
-          "description": "The ID of the agency this plan belongs to."
+          "description": "Whether the plan should be displayed on the public pricing page. If false, it's a counselor-specific template."
         }
       },
-      "required": ["id", "name", "price", "period", "agencyId"]
+      "required": ["id", "name", "price", "period"]
     },
     "GdprRequest": {
         "$schema": "http://json-schema.org/draft-07/schema#",
@@ -486,7 +529,7 @@
         "description": "Represents a user request related to their personal data.",
         "properties": {
             "id": { "type": "string" },
-            "agencyId": { "type": "string" },
+            "counselorId": { "type": "string", "description": "ID of the counselor this request is directed to, if applicable." },
             "name": { "type": "string" },
             "email": { "type": "string", "format": "email" },
             "phone": { "type": "string" },
@@ -495,7 +538,41 @@
             "status": { "type": "string", "enum": ["new", "in_progress", "closed"] },
             "createdAt": { "type": "string", "format": "date-time" }
         },
-        "required": ["id", "agencyId", "name", "email", "phone", "subject", "message", "status", "createdAt"]
+        "required": ["id", "name", "email", "phone", "subject", "message", "status", "createdAt"]
+    },
+    "SupportRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Support Request",
+        "type": "object",
+        "description": "Represents a technical support request for the application.",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" },
+            "subject": { "type": "string" },
+            "message": { "type": "string" },
+            "status": { "type": "string", "enum": ["new", "in_progress", "closed"] },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "name", "email", "phone", "subject", "message", "status", "createdAt"]
+    },
+    "FaqItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "FAQ Item",
+      "type": "object",
+      "description": "Represents a single question and answer item in a FAQ.",
+      "properties": {
+        "id": { "type": "string" },
+        "category": { "type": "string", "description": "The category or theme of the question." },
+        "question": { "type": "string", "description": "The FAQ question." },
+        "content": { "type": "string", "description": "The answer content in HTML format." },
+        "videoUrl": { "type": "string", "format": "uri", "description": "URL of an associated video." },
+        "pdfUrls": { "type": "array", "items": { "type": "object", "properties": { "name": { "type": "string" }, "url": { "type": "string", "format": "uri" } } }, "description": "List of URLs to associated PDF documents." },
+        "scope": { "type": "string", "enum": ["general", "counselor"], "description": "Defines if the FAQ is for the whole platform or a specific counselor." },
+        "counselorId": { "type": "string", "description": "The ID of the counselor this FAQ item belongs to, if scope is 'counselor'." }
+      },
+      "required": ["id", "category", "question", "content", "scope"]
     }
   },
   "auth": {
@@ -511,7 +588,7 @@
         "definition": {
           "entityName": "Agency",
           "schema": { "$ref": "#/backend/entities/Agency" },
-          "description": "Stores agency profiles and their personalization settings. Access is typically restricted to users belonging to that agency."
+          "description": "Stores the single agency profile for platform-wide personalization. There should only be one document in this collection."
         }
       },
       {
@@ -521,53 +598,47 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores user profiles. Path-based ownership enables secure access based on user ID.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier of the user."
-            }
-          ]
+          "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorId is used for data segregation."
         }
       },
       {
-        "path": "/agencies/{agencyId}/plans/{planId}",
+        "path": "/plans/{planId}",
         "definition": {
           "entityName": "Plan",
           "schema": {
             "$ref": "#/backend/entities/Plan"
           },
-          "description": "Stores the pricing plans for a specific agency."
+          "description": "Stores all available pricing plans and prestation models for the platform. `isPublic` flag determines visibility on the public pricing page. Counselor-specific plans have a `counselorId`."
         }
       },
       {
-        "path": "/agencies/{agencyId}/quotes/{quoteId}",
+        "path": "/quotes/{quoteId}",
         "definition": {
           "entityName": "Quote",
           "schema": {
             "$ref": "#/backend/entities/Quote"
           },
-          "description": "Stores quotes for a specific agency."
+          "description": "Stores all quotes, segregated by counselorId."
         }
       },
       {
-        "path": "/agencies/{agencyId}/contracts/{contractId}",
+        "path": "/contracts/{contractId}",
         "definition": {
           "entityName": "Contract",
           "schema": {
             "$ref": "#/backend/entities/Contract"
           },
-          "description": "Stores contract templates for a specific agency."
+          "description": "Stores all contract templates, segregated by counselorId."
         }
       },
       {
-        "path": "/agencies/{agencyId}/invoices/{invoiceId}",
+        "path": "/invoices/{invoiceId}",
         "definition": {
           "entityName": "Invoice",
           "schema": {
             "$ref": "#/backend/entities/Invoice"
           },
-          "description": "Stores invoices for a specific agency, often generated after a quote is accepted."
+          "description": "Stores all invoices, segregated by counselorId."
         }
       },
        {
@@ -576,6 +647,22 @@
           "entityName": "GdprRequest",
           "schema": { "$ref": "#/backend/entities/GdprRequest" },
           "description": "Stores user requests related to GDPR for tracking and management."
+        }
+      },
+      {
+        "path": "/support_requests/{requestId}",
+        "definition": {
+          "entityName": "SupportRequest",
+          "schema": { "$ref": "#/backend/entities/SupportRequest" },
+          "description": "Stores technical support requests for platform administrators."
+        }
+      },
+      {
+        "path": "/faq_items/{itemId}",
+        "definition": {
+          "entityName": "FaqItem",
+          "schema": { "$ref": "#/backend/entities/FaqItem" },
+          "description": "Stores all FAQ items. Items with scope 'general' are for the whole platform, 'counselor' scope requires a counselorId."
         }
       },
       {
@@ -629,7 +716,8 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed for a multi-agency platform. The top-level `agencies` collection stores all personalization and configuration data specific to each agency. The `users` collection now includes an `agencyId` field to link each user to their respective agency. This allows for security rules that grant access to agency data based on the authenticated user's `agencyId`. User-specific data (appointments, messages, etc.) remains nested under each user for strong ownership-based security. New collections for `plans`, `quotes`, `contracts`, and `invoices` are nested under each agency to manage pricing tiers, estimates, legal documents, and billing on a per-agency basis. This structure avoids `get()` calls in security rules by denormalizing the `agencyId` onto the user document, making queries for agency-specific data efficient and secure."
+    "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
 
+    
