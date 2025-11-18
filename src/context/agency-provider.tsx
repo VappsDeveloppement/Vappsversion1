@@ -7,7 +7,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo, ServiceItem } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo, ServiceItem } from '@/app/admin/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -345,17 +345,16 @@ const defaultPersonalization: Personalization = {
 
 interface AgencyProviderProps {
     children: ReactNode;
-    agencyId?: string;
 }
 
-export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProviderProps) => {
+export const AgencyProvider = ({ children }: AgencyProviderProps) => {
     const { firestore, isUserLoading } = useFirebase();
     const [personalization, setPersonalization] = useState<Personalization>(defaultPersonalization);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<Error | null>(null);
     const [agencyData, setAgencyData] = useState<any>(null);
 
-    const agencyIdToLoad = agencyIdProp || 'vapps-agency'; 
+    const agencyIdToLoad = 'vapps-agency'; 
 
     useEffect(() => {
         if (isUserLoading) {
@@ -472,12 +471,12 @@ export const AgencyProvider = ({ children, agencyId: agencyIdProp }: AgencyProvi
         });
 
         return () => unsubscribe();
-    }, [firestore, isUserLoading, agencyIdToLoad]);
+    }, [firestore, isUserLoading]);
 
     const agency = useMemo(() => {
         if (!agencyData) return null;
         return { 
-            id: agencyData.id, 
+            id: agencyIdToLoad, 
             name: agencyData.name || '...', 
             personalization 
         };

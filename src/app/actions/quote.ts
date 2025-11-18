@@ -69,7 +69,6 @@ const sendQuoteSchema = z.object({
     quote: quoteSchema,
     emailSettings: emailSettingsSchema,
     legalInfo: legalInfoSchema,
-    agencyId: z.string(),
 });
 
 
@@ -84,7 +83,7 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
     }
 
-    const { quote, emailSettings, legalInfo, agencyId } = validation.data;
+    const { quote, emailSettings, legalInfo } = validation.data;
 
     try {
         // 1. Generate PDF

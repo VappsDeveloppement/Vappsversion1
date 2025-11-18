@@ -231,8 +231,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
     const handleSaveQuote = async (values: z.infer<typeof quoteFormSchema>): Promise<string | undefined> => {
         const selectedClient = clients?.find(c => c.id === values.clientId);
-        if (!user || !selectedClient) {
-            toast({ title: "Erreur", description: "Conseiller ou client manquant.", variant: "destructive"});
+        if (!user || !selectedClient || !agency) {
+            toast({ title: "Erreur", description: "Conseiller, client ou agence manquant.", variant: "destructive"});
             return;
         }
 
@@ -242,6 +242,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         const quoteData = {
             ...values,
             counselorId: user.uid,
+            agencyId: agency.id,
             contractId: isContractSelected ? values.contractId : undefined,
             contractTitle: isContractSelected ? selectedContract?.title : undefined,
             contractContent: isContractSelected ? selectedContract?.content : undefined,
@@ -322,7 +323,6 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                 quote: quoteDataForEmail,
                 emailSettings: personalization.emailSettings,
                 legalInfo: personalization.legalInfo,
-                agencyId: agency.id,
             });
 
             if (result.success) {
@@ -640,7 +640,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
                             <CardContent className="text-sm">
                                 {selectedClient ? (
                                     <div className="text-muted-foreground space-y-1">
-                                        <p><strong>Nom:</strong> {selectedClient.firstName} {selectedClient.lastName}</p>
+                                        <p><strong>Nom:</strong> {selectedClient.firstName} ${selectedClient.lastName}</p>
                                         <p><strong>Email:</strong> {selectedClient.email}</p>
                                         {selectedClient.address && <p><strong>Adresse:</strong> {`${selectedClient.address}, ${selectedClient.zipCode} ${selectedClient.city}`}</p>}
                                     </div>
@@ -686,3 +686,4 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         </Form>
     );
 }
+

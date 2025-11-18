@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Logo } from "./logo";
@@ -11,7 +12,7 @@ import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAgency } from "@/context/agency-provider";
-import type { AboutLink, SocialLink } from "@/app/dashboard/settings/personalization/page";
+import type { AboutLink, SocialLink } from "@/app/admin/settings/personalization/page";
 import { Label } from "../ui/label";
 import { useFirestore } from "@/firebase/provider";
 import { collection, query, where, getDocs, doc } from "firebase/firestore";
@@ -39,17 +40,16 @@ function QuoteValidationForm() {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
-    const { agency } = useAgency();
 
     const handleVerification = async () => {
-        if (!quoteNumber || !validationCode || !agency) {
+        if (!quoteNumber || !validationCode) {
             toast({ title: "Erreur", description: "Veuillez remplir tous les champs.", variant: "destructive" });
             return;
         }
         setIsLoading(true);
 
         try {
-            const quotesRef = collection(firestore, `agencies/${agency.id}/quotes`);
+            const quotesRef = collection(firestore, `quotes`);
             const q = query(quotesRef, where("quoteNumber", "==", quoteNumber.trim()), where("validationCode", "==", validationCode.trim()));
             
             const querySnapshot = await getDocs(q);
@@ -58,7 +58,7 @@ function QuoteValidationForm() {
                 toast({ title: "Introuvable", description: "Aucun devis ne correspond à ces informations.", variant: "destructive" });
             } else {
                 const quoteDoc = querySnapshot.docs[0];
-                router.push(`/quote/${agency.id}/${quoteDoc.id}`);
+                router.push(`/quote/${quoteDoc.id}`);
             }
         } catch (error) {
             console.error("Error verifying quote:", error);
@@ -137,7 +137,7 @@ export function Footer() {
                     phone: contactPhone,
                     message: contactMessage,
                     role: 'prospect',
-                    agencyId: agency?.id,
+                    counselorId: '', // Should be assigned by an admin/process later
                     dateJoined: new Date().toISOString(),
                     origin: 'Footer Contact Form',
                     status: 'new'
@@ -151,7 +151,6 @@ export function Footer() {
                     phone: contactPhone,
                     subject: contactSubject,
                     message: contactMessage,
-                    agencyId: agency?.id,
                     status: 'new',
                     createdAt: new Date().toISOString(),
                 };
@@ -164,7 +163,6 @@ export function Footer() {
                     phone: contactPhone,
                     subject: contactSubject,
                     message: contactMessage,
-                    agencyId: agency?.id,
                     status: 'new',
                     createdAt: new Date().toISOString(),
                 };

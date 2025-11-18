@@ -2,8 +2,9 @@
 'use client';
 
 import React from 'react';
-import { AgencyProvider, useAgency } from '@/context/agency-provider';
+import { useAgency } from '@/context/agency-provider';
 import { HomePageSelector } from "@/components/shared/home-page-selector";
+import { Skeleton } from '../ui/skeleton';
 
 function AgencyPageContent() {
   const { isLoading } = useAgency();
@@ -11,7 +12,10 @@ function AgencyPageContent() {
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
-        <div className="h-16 w-16 animate-spin rounded-full border-4 border-dashed border-primary"></div>
+        <div className="space-y-4 p-8 w-full max-w-4xl">
+            <Skeleton className="h-[400px] w-full" />
+            <Skeleton className="h-[200px] w-full" />
+        </div>
       </div>
     );
   }
@@ -19,10 +23,6 @@ function AgencyPageContent() {
   return <HomePageSelector />;
 }
 
-export function AgencyPage({ agencyId }: { agencyId: string }) {
-  return (
-    <AgencyProvider agencyId={agencyId}>
-      <AgencyPageContent />
-    </AgencyProvider>
-  );
+export function AgencyPage() {
+  return <AgencyPageContent />;
 }
