@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
+import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, addDocumentNonBlocking, useDoc } from "@/firebase";
 import React, { useMemo, useState, useEffect } from "react";
 import { collection, query, where, doc, getDocs } from "firebase/firestore";
 import { useAuth, useFirestore } from "@/firebase/provider";
@@ -82,6 +82,14 @@ export default function UsersPage() {
   const auth = useAuth();
   const { user: currentUser } = useFirebaseUser();
   const { toast } = useToast();
+  
+  const userDocRef = useMemoFirebase(() => {
+    if (!currentUser) return null;
+    return doc(firestore, 'users', currentUser.uid);
+  }, [firestore, currentUser]);
+
+  const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(userDocRef);
+
 
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState('all');
@@ -92,13 +100,21 @@ export default function UsersPage() {
   const [showPassword, setShowPassword] = useState(false);
 
   const usersQuery = useMemoFirebase(() => {
-    if(!currentUser) return null;
+    if (!currentUser || !currentUserData) return null;
+    
+    // Super Admins can see all users
+    if (currentUserData.role === 'superadmin') {
+        return query(collection(firestore, 'users'));
+    }
+    
+    // Counselors can only see their own members/prospects
     return query(collection(firestore, 'users'), where('counselorId', '==', currentUser.uid));
-  }, [firestore, currentUser]);
+    
+  }, [firestore, currentUser, currentUserData]);
 
   const { data: users, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
-  const isLoading = areUsersLoading;
+  const isLoading = areUsersLoading || isCurrentUserDataLoading;
 
   const filteredUsers = useMemo(() => {
     if (!users) return [];
@@ -203,7 +219,8 @@ export default function UsersPage() {
             userId = userCredential.user.uid;
 
             const userDocRef = doc(firestore, "users", userId);
-            await setDocumentNonBlocking(userDocRef, {
+            
+            let dataToSave: any = {
                 id: userId,
                 firstName: values.firstName,
                 lastName: values.lastName,
@@ -213,9 +230,18 @@ export default function UsersPage() {
                 zipCode: values.zipCode,
                 city: values.city,
                 role: values.role,
-                counselorId: currentUser.uid,
                 dateJoined: new Date().toISOString(),
-            }, {});
+            };
+
+            // If a superadmin creates a counselor, the counselor is their own counselor.
+            if (currentUserData?.role === 'superadmin' && values.role === 'conseiller') {
+                dataToSave.counselorId = userId;
+            } else {
+                // Otherwise, the creator is the counselor.
+                dataToSave.counselorId = currentUser.uid;
+            }
+            
+            await setDocumentNonBlocking(userDocRef, dataToSave, {});
         }
 
 
@@ -392,3 +418,4 @@ export default function UsersPage() {
     </div>
   );
 }
+
