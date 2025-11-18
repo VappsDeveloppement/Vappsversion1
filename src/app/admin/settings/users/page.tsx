@@ -174,8 +174,17 @@ export default function UserManagementPage() {
             setIsDialogOpen(false);
             setEditingUser(null);
         } catch (error: any) {
-            const errorMessage = error.message.includes('email-already-in-use') ? "Cette adresse e-mail est déjà utilisée." : "Une erreur est survenue.";
-            toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
+            let errorMessage = "Une erreur inconnue est survenue.";
+            if (typeof error.message === 'string') {
+                if (error.message.includes('auth/email-already-in-use') || error.message.includes('auth/email-already-exists')) {
+                    errorMessage = "Cette adresse e-mail est déjà utilisée par un autre compte.";
+                } else if (error.message.includes('auth/weak-password')) {
+                    errorMessage = "Le mot de passe est trop faible. Il doit contenir au moins 6 caractères.";
+                } else {
+                    errorMessage = error.message;
+                }
+            }
+            toast({ title: 'Erreur de création', description: errorMessage, variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
@@ -332,4 +341,5 @@ export default function UserManagementPage() {
             </AlertDialog>
         </div>
     );
-}
+
+    
