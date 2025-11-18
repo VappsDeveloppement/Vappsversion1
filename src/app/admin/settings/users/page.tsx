@@ -6,8 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { collection, query, doc, getDoc, setDoc } from 'firebase/firestore';
+import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,6 +22,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
+// No server action needed for now, handled client-side.
 
 type User = {
     id: string;
@@ -72,6 +74,7 @@ export default function UserManagementPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
 
+    // This hook fetches users from Firestore.
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
@@ -138,6 +141,7 @@ export default function UserManagementPage() {
             };
             await setDocumentNonBlocking(userDocRef, updatedUserData, { merge: true });
 
+            // If the user is now a counselor, create/update the minisite document
             if (values.role === 'conseiller') {
                 const miniSiteDocRef = doc(firestore, 'minisites', editingUser.id);
                 const publicProfileData = {
@@ -145,6 +149,8 @@ export default function UserManagementPage() {
                   firstName: values.firstName,
                   lastName: values.lastName,
                   email: values.email,
+                  // Keep existing minisite personalization
+                  ...((await getDoc(miniSiteDocRef)).data() || {}),
                 };
                 await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
             }
@@ -197,7 +203,7 @@ export default function UserManagementPage() {
             </div>
             <Alert>
                 <Info className="h-4 w-4" />
-                <AlertTitle>Création des utilisateurs</AlertTitle>
+                <AlertTitle>Création et Synchronisation des utilisateurs</AlertTitle>
                 <AlertDescription>
                     Pour créer un nouvel utilisateur, veuillez l'ajouter directement via l'onglet <strong>Authentication</strong> de votre console Firebase. Il apparaîtra ensuite dans cette liste où vous pourrez modifier son rôle et ses informations.
                 </AlertDescription>
@@ -294,3 +300,5 @@ export default function UserManagementPage() {
         </div>
     );
 }
+
+    
