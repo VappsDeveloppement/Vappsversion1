@@ -43,7 +43,6 @@ const adminMenuItems = [
 
 const settingsMenuItems = [
     { href: "/admin/settings/profile", label: "Mon Profil Public", icon: <UserCircle /> },
-    { href: "/admin/settings/users", label: "Utilisateurs", icon: <Users /> },
     { href: "/admin/settings/personalization", label: "Personnalisation", icon: <Palette /> },
     { href: "/admin/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
 ]
