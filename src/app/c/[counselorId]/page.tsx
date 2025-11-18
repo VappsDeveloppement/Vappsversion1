@@ -19,6 +19,7 @@ import { CounselorContactSection } from '@/components/shared/counselor-contact-s
 import { useAgency } from '@/context/agency-provider';
 import Link from 'next/link';
 import { AlertTriangle, Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 
 type CounselorProfile = {
