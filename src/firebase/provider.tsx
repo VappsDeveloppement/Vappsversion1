@@ -416,34 +416,38 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       auth,
       async (firebaseUser) => { // Auth state determined
         if (firebaseUser) {
-            const userDocRef = doc(firestore, "users", firebaseUser.uid);
-            const userDocSnap = await getDoc(userDocRef);
+            try {
+                const userDocRef = doc(firestore, "users", firebaseUser.uid);
+                const userDocSnap = await getDoc(userDocRef);
 
-            if (!userDocSnap.exists()) {
-                const usersCollectionRef = collection(firestore, 'users');
-                const usersSnapshot = await getDocs(usersCollectionRef);
-                const isFirstUser = usersSnapshot.empty;
-                
-                const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
-                const firstName = nameParts.shift() || 'Nouveau';
-                const lastName = nameParts.join(' ') || 'Utilisateur';
+                if (!userDocSnap.exists()) {
+                    const usersCollectionRef = collection(firestore, 'users');
+                    const usersSnapshot = await getDocs(usersCollectionRef);
+                    const isFirstUser = usersSnapshot.empty;
+                    
+                    const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
+                    const firstName = nameParts.shift() || 'Nouveau';
+                    const lastName = nameParts.join(' ') || 'Utilisateur';
 
-                const newUserDoc = {
-                    id: firebaseUser.uid,
-                    firstName: firstName,
-                    lastName: lastName,
-                    email: firebaseUser.email,
-                    role: isFirstUser ? 'superadmin' : 'membre',
-                    counselorId: isFirstUser ? firebaseUser.uid : '',
-                    dateJoined: new Date().toISOString(),
-                    lastSignInTime: new Date().toISOString(),
-                    phone: firebaseUser.phoneNumber || '',
-                };
+                    const newUserDoc = {
+                        id: firebaseUser.uid,
+                        firstName: firstName,
+                        lastName: lastName,
+                        email: firebaseUser.email,
+                        role: isFirstUser ? 'superadmin' : 'membre',
+                        counselorId: isFirstUser ? firebaseUser.uid : '',
+                        dateJoined: new Date().toISOString(),
+                        lastSignInTime: new Date().toISOString(),
+                        phone: firebaseUser.phoneNumber || '',
+                    };
 
-                await setDoc(userDocRef, newUserDoc);
-            } else {
-                const lastSignInTime = new Date().toISOString();
-                await setDoc(userDocRef, { lastSignInTime }, { merge: true });
+                    await setDoc(userDocRef, newUserDoc);
+                } else {
+                    const lastSignInTime = new Date().toISOString();
+                    await setDoc(userDocRef, { lastSignInTime }, { merge: true });
+                }
+            } catch (error) {
+                console.error("Error handling user document:", error);
             }
         }
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
