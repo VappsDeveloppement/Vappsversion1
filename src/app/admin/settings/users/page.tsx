@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -7,15 +6,15 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Input } from "@/components/ui/input";
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Edit, Trash2, MoreHorizontal, Info } from 'lucide-react';
+import { Loader2, Edit, Trash2, MoreHorizontal, Info, PlusCircle, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -46,6 +45,7 @@ const userFormSchema = z.object({
   zipCode: z.string().optional(),
   city: z.string().optional(),
   role: z.enum(['superadmin', 'conseiller', 'membre'], { required_error: "Le rôle est requis." }),
+  password: z.string().optional(),
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -64,6 +64,7 @@ const roleText: Record<User['role'], string> = {
 
 export default function UserManagementPage() {
     const firestore = useFirestore();
+    const auth = useAuth();
     const { user: currentUser, isUserLoading } = useUser();
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('all');
@@ -71,6 +72,7 @@ export default function UserManagementPage() {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [userToDelete, setUserToDelete] = useState<User | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [showPassword, setShowPassword] = useState(false);
     const { toast } = useToast();
 
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
@@ -104,19 +106,27 @@ export default function UserManagementPage() {
         resolver: zodResolver(userFormSchema),
         defaultValues: {
             firstName: '', lastName: '', email: '', phone: '',
-            address: '', zipCode: '', city: '', role: 'membre',
+            address: '', zipCode: '', city: '', role: 'membre', password: '',
         },
     });
 
     useEffect(() => {
-        if (isDialogOpen && editingUser) {
-            form.reset({
-                ...editingUser,
-                phone: editingUser.phone || '',
-                address: editingUser.address || '',
-                zipCode: editingUser.zipCode || '',
-                city: editingUser.city || '',
-            });
+        if (isDialogOpen) {
+            if (editingUser) {
+                form.reset({
+                    ...editingUser,
+                    phone: editingUser.phone || '',
+                    address: editingUser.address || '',
+                    zipCode: editingUser.zipCode || '',
+                    city: editingUser.city || '',
+                    password: '',
+                });
+            } else {
+                 form.reset({
+                    firstName: '', lastName: '', email: '', phone: '',
+                    address: '', zipCode: '', city: '', role: 'membre', password: '',
+                });
+            }
         }
     }, [isDialogOpen, editingUser, form]);
 
@@ -133,10 +143,16 @@ export default function UserManagementPage() {
         setIsDialogOpen(true);
     };
 
+    const handleNew = () => {
+        setEditingUser(null);
+        setIsDialogOpen(true);
+    }
+
     const onSubmit = async (values: UserFormData) => {
         setIsSubmitting(true);
         try {
             if (editingUser) {
+                // MODIFICATION
                 const userDocRef = doc(firestore, 'users', editingUser.id);
                 await setDocumentNonBlocking(userDocRef, {
                     firstName: values.firstName,
@@ -149,12 +165,24 @@ export default function UserManagementPage() {
                     city: values.city,
                 }, { merge: true });
                 toast({ title: 'Succès', description: 'L\'utilisateur a été mis à jour.' });
+            } else {
+                 // CREATION
+                 toast({
+                    title: "Action non disponible",
+                    description: "La création d'utilisateur se fait via la console Firebase pour plus de sécurité.",
+                    variant: "destructive"
+                });
             }
-            // Création supprimée, se fait via la console Firebase
             setIsDialogOpen(false);
             setEditingUser(null);
         } catch (error: any) {
-            toast({ title: 'Erreur', description: "Une erreur est survenue lors de la modification.", variant: 'destructive' });
+            let errorMessage = "Une erreur est survenue.";
+            if (error.code === 'auth/email-already-in-use') {
+                errorMessage = "Cette adresse e-mail est déjà utilisée.";
+            } else if (error.code === 'auth/weak-password') {
+                errorMessage = "Le mot de passe est trop faible.";
+            }
+            toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
@@ -189,9 +217,11 @@ export default function UserManagementPage() {
     if (isLoading) {
         return (
             <div className="space-y-8">
-                <div>
-                    <h1 className="text-3xl font-bold font-headline">Gestion des Utilisateurs</h1>
-                    <p className="text-muted-foreground">Chargement des données...</p>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <h1 className="text-3xl font-bold font-headline">Gestion des Utilisateurs</h1>
+                        <p className="text-muted-foreground">Liste de tous les utilisateurs de la plateforme.</p>
+                    </div>
                 </div>
                 <Card>
                     <CardHeader>
@@ -208,19 +238,6 @@ export default function UserManagementPage() {
         );
     }
 
-    if (currentUserData?.role !== 'superadmin') {
-        return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Accès refusé</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <p>Vous n'avez pas les permissions nécessaires pour accéder à cette page.</p>
-                </CardContent>
-            </Card>
-        );
-    }
-
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-start">
@@ -228,12 +245,16 @@ export default function UserManagementPage() {
                     <h1 className="text-3xl font-bold font-headline">Gestion des Utilisateurs</h1>
                     <p className="text-muted-foreground">Liste de tous les utilisateurs de la plateforme.</p>
                 </div>
+                <Button onClick={handleNew}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nouvel Utilisateur
+                </Button>
             </div>
-             <Alert>
+             <Alert variant="destructive">
                 <Info className="h-4 w-4" />
-                <AlertTitle>Création d'utilisateurs</AlertTitle>
+                <AlertTitle>Création d'utilisateur</AlertTitle>
                 <AlertDescription>
-                   Pour créer un nouvel utilisateur, rendez-vous dans la console Firebase &gt; Authentication &gt; "Add user". Une fois l'utilisateur créé, il apparaîtra ici et vous pourrez modifier son rôle et ses informations.
+                    Pour des raisons de sécurité, la création de nouveaux utilisateurs doit être effectuée directement depuis la console Firebase Authentication. Une fois l'utilisateur créé, vous pourrez le modifier ici pour lui assigner un rôle et des informations.
                 </AlertDescription>
             </Alert>
             <Card>
@@ -275,14 +296,30 @@ export default function UserManagementPage() {
             </Card>
             <Dialog open={isDialogOpen} onOpenChange={handleOpenDialog}>
                 <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader><DialogTitle>Modifier l'utilisateur</DialogTitle></DialogHeader>
+                    <DialogHeader><DialogTitle>{editingUser ? 'Modifier' : 'Créer un'} utilisateur</DialogTitle></DialogHeader>
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4 pr-2">
                             <div className="grid grid-cols-2 gap-4">
                                 <FormField control={form.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                                 <FormField control={form.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                             </div>
-                            <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={true} /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} disabled={!!editingUser} /></FormControl><FormMessage /></FormItem> )}/>
+                            {!editingUser && (
+                                <FormField control={form.control} name="password" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Mot de passe</FormLabel>
+                                        <FormControl>
+                                            <div className="relative">
+                                                <Input type={showPassword ? "text" : "password"} {...field} />
+                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                </Button>
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            )}
                             <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                             <FormField control={form.control} name="address" render={({ field }) => ( <FormItem><FormLabel>Adresse</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem> )}/>
                             <div className="grid grid-cols-2 gap-4">
@@ -300,7 +337,7 @@ export default function UserManagementPage() {
                             )}/>
                             <DialogFooter>
                                 <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
-                                <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Sauvegarder</Button>
+                                <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {editingUser ? 'Sauvegarder' : 'Créer'}</Button>
                             </DialogFooter>
                         </form>
                     </Form>
