@@ -270,6 +270,7 @@ export default function UsersPage() {
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">Tous les rôles</SelectItem>
+                        <SelectItem value="superadmin">Super Admin</SelectItem>
                         <SelectItem value="conseiller">Conseiller</SelectItem>
                         <SelectItem value="membre">Membre</SelectItem>
                         <SelectItem value="moderateur">Modérateur</SelectItem>
@@ -302,7 +303,7 @@ export default function UsersPage() {
                           <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                           <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
-                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="superadmin">Super Admin</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField
                           control={form.control}
                           name="password"
