@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -14,7 +15,7 @@ import { Loader2, Edit, Trash2, MoreHorizontal, Info, PlusCircle, Eye, EyeOff } 
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -22,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { createUser } from '@/app/actions/user';
 
 type User = {
     id: string;
@@ -64,7 +66,6 @@ const roleText: Record<User['role'], string> = {
 
 export default function UserManagementPage() {
     const firestore = useFirestore();
-    const auth = useAuth();
     const { user: currentUser, isUserLoading } = useUser();
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('all');
@@ -77,13 +78,6 @@ export default function UserManagementPage() {
 
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
-    
-    const userDocRef = useMemoFirebase(() => {
-        if (!currentUser) return null;
-        return doc(firestore, 'users', currentUser.uid);
-    }, [firestore, currentUser]);
-    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(userDocRef);
-
 
     const filteredUsers = useMemo(() => {
         if (!allUsers) return [];
@@ -152,7 +146,6 @@ export default function UserManagementPage() {
         setIsSubmitting(true);
         try {
             if (editingUser) {
-                // MODIFICATION
                 const userDocRef = doc(firestore, 'users', editingUser.id);
                 await setDocumentNonBlocking(userDocRef, {
                     firstName: values.firstName,
@@ -166,23 +159,22 @@ export default function UserManagementPage() {
                 }, { merge: true });
                 toast({ title: 'Succès', description: 'L\'utilisateur a été mis à jour.' });
             } else {
-                 // CREATION
-                 toast({
-                    title: "Action non disponible",
-                    description: "La création d'utilisateur se fait via la console Firebase pour plus de sécurité.",
-                    variant: "destructive"
-                });
+                if (!values.password || values.password.length < 6) {
+                    form.setError("password", { message: "Un mot de passe de 6 caractères minimum est requis."});
+                    setIsSubmitting(false);
+                    return;
+                }
+                 const result = await createUser(values);
+                 if (result.success) {
+                    toast({ title: 'Succès', description: 'L\'utilisateur a été créé.' });
+                 } else {
+                    toast({ title: 'Erreur', description: result.error, variant: 'destructive' });
+                 }
             }
             setIsDialogOpen(false);
             setEditingUser(null);
         } catch (error: any) {
-            let errorMessage = "Une erreur est survenue.";
-            if (error.code === 'auth/email-already-in-use') {
-                errorMessage = "Cette adresse e-mail est déjà utilisée.";
-            } else if (error.code === 'auth/weak-password') {
-                errorMessage = "Le mot de passe est trop faible.";
-            }
-            toast({ title: 'Erreur', description: errorMessage, variant: 'destructive' });
+            toast({ title: 'Erreur', description: "Une erreur inattendue est survenue.", variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
@@ -192,11 +184,6 @@ export default function UserManagementPage() {
         if (!userToDelete || !currentUser) return;
         if (userToDelete.id === currentUser.uid) {
             toast({ title: "Action impossible", description: "Vous ne pouvez pas supprimer votre propre compte.", variant: "destructive" });
-            setUserToDelete(null);
-            return;
-        }
-        if (userToDelete.role === 'superadmin') {
-             toast({ title: "Action impossible", description: "La suppression d'un super administrateur est interdite.", variant: "destructive" });
             setUserToDelete(null);
             return;
         }
@@ -212,23 +199,16 @@ export default function UserManagementPage() {
         }
     };
     
-    const isLoading = areUsersLoading || isCurrentUserDataLoading || isUserLoading;
+    const isLoading = areUsersLoading || isUserLoading;
 
     if (isLoading) {
         return (
-            <div className="space-y-8">
-                <div className="flex justify-between items-start">
-                    <div>
-                        <h1 className="text-3xl font-bold font-headline">Gestion des Utilisateurs</h1>
-                        <p className="text-muted-foreground">Liste de tous les utilisateurs de la plateforme.</p>
-                    </div>
-                </div>
+            <div className="space-y-4">
+                <Skeleton className="h-10 w-1/4" />
+                <Skeleton className="h-4 w-1/2" />
                 <Card>
                     <CardHeader>
-                        <div className="flex gap-4 pt-4">
-                            <Skeleton className="h-10 flex-grow" />
-                            <Skeleton className="h-10 w-[180px]" />
-                        </div>
+                        <Skeleton className="h-10 w-full" />
                     </CardHeader>
                     <CardContent>
                         <Skeleton className="h-64 w-full" />
@@ -237,7 +217,7 @@ export default function UserManagementPage() {
             </div>
         );
     }
-
+    
     return (
         <div className="space-y-8">
             <div className="flex justify-between items-start">
@@ -250,13 +230,6 @@ export default function UserManagementPage() {
                     Nouvel Utilisateur
                 </Button>
             </div>
-             <Alert variant="destructive">
-                <Info className="h-4 w-4" />
-                <AlertTitle>Création d'utilisateur</AlertTitle>
-                <AlertDescription>
-                    Pour des raisons de sécurité, la création de nouveaux utilisateurs doit être effectuée directement depuis la console Firebase Authentication. Une fois l'utilisateur créé, vous pourrez le modifier ici pour lui assigner un rôle et des informations.
-                </AlertDescription>
-            </Alert>
             <Card>
                 <CardHeader>
                     <div className="flex gap-4 pt-4">
@@ -281,7 +254,7 @@ export default function UserManagementPage() {
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => handleEdit(user)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={() => setUserToDelete(user)} disabled={user.id === currentUser?.uid || user.role === 'superadmin'}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onClick={() => setUserToDelete(user)} disabled={user.id === currentUser?.uid}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                    </TableCell>
