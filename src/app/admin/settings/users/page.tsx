@@ -36,7 +36,6 @@ type User = {
     address?: string;
     zipCode?: string;
     city?: string;
-    publicProfileName?: string;
 };
 
 const userEditFormSchema = z.object({
@@ -130,7 +129,6 @@ export default function UserManagementPage() {
         setIsSubmitting(true);
         try {
             const userDocRef = doc(firestore, 'users', editingUser.id);
-            
             const wasConseiller = editingUser.role === 'conseiller';
             const isNowConseiller = values.role === 'conseiller';
             
@@ -144,11 +142,6 @@ export default function UserManagementPage() {
                 zipCode: values.zipCode,
                 city: values.city,
             };
-
-            // If the user is becoming a counselor for the first time, generate a default publicProfileName.
-            if (isNowConseiller && !wasConseiller && !editingUser.publicProfileName) {
-                updatedUserData.publicProfileName = `${values.firstName.toLowerCase()}-${values.lastName.toLowerCase()}`.replace(/[^a-z0-9-]/g, '');
-            }
 
             await setDocumentNonBlocking(userDocRef, updatedUserData, { merge: true });
 
@@ -165,8 +158,6 @@ export default function UserManagementPage() {
                   email: values.email,
                   phone: values.phone,
                   city: values.city,
-                  // Use existing publicProfileName or the newly generated one
-                  publicProfileName: updatedUserData.publicProfileName || editingUser.publicProfileName,
                   ...existingMiniSiteData, // Preserve existing minisite personalization
                 };
                 await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
@@ -317,6 +308,3 @@ export default function UserManagementPage() {
         </div>
     );
 }
-    
-
-    

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -8,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -17,23 +16,23 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Info } from 'lucide-react';
+import { Loader2, Upload, Trash2, Info, Link as LinkIcon } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import Link from 'next/link';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
   publicTitle: z.string().optional(),
   publicBio: z.string().optional(),
-  photoUrl: z.string().optional(),
+  photoUrl: z.string().optional().nullable(),
   phone: z.string().optional(),
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
   commercialName: z.string().optional(),
   siret: z.string().optional(),
-  publicProfileName: z.string().min(3, "Doit contenir au moins 3 caractères.").regex(/^[a-z0-9-]+$/, "Utilisez uniquement des minuscules, des chiffres et des tirets.").optional().or(z.literal('')),
   dashboardTheme: z.object({
     primaryColor: z.string().optional(),
     secondaryColor: z.string().optional(),
@@ -57,8 +56,6 @@ type UserProfile = {
   city?: string;
   commercialName?: string;
   siret?: string;
-  publicProfileName?: string;
-  miniSite?: any;
   dashboardTheme?: {
     primaryColor?: string;
     secondaryColor?: string;
@@ -106,7 +103,6 @@ export default function ProfilePage() {
       city: '',
       commercialName: '',
       siret: '',
-      publicProfileName: '',
       dashboardTheme: {
         primaryColor: '#10B981',
         secondaryColor: '#059669',
@@ -129,7 +125,6 @@ export default function ProfilePage() {
         city: userData.city || '',
         commercialName: userData.commercialName || '',
         siret: userData.siret || '',
-        publicProfileName: userData.publicProfileName || '',
         dashboardTheme: {
           primaryColor: userData.dashboardTheme?.primaryColor || '#10B981',
           secondaryColor: userData.dashboardTheme?.secondaryColor || '#059669',
@@ -140,70 +135,37 @@ export default function ProfilePage() {
     }
   }, [userData, form]);
 
-  const onSubmit = async (data: ProfileFormData) => {
+  const onSubmit = (data: ProfileFormData) => {
     if (!user || !userDocRef) return;
     setIsSubmitting(true);
     
-    // Check if slug is unique for counselors
-    if (userData?.role === 'conseiller' && data.publicProfileName) {
-        const slug = data.publicProfileName;
-        const minisitesRef = collection(firestore, 'minisites');
-        const q = query(minisitesRef, where("publicProfileName", "==", slug));
-        const querySnapshot = await getDocs(q);
-        
-        let isSlugUnique = true;
-        querySnapshot.forEach((doc) => {
-        if (doc.id !== user.uid) {
-            isSlugUnique = false;
-        }
-        });
+    // Use a non-blocking set so the UI doesn't hang
+    setDocumentNonBlocking(userDocRef, data, { merge: true });
 
-        if (!isSlugUnique) {
-        form.setError("publicProfileName", {
-            type: "manual",
-            message: "Cette URL est déjà utilisée par un autre conseiller.",
-        });
-        setIsSubmitting(false);
-        return;
-        }
+    // If the user is a counselor, also update the public profile in 'minisites' collection
+    if (userData?.role === 'conseiller') {
+      const miniSiteDocRef = doc(firestore, 'minisites', user.uid);
+      const publicProfileData = {
+        id: user.uid,
+        firstName: data.firstName,
+        lastName: data.lastName,
+        email: userData.email, // email is not editable
+        publicTitle: data.publicTitle,
+        publicBio: data.publicBio,
+        photoUrl: data.photoUrl,
+        phone: data.phone,
+        city: data.city,
+      };
+      // Also non-blocking
+      setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
     }
 
-    try {
-      // 1. Update the main user document in 'users' collection
-      setDocumentNonBlocking(userDocRef, data, { merge: true });
-
-      // 2. If the user is a counselor, also update the public profile in 'minisites' collection
-      if (userData?.role === 'conseiller') {
-        const miniSiteDocRef = doc(firestore, 'minisites', user.uid);
-        const publicProfileData = {
-          id: user.uid,
-          firstName: data.firstName,
-          lastName: data.lastName,
-          email: userData.email, // email is not editable
-          publicTitle: data.publicTitle,
-          publicBio: data.publicBio,
-          publicProfileName: data.publicProfileName,
-          photoUrl: data.photoUrl,
-          phone: data.phone,
-          city: data.city,
-        };
-        setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
-      }
-
-      toast({
-        title: 'Profil mis à jour',
-        description: 'Vos informations ont été sauvegardées.',
-      });
-    } catch (error) {
-      console.error('Error updating profile:', error);
-      toast({
-        title: 'Erreur',
-        description: 'Une erreur est survenue lors de la mise à jour de votre profil.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
+    toast({
+      title: 'Profil mis à jour',
+      description: 'Vos informations ont été sauvegardées.',
+    });
+    
+    setIsSubmitting(false);
   };
 
 
@@ -218,7 +180,7 @@ export default function ProfilePage() {
   
   const handleRemovePhoto = () => {
     setPhotoPreview(null);
-    form.setValue('photoUrl', '');
+    form.setValue('photoUrl', null);
   };
 
   const isLoading = isUserLoading || isUserDataLoading;
@@ -262,10 +224,13 @@ export default function ProfilePage() {
             <CardContent className="space-y-6">
                 {userData?.role === 'conseiller' && (
                     <Alert>
-                        <Info className="h-4 w-4" />
+                        <LinkIcon className="h-4 w-4" />
                         <AlertTitle>Votre page publique</AlertTitle>
                         <AlertDescription>
-                            Votre mini-site sera accessible à l'adresse : <code className="font-mono bg-muted px-1 py-0.5 rounded">{`votresite.com/c/${form.watch('publicProfileName') || '...'}`}</code>
+                            Votre mini-site est accessible à l'adresse :{' '}
+                            <Link href={`/c/${user?.uid}`} target='_blank' className="font-mono bg-muted px-1 py-0.5 rounded hover:underline">
+                                {`/c/${user?.uid}`}
+                            </Link>
                         </AlertDescription>
                     </Alert>
                 )}
@@ -297,24 +262,7 @@ export default function ProfilePage() {
                     )}
                   />
               </div>
-                {userData?.role === 'conseiller' && (
-                    <FormField
-                        control={form.control}
-                        name="publicProfileName"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Nom de profil public (pour URL)</FormLabel>
-                            <FormControl>
-                            <Input {...field} placeholder="ex: jean-dupont" />
-                            </FormControl>
-                            <FormDescription>
-                                Ceci définira l'URL de votre mini-site. Utilisez uniquement des lettres minuscules, des chiffres et des tirets.
-                            </FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                )}
+
                <div>
                   <Label>Photo de profil</Label>
                   <div className="mt-2 flex items-center gap-4">
