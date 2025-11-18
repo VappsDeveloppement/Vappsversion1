@@ -61,8 +61,16 @@ service cloud.firestore {
       // Allow creation for prospects/signups
       allow create: if true;
       
-      // Read access
-      allow get: if isOwner(userId) || isTheirConseiller(resource) || isSuperAdmin();
+      // Read access:
+      // - A counselor's profile is public.
+      // - A user can read their own profile.
+      // - A counselor can read their clients' profiles.
+      // - A superadmin can read any profile.
+      allow get: if resource.data.role == 'conseiller' 
+                      || isOwner(userId) 
+                      || isTheirConseiller(resource) 
+                      || isSuperAdmin();
+      
       allow list: if isSuperAdmin() || isConseiller(request.auth.uid); // Counselors can list to find their clients
       
       // Write access
