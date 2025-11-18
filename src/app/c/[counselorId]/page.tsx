@@ -22,6 +22,7 @@ type CounselorProfile = {
     firstName: string;
     lastName: string;
     email: string;
+    role?: 'superadmin' | 'conseiller' | 'membre' | 'moderateur';
     publicTitle?: string;
     publicBio?: string;
     photoUrl?: string;
@@ -46,7 +47,7 @@ export default function CounselorPublicProfilePage() {
   const { data: counselor, isLoading, error } = useDoc<CounselorProfile>(counselorDocRef);
 
   React.useEffect(() => {
-    if (!isLoading && !counselor) {
+    if (!isLoading && (!counselor || (counselor.role && counselor.role !== 'conseiller'))) {
       notFound();
     }
   }, [isLoading, counselor]);
@@ -62,10 +63,6 @@ export default function CounselorPublicProfilePage() {
 
   if (!counselor) {
     return null; 
-  }
-  
-  if (counselor.role !== 'conseiller') {
-    notFound();
   }
 
   const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
