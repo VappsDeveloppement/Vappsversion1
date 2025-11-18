@@ -1,10 +1,10 @@
 
 'use client';
 
-import React, { useEffect } from 'react';
-import { notFound, useParams } from 'next/navigation';
-import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import React from 'react';
+import { useParams, notFound } from 'next/navigation';
+import { useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
@@ -35,23 +35,17 @@ type CounselorProfile = {
 
 export default function CounselorPublicProfilePage() {
   const params = useParams();
-  const profileName = params.profileName as string;
+  const counselorId = params.counselorId as string;
   const firestore = useFirestore();
 
-  const counselorQuery = useMemoFirebase(() => {
-    if (!profileName) return null;
-    return query(
-        collection(firestore, 'users'), 
-        where('publicProfileName', '==', profileName),
-        where('role', '==', 'conseiller')
-    );
-  }, [firestore, profileName]);
+  const counselorDocRef = useMemoFirebase(() => {
+    if (!counselorId) return null;
+    return doc(firestore, 'users', counselorId);
+  }, [firestore, counselorId]);
 
-  const { data: counselors, isLoading, error } = useCollection<CounselorProfile>(counselorQuery);
+  const { data: counselor, isLoading, error } = useDoc<CounselorProfile>(counselorDocRef);
 
-  const counselor = counselors?.[0];
-
-  useEffect(() => {
+  React.useEffect(() => {
     if (!isLoading && !counselor) {
       notFound();
     }
@@ -68,6 +62,10 @@ export default function CounselorPublicProfilePage() {
 
   if (!counselor) {
     return null; 
+  }
+  
+  if (counselor.role !== 'conseiller') {
+    notFound();
   }
 
   const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;

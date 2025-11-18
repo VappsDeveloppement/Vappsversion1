@@ -71,11 +71,8 @@ service cloud.firestore {
                       || isTheirConseiller(resource) 
                       || isSuperAdmin();
       
-      // Allow public listing only when searching for counselors by their public profile name.
       // Counselors and admins can list their users.
-      allow list: if (request.query.keys().hasAll(['role', 'publicProfileName']) && request.query.role == 'conseiller')
-                  || isSuperAdmin() 
-                  || isConseiller(request.auth.uid);
+      allow list: if isSuperAdmin() || isConseiller(request.auth.uid);
       
       // Write access
       // User can update their own profile (but not change role or counselorId)
@@ -125,5 +122,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

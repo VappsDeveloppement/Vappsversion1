@@ -124,8 +124,7 @@ export default function DashboardLayout({
   
   const handleLogout = () => {
     setIsLoggingOut(true);
-    const profileName = userData?.publicProfileName;
-    const redirectUrl = (isConseiller && profileName) ? `/${profileName}` : '/';
+    const redirectUrl = (isConseiller) ? `/c/${user?.uid}` : '/';
     
     router.push(redirectUrl);
     
