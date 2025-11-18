@@ -17,8 +17,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2 } from 'lucide-react';
+import { Loader2, Upload, Trash2, Info } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 const profileSchema = z.object({
@@ -26,6 +27,7 @@ const profileSchema = z.object({
   lastName: z.string().min(1, "Le nom est requis."),
   publicTitle: z.string().optional(),
   publicBio: z.string().optional(),
+  publicProfileName: z.string().optional(),
   photoUrl: z.string().optional(),
   phone: z.string().optional(),
   address: z.string().optional(),
@@ -49,6 +51,7 @@ type UserProfile = {
   email: string;
   publicTitle?: string;
   publicBio?: string;
+  publicProfileName?: string;
   photoUrl?: string;
   phone?: string;
   address?: string;
@@ -95,6 +98,7 @@ export default function ProfilePage() {
       lastName: '',
       publicTitle: '',
       publicBio: '',
+      publicProfileName: '',
       photoUrl: '',
       phone: '',
       address: '',
@@ -117,6 +121,7 @@ export default function ProfilePage() {
         lastName: userData.lastName || '',
         publicTitle: userData.publicTitle || '',
         publicBio: userData.publicBio || '',
+        publicProfileName: userData.publicProfileName || '',
         photoUrl: userData.photoUrl || '',
         phone: userData.phone || '',
         address: userData.address || '',
@@ -133,12 +138,37 @@ export default function ProfilePage() {
       setPhotoPreview(userData.photoUrl || null);
     }
   }, [userData, form]);
+  
+  const generateSlug = (text: string) => {
+    return text
+      .toLowerCase()
+      .normalize("NFD") // split an accented letter in the base letter and the accent
+      .replace(/[\u0300-\u036f]/g, "") // remove all previously split accents
+      .replace(/\s+/g, '-') // replace spaces with -
+      .replace(/[^\w-]+/g, '') // remove all non-word chars
+      .replace(/--+/g, '-'); // replace multiple - with single -
+  }
+
+  const handleNameBlur = (event: React.FocusEvent<HTMLInputElement>) => {
+    const nameValue = event.target.value;
+    if (nameValue && !form.getValues('publicProfileName')) {
+        form.setValue('publicProfileName', generateSlug(nameValue));
+    }
+  };
+
 
   const onSubmit = async (data: ProfileFormData) => {
     if (!user || !userDocRef) return;
+
+    // Auto-generate slug from first and last name if empty
+    const finalData = { ...data };
+    if (!finalData.publicProfileName && finalData.firstName && finalData.lastName) {
+        finalData.publicProfileName = generateSlug(`${finalData.firstName} ${finalData.lastName}`);
+    }
+
     setIsSubmitting(true);
     try {
-      await setDocumentNonBlocking(userDocRef, data, { merge: true });
+      await setDocumentNonBlocking(userDocRef, finalData, { merge: true });
       toast({
         title: 'Profil mis à jour',
         description: 'Vos informations personnelles ont été sauvegardées.',
@@ -216,7 +246,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Prénom</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} onBlur={handleNameBlur} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -229,7 +259,7 @@ export default function ProfilePage() {
                       <FormItem>
                         <FormLabel>Nom</FormLabel>
                         <FormControl>
-                          <Input {...field} />
+                          <Input {...field} onBlur={handleNameBlur} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -271,6 +301,28 @@ export default function ProfilePage() {
                       <Input placeholder="Ex: Conseiller en évolution professionnelle" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="publicProfileName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom de profil public (pour l'URL)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="ex: jean-dupont" {...field} />
+                    </FormControl>
+                     <FormMessage />
+                     <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>URL de votre page publique</AlertTitle>
+                        <AlertDescription>
+                          Ceci déterminera l'URL de votre mini-site: <code className="bg-muted px-1 rounded">votresite.com/{field.value || "..."}</code>.
+                          Utilisez des minuscules, des chiffres et des tirets.
+                        </AlertDescription>
+                      </Alert>
                   </FormItem>
                 )}
               />
@@ -452,5 +504,4 @@ export default function ProfilePage() {
   );
 }
 
-
-  
+    

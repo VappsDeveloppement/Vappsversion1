@@ -2,12 +2,11 @@
 
 'use client';
 
-import React from 'react';
-import { useParams } from 'next/navigation';
-import { useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import React, { useEffect } from 'react';
+import { notFound, useParams } from 'next/navigation';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
-import { Skeleton } from '@/components/ui/skeleton';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
 import { AttentionSection } from '@/components/shared/attention-section';
@@ -16,11 +15,8 @@ import { CounselorServicesSection } from '@/components/shared/counselor-services
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
-import { useAgency } from '@/context/agency-provider';
+import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { AlertTriangle, Loader2 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-
 
 type CounselorProfile = {
     id: string;
@@ -31,21 +27,37 @@ type CounselorProfile = {
     publicBio?: string;
     photoUrl?: string;
     miniSite?: any;
+    // This will hold agency-level info for the footer
+    agencyInfo?: {
+        copyrightText?: string;
+        copyrightUrl?: string;
+    }
 };
 
 
-export default function CounselorPublicPage() {
+export default function CounselorPublicProfilePage() {
   const params = useParams();
-  const counselorId = params.counselorId as string;
+  const profileName = params.profileName as string;
   const firestore = useFirestore();
-  const { personalization } = useAgency();
 
-  const counselorDocRef = useMemoFirebase(() => {
-    if (!counselorId) return null;
-    return doc(firestore, 'users', counselorId);
-  }, [firestore, counselorId]);
+  const counselorQuery = useMemoFirebase(() => {
+    if (!profileName) return null;
+    return query(
+        collection(firestore, 'users'), 
+        where('publicProfileName', '==', profileName),
+        where('role', '==', 'conseiller')
+    );
+  }, [firestore, profileName]);
 
-  const { data: counselor, isLoading, error } = useDoc<CounselorProfile>(counselorDocRef);
+  const { data: counselors, isLoading, error } = useCollection<CounselorProfile>(counselorQuery);
+
+  const counselor = counselors?.[0];
+
+  useEffect(() => {
+    if (!isLoading && !counselor) {
+      notFound();
+    }
+  }, [isLoading, counselor]);
 
   if (isLoading) {
     return (
@@ -56,17 +68,9 @@ export default function CounselorPublicPage() {
     );
   }
 
-  if (error || !counselor) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-muted/30 text-center p-4">
-        <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-        <h1 className="text-2xl font-bold text-destructive">Conseiller introuvable</h1>
-        <p className="text-muted-foreground mt-2">Le profil de ce conseiller n'existe pas ou n'est plus disponible.</p>
-         <Button asChild className="mt-6">
-            <Link href="/">Retour à l'accueil</Link>
-        </Button>
-      </div>
-    );
+  if (!counselor) {
+    // This will likely be caught by the useEffect above, but is a good fallback.
+    return null; 
   }
 
   const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
@@ -77,8 +81,8 @@ export default function CounselorPublicPage() {
   const showPricingSection = counselor.miniSite?.pricingSection?.enabled !== false;
   const showContactSection = counselor.miniSite?.contactSection?.enabled !== false;
 
-  const copyrightText = personalization?.copyrightText || "Vapps.";
-  const copyrightUrl = personalization?.copyrightUrl || "/";
+  const copyrightText = counselor.agencyInfo?.copyrightText || "Vapps.";
+  const copyrightUrl = counselor.agencyInfo?.copyrightUrl || "/";
   const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
   const primaryColor = counselor.miniSite?.hero?.primaryColor || '#10B981';
 
@@ -100,3 +104,6 @@ export default function CounselorPublicPage() {
     </div>
   );
 }
+
+
+    

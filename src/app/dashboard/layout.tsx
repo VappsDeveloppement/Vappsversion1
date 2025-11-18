@@ -124,7 +124,9 @@ export default function DashboardLayout({
   
   const handleLogout = () => {
     setIsLoggingOut(true);
-    const redirectUrl = isConseiller && user ? `/c/${user.uid}` : '/';
+    const profileName = userData?.publicProfileName;
+    const redirectUrl = (isConseiller && profileName) ? `/${profileName}` : '/';
+    
     router.push(redirectUrl);
     
     // Give the router time to navigate before signing out.
@@ -132,7 +134,7 @@ export default function DashboardLayout({
     // fire before the old page's hooks (which require auth) have cleaned up.
     setTimeout(() => {
         auth.signOut();
-    }, 50); // A small delay is usually sufficient.
+    }, 100); // A small delay is usually sufficient.
   };
 
 
@@ -273,3 +275,5 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+    

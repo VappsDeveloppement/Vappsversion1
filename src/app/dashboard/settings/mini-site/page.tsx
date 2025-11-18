@@ -220,14 +220,19 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
     const form = useForm<z.infer<typeof heroSchema>>({
         resolver: zodResolver(heroSchema),
         defaultValues: defaultMiniSiteConfig.hero,
-        control
     });
+
+    useEffect(() => {
+        if (userData?.miniSite?.hero) {
+            form.reset(userData.miniSite.hero);
+        }
+    }, [userData, form]);
 
     const [bgImagePreview, setBgImagePreview] = useState(form.getValues('bgImageUrl'));
 
     useEffect(() => {
         setBgImagePreview(form.getValues('bgImageUrl'));
-    }, [form.getValues('bgImageUrl')]);
+    }, [form.watch('bgImageUrl')]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -497,16 +502,33 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
             contactSection: contactSchema,
         })),
         defaultValues: {
-            attentionSection: defaultMiniSiteConfig.attentionSection,
-            aboutSection: defaultMiniSiteConfig.aboutSection,
-            interestsSection: defaultMiniSiteConfig.interestsSection,
-            servicesSection: defaultMiniSiteConfig.servicesSection,
-            ctaSection: defaultMiniSiteConfig.ctaSection,
-            pricingSection: defaultMiniSiteConfig.pricingSection,
-            contactSection: defaultMiniSiteConfig.contactSection,
+            attentionSection: userData?.miniSite?.attentionSection || defaultMiniSiteConfig.attentionSection,
+            aboutSection: userData?.miniSite?.aboutSection || defaultMiniSiteConfig.aboutSection,
+            interestsSection: userData?.miniSite?.interestsSection || defaultMiniSiteConfig.interestsSection,
+            servicesSection: userData?.miniSite?.servicesSection || defaultMiniSiteConfig.servicesSection,
+            ctaSection: userData?.miniSite?.ctaSection || defaultMiniSiteConfig.ctaSection,
+            pricingSection: userData?.miniSite?.pricingSection || defaultMiniSiteConfig.pricingSection,
+            contactSection: userData?.miniSite?.contactSection || defaultMiniSiteConfig.contactSection,
         },
-        control,
     });
+    
+    useEffect(() => {
+        if (userData?.miniSite) {
+            form.reset({
+                attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
+                aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
+                interestsSection: { 
+                    ...defaultMiniSiteConfig.interestsSection, 
+                    ...(userData.miniSite.interestsSection || {}),
+                    features: (userData.miniSite.interestsSection?.features || []).map((f:string) => ({ value: f }))
+                },
+                servicesSection: { ...defaultMiniSiteConfig.servicesSection, ...(userData.miniSite.servicesSection || {}) },
+                ctaSection: { ...defaultMiniSiteConfig.ctaSection, ...(userData.miniSite.ctaSection || {}) },
+                pricingSection: { ...defaultMiniSiteConfig.pricingSection, ...(userData.miniSite.pricingSection || {}) },
+                contactSection: { ...defaultMiniSiteConfig.contactSection, ...(userData.miniSite.contactSection || {}) },
+            });
+        }
+    }, [userData, form]);
     
     const { fields: interestFields, append: appendInterest, remove: removeInterest } = useFieldArray({
         control: form.control,
@@ -530,10 +552,10 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
 
 
     useEffect(() => {
-        setAboutImagePreview(form.getValues('aboutSection.imageUrl'));
-        setCtaImagePreview(form.getValues('ctaSection.bgImageUrl'));
-        setContactImagePreview(form.getValues('contactSection.imageUrl'));
-    }, [form.getValues('aboutSection.imageUrl'), form.getValues('ctaSection.bgImageUrl'), form.getValues('contactSection.imageUrl')]);
+        setAboutImagePreview(form.watch('aboutSection.imageUrl'));
+        setCtaImagePreview(form.watch('ctaSection.bgImageUrl'));
+        setContactImagePreview(form.watch('contactSection.imageUrl'));
+    }, [form.watch('aboutSection.imageUrl'), form.watch('ctaSection.bgImageUrl'), form.watch('contactSection.imageUrl')]);
 
     const onSubmit = async (data: any) => {
         if (!userDocRef) return;
@@ -927,8 +949,6 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
 }
 
 function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
-    const { personalization } = useAgency();
-
     const counselorPreviewData = {
         ...(userData || {}),
         miniSite: {
@@ -947,8 +967,9 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
         }
     };
     
-    const copyrightText = personalization?.copyrightText || "Vapps.";
-    const copyrightUrl = personalization?.copyrightUrl || "/";
+    // Fallback to a default, just in case.
+    const copyrightText = counselorPreviewData.agencyInfo?.copyrightText || "VApps.";
+    const copyrightUrl = counselorPreviewData.agencyInfo?.copyrightUrl || "/";
     const footerBgColor = formData.hero?.bgColor || '#f1f5f9';
     const primaryColor = formData.hero?.primaryColor || '#10B981';
 
@@ -993,37 +1014,11 @@ export default function MiniSitePage() {
     defaultValues: defaultMiniSiteConfig,
   });
   
-  useEffect(() => {
-    if (userData?.miniSite) {
-        const interestsFeatures = (userData.miniSite.interestsSection?.features || defaultMiniSiteConfig.interestsSection.features).map((f: any) => typeof f === 'string' ? {value: f} : f);
-        const servicesData = (userData.miniSite.servicesSection?.services || defaultMiniSiteConfig.servicesSection.services).map((s: any) => ({ ...s, imageUrl: s.imageUrl || null }));
-
-        form.reset({
-            hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
-            attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
-            aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
-            interestsSection: {
-              ...defaultMiniSiteConfig.interestsSection,
-              ...(userData.miniSite.interestsSection || {}),
-              features: interestsFeatures
-            },
-            servicesSection: {
-              ...defaultMiniSiteConfig.servicesSection,
-              ...(userData.miniSite.servicesSection || {}),
-              services: servicesData,
-            },
-            ctaSection: { ...defaultMiniSiteConfig.ctaSection, ...(userData.miniSite.ctaSection || {}) },
-            pricingSection: { ...defaultMiniSiteConfig.pricingSection, ...(userData.miniSite.pricingSection || {})},
-            contactSection: { ...defaultMiniSiteConfig.contactSection, ...(userData.miniSite.contactSection || {})},
-        });
-    } else {
-        form.reset(defaultMiniSiteConfig);
-    }
-  }, [userData, form]);
-  
   const watchedFormData = useWatch({ control: form.control });
 
-  if (isUserLoading || isUserDataLoading) {
+  const isLoading = isUserLoading || isUserDataLoading;
+
+  if (isLoading) {
       return <div>Chargement...</div>
   }
 
@@ -1043,9 +1038,9 @@ export default function MiniSitePage() {
                 </SheetTrigger>
                 <PreviewPanel formData={watchedFormData} userData={userData} />
             </Sheet>
-            {user && (
+            {user && userData?.publicProfileName && (
                 <Button asChild>
-                    <Link href={`/c/${user.uid}`} target="_blank">
+                    <Link href={`/${userData.publicProfileName}`} target="_blank">
                         Ouvrir la page publique
                     </Link>
                 </Button>
@@ -1073,3 +1068,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
