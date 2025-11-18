@@ -1,24 +1,25 @@
 
-import { getApps, initializeApp, cert, App } from 'firebase-admin/app';
-import { firebaseConfig } from './config';
+import { getApps, initializeApp, App } from 'firebase-admin/app';
 
+/**
+ * Initializes the Firebase Admin SDK.
+ * It ensures that the app is initialized only once.
+ * In many environments (like Google Cloud Functions, Cloud Run),
+ * calling initializeApp() without arguments is sufficient as the SDK
+ * will automatically detect the project's service account credentials.
+ */
 export function initializeAdminApp(): App {
   const apps = getApps();
   if (apps.length > 0) {
     return apps[0]!;
   }
   
-  // This approach is simplified for this environment and not for production with real secrets.
-  // It uses the public client-side config, which works for some Admin SDK features
-  // in a trusted server environment but lacks full admin privileges without a service account.
   try {
-    return initializeApp({
-      projectId: firebaseConfig.projectId,
-    });
+    // Calling initializeApp without arguments allows it to use
+    // Application Default Credentials provided by the environment.
+    return initializeApp();
   } catch (e) {
     console.error("Firebase Admin SDK initialization failed.", e);
-    // This will likely fail if called multiple times without the getApps check,
-    // but the check above should prevent that.
-    throw e;
+    throw new Error("Could not initialize Firebase Admin SDK. Ensure the server environment is configured with the correct credentials.");
   }
 }
