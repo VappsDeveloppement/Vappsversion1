@@ -36,6 +36,7 @@ type User = {
     address?: string;
     zipCode?: string;
     city?: string;
+    publicProfileName?: string;
 };
 
 const userEditFormSchema = z.object({
@@ -144,13 +145,19 @@ export default function UserManagementPage() {
             // If the user is now a counselor, create/update the minisite document
             if (values.role === 'conseiller') {
                 const miniSiteDocRef = doc(firestore, 'minisites', editingUser.id);
+                const existingMiniSiteSnap = await getDoc(miniSiteDocRef);
+                const existingMiniSiteData = existingMiniSiteSnap.exists() ? existingMiniSiteSnap.data() : {};
+
                 const publicProfileData = {
                   id: editingUser.id,
                   firstName: values.firstName,
                   lastName: values.lastName,
                   email: values.email,
-                  // Keep existing minisite personalization
-                  ...((await getDoc(miniSiteDocRef)).data() || {}),
+                  phone: values.phone,
+                  city: values.city,
+                  // Use existing publicProfileName or create a default one
+                  publicProfileName: editingUser.publicProfileName || `${values.firstName.toLowerCase()}-${values.lastName.toLowerCase()}`.replace(/[^a-z0-9-]/g, ''),
+                  ...existingMiniSiteData, // Preserve existing minisite personalization
                 };
                 await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
             }
