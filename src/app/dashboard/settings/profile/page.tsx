@@ -57,6 +57,7 @@ type UserProfile = {
   city?: string;
   commercialName?: string;
   siret?: string;
+  miniSite?: any;
   dashboardTheme?: {
     primaryColor?: string;
     secondaryColor?: string;
@@ -138,14 +139,32 @@ export default function ProfilePage() {
   const onSubmit = async (data: ProfileFormData) => {
     if (!user || !userDocRef) return;
 
-    const finalData = { ...data };
-
     setIsSubmitting(true);
     try {
-      await setDocumentNonBlocking(userDocRef, finalData, { merge: true });
+      // 1. Update the main user document
+      await setDocumentNonBlocking(userDocRef, data, { merge: true });
+
+      // 2. If the user is a counselor, update the public profile in 'minisites' collection
+      if (userData?.role === 'conseiller') {
+        const miniSiteDocRef = doc(firestore, 'minisites', user.uid);
+        const publicProfileData = {
+          id: user.uid,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          email: userData.email, // email is not editable
+          publicTitle: data.publicTitle,
+          publicBio: data.publicBio,
+          photoUrl: data.photoUrl,
+          phone: data.phone,
+          city: data.city,
+          miniSite: userData.miniSite || {}, // Preserve existing mini-site config
+        };
+        await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
+      }
+
       toast({
         title: 'Profil mis à jour',
-        description: 'Vos informations personnelles ont été sauvegardées.',
+        description: 'Vos informations ont été sauvegardées.',
       });
     } catch (error) {
       console.error('Error updating profile:', error);
@@ -158,6 +177,7 @@ export default function ProfilePage() {
       setIsSubmitting(false);
     }
   };
+
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -208,7 +228,7 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle>Informations Personnelles & Publiques</CardTitle>
               <CardDescription>
-                Ces informations sont utilisées pour votre compte et votre page de conseiller.
+                Ces informations sont utilisées pour votre compte et, si vous êtes conseiller, pour votre page publique.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">

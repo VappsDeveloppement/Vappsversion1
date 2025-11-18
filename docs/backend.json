@@ -26,8 +26,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["superadmin", "conseiller", "membre"],
-          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client."
+          "enum": ["superadmin", "conseiller", "membre", "moderateur"],
+          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'moderateur' has moderation rights."
         },
         "counselorId": {
             "type": "string",
@@ -107,105 +107,7 @@
             "description": "Public-facing biography for the counselor's profile page."
         },
         "miniSite": {
-            "type": "object",
-            "description": "Personalization settings for the counselor's mini-site.",
-            "properties": {
-                "hero": {
-                    "type": "object",
-                    "properties": {
-                        "title": { "type": "string" },
-                        "subtitle": { "type": "string" },
-                        "ctaText": { "type": "string" },
-                        "ctaLink": { "type": "string" },
-                        "showPhoto": { "type": "boolean" },
-                        "bgColor": { "type": "string" },
-                        "bgImageUrl": { "type": "string", "format": "uri" },
-                        "showPhone": { "type": "boolean" },
-                        "showLocation": { "type": "boolean" },
-                        "primaryColor": { "type": "string" },
-                        "secondaryColor": { "type": "string" }
-                    }
-                },
-                "attentionSection": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": { "type": "boolean" },
-                        "title": { "type": "string" },
-                        "text": { "type": "string" }
-                    }
-                },
-                "aboutSection": {
-                  "type": "object",
-                  "properties": {
-                    "enabled": { "type": "boolean"},
-                    "imageUrl": { "type": "string", "format": "uri"},
-                    "videoUrl": { "type": "string", "format": "uri"},
-                    "mediaText": { "type": "string"},
-                    "title": { "type": "string"},
-                    "text": { "type": "string"}
-                  }
-                },
-                "interestsSection": {
-                  "type": "object",
-                  "properties": {
-                    "enabled": { "type": "boolean"},
-                    "title": { "type": "string"},
-                    "features": { "type": "array", "items": { "type": "string" } }
-                  }
-                },
-                "servicesSection": {
-                  "type": "object",
-                  "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "subtitle": { "type": "string" },
-                    "services": {
-                      "type": "array",
-                      "items": {
-                        "type": "object",
-                        "properties": {
-                          "id": { "type": "string" },
-                          "title": { "type": "string" },
-                          "description": { "type": "string" },
-                          "imageUrl": { "type": "string", "format": "uri" }
-                        }
-                      }
-                    }
-                  }
-                },
-                "ctaSection": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": { "type": "boolean" },
-                        "title": { "type": "string" },
-                        "subtitle": { "type": "string" },
-                        "text": { "type": "string" },
-                        "buttonText": { "type": "string" },
-                        "buttonLink": { "type": "string" },
-                        "bgColor": { "type": "string" },
-                        "bgImageUrl": { "type": "string", "format": "uri" }
-                    }
-                },
-                "pricingSection": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": { "type": "boolean" },
-                        "title": { "type": "string" },
-                        "subtitle": { "type": "string" },
-                        "planIds": { "type": "array", "items": { "type": "string" } }
-                    }
-                },
-                "contactSection": {
-                    "type": "object",
-                    "properties": {
-                        "enabled": { "type": "boolean" },
-                        "title": { "type": "string" },
-                        "text": { "type": "string" },
-                        "imageUrl": { "type": "string", "format": "uri" },
-                        "links": { "type": "array", "items": { "type": "object", "properties": { "text": { "type": "string" }, "url": { "type": "string" } } } }
-                    }
-                }
-            }
+            "$ref": "#/entities/MiniSite"
         },
         "dashboardTheme": {
             "type": "object",
@@ -224,6 +126,126 @@
         "role",
         "dateJoined"
       ]
+    },
+    "MiniSite": {
+        "title": "MiniSite",
+        "type": "object",
+        "description": "Personalization settings for the counselor's mini-site.",
+        "properties": {
+            "hero": {
+                "type": "object",
+                "properties": {
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "ctaText": { "type": "string" },
+                    "ctaLink": { "type": "string" },
+                    "showPhoto": { "type": "boolean" },
+                    "bgColor": { "type": "string" },
+                    "bgImageUrl": { "type": "string", "format": "uri" },
+                    "showPhone": { "type": "boolean" },
+                    "showLocation": { "type": "boolean" },
+                    "primaryColor": { "type": "string" },
+                    "secondaryColor": { "type": "string" }
+                }
+            },
+            "attentionSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "text": { "type": "string" }
+                }
+            },
+            "aboutSection": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean"},
+                "imageUrl": { "type": "string", "format": "uri"},
+                "videoUrl": { "type": "string", "format": "uri"},
+                "mediaText": { "type": "string"},
+                "title": { "type": "string"},
+                "text": { "type": "string"}
+              }
+            },
+            "interestsSection": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean"},
+                "title": { "type": "string"},
+                "features": { "type": "array", "items": { "type": "string" } }
+              }
+            },
+            "servicesSection": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "title": { "type": "string" },
+                "subtitle": { "type": "string" },
+                "services": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "title": { "type": "string" },
+                      "description": { "type": "string" },
+                      "imageUrl": { "type": "string", "format": "uri" }
+                    }
+                  }
+                }
+              }
+            },
+            "ctaSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "text": { "type": "string" },
+                    "buttonText": { "type": "string" },
+                    "buttonLink": { "type": "string" },
+                    "bgColor": { "type": "string" },
+                    "bgImageUrl": { "type": "string", "format": "uri" }
+                }
+            },
+            "pricingSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "planIds": { "type": "array", "items": { "type": "string" } }
+                }
+            },
+            "contactSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "text": { "type": "string" },
+                    "imageUrl": { "type": "string", "format": "uri" },
+                    "links": { "type": "array", "items": { "type": "object", "properties": { "text": { "type": "string" }, "url": { "type": "string" } } } }
+                }
+            }
+        }
+    },
+    "CounselorProfile": {
+        "title": "Counselor Profile",
+        "type": "object",
+        "description": "Public-facing profile for a counselor's mini-site.",
+        "properties": {
+            "id": { "type": "string" },
+            "firstName": { "type": "string" },
+            "lastName": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" },
+            "city": { "type": "string" },
+            "photoUrl": { "type": "string", "format": "uri" },
+            "publicTitle": { "type": "string" },
+            "publicBio": { "type": "string" },
+            "miniSite": { "$ref": "#/entities/MiniSite" }
+        },
+        "required": ["id", "firstName", "lastName", "email"]
     },
     "Agency": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -688,6 +710,16 @@
         }
       },
       {
+        "path": "/minisites/{counselorId}",
+        "definition": {
+          "entityName": "CounselorProfile",
+          "schema": {
+            "$ref": "#/backend/entities/CounselorProfile"
+          },
+          "description": "Stores the public-facing profile data for a counselor's mini-site. The document ID is the counselor's user ID."
+        }
+      },
+      {
         "path": "/plans/{planId}",
         "definition": {
           "entityName": "Plan",
@@ -805,3 +837,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    

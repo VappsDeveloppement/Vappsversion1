@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -22,7 +23,6 @@ type CounselorProfile = {
     firstName: string;
     lastName: string;
     email: string;
-    role?: 'superadmin' | 'conseiller' | 'membre' | 'moderateur';
     publicTitle?: string;
     publicBio?: string;
     photoUrl?: string;
@@ -41,13 +41,15 @@ export default function CounselorPublicProfilePage() {
 
   const counselorDocRef = useMemoFirebase(() => {
     if (!counselorId) return null;
-    return doc(firestore, 'users', counselorId);
+    // Fetch from the new 'minisites' collection
+    return doc(firestore, 'minisites', counselorId);
   }, [firestore, counselorId]);
 
   const { data: counselor, isLoading, error } = useDoc<CounselorProfile>(counselorDocRef);
 
   React.useEffect(() => {
-    if (!isLoading && (!counselor || (counselor.role && counselor.role !== 'conseiller'))) {
+    // No longer need to check for role. If the doc doesn't exist, useDoc will handle it.
+    if (!isLoading && !counselor) {
       notFound();
     }
   }, [isLoading, counselor]);
@@ -96,3 +98,5 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
+
+    
