@@ -123,9 +123,12 @@ export default function DashboardLayout({
   const isLoading = isUserLoading || isUserDataLoading || !isMounted;
   
   const handleLogout = async () => {
-    await auth.signOut();
+    // Navigate first to avoid permission errors on the next page
     const redirectUrl = isConseiller && user ? `/c/${user.uid}` : '/';
     router.push(redirectUrl);
+    
+    // Then sign out
+    await auth.signOut();
   };
 
   const dashboardStyle = useMemo(() => {
