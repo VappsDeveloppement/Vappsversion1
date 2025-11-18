@@ -33,7 +33,7 @@ const profileSchema = z.object({
   city: z.string().optional(),
   commercialName: z.string().optional(),
   siret: z.string().optional(),
-  publicProfileName: z.string().min(3, "Doit contenir au moins 3 caractères.").regex(/^[a-z0-9-]+$/, "Utilisez uniquement des minuscules, des chiffres et des tirets."),
+  publicProfileName: z.string().min(3, "Doit contenir au moins 3 caractères.").regex(/^[a-z0-9-]+$/, "Utilisez uniquement des minuscules, des chiffres et des tirets.").optional().or(z.literal('')),
   dashboardTheme: z.object({
     primaryColor: z.string().optional(),
     secondaryColor: z.string().optional(),
@@ -144,26 +144,28 @@ export default function ProfilePage() {
     if (!user || !userDocRef) return;
     setIsSubmitting(true);
     
-    // Check if slug is unique
-    const slug = data.publicProfileName;
-    const minisitesRef = collection(firestore, 'minisites');
-    const q = query(minisitesRef, where("publicProfileName", "==", slug));
-    const querySnapshot = await getDocs(q);
-    
-    let isSlugUnique = true;
-    querySnapshot.forEach((doc) => {
-      if (doc.id !== user.uid) {
-        isSlugUnique = false;
-      }
-    });
+    // Check if slug is unique for counselors
+    if (userData?.role === 'conseiller' && data.publicProfileName) {
+        const slug = data.publicProfileName;
+        const minisitesRef = collection(firestore, 'minisites');
+        const q = query(minisitesRef, where("publicProfileName", "==", slug));
+        const querySnapshot = await getDocs(q);
+        
+        let isSlugUnique = true;
+        querySnapshot.forEach((doc) => {
+        if (doc.id !== user.uid) {
+            isSlugUnique = false;
+        }
+        });
 
-    if (!isSlugUnique) {
-      form.setError("publicProfileName", {
-        type: "manual",
-        message: "Cette URL est déjà utilisée par un autre conseiller.",
-      });
-      setIsSubmitting(false);
-      return;
+        if (!isSlugUnique) {
+        form.setError("publicProfileName", {
+            type: "manual",
+            message: "Cette URL est déjà utilisée par un autre conseiller.",
+        });
+        setIsSubmitting(false);
+        return;
+        }
     }
 
     try {
