@@ -31,7 +31,7 @@ type User = {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'superadmin' | 'conseiller' | 'membre' | 'moderateur';
+  role: 'superadmin' | 'conseiller' | 'membre' | 'prospect';
   dateJoined: string;
   phone?: string;
   address?: string;
@@ -50,7 +50,7 @@ const baseUserSchema = z.object({
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
-  role: z.enum(['superadmin', 'conseiller', 'membre', 'moderateur'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['superadmin', 'conseiller', 'membre', 'prospect'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
 }).refine(data => {
     if (!data.id && (!data.password || data.password.length < 6)) {
@@ -67,14 +67,14 @@ const roleText: Record<User['role'], string> = {
     superadmin: 'Super Admin',
     conseiller: 'Conseiller',
     membre: 'Membre',
-    moderateur: 'Modérateur',
+    prospect: 'Prospect',
 };
 
 const roleVariant: Record<User['role'], 'default' | 'secondary' | 'destructive'> = {
   superadmin: 'destructive',
   conseiller: 'default',
   membre: 'secondary',
-  moderateur: 'default',
+  prospect: 'secondary',
 };
 
 export default function UsersPage() {
@@ -236,6 +236,8 @@ export default function UsersPage() {
             // If a superadmin creates a counselor, the counselor is their own counselor.
             if (currentUserData?.role === 'superadmin' && values.role === 'conseiller') {
                 dataToSave.counselorId = userId;
+            } else if (currentUserData?.role === 'superadmin' && values.role === 'superadmin') {
+                dataToSave.counselorId = userId; // A superadmin is also their own 'counselor' for data ownership
             } else {
                 // Otherwise, the creator is the counselor.
                 dataToSave.counselorId = currentUser.uid;
@@ -299,7 +301,7 @@ export default function UsersPage() {
                         <SelectItem value="superadmin">Super Admin</SelectItem>
                         <SelectItem value="conseiller">Conseiller</SelectItem>
                         <SelectItem value="membre">Membre</SelectItem>
-                        <SelectItem value="moderateur">Modérateur</SelectItem>
+                        <SelectItem value="prospect">Prospect</SelectItem>
                     </SelectContent>
                   </Select>
               </div>
@@ -329,7 +331,7 @@ export default function UsersPage() {
                           <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                           <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
-                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="superadmin">Super Admin</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="superadmin">Super Admin</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem><SelectItem value="prospect">Prospect</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField
                           control={form.control}
                           name="password"
@@ -418,4 +420,3 @@ export default function UsersPage() {
     </div>
   );
 }
-
