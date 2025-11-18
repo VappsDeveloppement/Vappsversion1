@@ -6,21 +6,20 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
+import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Info, AlertCircle } from 'lucide-react';
+import { Loader2, Upload, Trash2, Info } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
@@ -85,7 +84,6 @@ export default function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  const [isSlugChecking, setIsSlugChecking] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -168,12 +166,11 @@ export default function ProfilePage() {
       return;
     }
 
-
     try {
-      // 1. Update the main user document
+      // 1. Update the main user document in 'users' collection
       await setDocumentNonBlocking(userDocRef, data, { merge: true });
 
-      // 2. If the user is a counselor, update the public profile in 'minisites' collection
+      // 2. If the user is a counselor, also update the public profile in 'minisites' collection
       if (userData?.role === 'conseiller') {
         const miniSiteDocRef = doc(firestore, 'minisites', user.uid);
         const publicProfileData = {
@@ -187,7 +184,6 @@ export default function ProfilePage() {
           photoUrl: data.photoUrl,
           phone: data.phone,
           city: data.city,
-          miniSite: userData.miniSite || {}, // Preserve existing mini-site config
         };
         await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
       }
@@ -262,13 +258,15 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-               <Alert>
-                <Info className="h-4 w-4" />
-                <AlertTitle>Votre page publique</AlertTitle>
-                <AlertDescription>
-                    Votre mini-site sera accessible à l'adresse : <code className="font-mono bg-muted px-1 py-0.5 rounded">{`votresite.com/c/${form.watch('publicProfileName') || '...'}`}</code>
-                </AlertDescription>
-                </Alert>
+                {userData?.role === 'conseiller' && (
+                    <Alert>
+                        <Info className="h-4 w-4" />
+                        <AlertTitle>Votre page publique</AlertTitle>
+                        <AlertDescription>
+                            Votre mini-site sera accessible à l'adresse : <code className="font-mono bg-muted px-1 py-0.5 rounded">{`votresite.com/c/${form.watch('publicProfileName') || '...'}`}</code>
+                        </AlertDescription>
+                    </Alert>
+                )}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -297,22 +295,24 @@ export default function ProfilePage() {
                     )}
                   />
               </div>
-              <FormField
-                control={form.control}
-                name="publicProfileName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nom de profil public (pour URL)</FormLabel>
-                    <FormControl>
-                      <Input {...field} placeholder="ex: jean-dupont" />
-                    </FormControl>
-                    <FormDescription>
-                        Ceci définira l'URL de votre mini-site. Utilisez uniquement des lettres minuscules, des chiffres et des tirets.
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
+                {userData?.role === 'conseiller' && (
+                    <FormField
+                        control={form.control}
+                        name="publicProfileName"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nom de profil public (pour URL)</FormLabel>
+                            <FormControl>
+                            <Input {...field} placeholder="ex: jean-dupont" />
+                            </FormControl>
+                            <FormDescription>
+                                Ceci définira l'URL de votre mini-site. Utilisez uniquement des lettres minuscules, des chiffres et des tirets.
+                            </FormDescription>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                 )}
-              />
                <div>
                   <Label>Photo de profil</Label>
                   <div className="mt-2 flex items-center gap-4">
@@ -338,37 +338,41 @@ export default function ProfilePage() {
                   </div>
                </div>
 
-              <FormField
-                control={form.control}
-                name="publicTitle"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Titre Professionnel (public)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Ex: Conseiller en évolution professionnelle" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                {userData?.role === 'conseiller' && (
+                    <>
+                    <FormField
+                        control={form.control}
+                        name="publicTitle"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Titre Professionnel (public)</FormLabel>
+                            <FormControl>
+                            <Input placeholder="Ex: Conseiller en évolution professionnelle" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
 
-              <FormField
-                control={form.control}
-                name="publicBio"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Biographie Publique</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Parlez de votre parcours, de votre approche..."
-                        rows={8}
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+                    <FormField
+                        control={form.control}
+                        name="publicBio"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Biographie Publique</FormLabel>
+                            <FormControl>
+                            <Textarea
+                                placeholder="Parlez de votre parcours, de votre approche..."
+                                rows={8}
+                                {...field}
+                            />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    </>
                 )}
-              />
                 <div className="border-t pt-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <FormField
@@ -456,66 +460,68 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Personnalisation du Tableau de Bord</CardTitle>
-              <CardDescription>
-                Choisissez les couleurs de votre espace de travail personnel.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                  <FormField
-                    control={form.control}
-                    name="dashboardTheme.primaryColor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Couleur Primaire</FormLabel>
-                        <FormControl>
-                          <div className="flex items-center gap-2">
-                              <Input type="color" {...field} className="p-1 h-10 w-10" />
-                              <Input type="text" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={form.control}
-                    name="dashboardTheme.secondaryColor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Couleur Secondaire</FormLabel>
-                        <FormControl>
-                          <div className="flex items-center gap-2">
-                              <Input type="color" {...field} className="p-1 h-10 w-10" />
-                              <Input type="text" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={form.control}
-                    name="dashboardTheme.bgColor"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Couleur de Fond</FormLabel>
-                        <FormControl>
-                          <div className="flex items-center gap-2">
-                              <Input type="color" {...field} className="p-1 h-10 w-10" />
-                              <Input type="text" {...field} />
-                          </div>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-              </div>
-            </CardContent>
-          </Card>
+            {userData?.role === 'conseiller' && (
+            <Card>
+                <CardHeader>
+                <CardTitle>Personnalisation du Tableau de Bord</CardTitle>
+                <CardDescription>
+                    Choisissez les couleurs de votre espace de travail personnel.
+                </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <FormField
+                        control={form.control}
+                        name="dashboardTheme.primaryColor"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Couleur Primaire</FormLabel>
+                            <FormControl>
+                            <div className="flex items-center gap-2">
+                                <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                <Input type="text" {...field} />
+                            </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="dashboardTheme.secondaryColor"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Couleur Secondaire</FormLabel>
+                            <FormControl>
+                            <div className="flex items-center gap-2">
+                                <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                <Input type="text" {...field} />
+                            </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="dashboardTheme.bgColor"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Couleur de Fond</FormLabel>
+                            <FormControl>
+                            <div className="flex items-center gap-2">
+                                <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                <Input type="text" {...field} />
+                            </div>
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+                </CardContent>
+            </Card>
+            )}
 
           <div className="flex justify-end">
             <Button type="submit" disabled={isSubmitting}>
@@ -528,6 +534,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-
-    
