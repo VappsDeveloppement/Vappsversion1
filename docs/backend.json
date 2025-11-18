@@ -26,8 +26,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["superadmin", "conseiller", "membre", "prospect"],
-          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'prospect' is a potential user."
+          "enum": ["superadmin", "conseiller", "membre"],
+          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client."
         },
         "counselorId": {
             "type": "string",
@@ -144,7 +144,76 @@
                     "title": { "type": "string"},
                     "text": { "type": "string"}
                   }
+                },
+                "interestsSection": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean"},
+                    "title": { "type": "string"},
+                    "features": { "type": "array", "items": { "type": "string" } }
+                  }
+                },
+                "servicesSection": {
+                  "type": "object",
+                  "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "services": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "title": { "type": "string" },
+                          "description": { "type": "string" },
+                          "imageUrl": { "type": "string", "format": "uri" }
+                        }
+                      }
+                    }
+                  }
+                },
+                "ctaSection": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean" },
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" },
+                        "text": { "type": "string" },
+                        "buttonText": { "type": "string" },
+                        "buttonLink": { "type": "string" },
+                        "bgColor": { "type": "string" },
+                        "bgImageUrl": { "type": "string", "format": "uri" }
+                    }
+                },
+                "pricingSection": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean" },
+                        "title": { "type": "string" },
+                        "subtitle": { "type": "string" },
+                        "planIds": { "type": "array", "items": { "type": "string" } }
+                    }
+                },
+                "contactSection": {
+                    "type": "object",
+                    "properties": {
+                        "enabled": { "type": "boolean" },
+                        "title": { "type": "string" },
+                        "text": { "type": "string" },
+                        "imageUrl": { "type": "string", "format": "uri" },
+                        "links": { "type": "array", "items": { "type": "object", "properties": { "text": { "type": "string" }, "url": { "type": "string" } } } }
+                    }
                 }
+            }
+        },
+        "dashboardTheme": {
+            "type": "object",
+            "description": "Color personalization settings for the counselor's own dashboard.",
+            "properties": {
+                "primaryColor": { "type": "string" },
+                "secondaryColor": { "type": "string" },
+                "bgColor": { "type": "string" }
             }
         }
       },

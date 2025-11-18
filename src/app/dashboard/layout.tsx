@@ -203,6 +203,16 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
+              {isConseiller && (
+                  <SidebarMenuItem>
+                    <Link href="/dashboard/clients">
+                      <SidebarMenuButton isActive={pathname.startsWith("/dashboard/clients")}>
+                          <Users />
+                          <span>Mes Clients</span>
+                      </SidebarMenuButton>
+                    </Link>
+                  </SidebarMenuItem>
+              )}
                <Accordion type="single" collapsible defaultValue={activeProfilePath ? "profile-menu" : undefined} className="w-full">
                     <AccordionItem value="profile-menu" className="border-none">
                         <AccordionTrigger className="w-full flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] text-black hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50" data-active={activeProfilePath}>
