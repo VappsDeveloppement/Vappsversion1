@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Info } from 'lucide-react';
+import { Loader2, Upload, Trash2, Info, ExternalLink } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -311,15 +311,26 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nom de profil public (pour l'URL)</FormLabel>
-                    <FormControl>
-                      <Input placeholder="ex: jean-dupont" {...field} />
-                    </FormControl>
+                    <div className="flex items-center gap-2">
+                        <FormControl>
+                            <Input placeholder="ex: jean-dupont" {...field} />
+                        </FormControl>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={!field.value}
+                            onClick={() => window.open(`/${field.value}`, '_blank')}
+                        >
+                            <ExternalLink className="mr-2 h-4 w-4" />
+                            Tester
+                        </Button>
+                    </div>
                      <FormMessage />
                      <Alert>
                         <Info className="h-4 w-4" />
                         <AlertTitle>URL de votre page publique</AlertTitle>
                         <AlertDescription>
-                          Ceci déterminera l'URL de votre mini-site: <code className="bg-muted px-1 rounded">votresite.com/{field.value || "..."}</code>.
+                          Ceci déterminera l'URL de votre mini-site: <code className="bg-muted px-1 rounded">{`${window.location.origin}/${field.value || "..."}`}</code>.
                           Utilisez des minuscules, des chiffres et des tirets.
                         </AlertDescription>
                       </Alert>
@@ -504,4 +515,3 @@ export default function ProfilePage() {
   );
 }
 
-    
