@@ -15,6 +15,7 @@ import {
   UserCircle,
   FileText,
   Globe,
+  Loader2,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -33,7 +34,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser, useMemoFirebase, useDoc } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { useFirestore, useAuth } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -101,11 +102,13 @@ export default function DashboardLayout({
   const firestore = useFirestore();
   const auth = useAuth();
   const router = useRouter();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
-    if (!user) return null;
+    // Prevent re-fetching during logout to avoid permission errors
+    if (!user || isLoggingOut) return null;
     return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
+  }, [firestore, user, isLoggingOut]);
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
@@ -123,13 +126,22 @@ export default function DashboardLayout({
   const isLoading = isUserLoading || isUserDataLoading || !isMounted;
   
   const handleLogout = async () => {
-    // Navigate first to avoid permission errors on the next page
+    setIsLoggingOut(true); // Signal that logout has started
+    
+    // Determine redirect URL
     const redirectUrl = isConseiller && user ? `/c/${user.uid}` : '/';
+    
+    // Navigate first
     router.push(redirectUrl);
     
-    // Then sign out
-    await auth.signOut();
+    // A short delay to allow navigation to settle before signing out,
+    // which effectively detaches listeners correctly.
+    setTimeout(async () => {
+        await auth.signOut();
+        // setIsLoggingOut(false); // This would re-enable listeners, which we don't want.
+    }, 100); // A small delay is usually sufficient
   };
+
 
   const dashboardStyle = useMemo(() => {
     const theme = userData?.dashboardTheme;
@@ -143,7 +155,7 @@ export default function DashboardLayout({
     return {};
   }, [userData, isConseiller]);
 
-  if (isLoading) {
+  if (isLoading && !isLoggingOut) {
     return (
         <SidebarProvider>
             <div className="flex">
@@ -245,8 +257,8 @@ export default function DashboardLayout({
                 <p className="font-semibold text-sm truncate">{userData?.firstName || user?.displayName || 'Utilisateur'}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout}>
-                <LogOut className="h-4 w-4" />
+              <Button variant="ghost" size="icon" onClick={handleLogout} disabled={isLoggingOut}>
+                 {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
               </Button>
             </div>
           </SidebarFooter>
