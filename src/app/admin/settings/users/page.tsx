@@ -213,9 +213,29 @@ export default function UserManagementPage() {
             setUserToDelete(null);
         }
     };
+    
+    const isLoading = areUsersLoading || isCurrentUserDataLoading;
 
-    if (isCurrentUserDataLoading) {
-        return <Loader2 className="h-8 w-8 animate-spin" />;
+    if (isLoading) {
+        return (
+            <div className="space-y-8">
+                <div>
+                    <h1 className="text-3xl font-bold font-headline">Gestion des Utilisateurs</h1>
+                    <p className="text-muted-foreground">Liste de tous les utilisateurs de la plateforme.</p>
+                </div>
+                <Card>
+                    <CardHeader>
+                        <div className="flex gap-4 pt-4">
+                            <Skeleton className="h-10 flex-grow" />
+                            <Skeleton className="h-10 w-[180px]" />
+                        </div>
+                    </CardHeader>
+                    <CardContent>
+                        <Skeleton className="h-64 w-full" />
+                    </CardContent>
+                </Card>
+            </div>
+        );
     }
 
     if (currentUserData?.role !== 'superadmin') {
@@ -230,8 +250,6 @@ export default function UserManagementPage() {
             </Card>
         );
     }
-
-    const isLoading = areUsersLoading || isCurrentUserDataLoading;
 
     return (
         <div className="space-y-8">
@@ -341,5 +359,4 @@ export default function UserManagementPage() {
             </AlertDialog>
         </div>
     );
-
-    
+}
