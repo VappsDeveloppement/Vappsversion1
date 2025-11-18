@@ -62,12 +62,12 @@ service cloud.firestore {
       allow create: if true;
       
       // Read access:
-      // - A counselor's profile is public.
       // - A user can read their own profile.
+      // - A counselor's profile is public.
       // - A counselor can read their clients' profiles.
       // - A superadmin can read any profile.
-      allow get: if resource.data.role == 'conseiller' 
-                      || isOwner(userId) 
+      allow get: if isOwner(userId) 
+                      || resource.data.role == 'conseiller' 
                       || isTheirConseiller(resource) 
                       || isSuperAdmin();
       
