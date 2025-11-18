@@ -18,6 +18,7 @@ import { CounselorPricingSection } from '@/components/shared/counselor-pricing-s
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 import { useAgency } from '@/context/agency-provider';
 import Link from 'next/link';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 
 
 type CounselorProfile = {
@@ -47,18 +48,22 @@ export default function CounselorPublicPage() {
 
   if (isLoading) {
     return (
-        <div className="container mx-auto p-8">
-            <Skeleton className="h-96 w-full" />
-            <Skeleton className="h-40 w-full mt-8" />
+        <div className="flex flex-col items-center justify-center min-h-screen bg-muted/30">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <p className="mt-4 text-muted-foreground">Chargement du profil...</p>
         </div>
     );
   }
 
   if (error || !counselor) {
     return (
-      <div className="container mx-auto p-8 text-center">
+      <div className="flex flex-col items-center justify-center min-h-screen bg-muted/30 text-center p-4">
+        <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
         <h1 className="text-2xl font-bold text-destructive">Conseiller introuvable</h1>
-        <p className="text-muted-foreground">Le profil de ce conseiller n'existe pas ou n'est plus disponible.</p>
+        <p className="text-muted-foreground mt-2">Le profil de ce conseiller n'existe pas ou n'est plus disponible.</p>
+         <Button asChild className="mt-6">
+            <Link href="/">Retour à l'accueil</Link>
+        </Button>
       </div>
     );
   }

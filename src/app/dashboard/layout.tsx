@@ -123,23 +123,16 @@ export default function DashboardLayout({
     setIsMounted(true);
   }, []);
   
-  const isLoading = isUserLoading || isUserDataLoading || !isMounted;
-  
   const handleLogout = async () => {
-    setIsLoggingOut(true); // Signal that logout has started
-    
-    // Determine redirect URL
+    setIsLoggingOut(true);
     const redirectUrl = isConseiller && user ? `/c/${user.uid}` : '/';
     
-    // Navigate first
-    router.push(redirectUrl);
-    
-    // A short delay to allow navigation to settle before signing out,
-    // which effectively detaches listeners correctly.
+    // Using a timeout allows state to update and listeners to detach
+    // before the sign-out operation completes and triggers auth state change.
     setTimeout(async () => {
+        router.push(redirectUrl);
         await auth.signOut();
-        // setIsLoggingOut(false); // This would re-enable listeners, which we don't want.
-    }, 100); // A small delay is usually sufficient
+    }, 150);
   };
 
 
@@ -154,6 +147,8 @@ export default function DashboardLayout({
     }
     return {};
   }, [userData, isConseiller]);
+
+  const isLoading = isUserLoading || isUserDataLoading || !isMounted;
 
   if (isLoading && !isLoggingOut) {
     return (
