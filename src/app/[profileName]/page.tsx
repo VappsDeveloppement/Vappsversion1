@@ -26,7 +26,6 @@ type CounselorProfile = {
     publicBio?: string;
     photoUrl?: string;
     miniSite?: any;
-    // This will hold agency-level info for the footer
     agencyInfo?: {
         copyrightText?: string;
         copyrightUrl?: string;
@@ -41,7 +40,6 @@ export default function CounselorPublicProfilePage() {
 
   const counselorQuery = useMemoFirebase(() => {
     if (!profileName) return null;
-    // CORRECTED: The query now includes both `publicProfileName` and `role` to match security rules.
     return query(
         collection(firestore, 'users'), 
         where('publicProfileName', '==', profileName),
@@ -69,7 +67,6 @@ export default function CounselorPublicProfilePage() {
   }
 
   if (!counselor) {
-    // This will likely be caught by the useEffect above, but is a good fallback.
     return null; 
   }
 
