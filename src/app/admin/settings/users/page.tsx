@@ -5,8 +5,9 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { useCollection, useMemoFirebase, useFirestore, setDocumentNonBlocking, deleteDocumentNonBlocking, useUser, useDoc } from '@/firebase';
+import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, useUser, useDoc } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -64,7 +65,7 @@ const roleText: Record<User['role'], string> = {
 
 export default function UserManagementPage() {
     const firestore = useFirestore();
-    const { user: currentUser } = useUser();
+    const { user: currentUser, isUserLoading } = useUser();
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('all');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -214,7 +215,7 @@ export default function UserManagementPage() {
         }
     };
     
-    const isLoading = areUsersLoading || isCurrentUserDataLoading;
+    const isLoading = areUsersLoading || isCurrentUserDataLoading || isUserLoading;
 
     if (isLoading) {
         return (
