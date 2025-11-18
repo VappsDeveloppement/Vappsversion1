@@ -43,7 +43,7 @@ export default function CounselorPublicProfilePage() {
     return query(
         collection(firestore, 'users'), 
         where('publicProfileName', '==', profileName),
-        where('role', '==', 'superadmin')
+        where('role', '==', 'conseiller')
     );
   }, [firestore, profileName]);
 
