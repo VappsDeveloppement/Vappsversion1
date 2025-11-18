@@ -31,7 +31,7 @@ type User = {
   firstName: string;
   lastName: string;
   email: string;
-  role: 'superadmin' | 'conseiller' | 'membre' | 'prospect';
+  role: 'superadmin' | 'conseiller' | 'membre' | 'moderateur';
   dateJoined: string;
   phone?: string;
   address?: string;
@@ -50,7 +50,7 @@ const baseUserSchema = z.object({
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
-  role: z.enum(['superadmin', 'conseiller', 'membre', 'prospect'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['superadmin', 'conseiller', 'membre', 'moderateur'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
 }).refine(data => {
     if (!data.id && (!data.password || data.password.length < 6)) {
@@ -67,14 +67,14 @@ const roleText: Record<User['role'], string> = {
     superadmin: 'Super Admin',
     conseiller: 'Conseiller',
     membre: 'Membre',
-    prospect: 'Prospect',
+    moderateur: 'Modérateur',
 };
 
 const roleVariant: Record<User['role'], 'default' | 'secondary' | 'destructive'> = {
   superadmin: 'destructive',
   conseiller: 'default',
   membre: 'secondary',
-  prospect: 'secondary',
+  moderateur: 'default',
 };
 
 export default function UsersPage() {
@@ -272,7 +272,7 @@ export default function UsersPage() {
                         <SelectItem value="all">Tous les rôles</SelectItem>
                         <SelectItem value="conseiller">Conseiller</SelectItem>
                         <SelectItem value="membre">Membre</SelectItem>
-                        <SelectItem value="prospect">Prospect</SelectItem>
+                        <SelectItem value="moderateur">Modérateur</SelectItem>
                     </SelectContent>
                   </Select>
               </div>
@@ -302,7 +302,7 @@ export default function UsersPage() {
                           <FormField control={form.control} name="zipCode" render={({ field }) => ( <FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                           <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                         </div>
-                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem><SelectItem value="prospect">Prospect</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
+                        <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem><SelectItem value="moderateur">Modérateur</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
                         <FormField
                           control={form.control}
                           name="password"

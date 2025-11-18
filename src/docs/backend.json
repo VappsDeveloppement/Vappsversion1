@@ -26,8 +26,8 @@
         },
         "role": {
           "type": "string",
-          "enum": ["superadmin", "conseiller", "membre", "prospect"],
-          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'prospect' is a potential user."
+          "enum": ["superadmin", "conseiller", "membre", "moderateur"],
+          "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'moderateur' has moderation rights."
         },
         "counselorId": {
             "type": "string",

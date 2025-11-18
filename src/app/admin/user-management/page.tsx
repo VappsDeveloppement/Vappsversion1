@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -29,7 +30,7 @@ type User = {
     firstName: string;
     lastName: string;
     email: string;
-    role: 'superadmin' | 'membre' | 'prospect' | 'admin' | 'dpo' | 'conseiller';
+    role: 'superadmin' | 'membre' | 'moderateur' | 'admin' | 'dpo' | 'conseiller';
     dateJoined: string;
     phone?: string;
     address?: string;
@@ -45,7 +46,7 @@ const userFormSchema = z.object({
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
-  role: z.enum(['superadmin', 'admin', 'dpo', 'conseiller', 'membre'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['superadmin', 'admin', 'dpo', 'conseiller', 'membre', 'moderateur'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
 }).refine(data => {
     // Si on crée un nouvel utilisateur (pas d'ID), le mot de passe est requis et doit faire au moins 6 caractères
@@ -68,7 +69,7 @@ const roleVariant: Record<User['role'], 'default' | 'secondary' | 'destructive'>
   dpo: 'default',
   conseiller: 'default',
   membre: 'default',
-  prospect: 'secondary',
+  moderateur: 'secondary',
 };
 
 const roleText: Record<User['role'], string> = {
@@ -77,7 +78,7 @@ const roleText: Record<User['role'], string> = {
     dpo: 'DPO',
     conseiller: 'Conseiller',
     membre: 'Membre',
-    prospect: 'Prospect',
+    moderateur: 'Modérateur',
 };
 
 export default function UserManagementPage() {
@@ -369,6 +370,7 @@ export default function UserManagementPage() {
                                                 <SelectItem value="dpo">DPO</SelectItem>
                                                 <SelectItem value="conseiller">Conseiller</SelectItem>
                                                 <SelectItem value="membre">Membre</SelectItem>
+                                                <SelectItem value="moderateur">Modérateur</SelectItem>
                                             </SelectContent>
                                         </Select>
                                         <FormMessage />
@@ -422,7 +424,7 @@ export default function UserManagementPage() {
                                 <SelectItem value="dpo">DPO</SelectItem>
                                 <SelectItem value="conseiller">Conseiller</SelectItem>
                                 <SelectItem value="membre">Membre</SelectItem>
-                                <SelectItem value="prospect">Prospect</SelectItem>
+                                <SelectItem value="moderateur">Modérateur</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
