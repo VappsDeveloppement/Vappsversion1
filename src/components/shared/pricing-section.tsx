@@ -75,7 +75,7 @@ export function PricingSection() {
                             )}
                             <CardHeader className="pt-10">
                                 <CardTitle className="text-2xl">{tier.name}</CardTitle>
-                                <CardDescription>{tier.description}</CardDescription>
+                                <CardDescription className="break-words">{tier.description}</CardDescription>
                                 <div>
                                     <span className="text-4xl font-bold text-primary">{tier.price}€</span>
                                     <span className="text-muted-foreground">{tier.period}</span>

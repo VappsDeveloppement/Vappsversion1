@@ -80,7 +80,7 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
                                 )}
                                 <CardHeader className="pt-10 text-center">
                                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                                    <CardDescription>{plan.description}</CardDescription>
+                                    <CardDescription className="break-words">{plan.description}</CardDescription>
                                     <div className="py-4">
                                         <span className="text-4xl font-bold" style={{ color: primaryColor }}>{plan.price}€</span>
                                         <span className="text-muted-foreground">{plan.period}</span>
