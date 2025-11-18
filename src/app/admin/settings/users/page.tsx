@@ -21,7 +21,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useToast } from "@/hooks/use-toast";
 import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { createUser } from "@/app/actions/user";
 
@@ -228,9 +227,7 @@ export default function UsersPage() {
 
     } catch (error: any) {
         console.error("Error saving user:", error);
-        const message = error.message.includes('auth/email-already-in-use') 
-            ? "Cet email est déjà utilisé." 
-            : error.message || "Une erreur est survenue lors de la sauvegarde.";
+        const message = error.message || "Une erreur est survenue lors de la sauvegarde.";
         toast({ title: "Erreur", description: message, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
