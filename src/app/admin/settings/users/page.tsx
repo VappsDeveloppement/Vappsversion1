@@ -126,7 +126,7 @@ export default function UserManagementPage() {
         setIsSubmitting(true);
         try {
             const userDocRef = doc(firestore, 'users', editingUser.id);
-            await setDocumentNonBlocking(userDocRef, {
+            const updatedUserData = {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 email: values.email,
@@ -135,7 +135,20 @@ export default function UserManagementPage() {
                 address: values.address,
                 zipCode: values.zipCode,
                 city: values.city,
-            }, { merge: true });
+            };
+            await setDocumentNonBlocking(userDocRef, updatedUserData, { merge: true });
+
+            if (values.role === 'conseiller') {
+                const miniSiteDocRef = doc(firestore, 'minisites', editingUser.id);
+                const publicProfileData = {
+                  id: editingUser.id,
+                  firstName: values.firstName,
+                  lastName: values.lastName,
+                  email: values.email,
+                };
+                await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
+            }
+
             toast({ title: 'Succès', description: 'L\'utilisateur a été mis à jour.' });
             setIsDialogOpen(false);
             setEditingUser(null);
@@ -157,6 +170,13 @@ export default function UserManagementPage() {
         try {
             const userDocRef = doc(firestore, "users", userToDelete.id);
             await deleteDocumentNonBlocking(userDocRef);
+            
+            // If the user was a counselor, also delete their minisite doc
+            if (userToDelete.role === 'conseiller') {
+                const miniSiteDocRef = doc(firestore, "minisites", userToDelete.id);
+                await deleteDocumentNonBlocking(miniSiteDocRef);
+            }
+
             toast({ title: "Utilisateur supprimé", description: "Les données de l'utilisateur ont été supprimées de la base de données. Vous devez supprimer le compte de la console Firebase Authentication manuellement." });
         } catch (error) {
             toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur.", variant: "destructive" });
@@ -274,5 +294,3 @@ export default function UserManagementPage() {
         </div>
     );
 }
-
-    
