@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot } from 'firebase/firestore';
+import { Firestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -89,10 +89,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                 const userDocSnap = await getDoc(userDocRef);
 
                 if (!userDocSnap.exists()) {
+                    // Check if this is the very first user in the entire system.
                     const usersCollectionRef = collection(firestore, 'users');
-                    const usersSnapshot = await getDocs(usersCollectionRef);
-                    const isFirstUser = usersSnapshot.empty;
-                    
+                    const q = query(usersCollectionRef, where("role", "==", "superadmin"));
+                    const superAdminQuerySnap = await getDocs(q);
+
+                    const isFirstUserEver = superAdminQuerySnap.empty;
+
                     const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
                     const firstName = nameParts.shift() || 'Nouveau';
                     const lastName = nameParts.join(' ') || 'Utilisateur';
@@ -102,8 +105,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                         firstName: firstName,
                         lastName: lastName,
                         email: firebaseUser.email,
-                        role: isFirstUser ? 'superadmin' : 'membre',
-                        counselorId: isFirstUser ? firebaseUser.uid : '',
+                        role: isFirstUserEver ? 'superadmin' : 'membre',
+                        counselorId: isFirstUserEver ? firebaseUser.uid : '',
                         dateJoined: new Date().toISOString(),
                         lastSignInTime: new Date().toISOString(),
                         phone: firebaseUser.phoneNumber || '',
@@ -203,3 +206,5 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
   
   return memoized;
 }
+
+    
