@@ -23,3 +23,5 @@ export function initializeAdminApp(): App {
     throw new Error("Could not initialize Firebase Admin SDK. Ensure the server environment is configured with the correct credentials.");
   }
 }
+
+    

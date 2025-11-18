@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, useUser, useDoc } from '@/firebase';
+import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, useDoc, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -20,7 +20,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
 import { createUser } from '@/app/actions/user';
 
@@ -222,7 +221,7 @@ export default function UserManagementPage() {
             <div className="space-y-8">
                 <div>
                     <h1 className="text-3xl font-bold font-headline">Gestion des Utilisateurs</h1>
-                    <p className="text-muted-foreground">Liste de tous les utilisateurs de la plateforme.</p>
+                    <p className="text-muted-foreground">Chargement des données...</p>
                 </div>
                 <Card>
                     <CardHeader>
@@ -285,20 +284,22 @@ export default function UserManagementPage() {
                                         <FormMessage />
                                     </FormItem>
                                 )}/>
-                                <FormField control={form.control} name="password" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Mot de passe {editingUser && '(Laisser vide pour ne pas changer)'}</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <Input type={showPassword ? "text" : "password"} {...field} />
-                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                </Button>
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
+                                {!editingUser && (
+                                    <FormField control={form.control} name="password" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Mot de passe</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <Input type={showPassword ? "text" : "password"} {...field} />
+                                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                                    </Button>
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}/>
+                                )}
                                 <DialogFooter>
                                     <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
                                     <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {editingUser ? 'Sauvegarder' : 'Créer'}</Button>
@@ -321,8 +322,7 @@ export default function UserManagementPage() {
                     <Table>
                         <TableHeader><TableRow><TableHead>Utilisateur</TableHead><TableHead>Email</TableHead><TableHead>Rôle</TableHead><TableHead>Date d'inscription</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {isLoading ? ( [...Array(5)].map((_, i) => ( <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>))
-                            ) : filteredUsers.length > 0 ? ( filteredUsers.map((user) => (
+                            {filteredUsers.length > 0 ? ( filteredUsers.map((user) => (
                                <TableRow key={user.id}>
                                    <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
                                    <TableCell>{user.email}</TableCell>
@@ -361,3 +361,5 @@ export default function UserManagementPage() {
         </div>
     );
 }
+
+    
