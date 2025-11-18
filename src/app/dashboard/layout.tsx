@@ -105,7 +105,6 @@ export default function DashboardLayout({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
-    // Prevent re-fetching during logout to avoid permission errors
     if (!user || isLoggingOut) return null;
     return doc(firestore, 'users', user.uid);
   }, [firestore, user, isLoggingOut]);
@@ -123,16 +122,17 @@ export default function DashboardLayout({
     setIsMounted(true);
   }, []);
   
-  const handleLogout = async () => {
+  const handleLogout = () => {
     setIsLoggingOut(true);
     const redirectUrl = isConseiller && user ? `/c/${user.uid}` : '/';
+    router.push(redirectUrl);
     
-    // Using a timeout allows state to update and listeners to detach
-    // before the sign-out operation completes and triggers auth state change.
-    setTimeout(async () => {
-        router.push(redirectUrl);
-        await auth.signOut();
-    }, 150);
+    // Give the router time to navigate before signing out.
+    // This prevents a race condition where data hooks on the new page
+    // fire before the old page's hooks (which require auth) have cleaned up.
+    setTimeout(() => {
+        auth.signOut();
+    }, 50); // A small delay is usually sufficient.
   };
 
 
