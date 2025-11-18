@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import React from 'react';
 import { useParams, notFound } from 'next/navigation';
-import { useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
@@ -33,22 +32,22 @@ type CounselorProfile = {
     }
 };
 
-
 export default function CounselorPublicProfilePage() {
   const params = useParams();
-  const counselorId = params.counselorId as string;
+  const publicProfileName = params.publicProfileName as string;
   const firestore = useFirestore();
 
-  const counselorDocRef = useMemoFirebase(() => {
-    if (!counselorId) return null;
-    // Fetch from the new 'minisites' collection
-    return doc(firestore, 'minisites', counselorId);
-  }, [firestore, counselorId]);
+  const counselorQuery = useMemoFirebase(() => {
+    if (!publicProfileName) return null;
+    // Query the 'minisites' collection where 'publicProfileName' matches the URL slug
+    return query(collection(firestore, 'minisites'), where('publicProfileName', '==', publicProfileName));
+  }, [firestore, publicProfileName]);
 
-  const { data: counselor, isLoading, error } = useDoc<CounselorProfile>(counselorDocRef);
+  const { data: counselors, isLoading } = useCollection<CounselorProfile>(counselorQuery);
+
+  const counselor = counselors?.[0];
 
   React.useEffect(() => {
-    // No longer need to check for role. If the doc doesn't exist, useDoc will handle it.
     if (!isLoading && !counselor) {
       notFound();
     }
@@ -98,5 +97,3 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
-
-    

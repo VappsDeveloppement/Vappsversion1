@@ -6,18 +6,18 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking, useCollection } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Info } from 'lucide-react';
+import { Loader2, Upload, Trash2, Info, AlertCircle } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -34,6 +34,7 @@ const profileSchema = z.object({
   city: z.string().optional(),
   commercialName: z.string().optional(),
   siret: z.string().optional(),
+  publicProfileName: z.string().min(3, "Doit contenir au moins 3 caractères.").regex(/^[a-z0-9-]+$/, "Utilisez uniquement des minuscules, des chiffres et des tirets."),
   dashboardTheme: z.object({
     primaryColor: z.string().optional(),
     secondaryColor: z.string().optional(),
@@ -57,6 +58,7 @@ type UserProfile = {
   city?: string;
   commercialName?: string;
   siret?: string;
+  publicProfileName?: string;
   miniSite?: any;
   dashboardTheme?: {
     primaryColor?: string;
@@ -82,6 +84,7 @@ export default function ProfilePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [isSlugChecking, setIsSlugChecking] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -104,6 +107,7 @@ export default function ProfilePage() {
       city: '',
       commercialName: '',
       siret: '',
+      publicProfileName: '',
       dashboardTheme: {
         primaryColor: '#10B981',
         secondaryColor: '#059669',
@@ -126,6 +130,7 @@ export default function ProfilePage() {
         city: userData.city || '',
         commercialName: userData.commercialName || '',
         siret: userData.siret || '',
+        publicProfileName: userData.publicProfileName || '',
         dashboardTheme: {
           primaryColor: userData.dashboardTheme?.primaryColor || '#10B981',
           secondaryColor: userData.dashboardTheme?.secondaryColor || '#059669',
@@ -138,8 +143,31 @@ export default function ProfilePage() {
 
   const onSubmit = async (data: ProfileFormData) => {
     if (!user || !userDocRef) return;
-
     setIsSubmitting(true);
+    
+    // Check if slug is unique
+    const slug = data.publicProfileName;
+    const minisitesRef = collection(firestore, 'minisites');
+    const q = query(minisitesRef, where("publicProfileName", "==", slug));
+    const querySnapshot = await getDocs(q);
+    
+    let isSlugUnique = true;
+    querySnapshot.forEach((doc) => {
+      if (doc.id !== user.uid) {
+        isSlugUnique = false;
+      }
+    });
+
+    if (!isSlugUnique) {
+      form.setError("publicProfileName", {
+        type: "manual",
+        message: "Cette URL est déjà utilisée par un autre conseiller.",
+      });
+      setIsSubmitting(false);
+      return;
+    }
+
+
     try {
       // 1. Update the main user document
       await setDocumentNonBlocking(userDocRef, data, { merge: true });
@@ -154,6 +182,7 @@ export default function ProfilePage() {
           email: userData.email, // email is not editable
           publicTitle: data.publicTitle,
           publicBio: data.publicBio,
+          publicProfileName: data.publicProfileName,
           photoUrl: data.photoUrl,
           phone: data.phone,
           city: data.city,
@@ -232,6 +261,13 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+               <Alert>
+                <Info className="h-4 w-4" />
+                <AlertTitle>Votre page publique</AlertTitle>
+                <AlertDescription>
+                    Votre mini-site sera accessible à l'adresse : <code className="font-mono bg-muted px-1 py-0.5 rounded">{`votresite.com/c/${form.watch('publicProfileName') || '...'}`}</code>
+                </AlertDescription>
+                </Alert>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={form.control}
@@ -260,6 +296,22 @@ export default function ProfilePage() {
                     )}
                   />
               </div>
+              <FormField
+                control={form.control}
+                name="publicProfileName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nom de profil public (pour URL)</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="ex: jean-dupont" />
+                    </FormControl>
+                    <FormDescription>
+                        Ceci définira l'URL de votre mini-site. Utilisez uniquement des lettres minuscules, des chiffres et des tirets.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
                <div>
                   <Label>Photo de profil</Label>
                   <div className="mt-2 flex items-center gap-4">
@@ -475,5 +527,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
