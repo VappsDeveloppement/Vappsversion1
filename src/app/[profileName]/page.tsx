@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -42,6 +41,7 @@ export default function CounselorPublicProfilePage() {
 
   const counselorQuery = useMemoFirebase(() => {
     if (!profileName) return null;
+    // CORRECTED: 'publicProfileName' must match the field name in Firestore.
     return query(
         collection(firestore, 'users'), 
         where('publicProfileName', '==', profileName),
@@ -104,6 +104,3 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
-
-
-    
