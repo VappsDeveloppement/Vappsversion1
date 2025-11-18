@@ -7,20 +7,18 @@ import { getFirestore } from 'firebase-admin/firestore';
 
 export async function createUser(userData: any) {
   try {
-    initializeAdminApp();
-    const auth = getAuth();
-    const firestore = getFirestore();
+    const adminApp = initializeAdminApp();
+    const auth = getAuth(adminApp);
+    const firestore = getFirestore(adminApp);
 
     const { email, password, firstName, lastName, role, phone, address, zipCode, city } = userData;
     
-    // Create user in Firebase Authentication
     const userRecord = await auth.createUser({
       email: email,
       password: password,
       displayName: `${firstName} ${lastName}`,
     });
 
-    // Create user document in Firestore
     const userDocRef = firestore.collection('users').doc(userRecord.uid);
     await userDocRef.set({
       id: userRecord.uid,
@@ -39,10 +37,10 @@ export async function createUser(userData: any) {
     return { success: true, uid: userRecord.uid };
   } catch (error: any) {
     console.error("Error creating user:", error);
-    // It's crucial to clean up the Auth user if Firestore write fails
     if (error.uid) {
         try {
-            await getAuth().deleteUser(error.uid);
+            const adminApp = initializeAdminApp();
+            await getAuth(adminApp).deleteUser(error.uid);
         } catch (cleanupError) {
             console.error("Failed to cleanup created auth user:", cleanupError);
         }
