@@ -41,7 +41,7 @@ export default function CounselorPublicProfilePage() {
 
   const counselorQuery = useMemoFirebase(() => {
     if (!profileName) return null;
-    // CORRECTED: 'publicProfileName' must match the field name in Firestore.
+    // CORRECTED: The query now includes both `publicProfileName` and `role` to match security rules.
     return query(
         collection(firestore, 'users'), 
         where('publicProfileName', '==', profileName),
