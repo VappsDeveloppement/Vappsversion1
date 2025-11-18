@@ -170,7 +170,7 @@ export default function ProfilePage() {
 
     try {
       // 1. Update the main user document in 'users' collection
-      await setDocumentNonBlocking(userDocRef, data, { merge: true });
+      setDocumentNonBlocking(userDocRef, data, { merge: true });
 
       // 2. If the user is a counselor, also update the public profile in 'minisites' collection
       if (userData?.role === 'conseiller') {
@@ -187,7 +187,7 @@ export default function ProfilePage() {
           phone: data.phone,
           city: data.city,
         };
-        await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
+        setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
       }
 
       toast({
