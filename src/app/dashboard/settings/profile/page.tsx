@@ -65,6 +65,7 @@ type UserProfile = {
     secondaryColor?: string;
     bgColor?: string;
   };
+  role?: string;
 };
 
 // Helper to convert file to Base64
@@ -527,3 +528,6 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+
+    

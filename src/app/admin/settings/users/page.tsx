@@ -130,7 +130,11 @@ export default function UserManagementPage() {
         setIsSubmitting(true);
         try {
             const userDocRef = doc(firestore, 'users', editingUser.id);
-            const updatedUserData = {
+            
+            const wasConseiller = editingUser.role === 'conseiller';
+            const isNowConseiller = values.role === 'conseiller';
+            
+            const updatedUserData: Partial<User> = {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 email: values.email,
@@ -140,10 +144,16 @@ export default function UserManagementPage() {
                 zipCode: values.zipCode,
                 city: values.city,
             };
+
+            // If the user is becoming a counselor for the first time, generate a default publicProfileName.
+            if (isNowConseiller && !wasConseiller && !editingUser.publicProfileName) {
+                updatedUserData.publicProfileName = `${values.firstName.toLowerCase()}-${values.lastName.toLowerCase()}`.replace(/[^a-z0-9-]/g, '');
+            }
+
             await setDocumentNonBlocking(userDocRef, updatedUserData, { merge: true });
 
-            // If the user is now a counselor, create/update the minisite document
-            if (values.role === 'conseiller') {
+            // If the user's role changed to counselor, create/update the minisite document
+            if (isNowConseiller) {
                 const miniSiteDocRef = doc(firestore, 'minisites', editingUser.id);
                 const existingMiniSiteSnap = await getDoc(miniSiteDocRef);
                 const existingMiniSiteData = existingMiniSiteSnap.exists() ? existingMiniSiteSnap.data() : {};
@@ -155,8 +165,8 @@ export default function UserManagementPage() {
                   email: values.email,
                   phone: values.phone,
                   city: values.city,
-                  // Use existing publicProfileName or create a default one
-                  publicProfileName: editingUser.publicProfileName || `${values.firstName.toLowerCase()}-${values.lastName.toLowerCase()}`.replace(/[^a-z0-9-]/g, ''),
+                  // Use existing publicProfileName or the newly generated one
+                  publicProfileName: updatedUserData.publicProfileName || editingUser.publicProfileName,
                   ...existingMiniSiteData, // Preserve existing minisite personalization
                 };
                 await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
@@ -307,5 +317,6 @@ export default function UserManagementPage() {
         </div>
     );
 }
+    
 
     
