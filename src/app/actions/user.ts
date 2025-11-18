@@ -1,19 +1,17 @@
 
 'use server';
 
-// This file is intentionally left almost empty.
-// User creation is handled on the client-side via Firebase Auth SDK,
-// and the Firestore document creation is triggered by the onAuthStateChanged
-// listener in the FirebaseProvider.
+import { getAuth } from 'firebase-admin/auth';
+import { initializeAdminApp } from '@/firebase/admin';
 
+// This function is deprecated as user creation is handled on login
+// by the FirebaseProvider. It is kept for reference but should not be used.
 export async function syncFirebaseAuthUsers() {
-  // This server-side function is no longer needed as the logic
-  // is now handled on the client.
-  return { success: true, createdCount: 0, error: "This function is deprecated. User sync is now automatic on login." };
+  return { success: true, createdCount: 0, error: "This function is deprecated." };
 }
 
 export async function createUser(userData: any) {
-  // This server-side function is no longer needed as the logic
-  // is now handled on the client.
+   // This function is now also deprecated.
+   // The logic has been moved to the FirebaseProvider.
    return { success: false, error: "This function is deprecated. User creation is handled via the client-side auth." };
 }

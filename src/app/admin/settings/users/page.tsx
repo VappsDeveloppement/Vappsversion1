@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from "@/firebase";
 import React, { useMemo, useState, useEffect } from "react";
 import { collection, query, where, doc } from "firebase/firestore";
-import { useAuth, useFirestore } from "@/firebase/provider";
+import { useAuth, useFirestore, useUser as useFirebaseUser } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -23,8 +23,7 @@ import { PlusCircle, Loader2, Eye, EyeOff, MoreHorizontal, Edit, Trash2 } from "
 import { Textarea } from "@/components/ui/textarea";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { useUser as useFirebaseUser } from "@/firebase/auth/use-user";
-import { createUser, syncFirebaseAuthUsers } from "@/app/actions/user";
+import { createUser } from "@/app/actions/user";
 
 type User = {
   id: string;
@@ -194,25 +193,6 @@ export default function UsersPage() {
     setIsFormOpen(true);
   };
   
-  const handleSync = async () => {
-    setIsSyncing(true);
-    const result = await syncFirebaseAuthUsers();
-    setIsSyncing(false);
-
-    if (result.success) {
-      toast({
-        title: 'Synchronisation terminée',
-        description: `${result.createdCount} utilisateur(s) ont été ajoutés à Firestore.`,
-      });
-    } else {
-      toast({
-        title: 'Erreur de synchronisation',
-        description: result.error,
-        variant: 'destructive',
-      });
-    }
-  };
-
   const onSubmit = async (values: z.infer<typeof baseUserSchema>) => {
     if (!currentUser || !currentUserData) return;
     setIsSubmitting(true);
@@ -304,12 +284,6 @@ export default function UsersPage() {
                   </Select>
               </div>
               <div className="flex gap-2">
-                 {currentUserData?.role === 'superadmin' && (
-                    <Button onClick={handleSync} disabled={isSyncing} variant="outline">
-                      {isSyncing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                      Synchroniser
-                    </Button>
-                  )}
                   <Dialog open={isFormOpen} onOpenChange={handleOpenDialog}>
                       <DialogTrigger asChild>
                           <Button onClick={handleNew}>
@@ -337,22 +311,24 @@ export default function UsersPage() {
                               <FormField control={form.control} name="city" render={({ field }) => ( <FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )} />
                             </div>
                             <FormField control={form.control} name="role" render={({ field }) => ( <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue/></SelectTrigger></FormControl><SelectContent><SelectItem value="superadmin">Super Admin</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem><SelectItem value="prospect">Prospect</SelectItem></SelectContent></Select><FormMessage /></FormItem> )} />
-                            <FormField
-                              control={form.control}
-                              name="password"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Mot de passe {editingUser ? '(Laisser vide pour ne pas changer)' : ''}</FormLabel>
-                                  <FormControl>
-                                    <div className="relative">
-                                      <Input type={showPassword ? 'text' : 'password'} {...field} disabled={!!editingUser} />
-                                      <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
-                                    </div>
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            {!editingUser && (
+                                <FormField
+                                control={form.control}
+                                name="password"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Mot de passe</FormLabel>
+                                    <FormControl>
+                                        <div className="relative">
+                                        <Input type={showPassword ? 'text' : 'password'} {...field} />
+                                        <Button type="button" variant="ghost" size="icon" className="absolute bottom-1 right-1 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                                        </div>
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                                />
+                            )}
                             <DialogFooter>
                               <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
                               <Button type="submit" disabled={isSubmitting}>
@@ -426,5 +402,4 @@ export default function UsersPage() {
     </div>
   );
 }
-
     

@@ -8,7 +8,7 @@ import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo, ServiceItem } from '@/app/dashboard/settings/personalization/page';
+import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo, ServiceItem } from '@/app/admin/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -435,14 +435,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                     email: firebaseUser.email,
                     role: isFirstUser ? 'superadmin' : 'membre',
                     counselorId: isFirstUser ? firebaseUser.uid : '',
-                    dateJoined: firebaseUser.metadata.creationTime,
-                    lastSignInTime: firebaseUser.metadata.lastSignInTime,
+                    dateJoined: new Date().toISOString(),
+                    lastSignInTime: new Date().toISOString(),
                     phone: firebaseUser.phoneNumber || '',
                 };
 
                 await setDoc(userDocRef, newUserDoc);
             } else {
-                const lastSignInTime = firebaseUser.metadata.lastSignInTime;
+                const lastSignInTime = new Date().toISOString();
                 await setDoc(userDocRef, { lastSignInTime }, { merge: true });
             }
         }
@@ -531,13 +531,4 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
   
   return memoized;
 }
-
-/**
- * Hook specifically for accessing the authenticated user's state.
- * This provides the User object, loading status, and any auth errors.
- * @returns {UserHookResult} Object with user, isUserLoading, userError.
- */
-export const useUser = (): UserHookResult => { // Renamed from useAuthUser
-  const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
-  return { user, isUserLoading, userError };
-};
+    
