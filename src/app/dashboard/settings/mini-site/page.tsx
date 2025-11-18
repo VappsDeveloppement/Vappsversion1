@@ -1040,7 +1040,7 @@ export default function MiniSitePage() {
             </Sheet>
             {user && userData?.publicProfileName && (
                 <Button asChild>
-                    <Link href={`/${userData.publicProfileName}`} target="_blank">
+                    <Link href={`/c/${userData.publicProfileName}`} target="_blank">
                         Ouvrir la page publique
                     </Link>
                 </Button>
