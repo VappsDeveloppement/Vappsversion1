@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { useCollection, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from "@/firebase";
 import React, { useMemo, useState, useEffect } from "react";
 import { collection, query, where, doc } from "firebase/firestore";
 import { useAuth, useFirestore, useUser as useFirebaseUser } from "@/firebase";
