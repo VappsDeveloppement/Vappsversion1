@@ -3,11 +3,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // RÈGLES OUVERTES POUR LE DÉVELOPPEMENT
-    // N'importe quel utilisateur connecté peut lire et écrire partout.
-    // Il faudra sécuriser ces règles avant la mise en production.
+    // ATTENTION: RÈGLES COMPLÈTEMENT OUVERTES
+    // N'importe qui (connecté ou non) peut lire et écrire partout.
+    // Ces règles sont dangereuses et ne doivent pas être utilisées en production.
     match /{document=**} {
-      allow read, write: if request.auth != null;
+      allow read, write: if true;
     }
   }
 }
