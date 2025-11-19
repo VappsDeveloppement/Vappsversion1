@@ -1,10 +1,8 @@
-'use client';
 
 import React from 'react';
-import { useParams, notFound } from 'next/navigation';
-import { useDoc, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { notFound } from 'next/navigation';
+import { getFirestore } from 'firebase-admin/firestore';
+import { initializeAdminApp } from '@/firebase/admin';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
 import { AttentionSection } from '@/components/shared/attention-section';
@@ -13,8 +11,11 @@ import { CounselorServicesSection } from '@/components/shared/counselor-services
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
-import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
+
+// Initialize Firebase Admin SDK
+const { app } = initializeAdminApp();
+const firestore = getFirestore(app);
 
 type CounselorProfile = {
     id: string;
@@ -31,35 +32,32 @@ type CounselorProfile = {
     }
 };
 
-export default function CounselorPublicProfilePage() {
-  const params = useParams();
-  const counselorId = params.counselorId as string;
-  const firestore = useFirestore();
-
-  const counselorRef = useMemoFirebase(() => {
-    if (!counselorId) return null;
-    return doc(firestore, 'minisites', counselorId);
-  }, [firestore, counselorId]);
-
-  const { data: counselor, isLoading, error } = useDoc<CounselorProfile>(counselorRef);
-
-  React.useEffect(() => {
-    if (!isLoading && !counselor) {
-      notFound();
+async function getCounselorProfile(counselorId: string): Promise<CounselorProfile | null> {
+    if (!counselorId) {
+        return null;
     }
-  }, [isLoading, counselor]);
+    try {
+        const docRef = firestore.collection('minisites').doc(counselorId);
+        const docSnap = await docRef.get();
 
-  if (isLoading) {
-    return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-muted/30">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <p className="mt-4 text-muted-foreground">Chargement du profil...</p>
-        </div>
-    );
-  }
+        if (docSnap.exists) {
+            return docSnap.data() as CounselorProfile;
+        } else {
+            console.log(`No minisite document found for ID: ${counselorId}`);
+            return null;
+        }
+    } catch (error) {
+        console.error("Error fetching counselor profile:", error);
+        return null;
+    }
+}
+
+export default async function CounselorPublicProfilePage({ params }: { params: { counselorId: string } }) {
+  const { counselorId } = params;
+  const counselor = await getCounselorProfile(counselorId);
 
   if (!counselor) {
-    return null; 
+    notFound();
   }
 
   const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
