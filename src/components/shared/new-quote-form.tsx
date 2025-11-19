@@ -15,9 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Textarea } from '@/components/ui/textarea';
 import { useAgency } from '@/context/agency-provider';
-import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, useUser, useFirestore } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
-import { useFirestore, useUser } from '@/firebase/provider';
 import { Calendar as CalendarIcon, ChevronsUpDown, PlusCircle, Trash2, ChevronDown, Send, Loader2 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
