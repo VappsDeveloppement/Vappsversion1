@@ -123,13 +123,9 @@ export default function DashboardLayout({
   
   const handleLogout = () => {
     setIsLoggingOut(true);
-    // Corrected: Always redirect to the home page on logout.
-    router.push('/');
-    
-    // Give the router time to navigate before signing out.
-    setTimeout(() => {
-        auth.signOut();
-    }, 150); 
+    auth.signOut().then(() => {
+        router.push('/');
+    });
   };
 
 

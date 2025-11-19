@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -7,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -24,7 +23,9 @@ import Link from 'next/link';
 const profileSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
-  publicProfileName: z.string().optional(),
+  publicProfileName: z.string().optional().refine(s => !s || /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(s), {
+    message: "L'URL ne peut contenir que des lettres minuscules, des chiffres et des tirets, sans espace."
+  }),
   publicTitle: z.string().optional(),
   publicBio: z.string().optional(),
   photoUrl: z.string().optional().nullable(),
@@ -143,6 +144,22 @@ export default function ProfilePage() {
     setIsSubmitting(true);
 
     const publicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
+    
+    // Check if the publicProfileName is already taken
+    if(publicProfileName && publicProfileName !== userData?.publicProfileName) {
+        const routesRef = collection(firestore, 'minisite_routes');
+        const q = query(routesRef, where("publicProfileName", "==", publicProfileName));
+        const querySnapshot = await getDocs(q);
+        if(!querySnapshot.empty) {
+            form.setError("publicProfileName", {
+                type: "manual",
+                message: "Ce nom de profil est déjà utilisé. Veuillez en choisir un autre."
+            });
+            setIsSubmitting(false);
+            return;
+        }
+    }
+
 
     const updateData: Partial<UserProfile> = {
         ...data,
@@ -168,8 +185,8 @@ export default function ProfilePage() {
       
       // Update routing table
       if (publicProfileName) {
-        const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
-        await setDoc(routeDocRef, { counselorId: user.uid });
+        const routeDocRef = doc(firestore, 'minisite_routes', user.uid); // Use user.uid as doc id for simplicity
+        await setDoc(routeDocRef, { counselorId: user.uid, publicProfileName: publicProfileName });
       }
     }
 
