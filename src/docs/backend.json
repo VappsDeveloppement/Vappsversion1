@@ -98,6 +98,10 @@
             "format": "uri",
             "description": "URL of the user's public profile photo."
         },
+        "publicProfileName": {
+            "type": "string",
+            "description": "The user-defined public name for their mini-site URL."
+        },
         "publicTitle": {
             "type": "string",
             "description": "Public-facing professional title for the counselor (e.g., 'Coach en développement personnel')."
@@ -717,6 +721,20 @@
             "$ref": "#/backend/entities/CounselorProfile"
           },
           "description": "Stores the public-facing profile data for a counselor's mini-site. The document ID is the counselor's user ID."
+        }
+      },
+      {
+        "path": "/minisite_routes/{publicProfileName}",
+        "definition": {
+            "entityName": "MiniSiteRoute",
+            "description": "Maps a public profile name to a counselor's user ID for clean URL routing.",
+            "schema": {
+                "type": "object",
+                "properties": {
+                    "counselorId": { "type": "string" }
+                },
+                "required": ["counselorId"]
+            }
         }
       },
       {

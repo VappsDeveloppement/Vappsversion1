@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,7 @@ import Link from 'next/link';
 const profileSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
+  publicProfileName: z.string().optional(),
   publicTitle: z.string().optional(),
   publicBio: z.string().optional(),
   photoUrl: z.string().optional().nullable(),
@@ -47,6 +48,7 @@ type UserProfile = {
   firstName: string;
   lastName: string;
   email: string;
+  publicProfileName?: string;
   publicTitle?: string;
   publicBio?: string;
   photoUrl?: string;
@@ -93,6 +95,7 @@ export default function ProfilePage() {
     defaultValues: {
       firstName: '',
       lastName: '',
+      publicProfileName: '',
       publicTitle: '',
       publicBio: '',
       photoUrl: '',
@@ -115,6 +118,7 @@ export default function ProfilePage() {
       form.reset({
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
+        publicProfileName: userData.publicProfileName || '',
         publicTitle: userData.publicTitle || '',
         publicBio: userData.publicBio || '',
         photoUrl: userData.photoUrl || '',
@@ -137,11 +141,18 @@ export default function ProfilePage() {
   const onSubmit = async (data: ProfileFormData) => {
     if (!user || !userDocRef) return;
     setIsSubmitting(true);
+
+    const publicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
+
+    const updateData: Partial<UserProfile> = {
+        ...data,
+        publicProfileName: publicProfileName,
+    };
     
-    setDocumentNonBlocking(userDocRef, data, { merge: true });
+    await setDocumentNonBlocking(userDocRef, updateData, { merge: true });
 
     if (userData?.role === 'conseiller') {
-      const miniSiteDocRef = doc(firestore, 'minisites', user.uid);
+      const minisiteDocRef = doc(firestore, 'minisites', user.uid);
       const publicProfileData = {
         id: user.uid,
         firstName: data.firstName,
@@ -153,7 +164,13 @@ export default function ProfilePage() {
         phone: data.phone,
         city: data.city,
       };
-      setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
+      await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
+      
+      // Update routing table
+      if (publicProfileName) {
+        const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
+        await setDoc(routeDocRef, { counselorId: user.uid });
+      }
     }
 
     toast({
@@ -218,14 +235,14 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {userData?.role === 'conseiller' && user?.uid && (
+                {userData?.role === 'conseiller' && form.getValues('publicProfileName') && (
                     <Alert>
                         <LinkIcon className="h-4 w-4" />
                         <AlertTitle>Votre page publique</AlertTitle>
                         <AlertDescription>
                             Votre mini-site est accessible à l'adresse :{' '}
-                            <Link href={`/c/${user.uid}`} target='_blank' className="font-mono bg-muted px-1 py-0.5 rounded hover:underline">
-                                {`/c/${user.uid}`}
+                            <Link href={`/c/${form.getValues('publicProfileName')}`} target='_blank' className="font-mono bg-muted px-1 py-0.5 rounded hover:underline">
+                                {`/c/${form.getValues('publicProfileName')}`}
                             </Link>
                         </AlertDescription>
                     </Alert>
@@ -286,6 +303,19 @@ export default function ProfilePage() {
 
                 {userData?.role === 'conseiller' && (
                     <>
+                    <FormField
+                        control={form.control}
+                        name="publicProfileName"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nom du profil public (pour l'URL)</FormLabel>
+                            <FormControl>
+                            <Input placeholder="ex: jean-dupont" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                     <FormField
                         control={form.control}
                         name="publicTitle"

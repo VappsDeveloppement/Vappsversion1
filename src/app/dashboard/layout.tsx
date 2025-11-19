@@ -123,16 +123,13 @@ export default function DashboardLayout({
   
   const handleLogout = () => {
     setIsLoggingOut(true);
-    const redirectUrl = (isConseiller && user?.uid) ? `/c/${user.uid}` : '/';
-    
-    router.push(redirectUrl);
+    // Corrected: Always redirect to the home page on logout.
+    router.push('/');
     
     // Give the router time to navigate before signing out.
-    // This prevents a race condition where data hooks on the new page
-    // fire before the old page's hooks (which require auth) have cleaned up.
     setTimeout(() => {
         auth.signOut();
-    }, 100); // A small delay is usually sufficient.
+    }, 150); 
   };
 
 
