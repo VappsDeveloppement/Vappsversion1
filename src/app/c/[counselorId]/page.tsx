@@ -1,4 +1,3 @@
-
 'use client';
 
 import React from 'react';
@@ -32,7 +31,8 @@ type CounselorProfile = {
     }
 };
 
-export default function CounselorPublicProfilePage({ params }: { params: { counselorId: string } }) {
+export default function CounselorPublicProfilePage() {
+  const params = useParams();
   const counselorId = params.counselorId as string;
   const firestore = useFirestore();
 
