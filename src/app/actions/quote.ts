@@ -1,10 +1,12 @@
 
+
 'use server';
 
 import { z } from 'zod';
 import nodemailer from 'nodemailer';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { JSDOM } from 'jsdom';
 
 // No longer using Firebase Admin SDK on the server for this action
 
@@ -204,6 +206,8 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             doc.setTextColor(40);
             
             // Basic HTML to text conversion
+            const dom = new JSDOM();
+            const document = dom.window.document;
             const tempDiv = document.createElement('div');
             tempDiv.innerHTML = quote.contractContent;
             const textContent = tempDiv.textContent || "";
@@ -266,10 +270,6 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: true };
     } catch (error: any) {
         console.error("Error sending quote email:", error);
-        // A check to avoid crashes in server environments where document might not be defined.
-        if (typeof document === 'undefined') {
-          return { success: false, error: "PDF generation failed in a non-browser environment." };
-        }
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }

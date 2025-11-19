@@ -765,7 +765,7 @@ export default function BillingPage() {
     };
     
     const handleResendQuote = async (quote: Quote) => {
-        if (!user || !personalization ) return;
+        if (!user || !personalization || !agency) return;
         setIsSending(quote.id);
         const result = await sendQuote({
             quote,
