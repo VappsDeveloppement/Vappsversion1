@@ -23,8 +23,6 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-// No server action needed for now, handled client-side.
-
 type User = {
     id: string;
     firstName: string;
@@ -74,7 +72,6 @@ export default function UserManagementPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
 
-    // This hook fetches users from Firestore.
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
@@ -144,25 +141,26 @@ export default function UserManagementPage() {
 
             await setDocumentNonBlocking(userDocRef, updatedUserData, { merge: true });
 
-            // If the user's role changed to counselor, create/update the minisite document
             if (isNowConseiller) {
                 const miniSiteDocRef = doc(firestore, 'minisites', editingUser.id);
                 const existingMiniSiteSnap = await getDoc(miniSiteDocRef);
-                const existingMiniSiteData = existingMiniSiteSnap.exists() ? existingMiniSiteSnap.data() : {};
-
-                const publicProfileData = {
-                  id: editingUser.id,
-                  firstName: values.firstName,
-                  lastName: values.lastName,
-                  email: values.email,
-                  phone: values.phone,
-                  city: values.city,
-                  ...existingMiniSiteData, // Preserve existing minisite personalization
-                };
-                await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
+                
+                if (!existingMiniSiteSnap.exists()) {
+                    const publicProfileData = {
+                      id: editingUser.id,
+                      firstName: values.firstName,
+                      lastName: values.lastName,
+                      email: values.email,
+                      phone: values.phone,
+                      city: values.city,
+                      publicTitle: `Conseiller chez VApps`,
+                      publicBio: `Biographie à compléter.`,
+                    };
+                    await setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
+                }
             }
 
-            toast({ title: 'Succès', description: 'L\'utilisateur a été mis à jour.' });
+            toast({ title: 'Succès', description: "L'utilisateur a été mis à jour." });
             setIsDialogOpen(false);
             setEditingUser(null);
         } catch (error: any) {
@@ -184,7 +182,6 @@ export default function UserManagementPage() {
             const userDocRef = doc(firestore, "users", userToDelete.id);
             await deleteDocumentNonBlocking(userDocRef);
             
-            // If the user was a counselor, also delete their minisite doc
             if (userToDelete.role === 'conseiller') {
                 const miniSiteDocRef = doc(firestore, "minisites", userToDelete.id);
                 await deleteDocumentNonBlocking(miniSiteDocRef);
