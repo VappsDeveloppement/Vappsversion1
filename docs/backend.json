@@ -106,10 +106,6 @@
             "type": "string",
             "description": "Public-facing biography for the counselor's profile page."
         },
-        "publicProfileName": {
-          "type": "string",
-          "description": "The unique, URL-friendly slug for the counselor's public mini-site."
-        },
         "miniSite": {
             "$ref": "#/entities/MiniSite"
         },
@@ -247,7 +243,6 @@
             "photoUrl": { "type": "string", "format": "uri" },
             "publicTitle": { "type": "string" },
             "publicBio": { "type": "string" },
-            "publicProfileName": { "type": "string" },
             "miniSite": { "$ref": "#/entities/MiniSite" }
         },
         "required": ["id", "firstName", "lastName", "email"]

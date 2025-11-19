@@ -34,12 +34,13 @@ type CounselorProfile = {
 
 export default function CounselorPublicProfilePage() {
   const params = useParams();
-  const counselorId = params.publicProfileName as string; // The slug is now the counselorId
+  // Le paramètre de l'URL est directement l'ID du conseiller.
+  const counselorId = params.publicProfileName as string;
   const firestore = useFirestore();
 
   const counselorRef = useMemoFirebase(() => {
     if (!counselorId) return null;
-    // Fetch directly from minisites collection using the ID
+    // La recherche se fait maintenant directement par ID dans la collection 'minisites'.
     return doc(firestore, 'minisites', counselorId);
   }, [firestore, counselorId]);
 
