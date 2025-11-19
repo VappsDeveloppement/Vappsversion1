@@ -3,11 +3,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ATTENTION: RÈGLES COMPLÈTEMENT OUVERTES
-    // N'importe qui (connecté ou non) peut lire et écrire partout.
-    // Ces règles sont dangereuses et ne doivent pas être utilisées en production.
-    match /{document=**} {
-      allow read, write: if true;
+    // Allow public read for agency info and minisites
+    match /agencies/{agencyId} {
+      allow read: if true;
+      allow write: if request.auth != null;
+    }
+    
+    match /minisites/{counselorId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == counselorId;
+    }
+
+    // Secure other collections to authenticated users
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    match /plans/{planId} {
+        allow read: if true; // Plans can be public for pricing pages
+        allow write: if request.auth != null; // Only authenticated (admin/conseiller) can write
+    }
+
+    match /contracts/{contractId} {
+      allow read, write: if request.auth != null;
+    }
+
+    match /quotes/{quoteId} {
+      // The public quote page will handle its own logic, but general access is restricted
+      allow read, write: if request.auth != null;
+    }
+    
+    match /invoices/{invoiceId} {
+       allow read, write: if request.auth != null;
+    }
+
+    match /gdpr_requests/{requestId} {
+        allow read, write: if request.auth != null;
+    }
+
+    match /support_requests/{requestId} {
+        allow read, write: if request.auth != null;
+    }
+
+    match /faq_items/{itemId} {
+        allow read: if true;
+        allow write: if request.auth != null;
     }
   }
 }
