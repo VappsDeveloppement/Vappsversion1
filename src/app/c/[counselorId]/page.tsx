@@ -1,8 +1,11 @@
 
+'use client';
+
 import React from 'react';
-import { notFound } from 'next/navigation';
-import { getFirestore } from 'firebase-admin/firestore';
-import { initializeAdminApp } from '@/firebase/admin';
+import { useParams } from 'next/navigation';
+import { useDoc, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
 import { AttentionSection } from '@/components/shared/attention-section';
@@ -12,10 +15,8 @@ import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 import Link from 'next/link';
-
-// Initialize Firebase Admin SDK
-const { app } = initializeAdminApp();
-const firestore = getFirestore(app);
+import { Skeleton } from '@/components/ui/skeleton';
+import { AlertTriangle } from 'lucide-react';
 
 type CounselorProfile = {
     id: string;
@@ -32,32 +33,41 @@ type CounselorProfile = {
     }
 };
 
-async function getCounselorProfile(counselorId: string): Promise<CounselorProfile | null> {
-    if (!counselorId) {
-        return null;
-    }
-    try {
-        const docRef = firestore.collection('minisites').doc(counselorId);
-        const docSnap = await docRef.get();
+export default function CounselorPublicProfilePage() {
+  const params = useParams();
+  const firestore = useFirestore();
+  const counselorId = params.counselorId as string;
 
-        if (docSnap.exists) {
-            return docSnap.data() as CounselorProfile;
-        } else {
-            console.log(`No minisite document found for ID: ${counselorId}`);
-            return null;
-        }
-    } catch (error) {
-        console.error("Error fetching counselor profile:", error);
-        return null;
-    }
-}
+  const counselorDocRef = useMemoFirebase(() => {
+    if (!counselorId) return null;
+    return doc(firestore, 'minisites', counselorId);
+  }, [firestore, counselorId]);
 
-export default async function CounselorPublicProfilePage({ params }: { params: { counselorId: string } }) {
-  const { counselorId } = params;
-  const counselor = await getCounselorProfile(counselorId);
+  const { data: counselor, isLoading } = useDoc<CounselorProfile>(counselorDocRef);
+
+  if (isLoading) {
+    return (
+        <div className="space-y-8 p-8">
+            <Skeleton className="h-48 w-full" />
+            <Skeleton className="h-64 w-full" />
+            <Skeleton className="h-32 w-full" />
+        </div>
+    );
+  }
 
   if (!counselor) {
-    notFound();
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-muted">
+            <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
+            <h1 className="text-2xl font-bold">Profil non disponible</h1>
+            <p className="text-muted-foreground mt-2">
+                Le profil que vous cherchez n'existe pas ou n'est plus disponible.
+            </p>
+            <Link href="/" className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
+                Retour à l'accueil
+            </Link>
+        </div>
+    );
   }
 
   const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
