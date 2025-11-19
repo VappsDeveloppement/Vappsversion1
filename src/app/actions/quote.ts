@@ -5,7 +5,6 @@ import { z } from 'zod';
 import nodemailer from 'nodemailer';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { JSDOM } from 'jsdom';
 
 // No longer using Firebase Admin SDK on the server for this action
 
@@ -204,8 +203,10 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             doc.setFont('helvetica', 'normal');
             doc.setTextColor(40);
             
-            const dom = new JSDOM(`<body>${quote.contractContent}</body>`);
-            const textContent = dom.window.document.body.textContent || "";
+            // Basic HTML to text conversion
+            const tempDiv = document.createElement('div');
+            tempDiv.innerHTML = quote.contractContent;
+            const textContent = tempDiv.textContent || "";
             
             const lines = doc.splitTextToSize(textContent, 180);
             doc.text(lines, 15, y);
@@ -237,20 +238,19 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             },
         });
         
+        const validationUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/quote/${quote.id}`;
+
         await transporter.sendMail({
             from: `"${emailSettings.fromName}" <${emailSettings.fromEmail}>`,
             to: quote.clientInfo.email,
             subject: `Votre devis n° ${quote.quoteNumber} de la part de ${emailSettings.fromName}`,
-            text: `Bonjour ${quote.clientInfo.name},\n\nVeuillez trouver ci-joint votre devis n° ${quote.quoteNumber}.\n\nPour valider ce devis, veuillez vous rendre sur notre site, cliquer sur le bouton "Valider un devis" en pied de page et utiliser les informations suivantes :\n\nNuméro de devis : ${quote.quoteNumber}\nCode de validation : ${quote.validationCode}\n\nCordialement,\n${emailSettings.fromName}`,
+            text: `Bonjour ${quote.clientInfo.name},\n\nVeuillez trouver ci-joint votre devis n° ${quote.quoteNumber}.\n\nPour valider ce devis, veuillez vous rendre à l'adresse suivante : ${validationUrl}\n\nCordialement,\n${emailSettings.fromName}`,
             html: `
                 <p>Bonjour ${quote.clientInfo.name},</p>
                 <p>Veuillez trouver ci-joint votre devis n° ${quote.quoteNumber} au format PDF.</p>
-                <p>Pour consulter et valider ce devis directement en ligne, veuillez vous rendre sur notre site et cliquer sur le bouton <strong>"Valider un devis"</strong> situé dans le pied de page.</p>
-                <p>Vous aurez besoin des informations suivantes :</p>
-                <ul>
-                    <li><strong>Numéro de devis :</strong> ${quote.quoteNumber}</li>
-                    <li><strong>Code de validation :</strong> ${quote.validationCode}</li>
-                </ul>
+                <p>Pour consulter et valider ce devis directement en ligne, veuillez cliquer sur le lien ci-dessous :</p>
+                <p><a href="${validationUrl}" style="padding: 10px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Consulter mon devis</a></p>
+                <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur : ${validationUrl}</p>
                 <p>Cordialement,<br/>${emailSettings.fromName}</p>
             `,
             attachments: [
@@ -266,6 +266,10 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: true };
     } catch (error: any) {
         console.error("Error sending quote email:", error);
+        // A check to avoid crashes in server environments where document might not be defined.
+        if (typeof document === 'undefined') {
+          return { success: false, error: "PDF generation failed in a non-browser environment." };
+        }
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }

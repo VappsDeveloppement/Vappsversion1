@@ -13,8 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewQuoteForm } from '@/components/shared/new-quote-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAgency } from '@/context/agency-provider';
-import { useFirestore, useUser } from '@/firebase/provider';
-import { useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, getDocs, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -766,13 +765,12 @@ export default function BillingPage() {
     };
     
     const handleResendQuote = async (quote: Quote) => {
-        if (!user || !personalization || !agency) return;
+        if (!user || !personalization ) return;
         setIsSending(quote.id);
         const result = await sendQuote({
             quote,
             emailSettings: personalization.emailSettings,
             legalInfo: personalization.legalInfo,
-            agencyId: agency.id,
         });
         if (result.success) {
             toast({ title: 'Devis renvoyé', description: `Le devis ${quote.quoteNumber} a été renvoyé.` });
@@ -790,18 +788,18 @@ export default function BillingPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold font-headline">Facturation & Devis</h1>
-                <p className="text-muted-foreground">Gérez vos contrats, devis et factures.</p>
+                <p className="text-muted-foreground">Gérez vos plans, contrats, devis et factures.</p>
             </div>
 
             <Tabs defaultValue="quotes">
                 <TabsList className="grid w-full grid-cols-4">
-                    <TabsTrigger value="plans">Modèles de Prestation</TabsTrigger>
+                    <TabsTrigger value="plans">Plans</TabsTrigger>
                     <TabsTrigger value="contracts">Contrats</TabsTrigger>
                     <TabsTrigger value="quotes">Devis</TabsTrigger>
                     <TabsTrigger value="invoices">Factures</TabsTrigger>
                 </TabsList>
-                
-                 <TabsContent value="plans">
+
+                <TabsContent value="plans">
                     <PlanManagement />
                 </TabsContent>
 
@@ -1085,3 +1083,4 @@ export default function BillingPage() {
         </div>
     );
 }
+
