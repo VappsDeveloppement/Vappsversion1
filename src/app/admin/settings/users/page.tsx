@@ -129,7 +129,6 @@ export default function UserManagementPage() {
         setIsSubmitting(true);
         try {
             const userDocRef = doc(firestore, 'users', editingUser.id);
-            const wasConseiller = editingUser.role === 'conseiller';
             const isNowConseiller = values.role === 'conseiller';
             
             const updatedUserData: Partial<User> = {
