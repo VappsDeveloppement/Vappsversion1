@@ -5,6 +5,7 @@ import React from 'react';
 import Image from 'next/image';
 
 type CounselorProfile = {
+    publicBio?: string;
     miniSite?: {
         aboutSection?: {
             imageUrl?: string;
@@ -18,6 +19,8 @@ type CounselorProfile = {
 
 export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
     const aboutConfig = counselor.miniSite?.aboutSection || {};
+
+    const textToDisplay = aboutConfig.text || counselor.publicBio || "Contenu de la biographie à venir.";
 
     return (
         <section className="py-16 sm:py-24 bg-white">
@@ -53,10 +56,10 @@ export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
                          )}
                     </div>
                     {/* Colonne de droite : Texte */}
-                    <div className="text-center">
-                        <h2 className="text-3xl font-bold mb-4">{aboutConfig.title || "À Propos"}</h2>
+                    <div className="text-center md:text-left">
+                        <h2 className="text-3xl font-bold mb-4">{aboutConfig.title || "À Propos de Moi"}</h2>
                         <p className="text-lg text-muted-foreground whitespace-pre-wrap">
-                            {aboutConfig.text || "Contenu à venir."}
+                            {textToDisplay}
                         </p>
                     </div>
                 </div>
@@ -64,3 +67,4 @@ export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
         </section>
     );
 }
+
