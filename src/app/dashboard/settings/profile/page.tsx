@@ -5,7 +5,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -14,9 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Info, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Upload, Trash2, Link as LinkIcon } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
@@ -24,7 +24,6 @@ import Link from 'next/link';
 const profileSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
   lastName: z.string().min(1, "Le nom est requis."),
-  publicProfileName: z.string().min(3, "Le nom du profil doit contenir au moins 3 caractères.").regex(/^[a-z0-9-]+$/, "Utilisez uniquement des lettres minuscules, des chiffres et des tirets."),
   publicTitle: z.string().optional(),
   publicBio: z.string().optional(),
   photoUrl: z.string().optional().nullable(),
@@ -48,7 +47,6 @@ type UserProfile = {
   firstName: string;
   lastName: string;
   email: string;
-  publicProfileName?: string;
   publicTitle?: string;
   publicBio?: string;
   photoUrl?: string;
@@ -95,7 +93,6 @@ export default function ProfilePage() {
     defaultValues: {
       firstName: '',
       lastName: '',
-      publicProfileName: '',
       publicTitle: '',
       publicBio: '',
       photoUrl: '',
@@ -113,14 +110,11 @@ export default function ProfilePage() {
     },
   });
 
-  const originalPublicProfileName = useRef<string | undefined>();
-  
   useEffect(() => {
     if (userData) {
       form.reset({
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
-        publicProfileName: userData.publicProfileName || '',
         publicTitle: userData.publicTitle || '',
         publicBio: userData.publicBio || '',
         photoUrl: userData.photoUrl || '',
@@ -137,7 +131,6 @@ export default function ProfilePage() {
         },
       });
       setPhotoPreview(userData.photoUrl || null);
-      originalPublicProfileName.current = userData.publicProfileName;
     }
   }, [userData, form]);
 
@@ -153,7 +146,6 @@ export default function ProfilePage() {
         id: user.uid,
         firstName: data.firstName,
         lastName: data.lastName,
-        publicProfileName: data.publicProfileName,
         email: userData.email,
         publicTitle: data.publicTitle,
         publicBio: data.publicBio,
@@ -162,17 +154,6 @@ export default function ProfilePage() {
         city: data.city,
       };
       setDocumentNonBlocking(miniSiteDocRef, publicProfileData, { merge: true });
-
-      // Handle routing document
-      const newRouteRef = doc(firestore, 'minisite_routes', data.publicProfileName);
-      setDocumentNonBlocking(newRouteRef, { counselorId: user.uid }, {});
-
-      // If the name changed, delete the old route document
-      if (originalPublicProfileName.current && originalPublicProfileName.current !== data.publicProfileName) {
-        const oldRouteRef = doc(firestore, 'minisite_routes', originalPublicProfileName.current);
-        deleteDocumentNonBlocking(oldRouteRef);
-      }
-      originalPublicProfileName.current = data.publicProfileName;
     }
 
     toast({
@@ -237,14 +218,14 @@ export default function ProfilePage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {userData?.role === 'conseiller' && userData?.publicProfileName && (
+                {userData?.role === 'conseiller' && user?.uid && (
                     <Alert>
                         <LinkIcon className="h-4 w-4" />
                         <AlertTitle>Votre page publique</AlertTitle>
                         <AlertDescription>
                             Votre mini-site est accessible à l'adresse :{' '}
-                            <Link href={`/c/${userData.publicProfileName}`} target='_blank' className="font-mono bg-muted px-1 py-0.5 rounded hover:underline">
-                                {`/c/${userData.publicProfileName}`}
+                            <Link href={`/c/${user.uid}`} target='_blank' className="font-mono bg-muted px-1 py-0.5 rounded hover:underline">
+                                {`/c/${user.uid}`}
                             </Link>
                         </AlertDescription>
                     </Alert>
@@ -305,25 +286,6 @@ export default function ProfilePage() {
 
                 {userData?.role === 'conseiller' && (
                     <>
-                    <FormField
-                        control={form.control}
-                        name="publicProfileName"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Nom du profil public</FormLabel>
-                            <FormControl>
-                                <div className='flex items-center'>
-                                <span className='text-sm text-muted-foreground bg-muted px-3 py-2 rounded-l-md border border-r-0'>
-                                    /c/
-                                </span>
-                                <Input placeholder="jean-dupont" {...field} className="rounded-l-none" />
-                                </div>
-                            </FormControl>
-                            <FormDescription>C'est le nom qui apparaîtra dans l'URL de votre page publique.</FormDescription>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
                     <FormField
                         control={form.control}
                         name="publicTitle"
@@ -461,8 +423,8 @@ export default function ProfilePage() {
                             <FormLabel>Couleur Primaire</FormLabel>
                             <FormControl>
                             <div className="flex items-center gap-2">
-                                <Input type="color" {...field} className="p-1 h-10 w-10" />
-                                <Input type="text" {...field} />
+                                <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                <Input type="text" {...field} value={field.value || ''} />
                             </div>
                             </FormControl>
                             <FormMessage />
@@ -477,8 +439,8 @@ export default function ProfilePage() {
                             <FormLabel>Couleur Secondaire</FormLabel>
                             <FormControl>
                             <div className="flex items-center gap-2">
-                                <Input type="color" {...field} className="p-1 h-10 w-10" />
-                                <Input type="text" {...field} />
+                                <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                <Input type="text" {...field} value={field.value || ''} />
                             </div>
                             </FormControl>
                             <FormMessage />
@@ -493,8 +455,8 @@ export default function ProfilePage() {
                             <FormLabel>Couleur de Fond</FormLabel>
                             <FormControl>
                             <div className="flex items-center gap-2">
-                                <Input type="color" {...field} className="p-1 h-10 w-10" />
-                                <Input type="text" {...field} />
+                                <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                <Input type="text" {...field} value={field.value || ''} />
                             </div>
                             </FormControl>
                             <FormMessage />

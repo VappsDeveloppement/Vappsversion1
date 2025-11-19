@@ -98,10 +98,6 @@
             "format": "uri",
             "description": "URL of the user's public profile photo."
         },
-        "publicProfileName": {
-            "type": "string",
-            "description": "A unique, URL-friendly name for the counselor's public page (e.g., 'jean-dupont')."
-        },
         "publicTitle": {
             "type": "string",
             "description": "Public-facing professional title for the counselor (e.g., 'Coach en développement personnel')."
@@ -239,7 +235,6 @@
         "description": "Public-facing profile for a counselor's mini-site.",
         "properties": {
             "id": { "type": "string" },
-            "publicProfileName": { "type": "string", "description": "The unique, URL-friendly name for the mini-site URL." },
             "firstName": { "type": "string" },
             "lastName": { "type": "string" },
             "email": { "type": "string", "format": "email" },
@@ -250,7 +245,7 @@
             "publicBio": { "type": "string" },
             "miniSite": { "$ref": "#/entities/MiniSite" }
         },
-        "required": ["id", "publicProfileName", "firstName", "lastName", "email"]
+        "required": ["id", "firstName", "lastName", "email"]
     },
     "Agency": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -686,18 +681,6 @@
         "counselorId": { "type": "string", "description": "The ID of the counselor this FAQ item belongs to, if scope is 'counselor'." }
       },
       "required": ["id", "category", "question", "content", "scope"]
-    },
-    "MiniSiteRoute": {
-        "title": "MiniSite Route",
-        "type": "object",
-        "description": "Maps a public profile name to a counselor ID.",
-        "properties": {
-            "counselorId": {
-                "type": "string",
-                "description": "The ID of the counselor this route points to."
-            }
-        },
-        "required": ["counselorId"]
     }
   },
   "auth": {
@@ -735,14 +718,6 @@
           },
           "description": "Stores the public-facing profile data for a counselor's mini-site. The document ID is the counselor's user ID."
         }
-      },
-      {
-          "path": "/minisite_routes/{publicProfileName}",
-          "definition": {
-              "entityName": "MiniSiteRoute",
-              "schema": { "$ref": "#/entities/MiniSiteRoute" },
-              "description": "Maps a public profile name to a counselor's user ID for routing."
-          }
       },
       {
         "path": "/plans/{planId}",
@@ -859,6 +834,6 @@
         }
       }
     ],
-    "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model. Added a `minisite_routes` collection to map URL-friendly names to counselor IDs for public pages."
+    "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }

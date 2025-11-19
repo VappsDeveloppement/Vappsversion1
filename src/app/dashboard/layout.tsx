@@ -123,7 +123,7 @@ export default function DashboardLayout({
   
   const handleLogout = () => {
     setIsLoggingOut(true);
-    const redirectUrl = (isConseiller) ? `/c/${user?.uid}` : '/';
+    const redirectUrl = (isConseiller && user?.uid) ? `/c/${user.uid}` : '/';
     
     router.push(redirectUrl);
     
@@ -283,5 +283,3 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
-
-    

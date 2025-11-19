@@ -17,6 +17,7 @@ import { CounselorContactSection } from '@/components/shared/counselor-contact-s
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
+import { useAgency } from '@/context/agency-provider';
 
 type CounselorProfile = {
     id: string;
@@ -36,6 +37,7 @@ type CounselorProfile = {
 export default function CounselorPublicProfilePage() {
   const params = useParams();
   const firestore = useFirestore();
+  const { agency, isLoading: isAgencyLoading } = useAgency();
   const counselorId = params.counselorId as string;
 
   const counselorDocRef = useMemoFirebase(() => {
@@ -43,7 +45,9 @@ export default function CounselorPublicProfilePage() {
     return doc(firestore, 'minisites', counselorId);
   }, [firestore, counselorId]);
 
-  const { data: counselor, isLoading } = useDoc<CounselorProfile>(counselorDocRef);
+  const { data: counselor, isLoading: isCounselorLoading } = useDoc<CounselorProfile>(counselorDocRef);
+
+  const isLoading = isCounselorLoading || isAgencyLoading;
 
   if (isLoading) {
     return (
@@ -78,8 +82,8 @@ export default function CounselorPublicProfilePage() {
   const showPricingSection = counselor.miniSite?.pricingSection?.enabled !== false;
   const showContactSection = counselor.miniSite?.contactSection?.enabled !== false;
 
-  const copyrightText = counselor.agencyInfo?.copyrightText || "Vapps.";
-  const copyrightUrl = counselor.agencyInfo?.copyrightUrl || "/";
+  const copyrightText = agency?.personalization.copyrightText || "Vapps.";
+  const copyrightUrl = agency?.personalization.copyrightUrl || "/";
   const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
   const primaryColor = counselor.miniSite?.hero?.primaryColor || '#10B981';
 
