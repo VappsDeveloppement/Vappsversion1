@@ -98,45 +98,40 @@ export default function CounselorPublicProfilePage() {
   const firestore = useFirestore();
   const { agency, isLoading: isAgencyLoading } = useAgency();
   const publicProfileName = params.publicProfileName as string;
-  const [counselorId, setCounselorId] = useState<string | null>(null);
-  const [isLoadingId, setIsLoadingId] = useState(true);
+  const [counselor, setCounselor] = useState<CounselorProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!publicProfileName || !firestore) return;
-    
-    const findCounselorId = async () => {
-        const routesRef = collection(firestore, 'minisite_routes');
-        const q = query(routesRef, where("publicProfileName", "==", publicProfileName), limit(1));
-        
+
+    const findCounselor = async () => {
+        setIsLoading(true);
         try {
+            const minisitesRef = collection(firestore, 'minisites');
+            // Corrected query using dot notation for the nested field
+            const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
+            
             const querySnapshot = await getDocs(q);
+
             if (!querySnapshot.empty) {
-                const routeDoc = querySnapshot.docs[0];
-                setCounselorId(routeDoc.data().counselorId);
+                const counselorDoc = querySnapshot.docs[0];
+                setCounselor(counselorDoc.data() as CounselorProfile);
             } else {
-                console.log(`No route found for publicProfileName: ${publicProfileName}`);
-                setCounselorId(null);
+                console.log(`No minisite found for publicProfileName: ${publicProfileName}`);
+                setCounselor(null);
             }
         } catch (error) {
             console.error("Error fetching counselor by public name:", error);
-            setCounselorId(null);
+            setCounselor(null);
         } finally {
-            setIsLoadingId(false);
+            setIsLoading(false);
         }
     };
 
-    findCounselorId();
+    findCounselor();
   }, [publicProfileName, firestore]);
-  
 
-  const counselorDocRef = useMemoFirebase(() => {
-    if (!counselorId) return null;
-    return doc(firestore, 'minisites', counselorId);
-  }, [firestore, counselorId]);
+  const finalLoadingState = isLoading || isAgencyLoading;
 
-  const { data: counselor, isLoading: isCounselorLoading } = useDoc<CounselorProfile>(counselorDocRef);
-
-  const isLoading = isLoadingId || isCounselorLoading || isAgencyLoading;
-
-  return <CounselorPageContent counselor={counselor} isLoading={isLoading} agency={agency} />
+  return <CounselorPageContent counselor={counselor} isLoading={finalLoadingState} agency={agency} />
 }
