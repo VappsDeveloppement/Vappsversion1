@@ -106,16 +106,16 @@ export default function CounselorPublicProfilePage() {
     
     const findCounselorId = async () => {
         // This is the correct way to find the user ID from the public profile name
-        const usersRef = collection(firestore, 'users');
-        const q = query(usersRef, where("publicProfileName", "==", publicProfileName), limit(1));
+        const routesRef = collection(firestore, 'minisite_routes');
+        const q = query(routesRef, where("publicProfileName", "==", publicProfileName), limit(1));
         
         try {
             const querySnapshot = await getDocs(q);
             if (!querySnapshot.empty) {
-                const userDoc = querySnapshot.docs[0];
-                setCounselorId(userDoc.id);
+                const routeDoc = querySnapshot.docs[0];
+                setCounselorId(routeDoc.data().counselorId);
             } else {
-                console.log(`No user found with publicProfileName: ${publicProfileName}`);
+                console.log(`No route found for publicProfileName: ${publicProfileName}`);
                 setCounselorId(null);
             }
         } catch (error) {

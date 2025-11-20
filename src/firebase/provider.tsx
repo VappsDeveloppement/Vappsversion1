@@ -112,17 +112,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                         dateJoined: new Date().toISOString(),
                         lastSignInTime: new Date().toISOString(),
                         phone: firebaseUser.phoneNumber || '',
+                        publicProfileName: publicProfileName,
                     };
                     
-                    if (isSpecificUser) {
-                        newUserDoc.publicProfileName = publicProfileName;
-                    }
-
                     await setDoc(userDocRef, newUserDoc);
                     
                     if (isSpecificUser) {
                         const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
-                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid });
+                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid, publicProfileName: publicProfileName });
                     }
 
                 } else {
@@ -136,7 +133,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                         const publicProfileName = 'romain-roussey';
                         updateData.publicProfileName = publicProfileName;
                          const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
-                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid });
+                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid, publicProfileName: publicProfileName });
                     }
 
                     await setDoc(userDocRef, updateData, { merge: true });
