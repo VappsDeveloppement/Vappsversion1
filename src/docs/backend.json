@@ -136,6 +136,10 @@
         "type": "object",
         "description": "Personalization settings for the counselor's mini-site.",
         "properties": {
+            "publicProfileName": {
+                "type": "string",
+                "description": "The public-facing URL slug for the mini-site."
+            },
             "hero": {
                 "type": "object",
                 "properties": {
@@ -721,20 +725,6 @@
             "$ref": "#/backend/entities/CounselorProfile"
           },
           "description": "Stores the public-facing profile data for a counselor's mini-site. The document ID is the counselor's user ID."
-        }
-      },
-      {
-        "path": "/minisite_routes/{publicProfileName}",
-        "definition": {
-            "entityName": "MiniSiteRoute",
-            "description": "Maps a public profile name to a counselor's user ID for clean URL routing.",
-            "schema": {
-                "type": "object",
-                "properties": {
-                    "counselorId": { "type": "string" }
-                },
-                "required": ["counselorId"]
-            }
         }
       },
       {

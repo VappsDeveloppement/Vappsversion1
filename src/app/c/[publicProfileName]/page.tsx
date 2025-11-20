@@ -3,8 +3,8 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useDoc, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useMemoFirebase } from '@/firebase';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
@@ -108,7 +108,7 @@ export default function CounselorPublicProfilePage() {
         setIsLoading(true);
         try {
             const minisitesRef = collection(firestore, 'minisites');
-            // Corrected query using dot notation for the nested field
+            // This is the corrected query using dot notation.
             const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
             
             const querySnapshot = await getDocs(q);

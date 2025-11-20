@@ -117,26 +117,9 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                     
                     await setDoc(userDocRef, newUserDoc);
                     
-                    if (isSpecificUser) {
-                        const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
-                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid, publicProfileName: publicProfileName });
-                    }
-
                 } else {
                     const lastSignInTime = new Date().toISOString();
-                    const userData = userDocSnap.data();
-                    const isSpecificUser = firebaseUser.email === 'admin@example.com';
-                    
-                    const updateData: { lastSignInTime: string, publicProfileName?: string } = { lastSignInTime };
-
-                    if (isSpecificUser && !userData.publicProfileName) {
-                        const publicProfileName = 'romain-roussey';
-                        updateData.publicProfileName = publicProfileName;
-                         const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
-                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid, publicProfileName: publicProfileName });
-                    }
-
-                    await setDoc(userDocRef, updateData, { merge: true });
+                    await setDoc(userDocRef, { lastSignInTime }, { merge: true });
                 }
             } catch (error) {
                 console.error("Error handling user document:", error);

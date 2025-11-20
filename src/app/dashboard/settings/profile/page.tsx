@@ -66,6 +66,7 @@ type UserProfile = {
     bgColor?: string;
   };
   role?: string;
+  miniSite?: any;
 };
 
 const toBase64 = (file: File): Promise<string> =>
@@ -146,11 +147,12 @@ export default function ProfilePage() {
 
     const publicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
     
-    if(publicProfileName && publicProfileName !== userData?.publicProfileName) {
-        const routesRef = collection(firestore, 'minisite_routes');
-        const q = query(routesRef, where("publicProfileName", "==", publicProfileName));
+    // Check if publicProfileName is unique before saving
+    if (publicProfileName && publicProfileName !== userData?.publicProfileName) {
+        const minisitesRef = collection(firestore, 'minisites');
+        const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName));
         const querySnapshot = await getDocs(q);
-        if(!querySnapshot.empty) {
+        if (!querySnapshot.empty) {
             form.setError("publicProfileName", {
                 type: "manual",
                 message: "Ce nom de profil est déjà utilisé. Veuillez en choisir un autre."
@@ -179,14 +181,13 @@ export default function ProfilePage() {
         photoUrl: data.photoUrl,
         phone: data.phone,
         city: data.city,
+        // Save the publicProfileName inside the miniSite object
+        miniSite: {
+            ...userData?.miniSite,
+            publicProfileName: publicProfileName,
+        },
       };
       await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
-      
-      if (publicProfileName) {
-        // Use a consistent doc ID, for example the user's UID, to manage the route easily.
-        const routeDocRef = doc(firestore, 'minisite_routes', user.uid);
-        await setDoc(routeDocRef, { counselorId: user.uid, publicProfileName: publicProfileName });
-      }
     }
 
     toast({
