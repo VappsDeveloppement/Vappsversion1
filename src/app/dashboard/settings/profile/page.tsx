@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -145,7 +146,6 @@ export default function ProfilePage() {
 
     const publicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
     
-    // Check if the publicProfileName is already taken
     if(publicProfileName && publicProfileName !== userData?.publicProfileName) {
         const routesRef = collection(firestore, 'minisite_routes');
         const q = query(routesRef, where("publicProfileName", "==", publicProfileName));
@@ -159,7 +159,6 @@ export default function ProfilePage() {
             return;
         }
     }
-
 
     const updateData: Partial<UserProfile> = {
         ...data,
@@ -183,9 +182,9 @@ export default function ProfilePage() {
       };
       await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
       
-      // Update routing table
       if (publicProfileName) {
-        const routeDocRef = doc(firestore, 'minisite_routes', user.uid); // Use user.uid as doc id for simplicity
+        // Use a consistent doc ID, for example the user's UID, to manage the route easily.
+        const routeDocRef = doc(firestore, 'minisite_routes', user.uid);
         await setDoc(routeDocRef, { counselorId: user.uid, publicProfileName: publicProfileName });
       }
     }
@@ -197,7 +196,6 @@ export default function ProfilePage() {
     
     setIsSubmitting(false);
   };
-
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
