@@ -108,7 +108,7 @@ export default function CounselorPublicProfilePage() {
         setIsLoading(true);
         try {
             const minisitesRef = collection(firestore, 'minisites');
-            // This is the corrected query using dot notation.
+            // Corrected query using dot notation to search within the 'miniSite' object
             const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
             
             const querySnapshot = await getDocs(q);

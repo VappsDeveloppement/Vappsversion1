@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -147,10 +147,9 @@ export default function ProfilePage() {
 
     const publicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
     
-    // Check if publicProfileName is unique before saving
     if (publicProfileName && publicProfileName !== userData?.publicProfileName) {
         const minisitesRef = collection(firestore, 'minisites');
-        const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName));
+        const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             form.setError("publicProfileName", {
@@ -181,7 +180,6 @@ export default function ProfilePage() {
         photoUrl: data.photoUrl,
         phone: data.phone,
         city: data.city,
-        // Save the publicProfileName inside the miniSite object
         miniSite: {
             ...userData?.miniSite,
             publicProfileName: publicProfileName,

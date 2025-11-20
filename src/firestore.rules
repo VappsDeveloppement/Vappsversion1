@@ -14,11 +14,6 @@ service cloud.firestore {
       allow write: if request.auth != null && request.auth.uid == counselorId;
     }
 
-    match /minisite_routes/{publicProfileName} {
-      allow read: if true;
-      allow write: if request.auth != null; // Only authenticated users (counselors) can manage their routes
-    }
-
     // Secure user data:
     // - A user can read/write their own data.
     // - A superadmin can read any user's data.
