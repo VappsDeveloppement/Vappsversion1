@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -104,23 +105,16 @@ export default function CounselorPublicProfilePage() {
     if (!publicProfileName || !firestore) return;
     
     const findCounselorId = async () => {
-        const routesRef = collection(firestore, 'minisite_routes');
-        const q = query(routesRef, where('publicProfileName', '==', publicProfileName));
-        const querySnapshot = await getDocs(q);
-
-        if (!querySnapshot.empty) {
-            const routeDoc = querySnapshot.docs[0];
+        // The document ID in minisite_routes is the publicProfileName
+        const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
+        const routeDocSnap = await getDocs(query(collection(firestore, 'minisite_routes'), where('__name__', '==', publicProfileName)));
+        
+        if (!routeDocSnap.empty) {
+            const routeDoc = routeDocSnap.docs[0];
             setCounselorId(routeDoc.data().counselorId);
         } else {
-             // Second attempt: maybe the publicProfileName is the document ID for backward compatibility
-            const routeDocByIdRef = doc(firestore, 'minisite_routes', publicProfileName);
-            const routeDocByIdSnap = await getDocs(query(collection(firestore, 'minisite_routes'), where('counselorId', '==', publicProfileName)));
-            if (!routeDocByIdSnap.empty) {
-                 setCounselorId(publicProfileName)
-            } else {
-                console.log(`No route found for ${publicProfileName}`)
-                setCounselorId(null);
-            }
+            console.log(`No route found for ${publicProfileName}`);
+            setCounselorId(null);
         }
         setIsLoadingId(false);
     };

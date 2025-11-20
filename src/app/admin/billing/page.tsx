@@ -13,8 +13,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { NewQuoteForm } from '@/components/shared/new-quote-form';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAgency } from '@/context/agency-provider';
-import { useFirestore, useUser } from '@/firebase/provider';
-import { useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useFirestore, useUser, useCollection, useMemoFirebase, deleteDocumentNonBlocking, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, doc, getDocs, query, where } from 'firebase/firestore';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -772,7 +771,6 @@ export default function BillingPage() {
             quote,
             emailSettings: personalization.emailSettings,
             legalInfo: personalization.legalInfo,
-            agencyId: agency.id,
         });
         if (result.success) {
             toast({ title: 'Devis renvoyé', description: `Le devis ${quote.quoteNumber} a été renvoyé.` });

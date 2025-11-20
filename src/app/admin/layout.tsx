@@ -60,7 +60,9 @@ export default function AdminLayout({
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
   const handleLogout = async () => {
-    await auth.signOut();
+    if (auth) {
+      await auth.signOut();
+    }
     router.push('/');
   };
 
