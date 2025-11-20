@@ -105,7 +105,6 @@ export default function CounselorPublicProfilePage() {
     if (!publicProfileName || !firestore) return;
     
     const findCounselorId = async () => {
-        // This is the correct way to find the user ID from the public profile name
         const routesRef = collection(firestore, 'minisite_routes');
         const q = query(routesRef, where("publicProfileName", "==", publicProfileName), limit(1));
         
