@@ -95,12 +95,14 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                     const superAdminQuerySnap = await getDocs(q);
 
                     const isFirstUserEver = superAdminQuerySnap.empty;
+                    const isSpecificUser = firebaseUser.email === 'admin@example.com';
+                    const publicProfileName = isSpecificUser ? 'romain-roussey' : '';
 
                     const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
                     const firstName = nameParts.shift() || 'Nouveau';
                     const lastName = nameParts.join(' ') || 'Utilisateur';
 
-                    const newUserDoc = {
+                    const newUserDoc: any = {
                         id: firebaseUser.uid,
                         firstName: firstName,
                         lastName: lastName,
@@ -111,11 +113,33 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                         lastSignInTime: new Date().toISOString(),
                         phone: firebaseUser.phoneNumber || '',
                     };
+                    
+                    if (isSpecificUser) {
+                        newUserDoc.publicProfileName = publicProfileName;
+                    }
 
                     await setDoc(userDocRef, newUserDoc);
+                    
+                    if (isSpecificUser) {
+                        const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
+                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid });
+                    }
+
                 } else {
                     const lastSignInTime = new Date().toISOString();
-                    await setDoc(userDocRef, { lastSignInTime }, { merge: true });
+                    const userData = userDocSnap.data();
+                    const isSpecificUser = firebaseUser.email === 'admin@example.com';
+                    
+                    const updateData: { lastSignInTime: string, publicProfileName?: string } = { lastSignInTime };
+
+                    if (isSpecificUser && !userData.publicProfileName) {
+                        const publicProfileName = 'romain-roussey';
+                        updateData.publicProfileName = publicProfileName;
+                         const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
+                        await setDoc(routeDocRef, { counselorId: firebaseUser.uid });
+                    }
+
+                    await setDoc(userDocRef, updateData, { merge: true });
                 }
             } catch (error) {
                 console.error("Error handling user document:", error);
@@ -206,5 +230,3 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
   
   return memoized;
 }
-
-    
