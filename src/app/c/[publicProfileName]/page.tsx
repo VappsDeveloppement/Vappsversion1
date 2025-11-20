@@ -4,7 +4,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, notFound } from 'next/navigation';
 import { useDoc, useMemoFirebase } from '@/firebase';
-import { doc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AboutMeSection } from '@/components/shared/about-me-section';
@@ -105,18 +105,25 @@ export default function CounselorPublicProfilePage() {
     if (!publicProfileName || !firestore) return;
     
     const findCounselorId = async () => {
-        // The document ID in minisite_routes is the publicProfileName
-        const routeDocRef = doc(firestore, 'minisite_routes', publicProfileName);
-        const routeDocSnap = await getDocs(query(collection(firestore, 'minisite_routes'), where('__name__', '==', publicProfileName)));
+        // This is the correct way to find the user ID from the public profile name
+        const usersRef = collection(firestore, 'users');
+        const q = query(usersRef, where("publicProfileName", "==", publicProfileName), limit(1));
         
-        if (!routeDocSnap.empty) {
-            const routeDoc = routeDocSnap.docs[0];
-            setCounselorId(routeDoc.data().counselorId);
-        } else {
-            console.log(`No route found for ${publicProfileName}`);
+        try {
+            const querySnapshot = await getDocs(q);
+            if (!querySnapshot.empty) {
+                const userDoc = querySnapshot.docs[0];
+                setCounselorId(userDoc.id);
+            } else {
+                console.log(`No user found with publicProfileName: ${publicProfileName}`);
+                setCounselorId(null);
+            }
+        } catch (error) {
+            console.error("Error fetching counselor by public name:", error);
             setCounselorId(null);
+        } finally {
+            setIsLoadingId(false);
         }
-        setIsLoadingId(false);
     };
 
     findCounselorId();
