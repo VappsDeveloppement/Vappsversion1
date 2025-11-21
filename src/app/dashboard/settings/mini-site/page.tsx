@@ -417,7 +417,22 @@ export default function MiniSitePage() {
                             <div className="space-y-4 rounded-lg border p-4">
                                 <h4 className="font-medium">Arrière-plan</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField control={form.control} name="hero.bgColor" render={({ field }) => ( <FormItem> <FormLabel>Couleur de fond</FormLabel> <FormControl> <div className="flex items-center gap-2"> <Input type="color" {...field} className="p-1 h-10 w-10" /> <Input type="text" {...field} /> </div> </FormControl> <FormMessage /> </FormItem> )}/>
+                                    <FormField
+                                        control={form.control}
+                                        name="hero.bgColor"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Couleur de fond</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={field.value} onChange={field.onChange} className="p-1 h-10 w-10" />
+                                                        <Input type="text" value={field.value} onChange={field.onChange} />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                     <div>
                                         <FormLabel>Image de fond</FormLabel>
                                         <input type="file" ref={bgImageInputRef} onChange={(e) => handleFileUpload(e, 'hero.bgImageUrl')} className="hidden" accept="image/*" />
@@ -436,8 +451,38 @@ export default function MiniSitePage() {
                             <div className="space-y-4 rounded-lg border p-4">
                                 <h4 className="font-medium">Couleurs dominantes</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField control={form.control} name="hero.primaryColor" render={({ field }) => ( <FormItem> <FormLabel>Couleur primaire (boutons, liens)</FormLabel> <FormControl> <div className="flex items-center gap-2"> <Input type="color" {...field} className="p-1 h-10 w-10" /> <Input type="text" {...field} /> </div> </FormControl> <FormMessage /> </FormItem> )}/>
-                                    <FormField control={form.control} name="hero.secondaryColor" render={({ field }) => ( <FormItem> <FormLabel>Couleur secondaire</FormLabel> <FormControl> <div className="flex items-center gap-2"> <Input type="color" {...field} className="p-1 h-10 w-10" /> <Input type="text" {...field} /> </div> </FormControl> <FormMessage /> </FormItem> )}/>
+                                    <FormField
+                                        control={form.control}
+                                        name="hero.primaryColor"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Couleur primaire (boutons, liens)</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={field.value} onChange={field.onChange} className="p-1 h-10 w-10" />
+                                                        <Input type="text" value={field.value} onChange={field.onChange} />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hero.secondaryColor"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Couleur secondaire</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={field.value} onChange={field.onChange} className="p-1 h-10 w-10" />
+                                                        <Input type="text" value={field.value} onChange={field.onChange} />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
                             </div>
                         </div>
@@ -575,5 +620,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
-    
