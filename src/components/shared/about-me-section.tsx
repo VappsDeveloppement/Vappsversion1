@@ -8,10 +8,12 @@ type CounselorProfile = {
     publicBio?: string;
     miniSite?: {
         aboutSection?: {
+            enabled?: boolean;
             imageUrl?: string;
             videoUrl?: string;
             mediaText?: string;
             title?: string;
+            subtitle?: string;
             text?: string;
         }
     };
@@ -19,46 +21,37 @@ type CounselorProfile = {
 
 export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
     const aboutConfig = counselor.miniSite?.aboutSection || {};
+    
+    if (!aboutConfig.enabled) {
+        return null;
+    }
 
+    const title = aboutConfig.title || "Trouver Votre Voie";
+    const subtitle = aboutConfig.subtitle || "Une approche sur-mesure";
     const textToDisplay = aboutConfig.text || counselor.publicBio || "Contenu de la biographie à venir.";
+    const imageUrl = aboutConfig.imageUrl;
 
     return (
         <section className="py-16 sm:py-24 bg-white">
             <div className="container mx-auto px-4">
+                 <div className="text-center mb-12">
+                    <h2 className="text-3xl lg:text-4xl font-bold">{title}</h2>
+                    {subtitle && <p className="text-lg text-primary mt-2">{subtitle}</p>}
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
-                    {/* Colonne de gauche : Média */}
-                    <div className="space-y-4">
-                        {aboutConfig.videoUrl ? (
-                            <div className="aspect-video w-full rounded-lg overflow-hidden shadow-lg">
-                                <iframe
-                                    className="w-full h-full"
-                                    src={aboutConfig.videoUrl}
-                                    title="Vidéo de présentation"
-                                    frameBorder="0"
-                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                                    allowFullScreen
-                                ></iframe>
-                            </div>
-                        ) : aboutConfig.imageUrl ? (
-                             <div className="aspect-video w-full relative rounded-lg overflow-hidden shadow-lg">
-                                <Image
-                                    src={aboutConfig.imageUrl}
-                                    alt="Image de présentation"
-                                    layout="fill"
-                                    objectFit="cover"
-                                />
-                            </div>
-                        ) : null}
-                         {aboutConfig.mediaText && (
-                            <p className="text-center text-muted-foreground text-sm italic">
-                                {aboutConfig.mediaText}
-                            </p>
-                         )}
-                    </div>
-                    {/* Colonne de droite : Texte */}
-                    <div className="text-center md:text-left">
-                        <h2 className="text-3xl font-bold mb-4">{aboutConfig.title || "À Propos de Moi"}</h2>
-                        <p className="text-lg text-muted-foreground whitespace-pre-wrap">
+                    {imageUrl && (
+                        <div className="w-full h-64 md:h-80 relative rounded-lg overflow-hidden shadow-lg">
+                            <Image
+                                src={imageUrl}
+                                alt={title}
+                                fill
+                                className="object-cover"
+                                data-ai-hint="woman bike"
+                            />
+                        </div>
+                    )}
+                    <div className={!imageUrl ? "md:col-span-2 text-center" : ""}>
+                        <p className="text-muted-foreground text-lg">
                             {textToDisplay}
                         </p>
                     </div>
@@ -68,3 +61,4 @@ export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
     );
 }
 
+    

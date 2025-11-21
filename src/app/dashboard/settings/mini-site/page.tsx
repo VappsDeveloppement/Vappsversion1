@@ -23,6 +23,7 @@ import { CounselorHero } from '@/components/shared/counselor-hero';
 import Image from 'next/image';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { AboutMeSection } from '@/components/shared/about-me-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -52,10 +53,19 @@ const attentionSchema = z.object({
     text: z.string().optional(),
 });
 
+const aboutSchema = z.object({
+  enabled: z.boolean().default(true),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  text: z.string().optional(),
+  imageUrl: z.string().optional(),
+});
+
 
 const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
+    aboutSection: aboutSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -79,7 +89,14 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         enabled: true,
         title: "Section d'attention",
         text: "Mettez en avant un message important ici."
-    }
+    },
+    aboutSection: {
+        enabled: true,
+        title: 'Trouver Votre Voie',
+        subtitle: 'Une approche sur-mesure',
+        text: "Chez Vapps, nous croyons qu'il n'existe pas de chemin unique. C'est pourquoi nous proposons une approche holistique et inclusive, qui prend en compte votre personnalité, vos compétences, vos envies et vos contraintes.",
+        imageUrl: '',
+    },
 };
 
 function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
@@ -89,6 +106,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             ...userData?.miniSite,
             hero: formData.hero,
             attentionSection: formData.attentionSection,
+            aboutSection: formData.aboutSection,
         }
     };
     
@@ -109,6 +127,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
           <div className="h-[calc(100vh-80px)] overflow-y-auto bg-muted">
              <CounselorHero counselor={counselorPreviewData} />
              <AttentionSection counselor={counselorPreviewData} />
+             <AboutMeSection counselor={counselorPreviewData} />
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
                 <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
              </footer>
@@ -122,7 +141,9 @@ export default function MiniSitePage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const bgImageInputRef = useRef<HTMLInputElement>(null);
+  const aboutImageInputRef = useRef<HTMLInputElement>(null);
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -136,7 +157,7 @@ export default function MiniSitePage() {
     defaultValues: defaultMiniSiteConfig,
   });
 
-  const { watch } = form;
+  const { watch, setValue } = form;
   const watchedFormData = watch();
   
   useEffect(() => {
@@ -144,22 +165,33 @@ export default function MiniSitePage() {
         form.reset({
             hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
             attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
+            aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
         });
     }
   }, [userData, form]);
 
   const [bgImagePreview, setBgImagePreview] = useState(form.getValues('hero.bgImageUrl'));
+  const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
 
     useEffect(() => {
         setBgImagePreview(form.watch('hero.bgImageUrl'));
     }, [form.watch('hero.bgImageUrl')]);
     
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    useEffect(() => {
+        setAboutImagePreview(form.watch('aboutSection.imageUrl'));
+    }, [form.watch('aboutSection.imageUrl')]);
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: keyof MiniSiteFormData | `hero.bgImageUrl` | `aboutSection.imageUrl`) => {
       const file = event.target.files?.[0];
       if (file) {
           const base64 = await toBase64(file);
-          setBgImagePreview(base64);
-          form.setValue('hero.bgImageUrl', base64);
+          if (fieldName === 'hero.bgImageUrl') {
+            setBgImagePreview(base64);
+            setValue('hero.bgImageUrl', base64);
+          } else if (fieldName === 'aboutSection.imageUrl') {
+            setAboutImagePreview(base64);
+            setValue('aboutSection.imageUrl', base64);
+          }
       }
   };
 
@@ -172,6 +204,7 @@ export default function MiniSitePage() {
                 ...(userData?.miniSite || {}),
                 hero: data.hero,
                 attentionSection: data.attentionSection,
+                aboutSection: data.aboutSection,
             },
         }, { merge: true });
         toast({ title: "Paramètres enregistrés", description: "Votre mini-site a été mis à jour." });
@@ -345,13 +378,13 @@ export default function MiniSitePage() {
                             />
                             <div>
                                 <FormLabel>Image de fond</FormLabel>
+                                <input type="file" ref={bgImageInputRef} onChange={(e) => handleFileUpload(e, 'hero.bgImageUrl')} className="hidden" accept="image/*" />
                                 <div className="mt-2 flex items-center gap-4">
                                         <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
                                         {bgImagePreview ? <Image src={bgImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
                                     </div>
-                                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
                                     <div className="flex flex-col gap-1">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => bgImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
                                         <Button type="button" variant="ghost" size="sm" onClick={() => { setBgImagePreview(''); form.setValue('hero.bgImageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
                                     </div>
                                 </div>
@@ -447,6 +480,82 @@ export default function MiniSitePage() {
                       </div>
                   </AccordionContent>
               </AccordionItem>
+
+              <AccordionItem value="about-section" className='border rounded-lg overflow-hidden'>
+                  <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "À Propos"</AccordionTrigger>
+                  <AccordionContent>
+                      <div className="p-6 space-y-6">
+                           <FormField
+                            control={form.control}
+                            name="aboutSection.enabled"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Activer la section</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           <FormField
+                              control={form.control}
+                              name="aboutSection.title"
+                              render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel>Titre</FormLabel>
+                                      <FormControl>
+                                          <Input {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                  </FormItem>
+                              )}
+                          />
+                           <FormField
+                              control={form.control}
+                              name="aboutSection.subtitle"
+                              render={({ field }) => (
+                                  <FormItem>
+                                      <FormLabel>Sous-titre</FormLabel>
+                                      <FormControl>
+                                          <Input {...field} />
+                                      </FormControl>
+                                      <FormMessage />
+                                  </FormItem>
+                              )}
+                          />
+                        </div>
+                        <FormField
+                            control={form.control}
+                            name="aboutSection.text"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Texte</FormLabel>
+                                    <FormControl>
+                                        <Textarea {...field} rows={5}/>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div>
+                            <FormLabel>Image</FormLabel>
+                            <input type="file" ref={aboutImageInputRef} onChange={(e) => handleFileUpload(e, 'aboutSection.imageUrl')} className="hidden" accept="image/*" />
+                            <div className="mt-2 flex items-center gap-4">
+                                <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                    {aboutImagePreview ? <Image src={aboutImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => aboutImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => { setAboutImagePreview(''); form.setValue('aboutSection.imageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                </div>
+                            </div>
+                        </div>
+                      </div>
+                  </AccordionContent>
+              </AccordionItem>
             </Accordion>
 
              <div className="flex justify-end pt-4">
@@ -460,5 +569,7 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
 
     
