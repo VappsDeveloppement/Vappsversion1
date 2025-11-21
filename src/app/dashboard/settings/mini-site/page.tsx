@@ -480,26 +480,23 @@ export default function MiniSitePage() {
                         <div className="p-6 space-y-6">
                             <FormField control={form.control} name="activitiesSection.title" render={({ field }) => ( <FormItem> <FormLabel>Titre</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
                             <FormField control={form.control} name="activitiesSection.text" render={({ field }) => ( <FormItem> <FormLabel>Texte</FormLabel> <FormControl> <Textarea {...field} rows={8}/> </FormControl> <FormMessage /> </FormItem> )}/>
-                            <div>
-                                <FormLabel>Média (Vidéo ou Image)</FormLabel>
-                                <div className="mt-2 p-4 border rounded-md space-y-4">
-                                    <FormField control={form.control} name="activitiesSection.videoUrl" render={({ field }) => ( <FormItem> <FormLabel>URL de la vidéo (prioritaire)</FormLabel> <FormControl> <Input {...field} placeholder="https://www.youtube.com/embed/..."/> </FormControl> <FormMessage /> </FormItem> )}/>
-                                    <div className="flex items-center gap-2">
-                                        <div className="flex-grow border-t"></div>
-                                        <span className="text-xs text-muted-foreground">OU</span>
-                                        <div className="flex-grow border-t"></div>
-                                    </div>
-                                    <div>
-                                        <FormLabel>Image</FormLabel>
-                                        <div className="mt-2 flex items-center gap-4">
-                                            <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
-                                                {activitiesImagePreview ? <Image src={activitiesImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Image</span>}
-                                            </div>
-                                            <input type="file" ref={activitiesImageInputRef} onChange={(e) => handleFileUpload(e, 'activitiesSection.imageUrl')} className="hidden" accept="image/*" />
-                                            <div className="flex flex-col gap-1">
-                                                <Button type="button" variant="outline" size="sm" onClick={() => activitiesImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Changer l'image</Button>
-                                                <Button type="button" variant="ghost" size="sm" onClick={() => setValue('activitiesSection.imageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
-                                            </div>
+                            <div className="mt-2 p-4 border rounded-md space-y-4">
+                                <FormField control={form.control} name="activitiesSection.videoUrl" render={({ field }) => ( <FormItem> <FormLabel>URL de la vidéo (prioritaire)</FormLabel> <FormControl> <Input {...field} placeholder="https://www.youtube.com/embed/..."/> </FormControl> <FormMessage /> </FormItem> )}/>
+                                <div className="flex items-center gap-2">
+                                    <div className="flex-grow border-t"></div>
+                                    <span className="text-xs text-muted-foreground">OU</span>
+                                    <div className="flex-grow border-t"></div>
+                                </div>
+                                <div>
+                                    <FormLabel>Image</FormLabel>
+                                    <div className="mt-2 flex items-center gap-4">
+                                        <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                            {activitiesImagePreview ? <Image src={activitiesImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Image</span>}
+                                        </div>
+                                        <input type="file" ref={activitiesImageInputRef} onChange={(e) => handleFileUpload(e, 'activitiesSection.imageUrl')} className="hidden" accept="image/*" />
+                                        <div className="flex flex-col gap-1">
+                                            <Button type="button" variant="outline" size="sm" onClick={() => activitiesImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Changer l'image</Button>
+                                            <Button type="button" variant="ghost" size="sm" onClick={() => setValue('activitiesSection.imageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
                                         </div>
                                     </div>
                                 </div>
@@ -578,3 +575,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
