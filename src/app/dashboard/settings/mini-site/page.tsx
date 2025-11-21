@@ -9,11 +9,10 @@ import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/fire
 import { useFirestore } from '@/firebase/provider';
 import { doc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, Upload, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Eye, Upload, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -36,13 +35,12 @@ const toBase64 = (file: File): Promise<string> =>
 const heroSchema = z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
+    text: z.string().optional(),
     ctaText: z.string().optional(),
     ctaLink: z.string().optional(),
-    showPhoto: z.boolean().default(false),
+    showPhoto: z.boolean().default(true),
     bgColor: z.string().optional(),
     bgImageUrl: z.string().optional(),
-    showPhone: z.boolean().default(false),
-    showLocation: z.boolean().default(false),
     primaryColor: z.string().optional(),
     secondaryColor: z.string().optional(),
 });
@@ -75,15 +73,14 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
     hero: {
         title: 'Donnez un nouvel élan à votre carrière',
         subtitle: 'Un accompagnement personnalisé pour atteindre vos objectifs.',
+        text: "Avec plus de 10 ans d'expérience, je vous guide vers une carrière alignée avec vos valeurs et ambitions. Ensemble, nous révélerons votre plein potentiel.",
         ctaText: 'Prendre rendez-vous',
         ctaLink: '#contact',
         showPhoto: true,
-        bgColor: '#f1f5f9',
+        bgColor: '#111827',
         bgImageUrl: '',
-        showPhone: false,
-        showLocation: false,
-        primaryColor: '#10B981',
-        secondaryColor: '#059669',
+        primaryColor: '#0ea5e9',
+        secondaryColor: '#f8fafc',
     },
     attentionSection: {
         enabled: true,
@@ -92,9 +89,9 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
     },
     aboutSection: {
         enabled: true,
-        title: 'Trouver Votre Voie',
-        subtitle: 'Une approche sur-mesure',
-        text: "Chez Vapps, nous croyons qu'il n'existe pas de chemin unique. C'est pourquoi nous proposons une approche holistique et inclusive, qui prend en compte votre personnalité, vos compétences, vos envies et vos contraintes.",
+        title: 'À propos de moi',
+        subtitle: '',
+        text: "Votre biographie ou texte de présentation s'affichera ici.",
         imageUrl: '',
     },
 };
@@ -181,7 +178,7 @@ export default function MiniSitePage() {
         setAboutImagePreview(form.watch('aboutSection.imageUrl'));
     }, [form.watch('aboutSection.imageUrl')]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: keyof MiniSiteFormData | `hero.bgImageUrl` | `aboutSection.imageUrl`) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: `hero.bgImageUrl` | `aboutSection.imageUrl`) => {
       const file = event.target.files?.[0];
       if (file) {
           const base64 = await toBase64(file);
@@ -261,7 +258,7 @@ export default function MiniSitePage() {
                             <FormItem>
                                 <FormLabel>Titre principal</FormLabel>
                                 <FormControl>
-                                    <Input {...field} placeholder="Votre titre accrocheur..." />
+                                    <Input {...field} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -274,7 +271,20 @@ export default function MiniSitePage() {
                             <FormItem>
                                 <FormLabel>Sous-titre</FormLabel>
                                 <FormControl>
-                                    <Textarea {...field} placeholder="Décrivez votre offre en une phrase..." />
+                                    <Textarea {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="hero.text"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Texte de présentation</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} rows={4} />
                                 </FormControl>
                                 <FormMessage />
                             </FormItem>
@@ -288,7 +298,7 @@ export default function MiniSitePage() {
                                 <FormItem>
                                     <FormLabel>Texte du bouton d'action</FormLabel>
                                     <FormControl>
-                                        <Input {...field} placeholder="Prendre RDV" />
+                                        <Input {...field} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -311,7 +321,6 @@ export default function MiniSitePage() {
 
                     <div className="space-y-4 rounded-lg border p-4">
                         <h4 className="font-medium">Options d'affichage</h4>
-                        <div className="space-y-4">
                         <FormField
                             control={form.control}
                             name="hero.showPhoto"
@@ -326,35 +335,6 @@ export default function MiniSitePage() {
                                 </FormItem>
                             )}
                         />
-                            <FormField
-                            control={form.control}
-                            name="hero.showPhone"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Afficher mon numéro de téléphone</FormLabel>
-                                    </div>
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                            <FormField
-                            control={form.control}
-                            name="hero.showLocation"
-                            render={({ field }) => (
-                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                    <div className="space-y-0.5">
-                                        <FormLabel>Afficher ma localité</FormLabel>
-                                    </div>
-                                    <FormControl>
-                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                    </FormControl>
-                                </FormItem>
-                            )}
-                        />
-                        </div>
                     </div>
 
                     <div className="space-y-4 rounded-lg border p-4">
@@ -400,7 +380,7 @@ export default function MiniSitePage() {
                                 name="hero.primaryColor"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Couleur primaire</FormLabel>
+                                        <FormLabel>Couleur primaire (boutons, liens)</FormLabel>
                                         <FormControl>
                                             <div className="flex items-center gap-2">
                                                 <Input type="color" {...field} className="p-1 h-10 w-10" />
@@ -499,34 +479,19 @@ export default function MiniSitePage() {
                                 </FormItem>
                             )}
                         />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                           <FormField
-                              control={form.control}
-                              name="aboutSection.title"
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel>Titre</FormLabel>
-                                      <FormControl>
-                                          <Input {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
-                           <FormField
-                              control={form.control}
-                              name="aboutSection.subtitle"
-                              render={({ field }) => (
-                                  <FormItem>
-                                      <FormLabel>Sous-titre</FormLabel>
-                                      <FormControl>
-                                          <Input {...field} />
-                                      </FormControl>
-                                      <FormMessage />
-                                  </FormItem>
-                              )}
-                          />
-                        </div>
+                        <FormField
+                            control={form.control}
+                            name="aboutSection.title"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Titre</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                         <FormField
                             control={form.control}
                             name="aboutSection.text"
@@ -534,7 +499,7 @@ export default function MiniSitePage() {
                                 <FormItem>
                                     <FormLabel>Texte</FormLabel>
                                     <FormControl>
-                                        <Textarea {...field} rows={5}/>
+                                        <Textarea {...field} rows={8}/>
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -569,7 +534,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
-    
-
-    
