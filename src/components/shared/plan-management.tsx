@@ -51,13 +51,11 @@ import { PlusCircle, Trash2, Edit, Loader2, Upload, Star } from 'lucide-react';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
-// Assuming Contract type is defined elsewhere and imported
 interface Contract {
     id: string;
     title: string;
     content: string;
 }
-
 
 export type Plan = {
   id: string;
@@ -124,18 +122,6 @@ export function PlanManagement() {
 
   const form = useForm<PlanFormData>({
     resolver: zodResolver(planSchema),
-    defaultValues: {
-      name: '',
-      description: '',
-      price: 0,
-      period: '/prestation',
-      features: [],
-      imageUrl: '',
-      cta: 'Choisir cette formule',
-      contractId: 'none',
-      isPublic: false,
-      isFeatured: false,
-    },
   });
 
   const { fields, append, remove } = useFieldArray({
@@ -147,33 +133,44 @@ export function PlanManagement() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (isSheetOpen) {
-      if (editingPlan) {
-          form.reset({
-              ...editingPlan,
-              price: editingPlan.price || 0,
-              features: editingPlan.features.map(f => ({ value: f })),
-              cta: editingPlan.cta || 'Choisir cette formule',
-              contractId: editingPlan.contractId || 'none'
-          });
-          setImagePreview(editingPlan.imageUrl || null);
-      } else {
-          form.reset({
-              name: '',
-              description: '',
-              price: 0,
-              period: '/prestation',
-              features: [],
-              imageUrl: '',
-              cta: 'Choisir cette formule',
-              contractId: 'none',
-              isPublic: false,
-              isFeatured: false,
-          });
-          setImagePreview(null);
-      }
+    if (!isSheetOpen) {
+        setEditingPlan(null);
+        form.reset();
+        return;
     }
-  }, [editingPlan, isSheetOpen, form]);
+
+    if (editingPlan) {
+        // Mode édition
+        form.reset({
+            name: editingPlan.name,
+            description: editingPlan.description || '',
+            price: editingPlan.price,
+            period: editingPlan.period,
+            features: editingPlan.features ? editingPlan.features.map(f => ({ value: f })) : [],
+            imageUrl: editingPlan.imageUrl || '',
+            cta: editingPlan.cta || 'Choisir cette formule',
+            contractId: editingPlan.contractId || 'none',
+            isPublic: editingPlan.isPublic || false,
+            isFeatured: editingPlan.isFeatured || false,
+        });
+        setImagePreview(editingPlan.imageUrl || null);
+    } else {
+        // Mode création
+        form.reset({
+            name: '',
+            description: '',
+            price: 0,
+            period: '/prestation',
+            features: [],
+            imageUrl: '',
+            cta: 'Choisir cette formule',
+            contractId: 'none',
+            isPublic: false,
+            isFeatured: false,
+        });
+        setImagePreview(null);
+    }
+}, [isSheetOpen, editingPlan, form]);
 
 
   const handleEdit = (plan: Plan) => {
@@ -218,7 +215,6 @@ export function PlanManagement() {
       delete (planData as Partial<typeof planData>).contractId;
     }
 
-
     const batch = writeBatch(firestore);
 
     try {
@@ -247,8 +243,6 @@ export function PlanManagement() {
       await batch.commit();
 
       setIsSheetOpen(false);
-      setEditingPlan(null);
-      form.reset();
     } catch (error) {
       console.error(error);
       toast({ variant: 'destructive', title: 'Erreur', description: 'Une erreur est survenue.' });
@@ -408,7 +402,7 @@ export function PlanManagement() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Contrat à lier (Optionnel)</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value || 'none'}>
+                                    <Select onValueChange={field.onChange} value={field.value}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Sélectionner un contrat à associer..." />
@@ -428,7 +422,6 @@ export function PlanManagement() {
                                 </FormItem>
                             )}
                         />
-
 
                          <FormField
                             control={form.control}
@@ -475,7 +468,7 @@ export function PlanManagement() {
                             <SheetClose asChild>
                                 <Button type="button" variant="outline">Annuler</Button>
                             </SheetClose>
-                            <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
+                            <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 {editingPlan ? 'Sauvegarder les modifications' : 'Créer le modèle'}
                             </Button>
