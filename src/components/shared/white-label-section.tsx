@@ -8,7 +8,7 @@ import Image from "next/image";
 import { Button } from "../ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '../ui/skeleton';
@@ -44,7 +44,7 @@ type Plan = {
   cta?: string;
   counselorId?: string;
   contractId?: string;
-  paypalSubscriptionId?: string; // This was missing
+  paypalSubscriptionId?: string;
 };
 
 
@@ -93,17 +93,14 @@ function PlanSelectorCard() {
 
             // 2. Create user document in Firestore
             const userDocRef = doc(firestore, 'users', user.uid);
-            await setDoc(userDocRef, {
-                id: user.uid,
+             await setDocumentNonBlocking(userDocRef, {
                 firstName: values.firstName,
                 lastName: values.lastName,
-                email: values.email,
                 role: 'conseiller', // New users from this flow are counselors
                 planId: selectedPlan.id,
                 subscriptionStatus: 'pending_payment',
                 counselorId: user.uid, // A counselor is their own counselor
-                dateJoined: new Date().toISOString(),
-            });
+            }, { merge: true });
 
             toast({
                 title: "Compte créé avec succès !",
