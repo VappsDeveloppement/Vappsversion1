@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Loader2, Upload, Trash2, Eye, Link as LinkIcon, PlusCircle, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
@@ -139,6 +139,12 @@ const jobOffersSectionSchema = z.object({
     offers: z.array(jobOfferSchema).optional(),
 }).optional();
 
+const contactSectionSchema = z.object({
+  enabled: z.boolean().default(false),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+}).optional();
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -150,6 +156,7 @@ const miniSiteSchema = z.object({
   activitiesSection: activitiesSchema,
   pricingSection: pricingSchema,
   jobOffersSection: jobOffersSectionSchema,
+  contactSection: contactSectionSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -285,6 +292,11 @@ export default function MiniSitePage() {
         subtitle: 'Rejoignez une équipe dynamique et passionnée.',
         offers: [],
       },
+      contactSection: {
+        enabled: false,
+        title: "Contactez-moi",
+        subtitle: "Un projet, une question ? N'hésitez pas."
+      },
     },
   });
   
@@ -338,6 +350,10 @@ export default function MiniSitePage() {
             ...form.getValues().jobOffersSection,
             ...userData.miniSite.jobOffersSection,
             offers: userData.miniSite.jobOffersSection?.offers || [],
+         },
+         contactSection: {
+            ...form.getValues().contactSection,
+            ...userData.miniSite.contactSection,
          },
        };
       form.reset(initialMiniSiteData);
@@ -523,7 +539,7 @@ export default function MiniSitePage() {
                     <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Attention"</AccordionTrigger>
                     <AccordionContent>
                         <div className="space-y-6 p-6">
-                             <FormField control={form.control} name="attentionSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel><FormDescription>Active ou désactive la section "Attention" sur votre mini-site.</FormDescription></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                             <FormField control={form.control} name="attentionSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="attentionSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Titre de la section" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                              <FormField control={form.control} name="attentionSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre (optionnel)</FormLabel><FormControl><Input placeholder="Sous-titre" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="attentionSection.text" render={({ field }) => (<FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea placeholder="Contenu de la section..." {...field} rows={5} /></FormControl><FormMessage /></FormItem>)}/>
@@ -678,9 +694,9 @@ export default function MiniSitePage() {
                                     <FormItem>
                                         <div className="mb-4">
                                             <FormLabel className="text-base">Formules à afficher</FormLabel>
-                                            <FormDescription>
+                                            <p className="text-sm text-muted-foreground">
                                                 Cochez les modèles de prestations que vous souhaitez afficher sur votre mini-site.
-                                            </FormDescription>
+                                            </p>
                                         </div>
                                         {arePlansLoading ? <Skeleton className="h-20 w-full" /> : counselorPlans && counselorPlans.length > 0 ? (
                                             counselorPlans.map((plan) => (
@@ -795,7 +811,7 @@ export default function MiniSitePage() {
                                         <FormControl>
                                             <Textarea placeholder="Coaching individuel, Bilan de compétences, ..." {...field} />
                                         </FormControl>
-                                        <FormDescription>Séparez chaque centre d'intérêt par une virgule.</FormDescription>
+                                        <p className="text-sm text-muted-foreground">Séparez chaque centre d'intérêt par une virgule.</p>
                                         <FormMessage />
                                     </FormItem>
                                 )}/>
@@ -854,6 +870,17 @@ export default function MiniSitePage() {
                                     </Button>
                                 </div>
                             </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="contact-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Contact"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="contactSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="contactSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Contactez-moi" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="contactSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Un projet, une question ? N'hésitez pas." {...field} /></FormControl><FormMessage /></FormItem>)}/>
                         </div>
                     </AccordionContent>
                 </AccordionItem>

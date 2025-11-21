@@ -20,6 +20,7 @@ import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorActivitiesSection } from '@/components/shared/counselor-activities-section';
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 import { CounselorJobOffersSection } from '@/components/shared/counselor-job-offers-section';
+import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 
 type CounselorProfile = {
     id: string;
@@ -42,6 +43,7 @@ type CounselorProfile = {
         pricingSection?: any;
         activitiesSection?: any;
         jobOffersSection?: any;
+        contactSection?: any;
     };
     dashboardTheme?: {
         primaryColor?: string;
@@ -107,6 +109,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorPricingSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
         <CounselorJobOffersSection counselor={counselor} />
+        <CounselorContactSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>

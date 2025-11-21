@@ -103,6 +103,12 @@ interface PricingSectionPersonalization {
     planIds: string[];
 }
 
+interface ContactSectionPersonalization {
+  enabled: boolean;
+  title: string;
+  subtitle: string;
+}
+
 
 interface PaymentSettings {
     ribIban: string;
@@ -183,6 +189,7 @@ interface Personalization {
     parcoursSection: ParcoursSectionPersonalization;
     activitiesSection: ActivitiesSectionPersonalization;
     pricingSection: PricingSectionPersonalization;
+    contactSection: ContactSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
     gdprSettings: GdprSettings;
@@ -364,6 +371,11 @@ const defaultPersonalization: Personalization = {
         subtitle: '',
         planIds: [],
       },
+    contactSection: {
+      enabled: false,
+      title: "Contactez-moi",
+      subtitle: "Un projet, une question ? N'hésitez pas."
+    },
     paymentSettings: {
         ribIban: "",
         ribBic: "",
@@ -493,6 +505,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                         ...defaultPersonalization.pricingSection,
                         ...(fetchedAgencyData.personalization?.pricingSection || {}),
                     },
+                    contactSection: {
+                        ...defaultPersonalization.contactSection,
+                        ...(fetchedAgencyData.personalization?.contactSection || {}),
+                    },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,
                         ...(fetchedAgencyData.personalization?.paymentSettings || {})
@@ -556,5 +572,3 @@ export function useAgency() {
     }
     return context;
 };
-
-    
