@@ -5,8 +5,9 @@ import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
-import { Calendar, ArrowRight } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Calendar, ArrowRight, CheckCircle } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../ui/card';
+import { Badge } from '../ui/badge';
 
 type ContactLink = {
     text: string;
@@ -32,12 +33,19 @@ type CounselorProfile = {
             eventsButtonText?: string;
             eventsButtonLink?: string;
         }
+        interestsSection?: {
+            enabled?: boolean;
+            title?: string;
+            features?: string[];
+        }
     };
 };
 
 export function CounselorContactSection({ counselor }: { counselor: CounselorProfile }) {
     const contactConfig = counselor.miniSite?.contactSection || {};
-    const { enabled, title, text, imageUrl, videoUrl, links, events, eventsButtonText, eventsButtonLink } = contactConfig;
+    const interestsConfig = counselor.miniSite?.interestsSection || {};
+
+    const { enabled, title, text, imageUrl, videoUrl, events, eventsButtonText, eventsButtonLink } = contactConfig;
 
     if (!enabled) {
         return null;
@@ -83,9 +91,23 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
-                    {/* Left Column: Media */}
-                    <div>
+                    {/* Left Column: Media & Interests */}
+                    <div className="space-y-8">
                         {renderMedia()}
+
+                        {interestsConfig.enabled && interestsConfig.features && interestsConfig.features.length > 0 && (
+                            <div>
+                                <h3 className="text-2xl font-bold mb-4">{interestsConfig.title || 'Mes centres d\'intérêt'}</h3>
+                                <div className="flex flex-wrap justify-start gap-3">
+                                    {interestsConfig.features.map((feature, index) => (
+                                        <Badge key={index} variant="secondary" className="text-base px-4 py-2 flex items-center gap-2">
+                                            <CheckCircle className="h-4 w-4" />
+                                            {feature}
+                                        </Badge>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                     
                     {/* Right Column: Events */}
@@ -129,4 +151,3 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
         </section>
     );
 }
-

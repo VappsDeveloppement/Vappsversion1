@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
-import { InterestsSection } from '@/components/shared/interests-section';
 
 type CounselorProfile = {
     id: string;
@@ -102,7 +101,6 @@ export default function CounselorPublicProfilePage() {
         <ParcoursSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
-        <InterestsSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
