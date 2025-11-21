@@ -267,6 +267,20 @@
                     "eventsButtonText": { "type": "string" },
                     "eventsButtonLink": { "type": "string" }
                 }
+            },
+            "jobOffersSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "offers": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/entities/JobOffer"
+                        }
+                    }
+                }
             }
         }
     },
@@ -730,6 +744,18 @@
         "counselorId": { "type": "string", "description": "The ID of the counselor this FAQ item belongs to, if scope is 'counselor'." }
       },
       "required": ["id", "category", "question", "content", "scope"]
+    },
+    "JobOffer": {
+        "title": "Job Offer",
+        "type": "object",
+        "description": "Represents a single job offer.",
+        "properties": {
+            "id": { "type": "string" },
+            "title": { "type": "string" },
+            "contractType": { "type": "string" },
+            "location": { "type": "string" }
+        },
+        "required": ["id", "title", "contractType", "location"]
     }
   },
   "auth": {
@@ -887,4 +913,3 @@
   }
 }
 
-    

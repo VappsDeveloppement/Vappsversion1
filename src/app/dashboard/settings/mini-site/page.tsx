@@ -125,6 +125,20 @@ const pricingSchema = z.object({
     planIds: z.array(z.string()).optional(),
 }).optional();
 
+const jobOfferSchema = z.object({
+    id: z.string(),
+    title: z.string().min(1, 'Le titre est requis.'),
+    contractType: z.string().min(1, 'Le type de contrat est requis.'),
+    location: z.string().min(1, 'Le lieu est requis.'),
+});
+
+const jobOffersSectionSchema = z.object({
+    enabled: z.boolean().default(false),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    offers: z.array(jobOfferSchema).optional(),
+}).optional();
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -135,12 +149,14 @@ const miniSiteSchema = z.object({
   ctaSection: ctaSchema.optional(),
   activitiesSection: activitiesSchema,
   pricingSection: pricingSchema,
+  jobOffersSection: jobOffersSectionSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
 export type ServiceItem = z.infer<typeof serviceItemSchema>;
 export type ParcoursStep = z.infer<typeof parcoursStepSchema>;
 export type EventItem = z.infer<typeof eventItemSchema>;
+export type JobOffer = z.infer<typeof jobOfferSchema>;
 
 
 type UserProfile = {
@@ -262,7 +278,13 @@ export default function MiniSitePage() {
         title: 'Mes Formules',
         subtitle: '',
         planIds: [],
-      }
+      },
+      jobOffersSection: {
+        enabled: false,
+        title: 'Nos Offres d\'Emploi',
+        subtitle: 'Rejoignez une équipe dynamique et passionnée.',
+        offers: [],
+      },
     },
   });
   
@@ -279,6 +301,11 @@ export default function MiniSitePage() {
     const { fields: eventFields, append: appendEvent, remove: removeEvent } = useFieldArray({
         control: form.control,
         name: "activitiesSection.events",
+    });
+
+    const { fields: jobOfferFields, append: appendJobOffer, remove: removeJobOffer } = useFieldArray({
+        control: form.control,
+        name: "jobOffersSection.offers",
     });
 
 
@@ -306,7 +333,12 @@ export default function MiniSitePage() {
             ...form.getValues().pricingSection,
             ...userData.miniSite.pricingSection,
             planIds: userData.miniSite.pricingSection?.planIds || [],
-         }
+         },
+         jobOffersSection: {
+            ...form.getValues().jobOffersSection,
+            ...userData.miniSite.jobOffersSection,
+            offers: userData.miniSite.jobOffersSection?.offers || [],
+         },
        };
       form.reset(initialMiniSiteData);
       setHeroBgImagePreview(userData.miniSite.hero?.bgImageUrl);
@@ -788,6 +820,39 @@ export default function MiniSitePage() {
                                 </div>
                                 <FormField control={form.control} name="activitiesSection.eventsButtonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="J'ai participé à un évènement" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="activitiesSection.eventsButtonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+                
+                <AccordionItem value="job-offers-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Offres d'emploi"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="jobOffersSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="jobOffersSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes Offres d'Emploi" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="jobOffersSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Rejoignez mon équipe" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            
+                            <div>
+                                <Label>Liste des offres</Label>
+                                <div className="space-y-4 mt-2">
+                                    {jobOfferFields.map((field, index) => (
+                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-medium">Offre {index + 1}</h4>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeJobOffer(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.contractType`} render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.location`} render={({ field }) => ( <FormItem><FormLabel>Lieu</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendJobOffer({ id: `job-${Date.now()}`, title: 'Nouveau Poste', contractType: 'CDI', location: 'À distance'})}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une offre
+                                    </Button>
+                                </div>
                             </div>
                         </div>
                     </AccordionContent>
