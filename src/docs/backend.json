@@ -1,5 +1,4 @@
 
-
 {
   "entities": {
     "User": {
@@ -694,6 +693,14 @@
         "isPublic": {
           "type": "boolean",
           "description": "Whether the plan should be displayed on the public pricing page. If false, it's a counselor-specific template."
+        },
+        "cta": {
+          "type": "string",
+          "description": "The text for the call-to-action button."
+        },
+        "contractId": {
+          "type": "string",
+          "description": "The ID of the contract to be displayed when the CTA is clicked."
         },
         "paypalSubscriptionId": {
             "type": "string",

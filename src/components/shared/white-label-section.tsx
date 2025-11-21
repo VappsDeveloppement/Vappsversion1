@@ -10,7 +10,6 @@ import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
-import type { Plan } from './plan-management';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -30,6 +29,24 @@ const signupSchema = z.object({
     email: z.string().email("Veuillez entrer une adresse e-mail valide."),
     password: z.string().min(6, "Le mot de passe doit comporter au moins 6 caractères."),
 });
+
+// The local Plan type must include paypalSubscriptionId
+type Plan = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  period: string;
+  features: string[];
+  isFeatured: boolean;
+  isPublic: boolean;
+  imageUrl?: string;
+  cta?: string;
+  counselorId?: string;
+  contractId?: string;
+  paypalSubscriptionId?: string; // This was missing
+};
+
 
 function PlanSelectorCard() {
     const firestore = useFirestore();
