@@ -7,7 +7,7 @@ import { AlertCircle, Check, Loader2, Percent, Star, Users } from "lucide-react"
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
-import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, setDoc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -22,6 +22,9 @@ import * as z from 'zod';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { useRouter } from 'next/navigation';
+import { ScrollArea } from '../ui/scroll-area';
+import { Checkbox } from '../ui/checkbox';
+import { Label } from '../ui/label';
 
 const signupSchema = z.object({
     firstName: z.string().min(1, "Le prénom est requis."),
@@ -30,7 +33,6 @@ const signupSchema = z.object({
     password: z.string().min(6, "Le mot de passe doit comporter au moins 6 caractères."),
 });
 
-// The local Plan type must include paypalSubscriptionId
 type Plan = {
   id: string;
   name: string;
@@ -47,6 +49,12 @@ type Plan = {
   paypalSubscriptionId?: string;
 };
 
+type Contract = {
+    id: string;
+    title: string;
+    content: string;
+};
+
 
 function PlanSelectorCard() {
     const firestore = useFirestore();
@@ -57,6 +65,7 @@ function PlanSelectorCard() {
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [contractAccepted, setContractAccepted] = useState(false);
 
     const form = useForm<z.infer<typeof signupSchema>>({
         resolver: zodResolver(signupSchema),
@@ -69,11 +78,18 @@ function PlanSelectorCard() {
     }, [firestore]);
 
     const { data: plans, isLoading } = useCollection<Plan>(publicPlansQuery);
-
+    
     const selectedPlan = useMemo(() => {
         if (!selectedPlanId || !plans) return null;
         return plans.find(p => p.id === selectedPlanId);
     }, [selectedPlanId, plans]);
+
+    const contractRef = useMemoFirebase(() => {
+        if (!selectedPlan?.contractId) return null;
+        return doc(firestore, 'contracts', selectedPlan.contractId);
+    }, [firestore, selectedPlan]);
+
+    const { data: contract, isLoading: isContractLoading } = useDoc<Contract>(contractRef);
     
     React.useEffect(() => {
         if (plans && plans.length > 0 && !selectedPlanId) {
@@ -81,25 +97,31 @@ function PlanSelectorCard() {
             setSelectedPlanId(featured ? featured.id : plans[0].id);
         }
     }, [plans, selectedPlanId]);
+    
+    React.useEffect(() => {
+        // Reset contract acceptance when dialog opens or plan changes
+        if(isDialogOpen) {
+            setContractAccepted(false);
+        }
+    }, [isDialogOpen, selectedPlanId]);
+
 
     const onSubmit = async (values: z.infer<typeof signupSchema>) => {
         if (!selectedPlan) return;
         setIsSubmitting(true);
 
         try {
-            // 1. Create user in Firebase Auth
             const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
             const user = userCredential.user;
 
-            // 2. Create user document in Firestore
             const userDocRef = doc(firestore, 'users', user.uid);
              await setDocumentNonBlocking(userDocRef, {
                 firstName: values.firstName,
                 lastName: values.lastName,
-                role: 'conseiller', // New users from this flow are counselors
+                role: 'conseiller',
                 planId: selectedPlan.id,
                 subscriptionStatus: 'pending_payment',
-                counselorId: user.uid, // A counselor is their own counselor
+                counselorId: user.uid,
             }, { merge: true });
 
             toast({
@@ -107,14 +129,13 @@ function PlanSelectorCard() {
                 description: "Vous allez être redirigé pour finaliser votre abonnement.",
             });
 
-            // 3. Redirect to PayPal
             if (selectedPlan.paypalSubscriptionId) {
                 const paypalUrl = `https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=${selectedPlan.paypalSubscriptionId}`;
                 window.location.href = paypalUrl;
             } else {
                  toast({
                     title: "Configuration manquante",
-                    description: "Aucun ID d'abonnement PayPal n'est configuré pour ce plan.",
+                    description: "Aucun ID d'abonnement PayPal n'est configuré pour ce plan. Le paiement n'a pas pu être initié.",
                     variant: "destructive",
                 });
             }
@@ -163,6 +184,9 @@ function PlanSelectorCard() {
         );
     }
     
+    const showContract = selectedPlan && selectedPlan.contractId && contract;
+    const formDisabled = showContract && !contractAccepted;
+
     return (
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <Card className={cn("overflow-hidden flex flex-col h-full", selectedPlan?.isFeatured && "border-primary border-2")}>
@@ -214,23 +238,41 @@ function PlanSelectorCard() {
             </CardFooter>
         </Card>
 
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
                 <DialogTitle>Devenir Conseiller - {selectedPlan?.name}</DialogTitle>
                 <DialogDescription>
-                    Créez votre compte pour commencer. Vous serez ensuite redirigé pour finaliser le paiement.
+                    {showContract ? "Veuillez lire et accepter les termes du contrat avant de finaliser votre inscription." : "Créez votre compte pour commencer. Vous serez ensuite redirigé pour finaliser le paiement."}
                 </DialogDescription>
             </DialogHeader>
+
+            {showContract && (
+                <div className='space-y-4'>
+                    <p className='font-medium text-sm'>{contract.title}</p>
+                    <ScrollArea className="h-64 w-full rounded-md border p-4">
+                        <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contract.content }} />
+                    </ScrollArea>
+                    <div className="flex items-center space-x-2">
+                        <Checkbox id="terms" checked={contractAccepted} onCheckedChange={(checked) => setContractAccepted(checked as boolean)} />
+                        <Label htmlFor="terms" className='text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70'>
+                            J'ai lu et j'accepte les termes du contrat.
+                        </Label>
+                    </div>
+                </div>
+            )}
+            
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    </div>
-                    <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="password" render={({ field }) => (<FormItem><FormLabel>Mot de passe</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <fieldset disabled={formDisabled} className="space-y-4 disabled:opacity-50">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField control={form.control} name="firstName" render={({ field }) => (<FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="lastName" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        </div>
+                        <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="password" render={({ field }) => (<FormItem><FormLabel>Mot de passe</FormLabel><FormControl><Input type="password" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </fieldset>
                     <DialogFooter>
-                        <Button type="submit" disabled={isSubmitting} className="w-full">
+                        <Button type="submit" disabled={isSubmitting || formDisabled} className="w-full">
                             {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             S'inscrire et Payer {selectedPlan?.price}€
                         </Button>
