@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, useFirestore, useUser } from '@/firebase';
-import { collection, doc, query, where } from 'firebase/firestore';
+import { collection, doc, query, where, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,7 +47,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, Trash2, Edit, Loader2, Upload } from 'lucide-react';
+import { PlusCircle, Trash2, Edit, Loader2, Upload, Star } from 'lucide-react';
 import Image from 'next/image';
 
 export type Plan = {
@@ -61,7 +61,7 @@ export type Plan = {
   isPublic: boolean;
   imageUrl?: string;
   cta?: string;
-  counselorId?: string; // Link to counselor
+  counselorId?: string;
 };
 
 const planSchema = z.object({
@@ -71,11 +71,12 @@ const planSchema = z.object({
     (a) => parseFloat(z.string().parse(a)),
     z.number().positive('Le prix doit être positif.')
   ),
-  period: z.string().min(1, 'La période est requise (ex: /mois).'),
+  period: z.string().min(1, 'La période est requise (ex: /prestation).'),
   features: z.array(z.object({ value: z.string() })).default([]),
   imageUrl: z.string().optional(),
   cta: z.string().optional(),
   isPublic: z.boolean().default(false).optional(),
+  isFeatured: z.boolean().default(false).optional(),
 });
 
 type PlanFormData = z.infer<typeof planSchema>;
@@ -114,6 +115,7 @@ export function PlanManagement() {
       imageUrl: '',
       cta: 'Ajouter au devis',
       isPublic: false,
+      isFeatured: false,
     },
   });
 
@@ -147,6 +149,7 @@ export function PlanManagement() {
       imageUrl: '',
       cta: 'Ajouter au devis',
       isPublic: false,
+      isFeatured: false,
     });
     setImagePreview(null);
     setIsSheetOpen(true);
@@ -175,23 +178,38 @@ export function PlanManagement() {
     
     const planData = {
       ...data,
-      features: data.features.map(f => f.value), // Correctly map features
+      features: data.features.map(f => f.value),
       counselorId: user.uid,
     };
 
+    const batch = writeBatch(firestore);
+
     try {
+      // If this plan is set to be featured, we need to un-feature any other public plan
+      if (planData.isFeatured && planData.isPublic) {
+          const publicPlansQuery = query(collection(firestore, 'plans'), where("isPublic", "==", true), where("counselorId", "==", user.uid));
+          const querySnapshot = await getDocs(publicPlansQuery);
+          querySnapshot.forEach(docSnap => {
+              if (docSnap.id !== editingPlan?.id) {
+                  const planRef = doc(firestore, 'plans', docSnap.id);
+                  batch.update(planRef, { isFeatured: false });
+              }
+          });
+      }
+
+
       if (editingPlan) {
         const planDocRef = doc(firestore, 'plans', editingPlan.id);
-        // Remove isFeatured for counselor-specific plans on update
-        const { isFeatured, ...updateData } = planData;
-        await setDocumentNonBlocking(planDocRef, updateData, { merge: true });
+        batch.set(planDocRef, planData, { merge: true });
         toast({ title: 'Modèle mis à jour', description: 'Le modèle de prestation a été mis à jour.' });
       } else {
-        const plansCollectionRef = collection(firestore, 'plans');
-        // Add isFeatured: false for new counselor-specific plans
-        await addDocumentNonBlocking(plansCollectionRef, { ...planData, isFeatured: false });
+        const newPlanRef = doc(collection(firestore, 'plans'));
+        batch.set(newPlanRef, planData);
         toast({ title: 'Modèle créé', description: 'Le nouveau modèle de prestation a été créé.' });
       }
+
+      await batch.commit();
+
       setIsSheetOpen(false);
       setEditingPlan(null);
       form.reset();
@@ -355,6 +373,26 @@ export function PlanManagement() {
                                 </FormItem>
                             )}
                         />
+                        <FormField
+                            control={form.control}
+                            name="isFeatured"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                    <FormLabel className="text-base">Le plus populaire</FormLabel>
+                                    <FormDescription>
+                                       Mettre ce plan en avant sur les pages publiques. Un seul plan peut être populaire.
+                                    </FormDescription>
+                                </div>
+                                <FormControl>
+                                    <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                </FormItem>
+                            )}
+                        />
 
                         <SheetFooter className="pt-6">
                             <SheetClose asChild>
@@ -378,6 +416,7 @@ export function PlanManagement() {
               <TableHead>Nom du Modèle</TableHead>
               <TableHead>Prix</TableHead>
               <TableHead>Public</TableHead>
+              <TableHead>Populaire</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -385,7 +424,7 @@ export function PlanManagement() {
             {isLoading ? (
                 [...Array(3)].map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell>
+                        <TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell>
                     </TableRow>
                 ))
             ) : plans && plans.length > 0 ? (
@@ -397,6 +436,9 @@ export function PlanManagement() {
                            <Badge variant={plan.isPublic ? 'default' : 'secondary'}>
                               {plan.isPublic ? 'Oui' : 'Non'}
                            </Badge>
+                        </TableCell>
+                        <TableCell>
+                           {plan.isFeatured ? <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" /> : <Star className="h-5 w-5 text-muted-foreground" />}
                         </TableCell>
                         <TableCell className="text-right">
                            <Button variant="ghost" size="icon" onClick={() => handleEdit(plan)}>
@@ -410,7 +452,7 @@ export function PlanManagement() {
                 ))
             ) : (
               <TableRow>
-                <TableCell colSpan={4} className="h-24 text-center">
+                <TableCell colSpan={5} className="h-24 text-center">
                   Aucun modèle de prestation créé.
                 </TableCell>
               </TableRow>

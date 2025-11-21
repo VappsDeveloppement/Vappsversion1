@@ -69,7 +69,7 @@ export function PricingSection() {
                             {tier.isFeatured && (
                                 <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
                                     <div className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
-                                        Le plus populaire
+                                        Recommandé
                                     </div>
                                 </div>
                             )}
@@ -89,10 +89,6 @@ export function PricingSection() {
                                             <span className="text-muted-foreground">{feature}</span>
                                         </li>
                                     ))}
-                                    <li className="flex items-center gap-2">
-                                        <Check className="h-5 w-5 text-green-500" />
-                                        <span className="text-muted-foreground">{tier.appointmentCredits} crédit(s) RDV</span>
-                                    </li>
                                 </ul>
                             </CardContent>
                             <CardFooter>
@@ -107,5 +103,3 @@ export function PricingSection() {
         </section>
     );
 }
-
-    
