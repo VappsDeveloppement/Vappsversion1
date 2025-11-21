@@ -9,7 +9,7 @@ type CounselorProfile = {
     miniSite?: {
         hero?: {
             primaryColor?: string;
-        }
+        };
         servicesSection?: {
             enabled?: boolean;
             title?: string;
@@ -17,14 +17,16 @@ type CounselorProfile = {
             services?: ServiceItem[];
         }
     };
+    dashboardTheme?: {
+        primaryColor?: string;
+    };
 };
 
 export function CounselorServicesSection({ counselor }: { counselor: CounselorProfile }) {
     const servicesConfig = counselor.miniSite?.servicesSection || {};
-    const heroConfig = counselor.miniSite?.hero || {};
 
     const { enabled, title, subtitle, services } = servicesConfig;
-    const primaryColor = heroConfig.primaryColor || '#10B981';
+    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     if (!enabled || !services || services.length === 0) {
         return null;
