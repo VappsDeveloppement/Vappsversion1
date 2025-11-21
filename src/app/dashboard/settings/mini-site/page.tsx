@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -14,14 +15,15 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Eye, Link as LinkIcon, PlusCircle } from 'lucide-react';
+import { Loader2, Upload, Trash2, Eye, Link as LinkIcon, PlusCircle, CheckCircle } from 'lucide-react';
 import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 const heroSchema = z.object({
@@ -93,6 +95,26 @@ const ctaSchema = z.object({
     bgImageUrl: z.string().nullable().optional(),
 });
 
+const eventItemSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, "Le titre est requis."),
+  date: z.string().min(1, "La date est requise."),
+});
+
+const contactSchema = z.object({
+  enabled: z.boolean().default(false),
+  title: z.string().optional(),
+  text: z.string().optional(),
+  mediaType: z.enum(['image', 'video']).default('video'),
+  imageUrl: z.string().nullable().optional(),
+  videoUrl: z.string().optional(),
+  interestsTitle: z.string().optional(),
+  interests: z.string().optional(),
+  events: z.array(eventItemSchema).optional(),
+  eventsButtonText: z.string().optional(),
+  eventsButtonLink: z.string().optional(),
+});
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -101,11 +123,13 @@ const miniSiteSchema = z.object({
   servicesSection: servicesSchema.optional(),
   parcoursSection: parcoursSchema.optional(),
   ctaSection: ctaSchema.optional(),
+  contactSection: contactSchema.optional(),
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
 export type ServiceItem = z.infer<typeof serviceItemSchema>;
 export type ParcoursStep = z.infer<typeof parcoursStepSchema>;
+export type EventItem = z.infer<typeof eventItemSchema>;
 
 
 type UserProfile = {
@@ -135,6 +159,7 @@ export default function MiniSitePage() {
   const fileInputHeroRef = useRef<HTMLInputElement>(null);
   const fileInputAboutRef = useRef<HTMLInputElement>(null);
   const fileInputCtaRef = useRef<HTMLInputElement>(null);
+  const fileInputContactRef = useRef<HTMLInputElement>(null);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -146,6 +171,7 @@ export default function MiniSitePage() {
   const [heroBgImagePreview, setHeroBgImagePreview] = useState<string | null | undefined>(null);
   const [aboutImagePreview, setAboutImagePreview] = useState<string | null | undefined>(null);
   const [ctaImagePreview, setCtaImagePreview] = useState<string | null | undefined>(null);
+  const [contactImagePreview, setContactImagePreview] = useState<string | null | undefined>(null);
 
   const form = useForm<MiniSiteFormData>({
     resolver: zodResolver(miniSiteSchema),
@@ -200,6 +226,22 @@ export default function MiniSitePage() {
           bgColor: '#F9FAFB',
           bgImageUrl: null
       },
+      contactSection: {
+        enabled: false,
+        title: "Nos autres activités",
+        text: "Nous accompagnons également les entreprises",
+        mediaType: 'video',
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        imageUrl: null,
+        interestsTitle: "Mes centres d'intérêt",
+        interests: "Coaching individuel, Bilan de compétences, Reconversion professionnelle",
+        events: [
+          {id: 'event-1', title: 'Webinaire : Oser la reconversion', date: '25 Juillet 2024'},
+          {id: 'event-2', title: 'Atelier : Définir ses valeurs', date: '12 Août 2024'}
+        ],
+        eventsButtonText: "J'ai participé à un évènement",
+        eventsButtonLink: "#",
+      }
     },
   });
   
@@ -213,12 +255,19 @@ export default function MiniSitePage() {
       name: "parcoursSection.steps",
     });
 
+    const { fields: eventFields, append: appendEvent, remove: removeEvent } = useFieldArray({
+        control: form.control,
+        name: "contactSection.events",
+    });
+
+
   useEffect(() => {
     if (userData?.miniSite) {
       form.reset(userData.miniSite);
       setHeroBgImagePreview(userData.miniSite.hero?.bgImageUrl);
       setAboutImagePreview(userData.miniSite.aboutSection?.imageUrl);
       setCtaImagePreview(userData.miniSite.ctaSection?.bgImageUrl);
+      setContactImagePreview(userData.miniSite.contactSection?.imageUrl);
     }
   }, [userData, form]);
 
@@ -532,6 +581,100 @@ export default function MiniSitePage() {
                                     </div>
                                 </div>
                                 <FormField control={form.control} name="ctaSection.bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="contact-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Autres Activités"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="contactSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="contactSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Nos autres activités" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="contactSection.text" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Nous accompagnons également les entreprises" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            
+                            <div className="space-y-6 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Média (gauche)</h4>
+                                <FormField
+                                    control={form.control}
+                                    name="contactSection.mediaType"
+                                    render={({ field }) => (
+                                        <FormItem className="space-y-3">
+                                        <FormLabel>Type de média</FormLabel>
+                                        <FormControl>
+                                            <RadioGroup
+                                            onValueChange={field.onChange}
+                                            defaultValue={field.value}
+                                            className="flex items-center space-x-4"
+                                            >
+                                            <FormItem className="flex items-center space-x-2 space-y-0">
+                                                <FormControl><RadioGroupItem value="video" /></FormControl>
+                                                <FormLabel className="font-normal">Vidéo</FormLabel>
+                                            </FormItem>
+                                            <FormItem className="flex items-center space-x-2 space-y-0">
+                                                <FormControl><RadioGroupItem value="image" /></FormControl>
+                                                <FormLabel className="font-normal">Image</FormLabel>
+                                            </FormItem>
+                                            </RadioGroup>
+                                        </FormControl>
+                                        <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                                {form.watch('contactSection.mediaType') === 'video' ? (
+                                    <FormField control={form.control} name="contactSection.videoUrl" render={({ field }) => (<FormItem><FormLabel>URL de la Vidéo</FormLabel><FormControl><Input placeholder="https://www.youtube.com/embed/..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                ) : (
+                                    <div>
+                                        <Label>Image</Label>
+                                        <div className="flex items-center gap-4 mt-2">
+                                            <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                {contactImagePreview ? (<Image src={contactImagePreview} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+                                            </div>
+                                            <input type="file" ref={fileInputContactRef} onChange={(e) => handleFileUpload(e, (base64) => { setContactImagePreview(base64); form.setValue('contactSection.imageUrl', base64); })} className="hidden" accept="image/*" />
+                                            <div className="flex flex-col gap-2">
+                                                <Button type="button" variant="outline" onClick={() => fileInputContactRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
+                                                {contactImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={() => { setContactImagePreview(null); form.setValue('contactSection.imageUrl', null);}}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="space-y-6 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Centres d'intérêt (gauche)</h4>
+                                <FormField control={form.control} name="contactSection.interestsTitle" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes centres d'intérêt" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.interests" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Liste des intérêts</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Coaching individuel, Bilan de compétences, ..." {...field} />
+                                        </FormControl>
+                                        <FormDescription>Séparez chaque centre d'intérêt par une virgule.</FormDescription>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                            </div>
+
+                            <div className="space-y-6 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Événements (droite)</h4>
+                                <div>
+                                    <Label>Liste des événements</Label>
+                                    <div className="space-y-4 mt-2">
+                                        {eventFields.map((field, index) => (
+                                            <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                                                <div className="col-span-5"><FormField control={form.control} name={`contactSection.events.${index}.title`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Titre de l'événement" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
+                                                <div className="col-span-5"><FormField control={form.control} name={`contactSection.events.${index}.date`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Date" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
+                                                <div className="col-span-2"><Button type="button" variant="ghost" size="icon" onClick={() => removeEvent(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendEvent({ id: `event-${Date.now()}`, title: 'Nouvel événement', date: 'Date'})} className="mt-2">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un événement
+                                    </Button>
+                                </div>
+                                <FormField control={form.control} name="contactSection.eventsButtonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="J'ai participé à un évènement" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.eventsButtonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             </div>
                         </div>
                     </AccordionContent>

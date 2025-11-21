@@ -8,7 +8,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem, ParcoursStep } from '@/app/dashboard/settings/mini-site/page';
+import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem, ParcoursStep } from '@/app/admin/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -80,6 +80,20 @@ interface ParcoursSectionPersonalization {
     title: string;
     subtitle: string;
     steps: ParcoursStep[];
+}
+
+interface ContactSectionPersonalization {
+    enabled: boolean;
+    title: string;
+    text: string;
+    mediaType: 'image' | 'video';
+    imageUrl: string | null;
+    videoUrl?: string;
+    interestsTitle?: string;
+    interests?: string;
+    events?: { id: string; title: string; date: string }[];
+    eventsButtonText?: string;
+    eventsButtonLink?: string;
 }
 
 
@@ -160,6 +174,7 @@ interface Personalization {
     videoSection: VideoSectionPersonalization;
     servicesSection: ServicesSectionPersonalization;
     parcoursSection: ParcoursSectionPersonalization;
+    contactSection: ContactSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
     gdprSettings: GdprSettings;
@@ -318,6 +333,22 @@ const defaultPersonalization: Personalization = {
         subtitle: "Mon approche pour votre réussite",
         steps: [],
     },
+     contactSection: {
+        enabled: false,
+        title: "Nos autres activités",
+        text: "Nous accompagnons également les entreprises",
+        mediaType: 'video',
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        imageUrl: null,
+        interestsTitle: "Mes centres d'intérêt",
+        interests: "Coaching individuel, Bilan de compétences, Reconversion professionnelle",
+        events: [
+          {id: 'event-1', title: 'Webinaire : Oser la reconversion', date: '25 Juillet 2024'},
+          {id: 'event-2', title: 'Atelier : Définir ses valeurs', date: '12 Août 2024'}
+        ],
+        eventsButtonText: "J'ai participé à un évènement",
+        eventsButtonLink: "#",
+      },
     paymentSettings: {
         ribIban: "",
         ribBic: "",
@@ -438,6 +469,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                     parcoursSection: {
                         ...defaultPersonalization.parcoursSection,
                         ...(fetchedAgencyData.personalization?.parcoursSection || {}),
+                    },
+                     contactSection: {
+                        ...defaultPersonalization.contactSection,
+                        ...(fetchedAgencyData.personalization?.contactSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,

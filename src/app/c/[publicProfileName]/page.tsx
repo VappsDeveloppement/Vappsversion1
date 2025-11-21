@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -16,6 +17,7 @@ import { AlertTriangle, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
+import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 
 type CounselorProfile = {
     id: string;
@@ -35,6 +37,7 @@ type CounselorProfile = {
         servicesSection?: any;
         parcoursSection?: any;
         ctaSection?: any;
+        contactSection?: any;
     };
     dashboardTheme?: {
         primaryColor?: string;
@@ -97,6 +100,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorServicesSection counselor={counselor} />
         <ParcoursSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
+        <CounselorContactSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>

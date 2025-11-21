@@ -1,4 +1,5 @@
 
+
 {
   "entities": {
     "User": {
@@ -227,6 +228,32 @@
                     "buttonLink": { "type": "string" },
                     "bgColor": { "type": "string" },
                     "bgImageUrl": { "type": "string", "format": "uri" }
+                }
+            },
+            "contactSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "text": { "type": "string" },
+                    "mediaType": { "type": "string", "enum": ["image", "video"] },
+                    "imageUrl": { "type": "string", "format": "uri" },
+                    "videoUrl": { "type": "string", "format": "uri" },
+                    "interestsTitle": { "type": "string" },
+                    "interests": { "type": "string" },
+                    "events": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string" },
+                          "title": { "type": "string" },
+                          "date": { "type": "string" }
+                        }
+                      }
+                    },
+                    "eventsButtonText": { "type": "string" },
+                    "eventsButtonLink": { "type": "string" }
                 }
             }
         }
