@@ -12,7 +12,7 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import type { Plan } from './plan-management';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -73,7 +73,7 @@ function PlanSelectorCard() {
     
     return (
         <Card className={cn("overflow-hidden flex flex-col h-full", selectedPlan?.isFeatured && "border-primary border-2")}>
-            {selectedPlan?.imageUrl && (
+             {selectedPlan?.imageUrl && (
                 <div className="relative h-48 w-full">
                     <Image
                         src={selectedPlan.imageUrl}
@@ -84,16 +84,13 @@ function PlanSelectorCard() {
                 </div>
             )}
             <CardHeader>
-                 <Select value={selectedPlanId || ''} onValueChange={setSelectedPlanId}>
-                    <SelectTrigger className="w-full text-lg font-semibold">
-                        <SelectValue placeholder="Sélectionnez un plan" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {plans.map(plan => (
-                            <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>
+                <Tabs value={selectedPlanId || ''} onValueChange={setSelectedPlanId} className="w-full">
+                    <TabsList className="grid w-full grid-cols-3">
+                        {plans.slice(0, 3).map(plan => (
+                             <TabsTrigger key={plan.id} value={plan.id}>{plan.name}</TabsTrigger>
                         ))}
-                    </SelectContent>
-                </Select>
+                    </TabsList>
+                </Tabs>
             </CardHeader>
             <CardContent className="p-6 flex-1">
                 {selectedPlan && (
