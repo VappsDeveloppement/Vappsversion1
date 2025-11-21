@@ -139,7 +139,6 @@ export type Section = {
 const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
-  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'directory', label: 'Annuaire des conseillers', enabled: true },
@@ -2225,5 +2224,7 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    
 
     
