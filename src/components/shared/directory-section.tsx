@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -24,52 +24,33 @@ type Counselor = {
     publicProfileName?: string;
 };
 
-// Helper function to shuffle an array
-function shuffleArray<T>(array: T[]): T[] {
-  const newArray = [...array];
-  for (let i = newArray.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
-  }
-  return newArray;
-}
-
 export function DirectorySection() {
     const firestore = useFirestore();
     const [searchTerm, setSearchTerm] = useState('');
-    const [shuffledCounselors, setShuffledCounselors] = useState<Counselor[]>([]);
 
     const counselorsQuery = useMemoFirebase(() => {
-        return query(collection(firestore, 'users'), where('role', '==', 'conseiller'));
-    }, [firestore]);
+        const baseQuery = query(collection(firestore, 'users'), where('role', '==', 'conseiller'));
+        if (searchTerm) {
+            // Firestore doesn't support partial string matches like 'includes'.
+            // A more robust solution would use a search service like Algolia.
+            // For now, we'll keep it simple and filter on the client side.
+             return baseQuery;
+        }
+        return query(baseQuery, limit(9));
+    }, [firestore, searchTerm]);
 
     const { data: counselors, isLoading } = useCollection<Counselor>(counselorsQuery);
 
-    useEffect(() => {
-        if (counselors) {
-            setShuffledCounselors(shuffleArray(counselors));
-        }
-    }, [counselors]);
-
     const filteredCounselors = useMemo(() => {
-        if (!shuffledCounselors) return [];
+        if (!counselors) return [];
+        if (!searchTerm) return counselors;
         
-        let displayCounselors = searchTerm ? counselors || [] : shuffledCounselors;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return counselors.filter(counselor =>
+            counselor.city?.toLowerCase().includes(lowercasedTerm)
+        );
 
-        if (searchTerm) {
-            const lowercasedTerm = searchTerm.toLowerCase();
-            displayCounselors = displayCounselors.filter(counselor =>
-                counselor.city?.toLowerCase().includes(lowercasedTerm)
-            );
-        }
-        
-        if (!searchTerm) {
-          return displayCounselors.slice(0, 9);
-        }
-
-        return displayCounselors;
-
-    }, [counselors, shuffledCounselors, searchTerm]);
+    }, [counselors, searchTerm]);
 
 
     return (
