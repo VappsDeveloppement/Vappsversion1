@@ -10,7 +10,7 @@ import { Logo } from '@/components/shared/logo';
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { AboutSection } from '@/components/shared/about-section';
 import { VideoSection } from '@/components/shared/video-section';
-import { ShopSection } from '@/components/shared/shop-section';
+import { DirectorySection } from '@/components/shared/directory-section';
 import { ServicesSection } from '@/components/shared/services-section';
 import { OtherActivitiesSection } from '@/components/shared/other-activities-section';
 import { CtaSection } from '@/components/shared/cta-section';
@@ -32,7 +32,7 @@ const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   cta: CtaSection,
   cta2: CtaSection2,
   video: VideoSection,
-  shop: ShopSection,
+  directory: DirectorySection,
   services: ServicesSection,
   otherActivities: OtherActivitiesSection,
   blog: BlogSection,
