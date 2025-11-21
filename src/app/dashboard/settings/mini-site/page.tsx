@@ -113,7 +113,7 @@ const contactSchema = z.object({
   events: z.array(eventItemSchema).optional(),
   eventsButtonText: z.string().optional(),
   eventsButtonLink: z.string().optional(),
-});
+}).optional();
 
 
 const miniSiteSchema = z.object({
@@ -123,7 +123,7 @@ const miniSiteSchema = z.object({
   servicesSection: servicesSchema.optional(),
   parcoursSection: parcoursSchema.optional(),
   ctaSection: ctaSchema.optional(),
-  contactSection: contactSchema.optional(),
+  contactSection: contactSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -235,10 +235,7 @@ export default function MiniSitePage() {
         imageUrl: null,
         interestsTitle: "Mes centres d'intérêt",
         interests: "Coaching individuel, Bilan de compétences, Reconversion professionnelle",
-        events: [
-          {id: 'event-1', title: 'Webinaire : Oser la reconversion', date: '25 Juillet 2024'},
-          {id: 'event-2', title: 'Atelier : Définir ses valeurs', date: '12 Août 2024'}
-        ],
+        events: [],
         eventsButtonText: "J'ai participé à un évènement",
         eventsButtonLink: "#",
       }
@@ -263,7 +260,27 @@ export default function MiniSitePage() {
 
   useEffect(() => {
     if (userData?.miniSite) {
-      form.reset(userData.miniSite);
+       const initialMiniSiteData = {
+         ...form.getValues(), // Start with default values
+         ...userData.miniSite, // Override with saved data
+         // Ensure arrays are not undefined for field arrays
+         servicesSection: {
+            ...form.getValues().servicesSection,
+            ...userData.miniSite.servicesSection,
+            services: userData.miniSite.servicesSection?.services || [],
+         },
+         parcoursSection: {
+            ...form.getValues().parcoursSection,
+            ...userData.miniSite.parcoursSection,
+            steps: userData.miniSite.parcoursSection?.steps || [],
+         },
+         contactSection: {
+            ...form.getValues().contactSection,
+            ...userData.miniSite.contactSection,
+            events: userData.miniSite.contactSection?.events || [],
+         }
+       };
+      form.reset(initialMiniSiteData);
       setHeroBgImagePreview(userData.miniSite.hero?.bgImageUrl);
       setAboutImagePreview(userData.miniSite.aboutSection?.imageUrl);
       setCtaImagePreview(userData.miniSite.ctaSection?.bgImageUrl);
@@ -595,7 +612,7 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="contactSection.text" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Nous accompagnons également les entreprises" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             
                             <div className="space-y-6 rounded-lg border p-4">
-                                <h4 className="text-sm font-medium">Média (gauche)</h4>
+                                <h4 className="text-sm font-medium">Média (colonne de gauche)</h4>
                                 <FormField
                                     control={form.control}
                                     name="contactSection.mediaType"
@@ -605,7 +622,7 @@ export default function MiniSitePage() {
                                         <FormControl>
                                             <RadioGroup
                                             onValueChange={field.onChange}
-                                            defaultValue={field.value}
+                                            value={field.value}
                                             className="flex items-center space-x-4"
                                             >
                                             <FormItem className="flex items-center space-x-2 space-y-0">
@@ -642,7 +659,7 @@ export default function MiniSitePage() {
                             </div>
 
                             <div className="space-y-6 rounded-lg border p-4">
-                                <h4 className="text-sm font-medium">Centres d'intérêt (gauche)</h4>
+                                <h4 className="text-sm font-medium">Centres d'intérêt (sous le média)</h4>
                                 <FormField control={form.control} name="contactSection.interestsTitle" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes centres d'intérêt" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="contactSection.interests" render={({ field }) => (
                                     <FormItem>
@@ -657,7 +674,7 @@ export default function MiniSitePage() {
                             </div>
 
                             <div className="space-y-6 rounded-lg border p-4">
-                                <h4 className="text-sm font-medium">Événements (droite)</h4>
+                                <h4 className="text-sm font-medium">Événements (colonne de droite)</h4>
                                 <div>
                                     <Label>Liste des événements</Label>
                                     <div className="space-y-4 mt-2">
@@ -692,3 +709,4 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
