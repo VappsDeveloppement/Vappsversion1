@@ -198,6 +198,11 @@ export function PlanManagement() {
       contractId: data.contractId === 'none' ? undefined : data.contractId,
     };
 
+    // Explicitly remove if undefined to avoid Firestore errors with `undefined` values.
+    if (planData.contractId === undefined) {
+        delete (planData as any).contractId;
+    }
+
     const batch = writeBatch(firestore);
 
     try {
