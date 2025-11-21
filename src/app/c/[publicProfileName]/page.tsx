@@ -16,6 +16,8 @@ import { AlertTriangle, Wrench } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
+import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
+import { InterestsSection } from '@/components/shared/interests-section';
 
 type CounselorProfile = {
     id: string;
@@ -35,6 +37,8 @@ type CounselorProfile = {
         servicesSection?: any;
         parcoursSection?: any;
         ctaSection?: any;
+        contactSection?: any;
+        interestsSection?: any;
     };
     dashboardTheme?: {
         primaryColor?: string;
@@ -97,6 +101,8 @@ export default function CounselorPublicProfilePage() {
         <CounselorServicesSection counselor={counselor} />
         <ParcoursSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
+        <CounselorContactSection counselor={counselor} />
+        <InterestsSection counselor={counselor} />
         
         <div className="flex flex-col items-center justify-center text-center p-12 my-12 border-2 border-dashed rounded-lg h-96 max-w-4xl mx-auto">
             <Wrench className="h-16 w-16 text-muted-foreground mb-4" />

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
@@ -437,6 +438,14 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                     parcoursSection: {
                         ...defaultPersonalization.parcoursSection,
                         ...(fetchedAgencyData.personalization?.parcoursSection || {}),
+                    },
+                     contactSection: { // Added for new section
+                        ...defaultPersonalization.contactSection,
+                        ...(fetchedAgencyData.personalization?.contactSection || {}),
+                    },
+                    interestsSection: { // Added for new section
+                        ...defaultPersonalization.interestsSection,
+                        ...(fetchedAgencyData.personalization?.interestsSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,

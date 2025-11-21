@@ -94,6 +94,26 @@ const ctaSchema = z.object({
     bgImageUrl: z.string().nullable().optional(),
 });
 
+const contactLinkSchema = z.object({
+    text: z.string().min(1, "Le texte du lien est requis."),
+    url: z.string().url("Veuillez entrer une URL valide."),
+});
+
+const contactSchema = z.object({
+    enabled: z.boolean().default(false),
+    title: z.string().optional(),
+    text: z.string().optional(),
+    imageUrl: z.string().nullable().optional(),
+    videoUrl: z.string().url().optional().or(z.literal('')),
+    links: z.array(contactLinkSchema).optional(),
+});
+
+const interestsSchema = z.object({
+    enabled: z.boolean().default(false),
+    title: z.string().optional(),
+    features: z.array(z.string()).optional(),
+});
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -102,6 +122,8 @@ const miniSiteSchema = z.object({
   servicesSection: servicesSchema.optional(),
   parcoursSection: parcoursSchema.optional(),
   ctaSection: ctaSchema.optional(),
+  contactSection: contactSchema.optional(),
+  interestsSection: interestsSchema.optional(),
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -136,6 +158,7 @@ export default function MiniSitePage() {
   const fileInputHeroRef = useRef<HTMLInputElement>(null);
   const fileInputAboutRef = useRef<HTMLInputElement>(null);
   const fileInputCtaRef = useRef<HTMLInputElement>(null);
+  const fileInputContactRef = useRef<HTMLInputElement>(null);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -147,6 +170,8 @@ export default function MiniSitePage() {
   const [heroBgImagePreview, setHeroBgImagePreview] = useState<string | null | undefined>(null);
   const [aboutImagePreview, setAboutImagePreview] = useState<string | null | undefined>(null);
   const [ctaImagePreview, setCtaImagePreview] = useState<string | null | undefined>(null);
+  const [contactImagePreview, setContactImagePreview] = useState<string | null | undefined>(null);
+  const [interests, setInterests] = useState<string>('');
 
   const form = useForm<MiniSiteFormData>({
     resolver: zodResolver(miniSiteSchema),
@@ -201,6 +226,19 @@ export default function MiniSitePage() {
           bgColor: '#F9FAFB',
           bgImageUrl: null
       },
+       contactSection: {
+        enabled: false,
+        title: 'Nos autres activités',
+        text: 'Nous accompagnons également les entreprises',
+        imageUrl: null,
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        links: [],
+      },
+      interestsSection: {
+        enabled: false,
+        title: 'Mes centres d\'intérêt',
+        features: [],
+      }
     },
   });
   
@@ -214,12 +252,19 @@ export default function MiniSitePage() {
       name: "parcoursSection.steps",
     });
 
+    const { fields: contactLinkFields, append: appendContactLink, remove: removeContactLink } = useFieldArray({
+        control: form.control,
+        name: "contactSection.links"
+    });
+
   useEffect(() => {
     if (userData?.miniSite) {
       form.reset(userData.miniSite);
       setHeroBgImagePreview(userData.miniSite.hero?.bgImageUrl);
       setAboutImagePreview(userData.miniSite.aboutSection?.imageUrl);
       setCtaImagePreview(userData.miniSite.ctaSection?.bgImageUrl);
+      setContactImagePreview(userData.miniSite.contactSection?.imageUrl);
+      setInterests(userData.miniSite.interestsSection?.features?.join(', ') || '');
     }
   }, [userData, form]);
 
@@ -236,6 +281,12 @@ export default function MiniSitePage() {
     setIsSubmitting(true);
 
     try {
+      const interestsArray = interests.split(',').map(s => s.trim()).filter(Boolean);
+      data.interestsSection = {
+        ...data.interestsSection,
+        features: interestsArray,
+      };
+
       const fullMiniSiteData = {
           ...userData?.miniSite,
           ...data,
@@ -534,6 +585,63 @@ export default function MiniSitePage() {
                                 </div>
                                 <FormField control={form.control} name="ctaSection.bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
                             </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="contact-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Contact &amp; Activités</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="contactSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><FormLabel className="text-base">Afficher cette section</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name="contactSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Nos autres activités" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="contactSection.text" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Nous accompagnons également les entreprises" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="contactSection.videoUrl" render={({ field }) => (<FormItem><FormLabel>URL Vidéo (Optionnel)</FormLabel><FormControl><Input placeholder="https://youtube.com/embed/..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <div>
+                                <Label>Image (alternative à la vidéo)</Label>
+                                <div className="flex items-center gap-4 mt-2">
+                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                        {contactImagePreview ? <Image src={contactImagePreview} alt="Aperçu" layout="fill" objectFit="cover" /> : <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>}
+                                    </div>
+                                    <input type="file" ref={fileInputContactRef} onChange={(e) => handleFileUpload(e, base64 => { setContactImagePreview(base64); form.setValue('contactSection.imageUrl', base64); })} className="hidden" accept="image/*" />
+                                    <div className="flex flex-col gap-2">
+                                        <Button type="button" variant="outline" onClick={() => fileInputContactRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
+                                        <Button type="button" variant="destructive" size="sm" onClick={() => { setContactImagePreview(null); form.setValue('contactSection.imageUrl', null);}}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <Label>Liens personnalisés</Label>
+                                {contactLinkFields.map((field, index) => (
+                                    <div key={field.id} className="flex gap-2 items-center mt-2">
+                                        <FormField control={form.control} name={`contactSection.links.${index}.text`} render={({ field }) => <Input {...field} placeholder="Texte du lien" className="flex-1" />} />
+                                        <FormField control={form.control} name={`contactSection.links.${index}.url`} render={({ field }) => <Input {...field} placeholder="URL" className="flex-1" />} />
+                                        <Button type="button" variant="ghost" size="icon" onClick={() => removeContactLink(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </div>
+                                ))}
+                                <Button type="button" variant="outline" size="sm" onClick={() => appendContactLink({ text: '', url: '' })} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un lien</Button>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="interests-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Centres d'intérêt</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                             <FormField control={form.control} name="interestsSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><FormLabel className="text-base">Afficher cette section</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)} />
+                             <FormField control={form.control} name="interestsSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes centres d'intérêt" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                             <FormItem>
+                                 <FormLabel>Liste des intérêts</FormLabel>
+                                 <FormControl>
+                                     <Textarea
+                                        placeholder="Coaching individuel, Bilan de compétences, Reconversion..."
+                                        value={interests}
+                                        onChange={(e) => setInterests(e.target.value)}
+                                    />
+                                 </FormControl>
+                                 <FormDescription>Séparez chaque centre d'intérêt par une virgule.</FormDescription>
+                             </FormItem>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
