@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -23,6 +22,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import Image from 'next/image';
 import { AttentionSection } from '@/components/shared/attention-section';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -215,15 +215,12 @@ export default function MiniSitePage() {
         </div>
       </div>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Section Héro</CardTitle>
-                    <CardDescription>
-                        Personnalisez le premier élément que vos visiteurs voient sur votre page.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <Accordion type="single" collapsible defaultValue="hero-section" className="w-full space-y-4">
+              <AccordionItem value="hero-section" className='border rounded-lg overflow-hidden'>
+                <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section Héro</AccordionTrigger>
+                <AccordionContent>
+                  <div className="p-6 space-y-6">
                     <FormField
                         control={form.control}
                         name="hero.title"
@@ -279,55 +276,55 @@ export default function MiniSitePage() {
                         />
                     </div>
 
-                        <div className="space-y-4 rounded-lg border p-4">
+                    <div className="space-y-4 rounded-lg border p-4">
                         <h4 className="font-medium">Options d'affichage</h4>
-                            <div className="space-y-4">
+                        <div className="space-y-4">
+                        <FormField
+                            control={form.control}
+                            name="hero.showPhoto"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Afficher ma photo de profil</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
                             <FormField
-                                control={form.control}
-                                name="hero.showPhoto"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                        <div className="space-y-0.5">
-                                            <FormLabel>Afficher ma photo de profil</FormLabel>
-                                        </div>
-                                        <FormControl>
-                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                                <FormField
-                                control={form.control}
-                                name="hero.showPhone"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                        <div className="space-y-0.5">
-                                            <FormLabel>Afficher mon numéro de téléphone</FormLabel>
-                                        </div>
-                                        <FormControl>
-                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
-                                <FormField
-                                control={form.control}
-                                name="hero.showLocation"
-                                render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                        <div className="space-y-0.5">
-                                            <FormLabel>Afficher ma localité</FormLabel>
-                                        </div>
-                                        <FormControl>
-                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                        </FormControl>
-                                    </FormItem>
-                                )}
-                            />
+                            control={form.control}
+                            name="hero.showPhone"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Afficher mon numéro de téléphone</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                            <FormField
+                            control={form.control}
+                            name="hero.showLocation"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Afficher ma localité</FormLabel>
+                                    </div>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
                         </div>
                     </div>
 
-                        <div className="space-y-4 rounded-lg border p-4">
+                    <div className="space-y-4 rounded-lg border p-4">
                         <h4 className="font-medium">Arrière-plan</h4>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <FormField
@@ -399,61 +396,60 @@ export default function MiniSitePage() {
                             />
                         </div>
                     </div>
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <CardTitle>Section "Attention"</CardTitle>
-                            <CardDescription>
-                                Un encart pour mettre en avant un message important.
-                            </CardDescription>
-                        </div>
-                         <FormField
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="attention-section" className='border rounded-lg overflow-hidden'>
+                  <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "Attention"</AccordionTrigger>
+                  <AccordionContent>
+                      <div className="p-6 space-y-6">
+                           <FormField
                             control={form.control}
                             name="attentionSection.enabled"
                             render={({ field }) => (
-                                <FormItem className="flex flex-row items-center gap-2 space-y-0">
-                                    <FormLabel>Activé</FormLabel>
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                    <div className="space-y-0.5">
+                                        <FormLabel>Activer la section</FormLabel>
+                                    </div>
                                     <FormControl>
                                         <Switch checked={field.value} onCheckedChange={field.onChange} />
                                     </FormControl>
                                 </FormItem>
                             )}
                         />
-                    </div>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                     <FormField
-                        control={form.control}
-                        name="attentionSection.title"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Titre</FormLabel>
-                                <FormControl>
-                                    <Input {...field} placeholder="Titre de la section..." />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="attentionSection.text"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Texte</FormLabel>
-                                <FormControl>
-                                    <Textarea {...field} placeholder="Votre message important..." rows={5}/>
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </CardContent>
-            </Card>
-             <div className="flex justify-end">
+                         <FormField
+                            control={form.control}
+                            name="attentionSection.title"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Titre</FormLabel>
+                                    <FormControl>
+                                        <Input {...field} placeholder="Titre de la section..." />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="attentionSection.text"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Texte</FormLabel>
+                                    <FormControl>
+                                        <Textarea {...field} placeholder="Votre message important..." rows={5}/>
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                      </div>
+                  </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+
+             <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                     Enregistrer les modifications
@@ -464,3 +460,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
