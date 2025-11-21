@@ -98,6 +98,10 @@
             "format": "uri",
             "description": "URL of the user's public profile photo."
         },
+        "publicProfileName": {
+            "type": "string",
+            "description": "The user-defined public name for their mini-site URL."
+        },
         "publicTitle": {
             "type": "string",
             "description": "Public-facing professional title for the counselor (e.g., 'Coach en développement personnel')."
@@ -132,99 +136,27 @@
         "type": "object",
         "description": "Personalization settings for the counselor's mini-site.",
         "properties": {
+            "publicProfileName": {
+                "type": "string",
+                "description": "The public-facing URL slug for the mini-site."
+            },
             "hero": {
                 "type": "object",
                 "properties": {
                     "title": { "type": "string" },
                     "subtitle": { "type": "string" },
+                    "text": { "type": "string" },
                     "ctaText": { "type": "string" },
                     "ctaLink": { "type": "string" },
+                    "cta2Text": { "type": "string" },
+                    "cta2Link": { "type": "string" },
                     "showPhoto": { "type": "boolean" },
-                    "bgColor": { "type": "string" },
-                    "bgImageUrl": { "type": "string", "format": "uri" },
                     "showPhone": { "type": "boolean" },
                     "showLocation": { "type": "boolean" },
-                    "primaryColor": { "type": "string" },
-                    "secondaryColor": { "type": "string" }
-                }
-            },
-            "attentionSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "text": { "type": "string" }
-                }
-            },
-            "aboutSection": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean"},
-                "imageUrl": { "type": "string", "format": "uri"},
-                "videoUrl": { "type": "string", "format": "uri"},
-                "mediaText": { "type": "string"},
-                "title": { "type": "string"},
-                "text": { "type": "string"}
-              }
-            },
-            "interestsSection": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean"},
-                "title": { "type": "string"},
-                "features": { "type": "array", "items": { "type": "string" } }
-              }
-            },
-            "servicesSection": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "title": { "type": "string" },
-                "subtitle": { "type": "string" },
-                "services": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": { "type": "string" },
-                      "title": { "type": "string" },
-                      "description": { "type": "string" },
-                      "imageUrl": { "type": "string", "format": "uri" }
-                    }
-                  }
-                }
-              }
-            },
-            "ctaSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "subtitle": { "type": "string" },
-                    "text": { "type": "string" },
-                    "buttonText": { "type": "string" },
-                    "buttonLink": { "type": "string" },
                     "bgColor": { "type": "string" },
-                    "bgImageUrl": { "type": "string", "format": "uri" }
-                }
-            },
-            "pricingSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "subtitle": { "type": "string" },
-                    "planIds": { "type": "array", "items": { "type": "string" } }
-                }
-            },
-            "contactSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "text": { "type": "string" },
-                    "imageUrl": { "type": "string", "format": "uri" },
-                    "links": { "type": "array", "items": { "type": "object", "properties": { "text": { "type": "string" }, "url": { "type": "string" } } } }
+                    "bgImageUrl": { "type": "string", "format": "uri" },
+                    "titleColor": { "type": "string" },
+                    "subtitleColor": { "type": "string" }
                 }
             }
         }
@@ -243,7 +175,15 @@
             "photoUrl": { "type": "string", "format": "uri" },
             "publicTitle": { "type": "string" },
             "publicBio": { "type": "string" },
-            "miniSite": { "$ref": "#/entities/MiniSite" }
+            "miniSite": { "$ref": "#/entities/MiniSite" },
+            "dashboardTheme": {
+                "type": "object",
+                "properties": {
+                    "primaryColor": { "type": "string" },
+                    "secondaryColor": { "type": "string" },
+                    "bgColor": { "type": "string" }
+                }
+            }
         },
         "required": ["id", "firstName", "lastName", "email"]
     },
