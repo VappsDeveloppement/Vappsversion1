@@ -97,13 +97,13 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button 
-                                    className="w-full font-bold" 
+                                <button 
+                                    className="w-full font-bold text-white h-10 px-4 py-2 rounded-md" 
                                     style={{ backgroundColor: primaryColor }}
                                     onClick={() => handleButtonClick(tier.name)}
                                 >
                                     {tier.cta || 'Choisir cette formule'}
-                                </Button>
+                                </button>
                             </CardFooter>
                         </Card>
                     ))}
