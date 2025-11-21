@@ -1,29 +1,51 @@
+
+'use client';
+
 import { CheckCircle2 } from "lucide-react";
-import { useAgency } from "@/context/agency-provider";
 
-export function ParcoursSection() {
-    const { personalization } = useAgency();
-    const parcoursSettings = personalization?.parcoursSection;
+type ParcoursStep = {
+    id: string;
+    title: string;
+    description: string;
+}
 
-    if (!parcoursSettings) return null;
+type CounselorProfile = {
+    miniSite?: {
+        parcoursSection?: {
+            enabled?: boolean;
+            title?: string;
+            subtitle?: string;
+            steps?: ParcoursStep[];
+        }
+    };
+};
+
+export function ParcoursSection({ counselor }: { counselor: CounselorProfile }) {
+    const parcoursConfig = counselor.miniSite?.parcoursSection || {};
     
-    const { title, subtitle, steps } = parcoursSettings;
+    if (!parcoursConfig.enabled) {
+        return null;
+    }
+    
+    const { title, subtitle, steps } = parcoursConfig;
+
+    if (!steps || steps.length === 0) {
+        return null;
+    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold">{title}</h2>
-                    <p className="text-lg text-muted-foreground mt-4 max-w-3xl mx-auto">
-                        {subtitle}
-                    </p>
+                    {subtitle && <p className="text-lg text-muted-foreground mt-4 max-w-3xl mx-auto">{subtitle}</p>}
                 </div>
 
                 <div className="relative">
-                    <div className="absolute top-1/2 left-0 w-full h-0.5 bg-border -translate-y-1/2" style={{top: '24px'}}></div>
+                    <div className="absolute top-6 left-0 w-full h-0.5 bg-border -translate-y-1/2"></div>
                     <div className={`grid grid-cols-1 md:grid-cols-2 lg:grid-cols-${steps.length} gap-8 text-center relative`}>
-                        {steps.map((step, index) => (
-                            <div key={step.id || index} className="flex flex-col items-center">
+                        {steps.map((step) => (
+                            <div key={step.id} className="flex flex-col items-center">
                                 <div className="relative bg-background p-1 z-10">
                                     <CheckCircle2 className="h-12 w-12 text-primary" />
                                 </div>

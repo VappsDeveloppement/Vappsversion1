@@ -14,6 +14,7 @@ import { useAgency } from '@/context/agency-provider';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { AboutMeSection } from '@/components/shared/about-me-section';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
+import { ParcoursSection } from '@/components/shared/parcours-section';
 
 type CounselorProfile = {
     id: string;
@@ -29,11 +30,20 @@ type CounselorProfile = {
         attentionSection?: any;
         aboutSection?: any;
         servicesSection?: any;
+        parcoursSection?: any;
     };
     agencyInfo?: {
         copyrightText?: string;
         copyrightUrl?: string;
     }
+};
+
+const sectionComponents: { [key: string]: React.ComponentType<{ counselor: CounselorProfile }> } = {
+  hero: CounselorHero,
+  attentionSection: AttentionSection,
+  aboutSection: AboutMeSection,
+  parcoursSection: ParcoursSection,
+  servicesSection: CounselorServicesSection,
 };
 
 function CounselorPageContent({ counselor, isLoading, agency }: { counselor: CounselorProfile | null, isLoading: boolean, agency: any }) {
@@ -67,13 +77,26 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
   const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
   const primaryColor = counselor.miniSite?.hero?.primaryColor || '#10B981';
 
+  const sections = counselor.miniSite?.sections || [
+    { id: 'hero', enabled: true },
+    { id: 'attentionSection', enabled: true },
+    { id: 'aboutSection', enabled: true },
+    { id: 'parcoursSection', enabled: true },
+    { id: 'servicesSection', enabled: true },
+  ];
+
   return (
     <div className="bg-muted/30 min-h-screen">
       <main>
-        <CounselorHero counselor={counselor} />
-        <AttentionSection counselor={counselor} />
-        <AboutMeSection counselor={counselor} />
-        <CounselorServicesSection counselor={counselor} />
+        {sections.map((section: { id: string; enabled: boolean }) => {
+          if (!section.enabled) return null;
+          const Component = sectionComponents[section.id];
+          // The hero is handled specially because it's the header.
+          if (section.id === 'hero') {
+            return <CounselorHero key={section.id} counselor={counselor} />;
+          }
+          return Component ? <Component key={section.id} counselor={counselor} /> : null;
+        })}
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
@@ -123,5 +146,3 @@ export default function CounselorPublicProfilePage() {
 
   return <CounselorPageContent counselor={counselor} isLoading={finalLoadingState} agency={agency} />
 }
-
-    
