@@ -8,6 +8,7 @@ import { collection, query, where, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AttentionSection } from '@/components/shared/attention-section';
+import { AboutMeSection } from '@/components/shared/about-me-section';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Wrench } from 'lucide-react';
@@ -27,6 +28,7 @@ type CounselorProfile = {
         publicProfileName?: string;
         hero?: any;
         attentionSection?: any;
+        aboutSection?: any;
     };
     dashboardTheme?: {
         primaryColor?: string;
@@ -85,6 +87,7 @@ export default function CounselorPublicProfilePage() {
       <main>
         <CounselorHero counselor={counselor} />
         <AttentionSection counselor={counselor} />
+        <AboutMeSection counselor={counselor} />
         
         <div className="flex flex-col items-center justify-center text-center p-12 my-12 border-2 border-dashed rounded-lg h-96 max-w-4xl mx-auto">
             <Wrench className="h-16 w-16 text-muted-foreground mb-4" />

@@ -157,6 +157,25 @@
                     "titleColor": { "type": "string" },
                     "subtitleColor": { "type": "string" }
                 }
+            },
+            "attentionSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "text": { "type": "string" }
+                }
+            },
+            "aboutSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "text": { "type": "string" },
+                    "imageUrl": { "type": "string", "format": "uri" }
+                }
             }
         }
     },

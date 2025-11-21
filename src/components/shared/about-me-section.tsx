@@ -6,6 +6,9 @@ import Image from 'next/image';
 
 type CounselorProfile = {
     publicBio?: string;
+    dashboardTheme?: {
+        primaryColor?: string;
+    };
     miniSite?: {
         aboutSection?: {
             enabled?: boolean;
@@ -28,6 +31,7 @@ export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
     const subtitle = aboutConfig.subtitle || "Une approche sur-mesure";
     const textToDisplay = aboutConfig.text || counselor.publicBio || "Contenu de la biographie à venir.";
     const imageUrl = aboutConfig.imageUrl;
+    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     const mediaContent = imageUrl ? (
         <div className="w-full h-64 md:h-80 relative rounded-lg overflow-hidden shadow-lg">
@@ -46,7 +50,7 @@ export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
             <div className="container mx-auto px-4">
                  <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold">{title}</h2>
-                    {subtitle && <p className="text-lg text-primary mt-2">{subtitle}</p>}
+                    {subtitle && <p className="text-lg mt-2" style={{ color: primaryColor }}>{subtitle}</p>}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                     {mediaContent}
