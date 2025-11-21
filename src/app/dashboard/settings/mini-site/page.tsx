@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs, limit, documentId } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -24,6 +24,9 @@ import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
+import type { Plan } from '@/components/shared/plan-management';
+import { useCollection } from '@/firebase/firestore/use-collection';
 
 
 const heroSchema = z.object({
@@ -115,6 +118,13 @@ const activitiesSchema = z.object({
   eventsButtonLink: z.string().optional(),
 }).optional();
 
+const pricingSchema = z.object({
+    enabled: z.boolean().default(false),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    planIds: z.array(z.string()).optional(),
+}).optional();
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -124,6 +134,7 @@ const miniSiteSchema = z.object({
   parcoursSection: parcoursSchema.optional(),
   ctaSection: ctaSchema.optional(),
   activitiesSection: activitiesSchema,
+  pricingSection: pricingSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -167,6 +178,13 @@ export default function MiniSitePage() {
   }, [firestore, user]);
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc<UserProfile>(userDocRef);
+
+  const counselorPlansQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid));
+  }, [user, firestore]);
+  const { data: counselorPlans, isLoading: arePlansLoading } = useCollection<Plan>(counselorPlansQuery);
+
 
   const [heroBgImagePreview, setHeroBgImagePreview] = useState<string | null | undefined>(null);
   const [aboutImagePreview, setAboutImagePreview] = useState<string | null | undefined>(null);
@@ -238,6 +256,12 @@ export default function MiniSitePage() {
         events: [],
         eventsButtonText: "J'ai participé à un évènement",
         eventsButtonLink: "#",
+      },
+      pricingSection: {
+        enabled: false,
+        title: 'Mes Formules',
+        subtitle: '',
+        planIds: [],
       }
     },
   });
@@ -263,7 +287,6 @@ export default function MiniSitePage() {
        const initialMiniSiteData = {
          ...form.getValues(), // Start with default values
          ...userData.miniSite, // Override with saved data
-         // Ensure arrays are not undefined for field arrays
          servicesSection: {
             ...form.getValues().servicesSection,
             ...userData.miniSite.servicesSection,
@@ -278,6 +301,11 @@ export default function MiniSitePage() {
             ...form.getValues().activitiesSection,
             ...userData.miniSite.activitiesSection,
             events: userData.miniSite.activitiesSection?.events || [],
+         },
+         pricingSection: {
+            ...form.getValues().pricingSection,
+            ...userData.miniSite.pricingSection,
+            planIds: userData.miniSite.pricingSection?.planIds || [],
          }
        };
       form.reset(initialMiniSiteData);
@@ -599,6 +627,74 @@ export default function MiniSitePage() {
                                 </div>
                                 <FormField control={form.control} name="ctaSection.bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
                             </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="pricing-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section Formules (Pricing)</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="pricingSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="pricingSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes Formules" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="pricingSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Textarea placeholder="Choisissez la formule qui vous convient le mieux." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            
+                            <FormField
+                                control={form.control}
+                                name="pricingSection.planIds"
+                                render={() => (
+                                    <FormItem>
+                                        <div className="mb-4">
+                                            <FormLabel className="text-base">Formules à afficher</FormLabel>
+                                            <FormDescription>
+                                                Cochez les modèles de prestations que vous souhaitez afficher sur votre mini-site.
+                                            </FormDescription>
+                                        </div>
+                                        {arePlansLoading ? <Skeleton className="h-20 w-full" /> : counselorPlans && counselorPlans.length > 0 ? (
+                                            counselorPlans.map((plan) => (
+                                                <FormField
+                                                    key={plan.id}
+                                                    control={form.control}
+                                                    name="pricingSection.planIds"
+                                                    render={({ field }) => {
+                                                        return (
+                                                        <FormItem
+                                                            key={plan.id}
+                                                            className="flex flex-row items-start space-x-3 space-y-0 p-3 border rounded-md"
+                                                        >
+                                                            <FormControl>
+                                                            <Checkbox
+                                                                checked={field.value?.includes(plan.id)}
+                                                                onCheckedChange={(checked) => {
+                                                                return checked
+                                                                    ? field.onChange([...(field.value || []), plan.id])
+                                                                    : field.onChange(
+                                                                        field.value?.filter(
+                                                                        (value) => value !== plan.id
+                                                                        )
+                                                                    )
+                                                                }}
+                                                            />
+                                                            </FormControl>
+                                                            <FormLabel className="font-normal w-full">
+                                                                <div className="flex justify-between items-center">
+                                                                    <span>{plan.name}</span>
+                                                                    <span className="text-sm font-bold text-primary">{plan.price}€</span>
+                                                                </div>
+                                                            </FormLabel>
+                                                        </FormItem>
+                                                        )
+                                                    }}
+                                                    />
+                                            ))
+                                        ) : (
+                                            <p className="text-sm text-muted-foreground">Aucun modèle de prestation créé. Allez dans la section "Facturation" pour en créer.</p>
+                                        )}
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+
                         </div>
                     </AccordionContent>
                 </AccordionItem>

@@ -26,15 +26,17 @@ type CounselorProfile = {
             planIds?: string[];
         }
     };
+    dashboardTheme?: {
+        primaryColor?: string;
+    }
 };
 
 export function CounselorPricingSection({ counselor }: { counselor: CounselorProfile }) {
     const firestore = useFirestore();
     const pricingConfig = counselor.miniSite?.pricingSection || {};
-    const heroConfig = counselor.miniSite?.hero || {};
+    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     const { enabled, title, subtitle, planIds } = pricingConfig;
-    const primaryColor = heroConfig.primaryColor || '#10B981';
 
     const selectedPlansQuery = useMemoFirebase(() => {
         if (!planIds || planIds.length === 0) return null;
@@ -70,10 +72,10 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
                 ) : sortedPlans && sortedPlans.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
                         {sortedPlans.map((plan) => (
-                            <Card key={plan.id} className={cn("flex flex-col h-full shadow-lg", plan.isFeatured && "border-primary border-2 relative")}>
+                            <Card key={plan.id} className={cn("flex flex-col h-full shadow-lg", plan.isFeatured && "border-2 relative")} style={plan.isFeatured ? {borderColor: primaryColor} : {}}>
                                 {plan.isFeatured && (
                                     <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
-                                        <div className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold" style={{ backgroundColor: primaryColor }}>
+                                        <div className="text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold" style={{ backgroundColor: primaryColor }}>
                                             Recommandé
                                         </div>
                                     </div>

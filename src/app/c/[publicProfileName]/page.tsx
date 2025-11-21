@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
 import { CounselorActivitiesSection } from '@/components/shared/counselor-activities-section';
+import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 
 type CounselorProfile = {
     id: string;
@@ -37,6 +38,7 @@ type CounselorProfile = {
         servicesSection?: any;
         parcoursSection?: any;
         ctaSection?: any;
+        pricingSection?: any;
         activitiesSection?: any;
     };
     dashboardTheme?: {
@@ -100,6 +102,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorServicesSection counselor={counselor} />
         <ParcoursSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
+        <CounselorPricingSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>

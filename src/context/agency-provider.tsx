@@ -96,6 +96,13 @@ interface ActivitiesSectionPersonalization {
     eventsButtonLink?: string;
 }
 
+interface PricingSectionPersonalization {
+    enabled: boolean;
+    title: string;
+    subtitle: string;
+    planIds: string[];
+}
+
 
 interface PaymentSettings {
     ribIban: string;
@@ -175,6 +182,7 @@ interface Personalization {
     servicesSection: ServicesSectionPersonalization;
     parcoursSection: ParcoursSectionPersonalization;
     activitiesSection: ActivitiesSectionPersonalization;
+    pricingSection: PricingSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
     gdprSettings: GdprSettings;
@@ -349,6 +357,12 @@ const defaultPersonalization: Personalization = {
         eventsButtonText: "J'ai participé à un évènement",
         eventsButtonLink: "#",
       },
+      pricingSection: {
+        enabled: false,
+        title: 'Mes Formules',
+        subtitle: '',
+        planIds: [],
+      },
     paymentSettings: {
         ribIban: "",
         ribBic: "",
@@ -473,6 +487,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                      activitiesSection: {
                         ...defaultPersonalization.activitiesSection,
                         ...(fetchedAgencyData.personalization?.activitiesSection || {}),
+                    },
+                    pricingSection: {
+                        ...defaultPersonalization.pricingSection,
+                        ...(fetchedAgencyData.personalization?.pricingSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,

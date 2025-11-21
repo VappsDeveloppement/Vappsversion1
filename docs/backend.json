@@ -1,4 +1,5 @@
 
+
 {
   "entities": {
     "User": {
@@ -229,14 +230,29 @@
                     "bgImageUrl": { "type": "string", "format": "uri" }
                 }
             },
-            "contactSection": {
+            "pricingSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "planIds": { 
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                }
+            },
+            "activitiesSection": {
                 "type": "object",
                 "properties": {
                     "enabled": { "type": "boolean" },
                     "title": { "type": "string" },
                     "text": { "type": "string" },
+                    "mediaType": { "type": "string", "enum": ["image", "video"] },
                     "imageUrl": { "type": "string", "format": "uri" },
                     "videoUrl": { "type": "string", "format": "uri" },
+                    "interestsTitle": { "type": "string" },
+                    "interests": { "type": "string" },
                     "events": {
                       "type": "array",
                       "items": {
@@ -250,17 +266,6 @@
                     },
                     "eventsButtonText": { "type": "string" },
                     "eventsButtonLink": { "type": "string" }
-                }
-            },
-            "interestsSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "features": {
-                        "type": "array",
-                        "items": { "type": "string" }
-                    }
                 }
             }
         }
