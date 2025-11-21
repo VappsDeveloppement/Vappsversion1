@@ -70,6 +70,7 @@ export type Plan = {
   cta?: string;
   counselorId?: string;
   contractId?: string;
+  paypalSubscriptionId?: string;
 };
 
 const planSchema = z.object({
@@ -84,6 +85,7 @@ const planSchema = z.object({
   imageUrl: z.string().optional(),
   cta: z.string().optional(),
   contractId: z.string().optional(),
+  paypalSubscriptionId: z.string().optional(),
   isPublic: z.boolean().default(false).optional(),
   isFeatured: z.boolean().default(false).optional(),
 });
@@ -147,6 +149,7 @@ export function PlanManagement() {
         imageUrl: '',
         cta: 'Choisir cette formule',
         contractId: 'none',
+        paypalSubscriptionId: '',
         isPublic: false,
         isFeatured: false,
     });
@@ -384,6 +387,20 @@ export function PlanManagement() {
                                         </SelectContent>
                                     </Select>
                                     <FormDescription>Si un contrat est lié, il sera présenté à l'utilisateur lors de la sélection du plan.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="paypalSubscriptionId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>ID du bouton d'abonnement PayPal (Optionnel)</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Ex: P-12345678" {...field} />
+                                    </FormControl>
+                                    <FormDescription>Collez ici l'ID de votre bouton d'abonnement créé sur PayPal.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                             )}
