@@ -51,7 +51,14 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { PlusCircle, Trash2, Edit, Loader2, Upload, Star } from 'lucide-react';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import type { Contract } from './contract-management';
+
+// Assuming Contract type is defined elsewhere and imported
+interface Contract {
+    id: string;
+    title: string;
+    content: string;
+}
+
 
 export type Plan = {
   id: string;
@@ -198,10 +205,10 @@ export function PlanManagement() {
       contractId: data.contractId === 'none' ? undefined : data.contractId,
     };
 
-    // Explicitly remove if undefined to avoid Firestore errors with `undefined` values.
     if (planData.contractId === undefined) {
-        delete (planData as any).contractId;
+      delete (planData as Partial<typeof planData>).contractId;
     }
+
 
     const batch = writeBatch(firestore);
 
@@ -392,7 +399,7 @@ export function PlanManagement() {
                             render={({ field }) => (
                                 <FormItem>
                                     <FormLabel>Contrat à lier (Optionnel)</FormLabel>
-                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value || 'none'}>
                                         <FormControl>
                                             <SelectTrigger>
                                                 <SelectValue placeholder="Sélectionner un contrat à associer..." />
@@ -524,5 +531,3 @@ export function PlanManagement() {
     </Card>
   );
 }
-
-    
