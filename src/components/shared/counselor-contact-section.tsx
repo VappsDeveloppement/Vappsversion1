@@ -59,13 +59,13 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
     }
 
     const info = {
-        commercialName: contactConfig.commercialName || counselor.commercialName,
-        siret: contactConfig.siret || counselor.siret,
-        address: contactConfig.address || counselor.address,
-        zipCode: contactConfig.zipCode || counselor.zipCode,
-        city: contactConfig.city || counselor.city,
-        email: contactConfig.email || counselor.email,
-        phone: contactConfig.phone || counselor.phone,
+        commercialName: contactConfig.commercialName,
+        siret: contactConfig.siret,
+        address: contactConfig.address,
+        zipCode: contactConfig.zipCode,
+        city: contactConfig.city,
+        email: contactConfig.email,
+        phone: contactConfig.phone,
     };
 
     const fullAddress = [info.address, info.zipCode, info.city].filter(Boolean).join(', ');
@@ -186,5 +186,3 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
         </section>
     );
 }
-
-    
