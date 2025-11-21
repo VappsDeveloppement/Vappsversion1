@@ -52,6 +52,7 @@ function HeroWithLogin() {
                     src={heroImageSrc}
                     alt="Image de fond"
                     fill
+                    sizes="100vw"
                     className="object-cover object-center z-0"
                     data-ai-hint="hero background"
                 />
@@ -97,6 +98,7 @@ function HeroWithoutLogin() {
                     src={heroImageSrc}
                     alt="Image de fond pour le Héro"
                     fill
+                    sizes="100vw"
                     className="object-cover object-center z-0"
                     data-ai-hint="hero background"
                 />
