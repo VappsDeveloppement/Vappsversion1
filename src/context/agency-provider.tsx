@@ -177,7 +177,6 @@ interface Personalization {
     footerSocialLinks: any[];
     copyrightText: string;
     copyrightUrl: string;
-    homePageVersion: string;
     homePageSections: Section[];
     legalInfo: any;
     aboutSection: AboutSectionPersonalization;
@@ -217,7 +216,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
-  { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
   { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
@@ -267,7 +265,6 @@ const defaultPersonalization: Personalization = {
     ],
     copyrightText: "Vapps.",
     copyrightUrl: "/",
-    homePageVersion: 'tunnel',
     homePageSections: defaultHomePageSections,
     legalInfo: {
         companyName: "", structureType: "", capital: "", siret: "", addressStreet: "", addressZip: "", addressCity: "",

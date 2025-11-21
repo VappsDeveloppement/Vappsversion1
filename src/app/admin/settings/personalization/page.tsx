@@ -145,7 +145,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
-  { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
   { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
@@ -198,7 +197,6 @@ const defaultPersonalization = {
     ],
     copyrightText: "Vapps.",
     copyrightUrl: "/",
-    homePageVersion: 'tunnel',
     homePageSections: defaultHomePageSections,
     legalInfo: {
         companyName: "", structureType: "", capital: "", siret: "", addressStreet: "", addressZip: "", addressCity: "",
@@ -1315,21 +1313,7 @@ export default function PersonalizationPage() {
                                 <div className="p-6 border-t bg-muted/50">
                                 {section.id === 'hero' ? (
                                     <div className="space-y-6">
-                                        <div>
-                                            <Label className="text-base font-medium">Style de la section Héro</Label>
-                                            <RadioGroup value={settings.heroStyle} onValueChange={(value) => handleFieldChange('heroStyle', value)} className="mt-2 space-y-2">
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="application" id="hero-application" />
-                                                    <Label htmlFor="hero-application">Avec fenêtre de connexion</Label>
-                                                </div>
-                                                <div className="flex items-center space-x-2">
-                                                    <RadioGroupItem value="tunnel" id="hero-tunnel" />
-                                                    <Label htmlFor="hero-tunnel">Sans fenêtre de connexion (Tunnel)</Label>
-                                                </div>
-                                            </RadioGroup>
-                                        </div>
-
-                                        <div className="border-t pt-6 mt-6">
+                                        <div className="mt-6 pt-6 border-t">
                                             <h4 className="font-medium">Image de fond & Couleur</h4>
                                             <div className="flex items-center gap-4 mt-4">
                                                 <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden" style={{backgroundColor: heroImagePreview ? 'transparent' : settings.heroBgColor}}>
