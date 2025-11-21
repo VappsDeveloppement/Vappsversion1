@@ -74,6 +74,7 @@ const parcoursStepSchema = z.object({
   id: z.string(),
   title: z.string().min(1, "Le titre est requis."),
   description: z.string().min(1, "La description est requise."),
+  imageUrl: z.string().nullable().optional(),
 });
 
 const parcoursSchema = z.object({
@@ -248,6 +249,14 @@ export default function MiniSitePage() {
         if (file) {
             const base64 = await toBase64(file);
             form.setValue(`servicesSection.services.${index}.imageUrl`, base64);
+        }
+    };
+    
+    const handleParcoursImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            form.setValue(`parcoursSection.steps.${index}.imageUrl`, base64);
         }
     };
 
@@ -472,9 +481,22 @@ export default function MiniSitePage() {
                                             </div>
                                              <FormField control={form.control} name={`parcoursSection.steps.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre de l'étape</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                                              <FormField control={form.control} name={`parcoursSection.steps.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={3} /></FormControl><FormMessage /></FormItem> )}/>
+                                            <div>
+                                                <Label>Image de l'étape</Label>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                        {form.watch(`parcoursSection.steps.${index}.imageUrl`) ? (<Image src={form.watch(`parcoursSection.steps.${index}.imageUrl`)!} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+                                                    </div>
+                                                    <input type="file" id={`parcours-image-${index}`} onChange={(e) => handleParcoursImageUpload(index, e)} className="hidden" accept="image/*" />
+                                                    <div className="flex flex-col gap-2">
+                                                        <Button type="button" variant="outline" onClick={() => document.getElementById(`parcours-image-${index}`)?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
+                                                        <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue(`parcoursSection.steps.${index}.imageUrl`, null)}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendStep({ id: `step-${Date.now()}`, title: 'Nouvelle étape', description: 'Description de l'étape.' })}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendStep({ id: `step-${Date.now()}`, title: 'Nouvelle étape', description: 'Description de l\'étape.', imageUrl: null })}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une étape
                                     </Button>
                                 </div>
@@ -495,5 +517,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
-    
