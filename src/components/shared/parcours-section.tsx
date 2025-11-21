@@ -19,13 +19,19 @@ type CounselorProfile = {
             steps?: ParcoursStep[];
         }
     };
+    dashboardTheme?: {
+        primaryColor?: string;
+    };
 };
 
 export function ParcoursSection({ counselor }: { counselor?: CounselorProfile }) {
-    const { personalization } = useAgency();
+    const agencyData = useAgency(); // Fallback to agency data if counselor is not provided
     
-    // Use counselor-specific config if available, otherwise fallback to agency's personalization
-    const parcoursConfig = counselor?.miniSite?.parcoursSection || personalization?.parcoursSection || {};
+    // Determine which data source to use
+    const source = counselor ? counselor.miniSite : agencyData.personalization;
+    const primaryColor = counselor ? counselor.dashboardTheme?.primaryColor : agencyData.personalization.primaryColor;
+    
+    const parcoursConfig = source?.parcoursSection || {};
     
     if (!parcoursConfig.enabled) {
         return null;
@@ -51,7 +57,7 @@ export function ParcoursSection({ counselor }: { counselor?: CounselorProfile })
                         {steps.map((step) => (
                             <div key={step.id} className="flex flex-col items-center">
                                 <div className="relative bg-background p-1 z-10">
-                                    <CheckCircle2 className="h-12 w-12 text-primary" />
+                                    <CheckCircle2 className="h-12 w-12 text-primary" style={{ color: primaryColor }}/>
                                 </div>
                                 <div className="pt-6">
                                     <h3 className="font-bold text-lg mb-2">{step.title}</h3>
