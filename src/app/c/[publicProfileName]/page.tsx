@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -14,6 +13,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useAgency } from '@/context/agency-provider';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { AboutMeSection } from '@/components/shared/about-me-section';
+import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 
 type CounselorProfile = {
     id: string;
@@ -28,6 +28,7 @@ type CounselorProfile = {
         hero?: any;
         attentionSection?: any;
         aboutSection?: any;
+        servicesSection?: any;
     };
     agencyInfo?: {
         copyrightText?: string;
@@ -72,6 +73,7 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
         <CounselorHero counselor={counselor} />
         <AttentionSection counselor={counselor} />
         <AboutMeSection counselor={counselor} />
+        <CounselorServicesSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>

@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, Upload, Trash2 } from 'lucide-react';
+import { Loader2, Eye, Upload, Trash2, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -23,6 +23,7 @@ import Image from 'next/image';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AboutMeSection } from '@/components/shared/about-me-section';
+import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -53,10 +54,23 @@ const attentionSchema = z.object({
 
 const aboutSchema = z.object({
   enabled: z.boolean().default(true),
-  title: z.string().optional(),
-  subtitle: z.string().optional(),
-  text: z.string().optional(),
   imageUrl: z.string().optional(),
+  title: z.string().optional(),
+  text: z.string().optional(),
+});
+
+const serviceItemSchema = z.object({
+    id: z.string(),
+    title: z.string().min(1, 'Le titre est requis.'),
+    description: z.string().min(1, 'La description est requise.'),
+    imageUrl: z.string().optional(),
+});
+
+const servicesSchema = z.object({
+    enabled: z.boolean().default(true),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    services: z.array(serviceItemSchema),
 });
 
 
@@ -64,9 +78,11 @@ const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
     aboutSection: aboutSchema,
+    servicesSection: servicesSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
+export type ServiceItem = z.infer<typeof serviceItemSchema>;
 
 
 const defaultMiniSiteConfig: MiniSiteFormData = {
@@ -89,11 +105,20 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
     },
     aboutSection: {
         enabled: true,
-        title: 'À propos de moi',
-        subtitle: '',
-        text: "Votre biographie ou texte de présentation s'affichera ici.",
         imageUrl: '',
+        title: 'À propos de moi',
+        text: "Votre biographie ou texte de présentation s'affichera ici.",
     },
+    servicesSection: {
+        enabled: true,
+        title: "Mes Services",
+        subtitle: "Découvrez comment je peux vous aider",
+        services: [
+            { id: 'service-1', title: 'Service 1', description: 'Description du service 1.', imageUrl: '' },
+            { id: 'service-2', title: 'Service 2', description: 'Description du service 2.', imageUrl: '' },
+            { id: 'service-3', title: 'Service 3', description: 'Description du service 3.', imageUrl: '' },
+        ]
+    }
 };
 
 function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
@@ -101,13 +126,10 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
         ...(userData || {}),
         miniSite: {
             ...userData?.miniSite,
-            hero: formData.hero,
-            attentionSection: formData.attentionSection,
-            aboutSection: formData.aboutSection,
+            ...formData,
         }
     };
     
-    // Fallback to a default, just in case.
     const copyrightText = counselorPreviewData.agencyInfo?.copyrightText || "VApps.";
     const copyrightUrl = counselorPreviewData.agencyInfo?.copyrightUrl || "/";
     const footerBgColor = formData.hero?.bgColor || '#f1f5f9';
@@ -125,6 +147,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
              <CounselorHero counselor={counselorPreviewData} />
              <AttentionSection counselor={counselorPreviewData} />
              <AboutMeSection counselor={counselorPreviewData} />
+             <CounselorServicesSection counselor={counselorPreviewData} />
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
                 <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
              </footer>
@@ -141,6 +164,7 @@ export default function MiniSitePage() {
   
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const aboutImageInputRef = useRef<HTMLInputElement>(null);
+  const servicesImageInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -154,8 +178,13 @@ export default function MiniSitePage() {
     defaultValues: defaultMiniSiteConfig,
   });
 
-  const { watch, setValue } = form;
+  const { watch, setValue, control } = form;
   const watchedFormData = watch();
+
+   const { fields, append, remove } = useFieldArray({
+    control,
+    name: "servicesSection.services",
+  });
   
   useEffect(() => {
     if (userData?.miniSite) {
@@ -163,6 +192,7 @@ export default function MiniSitePage() {
             hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
             attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
             aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
+            servicesSection: { ...defaultMiniSiteConfig.servicesSection, ...(userData.miniSite.servicesSection || {}) },
         });
     }
   }, [userData, form]);
@@ -178,17 +208,11 @@ export default function MiniSitePage() {
         setAboutImagePreview(form.watch('aboutSection.imageUrl'));
     }, [form.watch('aboutSection.imageUrl')]);
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: `hero.bgImageUrl` | `aboutSection.imageUrl`) => {
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: any) => {
       const file = event.target.files?.[0];
       if (file) {
           const base64 = await toBase64(file);
-          if (fieldName === 'hero.bgImageUrl') {
-            setBgImagePreview(base64);
-            setValue('hero.bgImageUrl', base64);
-          } else if (fieldName === 'aboutSection.imageUrl') {
-            setAboutImagePreview(base64);
-            setValue('aboutSection.imageUrl', base64);
-          }
+          setValue(fieldName, base64);
       }
   };
 
@@ -199,9 +223,7 @@ export default function MiniSitePage() {
         await setDocumentNonBlocking(userDocRef, {
             miniSite: {
                 ...(userData?.miniSite || {}),
-                hero: data.hero,
-                attentionSection: data.attentionSection,
-                aboutSection: data.aboutSection,
+                ...data,
             },
         }, { merge: true });
         toast({ title: "Paramètres enregistrés", description: "Votre mini-site a été mis à jour." });
@@ -365,7 +387,7 @@ export default function MiniSitePage() {
                                     </div>
                                     <div className="flex flex-col gap-1">
                                         <Button type="button" variant="outline" size="sm" onClick={() => bgImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
-                                        <Button type="button" variant="ghost" size="sm" onClick={() => { setBgImagePreview(''); form.setValue('hero.bgImageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                        <Button type="button" variant="ghost" size="sm" onClick={() => setValue('hero.bgImageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
                                     </div>
                                 </div>
                             </div>
@@ -514,13 +536,60 @@ export default function MiniSitePage() {
                                 </div>
                                 <div className="flex flex-col gap-1">
                                     <Button type="button" variant="outline" size="sm" onClick={() => aboutImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
-                                    <Button type="button" variant="ghost" size="sm" onClick={() => { setAboutImagePreview(''); form.setValue('aboutSection.imageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => setValue('aboutSection.imageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
                                 </div>
                             </div>
                         </div>
                       </div>
                   </AccordionContent>
               </AccordionItem>
+                <AccordionItem value="services-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "Services"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="p-6 space-y-6">
+                            <FormField
+                                control={form.control}
+                                name="servicesSection.enabled"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                        <div className="space-y-0.5"><FormLabel>Activer la section</FormLabel></div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField control={form.control} name="servicesSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+                            <FormField control={form.control} name="servicesSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
+
+                            <div className='space-y-4'>
+                                <Label>Services</Label>
+                                {fields.map((item, index) => (
+                                    <div key={item.id} className="p-4 border rounded-lg space-y-4">
+                                        <div className="flex justify-between items-center">
+                                            <h4 className="font-medium">Service {index + 1}</h4>
+                                            <Button variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </div>
+                                        <FormField control={form.control} name={`servicesSection.services.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du service</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name={`servicesSection.services.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description du service</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <div>
+                                            <Label>Image du service</Label>
+                                            <input type="file" ref={el => servicesImageInputRefs.current[index] = el} onChange={(e) => handleFileUpload(e, `servicesSection.services.${index}.imageUrl`)} className="hidden" accept="image/*" />
+                                            <div className="mt-2 flex items-center gap-4">
+                                                <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                                    {watch(`servicesSection.services.${index}.imageUrl`) ? <Image src={watch(`servicesSection.services.${index}.imageUrl`)!} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => servicesImageInputRefs.current[index]?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                    <Button type="button" variant="ghost" size="sm" onClick={() => setValue(`servicesSection.services.${index}.imageUrl`, '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                                <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `service-${Date.now()}`, title: '', description: '', imageUrl: '' })}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un service</Button>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
             </Accordion>
 
              <div className="flex justify-end pt-4">
@@ -534,3 +603,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    

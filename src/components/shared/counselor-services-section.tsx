@@ -3,7 +3,7 @@
 
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import type { ServiceItem } from "@/app/admin/settings/mini-site/page";
+import type { ServiceItem } from "@/app/dashboard/settings/mini-site/page";
 
 type CounselorProfile = {
     miniSite?: {
@@ -35,7 +35,7 @@ export function CounselorServicesSection({ counselor }: { counselor: CounselorPr
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold">{title || "Mes Services"}</h2>
-                    <p className="text-lg font-semibold mt-2" style={{ color: primaryColor }}>{subtitle}</p>
+                    {subtitle && <p className="text-lg font-semibold mt-2" style={{ color: primaryColor }}>{subtitle}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -62,3 +62,5 @@ export function CounselorServicesSection({ counselor }: { counselor: CounselorPr
         </section>
     );
 }
+
+    
