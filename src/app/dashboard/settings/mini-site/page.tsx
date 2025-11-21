@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
@@ -13,15 +13,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Eye, Upload, Trash2, ArrowUp, ArrowDown } from 'lucide-react';
+import { Loader2, Eye, Upload, Trash2 } from 'lucide-react';
 import Link from 'next/link';
-import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import Image from 'next/image';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -34,7 +35,6 @@ const toBase64 = (file: File): Promise<string> =>
 const heroSchema = z.object({
     title: z.string().optional(),
     subtitle: z.string().optional(),
-    text: z.string().optional(),
     ctaText: z.string().optional(),
     ctaLink: z.string().optional(),
     showPhoto: z.boolean().default(true),
@@ -49,25 +49,17 @@ const heroSchema = z.object({
 });
 
 
-const sectionConfigSchema = z.object({
-  id: z.string(),
-  label: z.string(),
-  enabled: z.boolean(),
-});
-
 const miniSiteSchema = z.object({
     hero: heroSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
-type Section = z.infer<typeof sectionConfigSchema>;
 
 
 const defaultMiniSiteConfig: MiniSiteFormData = {
     hero: {
         title: 'Donnez un nouvel élan à votre carrière',
         subtitle: 'Un accompagnement personnalisé pour atteindre vos objectifs.',
-        text: "Avec plus de 10 ans d'expérience, je vous guide vers une carrière alignée avec vos valeurs et ambitions. Ensemble, nous révélerons votre plein potentiel.",
         ctaText: 'Prendre rendez-vous',
         cta2Text: 'Mon Espace',
         ctaLink: '#contact',
@@ -96,14 +88,6 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
     const footerBgColor = formData.hero?.bgColor || '#f1f5f9';
     const primaryColor = counselorPreviewData.dashboardTheme?.primaryColor || '#10B981';
 
-    const sections = [
-      { id: 'hero', enabled: true },
-    ];
-
-    const sectionComponents: { [key: string]: React.ComponentType<{ counselor: any }> } = {
-        hero: CounselorHero,
-    };
-
     return (
         <SheetContent className="w-full sm:max-w-full lg:w-[80vw] p-0">
           <SheetHeader className="p-4 border-b">
@@ -113,11 +97,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             </SheetDescription>
           </SheetHeader>
           <div className="h-[calc(100vh-80px)] overflow-y-auto bg-muted">
-            {sections.map((section: Section) => {
-                if (!section.enabled) return null;
-                const Component = sectionComponents[section.id];
-                return Component ? <Component key={section.id} counselor={counselorPreviewData} /> : null;
-            })}
+            <CounselorHero counselor={counselorPreviewData} />
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
                 <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
              </footer>
@@ -146,7 +126,7 @@ export default function MiniSitePage() {
     defaultValues: defaultMiniSiteConfig,
   });
 
-  const { watch, setValue, control } = form;
+  const { watch, setValue } = form;
   const watchedFormData = watch();
   
   useEffect(() => {
@@ -223,98 +203,90 @@ export default function MiniSitePage() {
       </div>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-            <Accordion type="single" collapsible defaultValue="hero-section" className="w-full space-y-4">
-                <AccordionItem value="hero-section" className='border rounded-lg overflow-hidden'>
-                    <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section Héro</AccordionTrigger>
-                    <AccordionContent>
-                        <div className="p-6 space-y-6">
-                            <FormField control={form.control} name="hero.title" render={({ field }) => ( <FormItem> <FormLabel>Titre principal</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                            <FormField
-                              control={form.control}
-                              name="hero.titleColor"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Couleur du titre principal</FormLabel>
-                                  <FormControl>
-                                    <div className="flex items-center gap-2">
-                                      <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
-                                      <Input type="text" {...field} value={field.value || ''} />
-                                    </div>
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <FormField control={form.control} name="hero.subtitle" render={({ field }) => ( <FormItem> <FormLabel>Sous-titre</FormLabel> <FormControl> <Textarea {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                            <FormField
-                              control={form.control}
-                              name="hero.subtitleColor"
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Couleur du sous-titre</FormLabel>
-                                  <FormControl>
-                                    <div className="flex items-center gap-2">
-                                      <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
-                                      <Input type="text" {...field} value={field.value || ''} />
-                                    </div>
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+          <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Section Héro</CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+                <FormField control={form.control} name="hero.title" render={({ field }) => ( <FormItem> <FormLabel>Titre principal</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField
+                  control={form.control}
+                  name="hero.titleColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Couleur du titre principal</FormLabel>
+                        <div className="flex items-center gap-2">
+                          <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                          <Input type="text" {...field} value={field.value || ''} />
+                        </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField control={form.control} name="hero.subtitle" render={({ field }) => ( <FormItem> <FormLabel>Sous-titre</FormLabel> <FormControl> <Textarea {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField
+                  control={form.control}
+                  name="hero.subtitleColor"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Couleur du sous-titre</FormLabel>
+                        <div className="flex items-center gap-2">
+                          <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                          <Input type="text" {...field} value={field.value || ''} />
+                        </div>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="hero.ctaText" render={({ field }) => ( <FormItem> <FormLabel>Texte du bouton d'action 1</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                <FormField control={form.control} name="hero.ctaLink" render={({ field }) => ( <FormItem> <FormLabel>Lien du bouton d'action 1</FormLabel> <FormControl> <Input {...field} placeholder="#contact ou https://..." /> </FormControl> <FormMessage /> </FormItem> )}/>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="hero.cta2Text" render={({ field }) => ( <FormItem> <FormLabel>Texte du bouton d'action 2</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                                <FormField control={form.control} name="hero.cta2Link" render={({ field }) => ( <FormItem> <FormLabel>Lien du bouton d'action 2</FormLabel> <FormControl> <Input {...field} placeholder="/application" /> </FormControl> <FormMessage /> </FormItem> )}/>
-                            </div>
-                            <div className="space-y-4 rounded-lg border p-4">
-                                <h4 className="font-medium">Options d'affichage</h4>
-                                <FormField control={form.control} name="hero.showPhoto" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Afficher ma photo de profil</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
-                                <FormField control={form.control} name="hero.showPhone" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Afficher mon numéro de téléphone</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
-                                <FormField control={form.control} name="hero.showLocation" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Afficher ma ville</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
-                            </div>
-                            <div className="space-y-4 rounded-lg border p-4">
-                                <h4 className="font-medium">Arrière-plan</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField
-                                        control={form.control}
-                                        name="hero.bgColor"
-                                        render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Couleur de fond</FormLabel>
-                                                <FormControl>
-                                                    <div className="flex items-center gap-2">
-                                                        <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
-                                                        <Input type="text" {...field} value={field.value || ''} />
-                                                    </div>
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <div>
-                                        <FormLabel>Image de fond</FormLabel>
-                                        <input type="file" ref={bgImageInputRef} onChange={(e) => handleFileUpload(e, 'hero.bgImageUrl')} className="hidden" accept="image/*" />
-                                        <div className="mt-2 flex items-center gap-4">
-                                            <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
-                                                {bgImagePreview ? <Image src={bgImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
-                                            </div>
-                                            <div className="flex flex-col gap-1">
-                                                <Button type="button" variant="outline" size="sm" onClick={() => bgImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
-                                                <Button type="button" variant="ghost" size="sm" onClick={() => setValue('hero.bgImageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
-                                            </div>
-                                        </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="hero.ctaText" render={({ field }) => ( <FormItem> <FormLabel>Texte du bouton d'action 1</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                    <FormField control={form.control} name="hero.ctaLink" render={({ field }) => ( <FormItem> <FormLabel>Lien du bouton d'action 1</FormLabel> <FormControl> <Input {...field} placeholder="#contact ou https://..." /> </FormControl> <FormMessage /> </FormItem> )}/>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="hero.cta2Text" render={({ field }) => ( <FormItem> <FormLabel>Texte du bouton d'action 2</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                    <FormField control={form.control} name="hero.cta2Link" render={({ field }) => ( <FormItem> <FormLabel>Lien du bouton d'action 2</FormLabel> <FormControl> <Input {...field} placeholder="/application" /> </FormControl> <FormMessage /> </FormItem> )}/>
+                </div>
+                <div className="space-y-4 rounded-lg border p-4">
+                    <h4 className="font-medium">Options d'affichage</h4>
+                    <FormField control={form.control} name="hero.showPhoto" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Afficher ma photo de profil</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
+                    <FormField control={form.control} name="hero.showPhone" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Afficher mon numéro de téléphone</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
+                    <FormField control={form.control} name="hero.showLocation" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Afficher ma ville</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
+                </div>
+                <div className="space-y-4 rounded-lg border p-4">
+                    <h4 className="font-medium">Arrière-plan</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="hero.bgColor"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Couleur de fond</FormLabel>
+                                    <div className="flex items-center gap-2">
+                                        <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                        <Input type="text" {...field} value={field.value || ''} />
                                     </div>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <div>
+                            <FormLabel>Image de fond</FormLabel>
+                            <input type="file" ref={bgImageInputRef} onChange={(e) => handleFileUpload(e, 'hero.bgImageUrl')} className="hidden" accept="image/*" />
+                            <div className="mt-2 flex items-center gap-4">
+                                <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                    {bgImagePreview ? <Image src={bgImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                </div>
+                                <div className="flex flex-col gap-1">
+                                    <Button type="button" variant="outline" size="sm" onClick={() => bgImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                    <Button type="button" variant="ghost" size="sm" onClick={() => setValue('hero.bgImageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
                                 </div>
                             </div>
                         </div>
-                    </AccordionContent>
-                </AccordionItem>
-            </Accordion>
+                    </div>
+                </div>
+            </CardContent>
+          </Card>
             <div className="flex justify-end pt-4">
                 <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
