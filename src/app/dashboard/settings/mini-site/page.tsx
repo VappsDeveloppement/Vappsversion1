@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -21,6 +22,7 @@ import { Switch } from '@/components/ui/switch';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import Image from 'next/image';
+import { AttentionSection } from '@/components/shared/attention-section';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -44,8 +46,16 @@ const heroSchema = z.object({
     secondaryColor: z.string().optional(),
 });
 
+const attentionSchema = z.object({
+    enabled: z.boolean().default(true),
+    title: z.string().optional(),
+    text: z.string().optional(),
+});
+
+
 const miniSiteSchema = z.object({
     hero: heroSchema,
+    attentionSection: attentionSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -64,6 +74,11 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         showLocation: false,
         primaryColor: '#10B981',
         secondaryColor: '#059669',
+    },
+    attentionSection: {
+        enabled: true,
+        title: "Section d'attention",
+        text: "Mettez en avant un message important ici."
     }
 };
 
@@ -73,6 +88,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
         miniSite: {
             ...userData?.miniSite,
             hero: formData.hero,
+            attentionSection: formData.attentionSection,
         }
     };
     
@@ -92,6 +108,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
           </SheetHeader>
           <div className="h-[calc(100vh-80px)] overflow-y-auto bg-muted">
              <CounselorHero counselor={counselorPreviewData} />
+             <AttentionSection counselor={counselorPreviewData} />
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
                 <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
              </footer>
@@ -109,7 +126,7 @@ export default function MiniSitePage() {
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'minisites', user.uid);
   }, [firestore, user]);
   
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
@@ -126,6 +143,7 @@ export default function MiniSitePage() {
     if (userData?.miniSite) {
         form.reset({
             hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
+            attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
         });
     }
   }, [userData, form]);
@@ -153,9 +171,10 @@ export default function MiniSitePage() {
             miniSite: {
                 ...(userData?.miniSite || {}),
                 hero: data.hero,
+                attentionSection: data.attentionSection,
             },
         }, { merge: true });
-        toast({ title: "Paramètres enregistrés", description: "Votre section Héro a été mise à jour." });
+        toast({ title: "Paramètres enregistrés", description: "Votre mini-site a été mis à jour." });
     } catch (error) {
         toast({ title: "Erreur", description: "Impossible de sauvegarder les paramètres.", variant: "destructive" });
     } finally {
@@ -195,24 +214,51 @@ export default function MiniSitePage() {
             )}
         </div>
       </div>
-      <Card>
-            <CardHeader>
-                <CardTitle>Section Héro</CardTitle>
-                <CardDescription>
-                    Personnalisez le premier élément que vos visiteurs voient sur votre page.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <FormField
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Section Héro</CardTitle>
+                    <CardDescription>
+                        Personnalisez le premier élément que vos visiteurs voient sur votre page.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="hero.title"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Titre principal</FormLabel>
+                                <FormControl>
+                                    <Input {...field} placeholder="Votre titre accrocheur..." />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="hero.subtitle"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Sous-titre</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} placeholder="Décrivez votre offre en une phrase..." />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField
                             control={form.control}
-                            name="hero.title"
+                            name="hero.ctaText"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Titre principal</FormLabel>
+                                    <FormLabel>Texte du bouton d'action</FormLabel>
                                     <FormControl>
-                                        <Input {...field} placeholder="Votre titre accrocheur..." />
+                                        <Input {...field} placeholder="Prendre RDV" />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -220,26 +266,116 @@ export default function MiniSitePage() {
                         />
                         <FormField
                             control={form.control}
-                            name="hero.subtitle"
+                            name="hero.ctaLink"
                             render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Sous-titre</FormLabel>
+                                    <FormLabel>Lien du bouton d'action</FormLabel>
                                     <FormControl>
-                                        <Textarea {...field} placeholder="Décrivez votre offre en une phrase..." />
+                                        <Input {...field} placeholder="#contact ou https://..." />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )}
                         />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                             <FormField
+                    </div>
+
+                        <div className="space-y-4 rounded-lg border p-4">
+                        <h4 className="font-medium">Options d'affichage</h4>
+                            <div className="space-y-4">
+                            <FormField
                                 control={form.control}
-                                name="hero.ctaText"
+                                name="hero.showPhoto"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                        <div className="space-y-0.5">
+                                            <FormLabel>Afficher ma photo de profil</FormLabel>
+                                        </div>
+                                        <FormControl>
+                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                                <FormField
+                                control={form.control}
+                                name="hero.showPhone"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                        <div className="space-y-0.5">
+                                            <FormLabel>Afficher mon numéro de téléphone</FormLabel>
+                                        </div>
+                                        <FormControl>
+                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                                <FormField
+                                control={form.control}
+                                name="hero.showLocation"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                        <div className="space-y-0.5">
+                                            <FormLabel>Afficher ma localité</FormLabel>
+                                        </div>
+                                        <FormControl>
+                                            <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                    </div>
+
+                        <div className="space-y-4 rounded-lg border p-4">
+                        <h4 className="font-medium">Arrière-plan</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="hero.bgColor"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Texte du bouton d'action</FormLabel>
+                                        <FormLabel>Couleur de fond</FormLabel>
                                         <FormControl>
-                                            <Input {...field} placeholder="Prendre RDV" />
+                                            <div className="flex items-center gap-2">
+                                                <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                <Input type="text" {...field} />
+                                            </div>
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div>
+                                <FormLabel>Image de fond</FormLabel>
+                                <div className="mt-2 flex items-center gap-4">
+                                        <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                        {bgImagePreview ? <Image src={bgImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                    </div>
+                                    <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
+                                    <div className="flex flex-col gap-1">
+                                        <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                        <Button type="button" variant="ghost" size="sm" onClick={() => { setBgImagePreview(''); form.setValue('hero.bgImageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div className="space-y-4 rounded-lg border p-4">
+                        <h4 className="font-medium">Couleurs dominantes</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <FormField
+                                control={form.control}
+                                name="hero.primaryColor"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Couleur primaire</FormLabel>
+                                        <FormControl>
+                                            <div className="flex items-center gap-2">
+                                                <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                <Input type="text" {...field} />
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
@@ -247,150 +383,84 @@ export default function MiniSitePage() {
                             />
                             <FormField
                                 control={form.control}
-                                name="hero.ctaLink"
+                                name="hero.secondaryColor"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Lien du bouton d'action</FormLabel>
+                                        <FormLabel>Couleur secondaire</FormLabel>
                                         <FormControl>
-                                            <Input {...field} placeholder="#contact ou https://..." />
+                                            <div className="flex items-center gap-2">
+                                                <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                <Input type="text" {...field} />
+                                            </div>
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
                         </div>
-
-                         <div className="space-y-4 rounded-lg border p-4">
-                            <h4 className="font-medium">Options d'affichage</h4>
-                             <div className="space-y-4">
-                                <FormField
-                                    control={form.control}
-                                    name="hero.showPhoto"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                            <div className="space-y-0.5">
-                                                <FormLabel>Afficher ma photo de profil</FormLabel>
-                                            </div>
-                                            <FormControl>
-                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                                 <FormField
-                                    control={form.control}
-                                    name="hero.showPhone"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                            <div className="space-y-0.5">
-                                                <FormLabel>Afficher mon numéro de téléphone</FormLabel>
-                                            </div>
-                                            <FormControl>
-                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                                 <FormField
-                                    control={form.control}
-                                    name="hero.showLocation"
-                                    render={({ field }) => (
-                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                            <div className="space-y-0.5">
-                                                <FormLabel>Afficher ma localité</FormLabel>
-                                            </div>
-                                            <FormControl>
-                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                            </FormControl>
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
+                    </div>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <CardTitle>Section "Attention"</CardTitle>
+                            <CardDescription>
+                                Un encart pour mettre en avant un message important.
+                            </CardDescription>
                         </div>
-
-                         <div className="space-y-4 rounded-lg border p-4">
-                            <h4 className="font-medium">Arrière-plan</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField
-                                    control={form.control}
-                                    name="hero.bgColor"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Couleur de fond</FormLabel>
-                                            <FormControl>
-                                                <div className="flex items-center gap-2">
-                                                    <Input type="color" {...field} className="p-1 h-10 w-10" />
-                                                    <Input type="text" {...field} />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <div>
-                                    <FormLabel>Image de fond</FormLabel>
-                                    <div className="mt-2 flex items-center gap-4">
-                                         <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
-                                            {bgImagePreview ? <Image src={bgImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
-                                        </div>
-                                        <input type="file" ref={fileInputRef} onChange={handleFileUpload} className="hidden" accept="image/*" />
-                                        <div className="flex flex-col gap-1">
-                                            <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
-                                            <Button type="button" variant="ghost" size="sm" onClick={() => { setBgImagePreview(''); form.setValue('hero.bgImageUrl', '');}}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-4 rounded-lg border p-4">
-                            <h4 className="font-medium">Couleurs dominantes</h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField
-                                    control={form.control}
-                                    name="hero.primaryColor"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Couleur primaire</FormLabel>
-                                            <FormControl>
-                                                <div className="flex items-center gap-2">
-                                                    <Input type="color" {...field} className="p-1 h-10 w-10" />
-                                                    <Input type="text" {...field} />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name="hero.secondaryColor"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Couleur secondaire</FormLabel>
-                                            <FormControl>
-                                                <div className="flex items-center gap-2">
-                                                    <Input type="color" {...field} className="p-1 h-10 w-10" />
-                                                    <Input type="text" {...field} />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
-                            </div>
-                        </div>
-
-                        <div className="flex justify-end pt-6 border-t">
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Enregistrer les modifications
-                            </Button>
-                        </div>
-                    </form>
-                </Form>
-            </CardContent>
-        </Card>
+                         <FormField
+                            control={form.control}
+                            name="attentionSection.enabled"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-center gap-2 space-y-0">
+                                    <FormLabel>Activé</FormLabel>
+                                    <FormControl>
+                                        <Switch checked={field.value} onCheckedChange={field.onChange} />
+                                    </FormControl>
+                                </FormItem>
+                            )}
+                        />
+                    </div>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                     <FormField
+                        control={form.control}
+                        name="attentionSection.title"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Titre</FormLabel>
+                                <FormControl>
+                                    <Input {...field} placeholder="Titre de la section..." />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="attentionSection.text"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Texte</FormLabel>
+                                <FormControl>
+                                    <Textarea {...field} placeholder="Votre message important..." rows={5}/>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+             <div className="flex justify-end">
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Enregistrer les modifications
+                </Button>
+            </div>
+        </form>
+      </Form>
     </div>
   );
 }

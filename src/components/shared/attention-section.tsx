@@ -23,14 +23,8 @@ export function AttentionSection({ counselor }: { counselor: CounselorProfile })
     }
     
     // Use personalized text, fallback to publicBio, then a default message
-    const textToDisplay = attentionConfig.text || counselor.publicBio || 'Ce conseiller n\'a pas encore rédigé de biographie.';
+    const textToDisplay = attentionConfig.text || 'Contenu de la section attention à venir.';
     const titleToDisplay = attentionConfig.title || 'Attention';
-
-    // Don't render if there's no text to show at all (and title is default)
-    if (!attentionConfig.text && !counselor.publicBio && attentionConfig.title === 'Attention') {
-        // This case is arguable, but avoids showing an empty "Attention" block
-        // return null;
-    }
 
     return (
         <section className="py-16 bg-background">

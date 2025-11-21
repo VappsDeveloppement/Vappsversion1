@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -11,6 +12,7 @@ import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
 import { useAgency } from '@/context/agency-provider';
+import { AttentionSection } from '@/components/shared/attention-section';
 
 type CounselorProfile = {
     id: string;
@@ -23,6 +25,7 @@ type CounselorProfile = {
     miniSite?: {
         publicProfileName?: string;
         hero?: any;
+        attentionSection?: any;
     };
     agencyInfo?: {
         copyrightText?: string;
@@ -65,6 +68,7 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
     <div className="bg-muted/30 min-h-screen">
       <main>
         <CounselorHero counselor={counselor} />
+        <AttentionSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
