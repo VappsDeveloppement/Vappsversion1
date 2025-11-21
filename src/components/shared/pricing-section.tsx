@@ -7,12 +7,44 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { useCollection, useDoc, useMemoFirebase } from "@/firebase";
+import { collection, query, where, doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import type { Plan } from "@/components/shared/plan-management";
 import { Skeleton } from "../ui/skeleton";
+import React from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
+import { ScrollArea } from "../ui/scroll-area";
+import { Contract } from "./contract-management";
 
+
+function ContractModal({ contractId, buttonText }: { contractId: string; buttonText: string }) {
+    const firestore = useFirestore();
+    const contractRef = useMemoFirebase(() => doc(firestore, 'contracts', contractId), [firestore, contractId]);
+    const { data: contract, isLoading } = useDoc<Contract>(contractRef);
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                <Button className="w-full font-bold">{buttonText}</Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-3xl">
+                 <DialogHeader>
+                    <DialogTitle>{isLoading ? 'Chargement...' : contract?.title}</DialogTitle>
+                </DialogHeader>
+                {isLoading ? (
+                    <Skeleton className="h-64 w-full" />
+                ) : contract ? (
+                    <ScrollArea className="max-h-[60vh] pr-4">
+                        <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contract.content }} />
+                    </ScrollArea>
+                ) : (
+                    <p>Contrat non trouvé.</p>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export function PricingSection() {
     const { isLoading: isAgencyLoading } = useAgency();
@@ -92,9 +124,13 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button className={cn("w-full", !tier.isFeatured && "variant-secondary")}>
-                                    {tier.cta || 'Choisir ce plan'}
-                                </Button>
+                                {tier.contractId ? (
+                                    <ContractModal contractId={tier.contractId} buttonText={tier.cta || 'Choisir ce plan'} />
+                                ) : (
+                                     <Button className={cn("w-full", !tier.isFeatured && "variant-secondary")}>
+                                        {tier.cta || 'Choisir ce plan'}
+                                    </Button>
+                                )}
                             </CardFooter>
                         </Card>
                     ))}
@@ -103,3 +139,5 @@ export function PricingSection() {
         </section>
     );
 }
+
+    

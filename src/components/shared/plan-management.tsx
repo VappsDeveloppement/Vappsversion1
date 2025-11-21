@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -6,7 +7,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking, deleteDocumentNonBlocking, useFirestore, useUser } from '@/firebase';
-import { collection, doc, query, where, writeBatch } from 'firebase/firestore';
+import { collection, doc, query, where, writeBatch, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import {
@@ -49,6 +50,8 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { PlusCircle, Trash2, Edit, Loader2, Upload, Star } from 'lucide-react';
 import Image from 'next/image';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import type { Contract } from './contract-management';
 
 export type Plan = {
   id: string;
@@ -62,6 +65,7 @@ export type Plan = {
   imageUrl?: string;
   cta?: string;
   counselorId?: string;
+  contractId?: string;
 };
 
 const planSchema = z.object({
@@ -75,6 +79,7 @@ const planSchema = z.object({
   features: z.array(z.object({ value: z.string() })).default([]),
   imageUrl: z.string().optional(),
   cta: z.string().optional(),
+  contractId: z.string().optional(),
   isPublic: z.boolean().default(false).optional(),
   isFeatured: z.boolean().default(false).optional(),
 });
@@ -104,6 +109,13 @@ export function PlanManagement() {
 
   const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansCollectionRef);
 
+  const contractsQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'contracts'), where('counselorId', '==', user.uid));
+  }, [firestore, user]);
+
+  const { data: contracts, isLoading: areContractsLoading } = useCollection<Contract>(contractsQuery);
+
   const form = useForm<PlanFormData>({
     resolver: zodResolver(planSchema),
     defaultValues: {
@@ -113,7 +125,8 @@ export function PlanManagement() {
       period: '/prestation',
       features: [],
       imageUrl: '',
-      cta: 'Ajouter au devis',
+      cta: 'Choisir cette formule',
+      contractId: 'none',
       isPublic: false,
       isFeatured: false,
     },
@@ -132,7 +145,8 @@ export function PlanManagement() {
     form.reset({
       ...plan,
       features: plan.features.map(f => ({ value: f })),
-      cta: plan.cta || 'Ajouter au devis',
+      cta: plan.cta || 'Choisir cette formule',
+      contractId: plan.contractId || 'none'
     });
     setImagePreview(plan.imageUrl || null);
     setIsSheetOpen(true);
@@ -147,7 +161,8 @@ export function PlanManagement() {
       period: '/prestation',
       features: [],
       imageUrl: '',
-      cta: 'Ajouter au devis',
+      cta: 'Choisir cette formule',
+      contractId: 'none',
       isPublic: false,
       isFeatured: false,
     });
@@ -180,12 +195,12 @@ export function PlanManagement() {
       ...data,
       features: data.features.map(f => f.value),
       counselorId: user.uid,
+      contractId: data.contractId === 'none' ? undefined : data.contractId,
     };
 
     const batch = writeBatch(firestore);
 
     try {
-      // If this plan is set to be featured, we need to un-feature any other public plan
       if (planData.isFeatured && planData.isPublic) {
           const publicPlansQuery = query(collection(firestore, 'plans'), where("isPublic", "==", true), where("counselorId", "==", user.uid));
           const querySnapshot = await getDocs(publicPlansQuery);
@@ -221,7 +236,7 @@ export function PlanManagement() {
     }
   };
   
-  const isLoading = arePlansLoading;
+  const isLoading = arePlansLoading || areContractsLoading;
 
   return (
     <Card>
@@ -355,6 +370,47 @@ export function PlanManagement() {
 
                          <FormField
                             control={form.control}
+                            name="cta"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Texte du bouton d'action</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Ex: Choisir cette formule" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="contractId"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Contrat à lier (Optionnel)</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger>
+                                                <SelectValue placeholder="Sélectionner un contrat à associer..." />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            <SelectItem value="none">Aucun contrat</SelectItem>
+                                            {(contracts || []).map((contract) => (
+                                                <SelectItem key={contract.id} value={contract.id}>
+                                                    {contract.title}
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormDescription>Si un contrat est lié, il sera présenté à l'utilisateur lors de la sélection du plan.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+
+
+                         <FormField
+                            control={form.control}
                             name="isPublic"
                             render={({ field }) => (
                                 <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
@@ -463,3 +519,5 @@ export function PlanManagement() {
     </Card>
   );
 }
+
+    

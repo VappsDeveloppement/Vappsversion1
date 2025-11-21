@@ -2,9 +2,9 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
-import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, documentId } from 'firebase/firestore';
+import React, { useMemo, useState } from 'react';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, where, documentId, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -12,6 +12,14 @@ import { Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Plan } from '@/components/shared/plan-management';
 import { Skeleton } from '../ui/skeleton';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { ScrollArea } from '../ui/scroll-area';
+
+type Contract = {
+    id: string;
+    title: string;
+    content: string;
+}
 
 type CounselorProfile = {
     id: string;
@@ -30,6 +38,36 @@ type CounselorProfile = {
         primaryColor?: string;
     }
 };
+
+function ContractModal({ contractId, buttonText, primaryColor }: { contractId: string; buttonText: string, primaryColor: string }) {
+    const firestore = useFirestore();
+    const contractRef = useMemoFirebase(() => doc(firestore, 'contracts', contractId), [firestore, contractId]);
+    const { data: contract, isLoading } = useDoc<Contract>(contractRef);
+
+    return (
+        <Dialog>
+            <DialogTrigger asChild>
+                 <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                    {buttonText}
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-3xl">
+                 <DialogHeader>
+                    <DialogTitle>{isLoading ? 'Chargement...' : contract?.title}</DialogTitle>
+                </DialogHeader>
+                {isLoading ? (
+                    <Skeleton className="h-64 w-full" />
+                ) : contract ? (
+                    <ScrollArea className="max-h-[60vh] pr-4">
+                        <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contract.content }} />
+                    </ScrollArea>
+                ) : (
+                    <p>Contrat non trouvé.</p>
+                )}
+            </DialogContent>
+        </Dialog>
+    );
+}
 
 export function CounselorPricingSection({ counselor }: { counselor: CounselorProfile }) {
     const firestore = useFirestore();
@@ -99,9 +137,13 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
                                     </ul>
                                 </CardContent>
                                 <CardFooter>
-                                    <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
-                                        {plan.cta || 'Choisir cette formule'}
-                                    </Button>
+                                    {plan.contractId ? (
+                                        <ContractModal contractId={plan.contractId} buttonText={plan.cta || 'Choisir cette formule'} primaryColor={primaryColor} />
+                                    ) : (
+                                        <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                            {plan.cta || 'Choisir cette formule'}
+                                        </Button>
+                                    )}
                                 </CardFooter>
                             </Card>
                         ))}
@@ -115,3 +157,5 @@ export function CounselorPricingSection({ counselor }: { counselor: CounselorPro
         </section>
     );
 }
+
+    
