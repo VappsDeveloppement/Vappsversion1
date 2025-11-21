@@ -9,7 +9,6 @@ import Link from 'next/link';
 import { Logo } from '@/components/shared/logo';
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { AboutSection } from '@/components/shared/about-section';
-import { ParcoursSection } from '@/components/shared/parcours-section';
 import { VideoSection } from '@/components/shared/video-section';
 import { ShopSection } from '@/components/shared/shop-section';
 import { ServicesSection } from '@/components/shared/services-section';
@@ -29,7 +28,6 @@ import { JobOffersSection } from './job-offers-section';
 
 const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   about: AboutSection,
-  parcours: ParcoursSection,
   cta: CtaSection,
   cta2: CtaSection2,
   video: VideoSection,

@@ -70,31 +70,15 @@ const servicesSchema = z.object({
   services: z.array(serviceItemSchema).optional(),
 });
 
-const parcoursStepSchema = z.object({
-  id: z.string(),
-  title: z.string().min(1, "Le titre est requis."),
-  description: z.string().min(1, "La description est requise."),
-});
-
-const parcoursSchema = z.object({
-    enabled: z.boolean().default(false),
-    title: z.string().optional(),
-    subtitle: z.string().optional(),
-    steps: z.array(parcoursStepSchema).optional(),
-});
-
-
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
   attentionSection: attentionSchema.optional(),
   aboutSection: aboutSchema.optional(),
   servicesSection: servicesSchema.optional(),
-  parcoursSection: parcoursSchema.optional(),
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
 export type ServiceItem = z.infer<typeof serviceItemSchema>;
-export type ParcoursStep = z.infer<typeof parcoursStepSchema>;
 
 
 type UserProfile = {
@@ -171,23 +155,12 @@ export default function MiniSitePage() {
           subtitle: 'Découvrez mes accompagnements',
           services: [],
       },
-      parcoursSection: {
-          enabled: false,
-          title: 'Votre parcours de transformation',
-          subtitle: 'Un cheminement structuré pour vous guider.',
-          steps: [],
-      }
     },
   });
   
     const { fields: serviceFields, append: appendService, remove: removeService } = useFieldArray({
         control: form.control,
         name: "servicesSection.services",
-    });
-
-    const { fields: parcoursFields, append: appendParcoursStep, remove: removeParcoursStep } = useFieldArray({
-        control: form.control,
-        name: "parcoursSection.steps",
     });
 
   useEffect(() => {
@@ -444,38 +417,6 @@ export default function MiniSitePage() {
                                     ))}
                                     <Button type="button" variant="outline" size="sm" onClick={() => appendService({ id: `service-${Date.now()}`, title: 'Nouveau service', description: 'Description du service.', imageUrl: null })}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un service
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-
-                 <AccordionItem value="parcours-section" className='border rounded-lg overflow-hidden'>
-                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Parcours"</AccordionTrigger>
-                    <AccordionContent>
-                        <div className="space-y-6 p-6">
-                            <FormField control={form.control} name="parcoursSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                            <FormField control={form.control} name="parcoursSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Votre parcours de transformation" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="parcoursSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Textarea placeholder="Un cheminement structuré pour vous guider." {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            
-                            <div>
-                                <Label>Étapes du parcours</Label>
-                                <div className="space-y-4 mt-2">
-                                    {parcoursFields.map((field, index) => (
-                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="font-medium">Étape {index + 1}</h4>
-                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeParcoursStep(index)}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                            <FormField control={form.control} name={`parcoursSection.steps.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre de l'étape</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                            <FormField control={form.control} name={`parcoursSection.steps.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={2} /></FormControl><FormMessage /></FormItem> )}/>
-                                        </div>
-                                    ))}
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendParcoursStep({ id: `step-${Date.now()}`, title: 'Nouvelle étape', description: 'Description de l\'étape.' })}>
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une étape
                                     </Button>
                                 </div>
                             </div>

@@ -7,7 +7,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, ParcoursStep, JobOffer, SecondaryVideo, ServiceItem } from '@/app/admin/settings/personalization/page';
+import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem } from '@/app/admin/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -32,12 +32,6 @@ interface AboutSectionPersonalization {
     showExpertises: boolean;
     expertisesSectionTitle: string;
     expertises: Expertise[];
-}
-
-interface ParcoursSectionPersonalization {
-    title: string;
-    subtitle: string;
-    steps: ParcoursStep[];
 }
 
 interface CtaSectionPersonalization {
@@ -149,7 +143,6 @@ interface Personalization {
     homePageSections: Section[];
     legalInfo: any;
     aboutSection: AboutSectionPersonalization;
-    parcoursSection: ParcoursSectionPersonalization;
     ctaSection: CtaSectionPersonalization;
     cta2Section: Cta2SectionPersonalization;
     jobOffersSection: JobOffersSectionPersonalization;
@@ -176,7 +169,6 @@ const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
-  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
@@ -259,16 +251,6 @@ const defaultPersonalization: Personalization = {
         { id: "expertise-health", title: "Secteur Santé", description: "Évoluer dans le domaine de la santé.", imageUrl: null },
         { id: "expertise-entrepreneurship", title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise.", imageUrl: null },
         { id: "expertise-management", title: "Management", description: "Devenir un manager bienveillant et efficace.", imageUrl: null },
-      ]
-    },
-    parcoursSection: {
-      title: "Votre parcours de transformation",
-      subtitle: "Un cheminement structuré et bienveillant pour vous guider à chaque étape de votre évolution.",
-      steps: [
-          { id: `step-1`, title: "Étape 1: Bilan & Intention", description: "Faire le point sur votre situation, vos besoins et poser une intention claire." },
-          { id: `step-2`, title: "Étape 2: Exploration", description: "Séances personnalisées alliant coaching et outils de développement personnel." },
-          { id: `step-3`, title: "Étape 3: Intégration", description: "Nous consolidons vos acquis et mettons en place un plan d'action durable." },
-          { id: `step-4`, title: "Étape 4: Épanouissement", description: "Vous repartez avec les clés pour poursuivre votre chemin en toute autonomie." }
       ]
     },
     ctaSection: {
@@ -412,10 +394,6 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                         ...(fetchedAgencyData.personalization?.aboutSection || {}),
                         pillars: (fetchedAgencyData.personalization?.aboutSection?.pillars || defaultPersonalization.aboutSection.pillars).map((p: any, i: number) => ({ ...defaultPersonalization.aboutSection.pillars[i], ...p })),
                         expertises: (fetchedAgencyData.personalization?.aboutSection?.expertises || defaultPersonalization.aboutSection.expertises).map((e: any, i: number) => ({ ...defaultPersonalization.aboutSection.expertises[i], ...e })),
-                    },
-                    parcoursSection: {
-                        ...defaultPersonalization.parcoursSection,
-                        ...(fetchedAgencyData.personalization?.parcoursSection || {}),
                     },
                      ctaSection: {
                         ...defaultPersonalization.ctaSection,
