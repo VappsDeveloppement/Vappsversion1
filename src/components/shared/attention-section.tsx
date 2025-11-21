@@ -2,7 +2,6 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
 
 type CounselorProfile = {
     publicBio?: string;
@@ -28,15 +27,11 @@ export function AttentionSection({ counselor }: { counselor: CounselorProfile })
 
     return (
         <section className="py-16 bg-background">
-            <div className="container mx-auto px-4">
-                 <Card>
-                    <CardContent className="p-6 md:p-10 text-center">
-                        <h2 className="text-3xl font-bold mb-6">{titleToDisplay}</h2>
-                        <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg max-w-3xl mx-auto">
-                            {textToDisplay}
-                        </p>
-                    </CardContent>
-                </Card>
+            <div className="container mx-auto px-4 text-center">
+                <h2 className="text-3xl font-bold mb-6">{titleToDisplay}</h2>
+                <p className="text-muted-foreground whitespace-pre-wrap leading-relaxed text-lg max-w-3xl mx-auto">
+                    {textToDisplay}
+                </p>
             </div>
         </section>
     );
