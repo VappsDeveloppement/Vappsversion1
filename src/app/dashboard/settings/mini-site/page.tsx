@@ -56,6 +56,7 @@ const attentionSchema = z.object({
 const aboutSchema = z.object({
   enabled: z.boolean().default(true),
   imageUrl: z.string().optional(),
+  videoUrl: z.string().optional(),
   title: z.string().optional(),
   text: z.string().optional(),
 });
@@ -123,24 +124,15 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
     },
     attentionSection: {
         enabled: true,
-        title: "Section d'attention",
-        text: "Mettez en avant un message important ici."
+        title: 'Attention',
+        text: 'Mettez en avant un message important ici.',
     },
     aboutSection: {
         enabled: true,
         imageUrl: '',
+        videoUrl: '',
         title: 'À propos de moi',
         text: "Votre biographie ou texte de présentation s'affichera ici.",
-    },
-    servicesSection: {
-        enabled: true,
-        title: "Mes Services",
-        subtitle: "Découvrez comment je peux vous aider",
-        services: [
-            { id: 'service-1', title: 'Service 1', description: 'Description du service 1.', imageUrl: '' },
-            { id: 'service-2', title: 'Service 2', description: 'Description du service 2.', imageUrl: '' },
-            { id: 'service-3', title: 'Service 3', description: 'Description du service 3.', imageUrl: '' },
-        ]
     },
     parcoursSection: {
         enabled: true,
@@ -151,6 +143,16 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
             { id: 'step-2', title: "Étape 2: Exploration", description: "Séances personnalisées alliant coaching et outils de développement personnel." },
             { id: 'step-3', title: "Étape 3: Intégration", description: "Nous consolidons vos acquis et mettons en place un plan d'action durable." },
             { id: 'step-4', title: "Étape 4: Épanouissement", description: "Vous repartez avec les clés pour poursuivre votre chemin en toute autonomie." }
+        ]
+    },
+    servicesSection: {
+        enabled: true,
+        title: "Mes Services",
+        subtitle: "Découvrez comment je peux vous aider",
+        services: [
+            { id: 'service-1', title: 'Service 1', description: 'Description du service 1.', imageUrl: '' },
+            { id: 'service-2', title: 'Service 2', description: 'Description du service 2.', imageUrl: '' },
+            { id: 'service-3', title: 'Service 3', description: 'Description du service 3.', imageUrl: '' },
         ]
     },
     sections: [
@@ -422,7 +424,6 @@ export default function MiniSitePage() {
                     <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "Attention"</AccordionTrigger>
                     <AccordionContent>
                         <div className="p-6 space-y-6">
-                            <FormField control={form.control} name="attentionSection.enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Activer la section</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
                             <FormField control={form.control} name="attentionSection.title" render={({ field }) => ( <FormItem> <FormLabel>Titre</FormLabel> <FormControl> <Input {...field} placeholder="Titre de la section..." /> </FormControl> <FormMessage /> </FormItem> )}/>
                             <FormField control={form.control} name="attentionSection.text" render={({ field }) => ( <FormItem> <FormLabel>Texte</FormLabel> <FormControl> <Textarea {...field} placeholder="Votre message important..." rows={5}/> </FormControl> <FormMessage /> </FormItem> )}/>
                         </div>
@@ -432,22 +433,22 @@ export default function MiniSitePage() {
                     <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "À Propos"</AccordionTrigger>
                     <AccordionContent>
                         <div className="p-6 space-y-6">
-                            <FormField control={form.control} name="aboutSection.enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"> <FormLabel>Activer la section</FormLabel> </div> <FormControl> <Switch checked={field.value} onCheckedChange={field.onChange} /> </FormControl> </FormItem> )}/>
                             <FormField control={form.control} name="aboutSection.title" render={({ field }) => ( <FormItem> <FormLabel>Titre</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
                             <FormField control={form.control} name="aboutSection.text" render={({ field }) => ( <FormItem> <FormLabel>Texte</FormLabel> <FormControl> <Textarea {...field} rows={8}/> </FormControl> <FormMessage /> </FormItem> )}/>
                             <div>
-                                <FormLabel>Image</FormLabel>
-                                <input type="file" ref={aboutImageInputRef} onChange={(e) => handleFileUpload(e, 'aboutSection.imageUrl')} className="hidden" accept="image/*" />
+                                <FormLabel>Média</FormLabel>
                                 <div className="mt-2 flex items-center gap-4">
                                     <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
-                                        {aboutImagePreview ? <Image src={aboutImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Aucune</span>}
+                                        {aboutImagePreview ? <Image src={aboutImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Image</span>}
                                     </div>
+                                    <input type="file" ref={aboutImageInputRef} onChange={(e) => handleFileUpload(e, 'aboutSection.imageUrl')} className="hidden" accept="image/*" />
                                     <div className="flex flex-col gap-1">
-                                        <Button type="button" variant="outline" size="sm" onClick={() => aboutImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => aboutImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Changer l'image</Button>
                                         <Button type="button" variant="ghost" size="sm" onClick={() => setValue('aboutSection.imageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
                                     </div>
                                 </div>
                             </div>
+                             <FormField control={form.control} name="aboutSection.videoUrl" render={({ field }) => ( <FormItem> <FormLabel>Ou URL de la vidéo</FormLabel> <FormControl> <Input {...field} placeholder="https://www.youtube.com/embed/..."/> </FormControl> <FormMessage /> </FormItem> )}/>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
@@ -455,7 +456,6 @@ export default function MiniSitePage() {
                     <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "Parcours"</AccordionTrigger>
                     <AccordionContent>
                         <div className="p-6 space-y-6">
-                            <FormField control={form.control} name="parcoursSection.enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"><FormLabel>Activer la section</FormLabel></div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )}/>
                             <FormField control={form.control} name="parcoursSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="parcoursSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)} />
                             <div className='space-y-4'>
@@ -479,7 +479,6 @@ export default function MiniSitePage() {
                     <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "Services"</AccordionTrigger>
                     <AccordionContent>
                         <div className="p-6 space-y-6">
-                            <FormField control={form.control} name="servicesSection.enabled" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm"> <div className="space-y-0.5"><FormLabel>Activer la section</FormLabel></div> <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl> </FormItem> )}/>
                             <FormField control={form.control} name="servicesSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             <FormField control={form.control} name="servicesSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
                             <div className='space-y-4'>
