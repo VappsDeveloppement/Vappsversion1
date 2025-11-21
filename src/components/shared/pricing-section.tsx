@@ -15,10 +15,14 @@ import { Skeleton } from "../ui/skeleton";
 import React from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
-import { Contract } from "./contract-management";
 
+type Contract = {
+    id: string;
+    title: string;
+    content: string;
+};
 
-function ContractModal({ contractId, buttonText }: { contractId: string; buttonText: string }) {
+function ContractModal({ contractId, buttonText, primaryColor }: { contractId: string; buttonText: string; primaryColor: string }) {
     const firestore = useFirestore();
     const contractRef = useMemoFirebase(() => doc(firestore, 'contracts', contractId), [firestore, contractId]);
     const { data: contract, isLoading } = useDoc<Contract>(contractRef);
@@ -26,7 +30,9 @@ function ContractModal({ contractId, buttonText }: { contractId: string; buttonT
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button className="w-full font-bold">{buttonText}</Button>
+                 <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                    {buttonText}
+                </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-3xl">
                  <DialogHeader>
@@ -47,7 +53,7 @@ function ContractModal({ contractId, buttonText }: { contractId: string; buttonT
 }
 
 export function PricingSection() {
-    const { isLoading: isAgencyLoading } = useAgency();
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
     const publicPlansQuery = useMemoFirebase(() => {
@@ -58,6 +64,7 @@ export function PricingSection() {
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
 
     const isLoading = isAgencyLoading || arePlansLoading;
+    const primaryColor = personalization?.primaryColor || '#10B981';
 
     if (isLoading) {
         return (
@@ -95,29 +102,29 @@ export function PricingSection() {
                     </p>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
                     {plans.map((tier) => (
-                        <Card key={tier.id} className={cn("flex flex-col h-full", tier.isFeatured && "border-primary border-2 shadow-lg relative")}>
-                            {tier.isFeatured && (
+                        <Card key={tier.id} className={cn("flex flex-col h-full shadow-lg", tier.isFeatured && "border-2 relative")} style={tier.isFeatured ? {borderColor: primaryColor} : {}}>
+                             {tier.isFeatured && (
                                 <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
-                                    <div className="bg-primary text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold">
+                                    <div className="text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold" style={{ backgroundColor: primaryColor }}>
                                         Recommandé
                                     </div>
                                 </div>
                             )}
-                            <CardHeader className="pt-10">
+                            <CardHeader className="pt-10 text-center">
                                 <CardTitle className="text-2xl">{tier.name}</CardTitle>
                                 <CardDescription className="break-words">{tier.description}</CardDescription>
-                                <div>
-                                    <span className="text-4xl font-bold text-primary">{tier.price}€</span>
+                                <div className="py-4">
+                                    <span className="text-4xl font-bold" style={{color: primaryColor}}>{tier.price}€</span>
                                     <span className="text-muted-foreground">{tier.period}</span>
                                 </div>
                             </CardHeader>
                             <CardContent className="flex-1">
                                 <ul className="space-y-3">
                                     {tier.features.map((feature, i) => (
-                                        <li key={i} className="flex items-center gap-2">
-                                            <Check className="h-5 w-5 text-green-500" />
+                                        <li key={i} className="flex items-start gap-2">
+                                            <Check className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
                                             <span className="text-muted-foreground">{feature}</span>
                                         </li>
                                     ))}
@@ -125,9 +132,9 @@ export function PricingSection() {
                             </CardContent>
                             <CardFooter>
                                 {tier.contractId ? (
-                                    <ContractModal contractId={tier.contractId} buttonText={tier.cta || 'Choisir ce plan'} />
+                                    <ContractModal contractId={tier.contractId} buttonText={tier.cta || 'Choisir ce plan'} primaryColor={primaryColor} />
                                 ) : (
-                                     <Button className={cn("w-full", !tier.isFeatured && "variant-secondary")}>
+                                     <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
                                         {tier.cta || 'Choisir ce plan'}
                                     </Button>
                                 )}
@@ -139,5 +146,3 @@ export function PricingSection() {
         </section>
     );
 }
-
-    
