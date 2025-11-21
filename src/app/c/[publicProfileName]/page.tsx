@@ -48,13 +48,13 @@ type CounselorProfile = {
 // Mapper les IDs de section aux composants correspondants
 const sectionComponents: { [key: string]: React.ComponentType<{ counselor: CounselorProfile }> } = {
   hero: CounselorHero,
-  attention: AttentionSection,
-  about: AboutMeSection,
-  interests: InterestsSection,
-  services: CounselorServicesSection,
-  cta: CounselorCtaSection,
-  pricing: CounselorPricingSection,
-  contact: CounselorContactSection,
+  attentionSection: AttentionSection,
+  aboutSection: AboutMeSection,
+  interestsSection: InterestsSection,
+  servicesSection: CounselorServicesSection,
+  ctaSection: CounselorCtaSection,
+  pricingSection: CounselorPricingSection,
+  contactSection: CounselorContactSection,
 };
 
 
@@ -88,13 +88,13 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
   // Utiliser l'ordre des sections défini dans la config, sinon un ordre par défaut
   const sections = counselor.miniSite?.homePageSections || [
     { id: 'hero', enabled: true, label: 'Hero' },
-    { id: 'attention', enabled: true, label: 'Attention' },
-    { id: 'about', enabled: true, label: 'About' },
-    { id: 'interests', enabled: true, label: 'Interests' },
-    { id: 'services', enabled: true, label: 'Services' },
-    { id: 'cta', enabled: true, label: 'CTA' },
-    { id: 'pricing', enabled: true, label: 'Pricing' },
-    { id: 'contact', enabled: true, label: 'Contact' },
+    { id: 'attentionSection', enabled: true, label: 'Attention' },
+    { id: 'aboutSection', enabled: true, label: 'About' },
+    { id: 'interestsSection', enabled: true, label: 'Interests' },
+    { id: 'servicesSection', enabled: true, label: 'Services' },
+    { id: 'ctaSection', enabled: true, label: 'CTA' },
+    { id: 'pricingSection', enabled: true, label: 'Pricing' },
+    { id: 'contactSection', enabled: true, label: 'Contact' },
   ];
 
   const copyrightText = agency?.personalization.copyrightText || "Vapps.";
@@ -135,7 +135,7 @@ export default function CounselorPublicProfilePage() {
         setIsLoading(true);
         try {
             const minisitesRef = collection(firestore, 'minisites');
-            // La requête qui cherche la bonne propriété au bon endroit
+            // Correct query path
             const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
             
             const querySnapshot = await getDocs(q);
