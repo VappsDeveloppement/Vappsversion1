@@ -19,6 +19,13 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
 import { useAgency } from '@/context/agency-provider';
 
+// Définir le type Section pour correspondre à la configuration
+type Section = {
+    id: string;
+    label: string;
+    enabled: boolean;
+};
+
 type CounselorProfile = {
     id: string;
     firstName: string;
@@ -27,12 +34,29 @@ type CounselorProfile = {
     publicTitle?: string;
     publicBio?: string;
     photoUrl?: string;
-    miniSite?: any;
+    miniSite?: {
+        publicProfileName?: string;
+        homePageSections?: Section[];
+        [key: string]: any;
+    };
     agencyInfo?: {
         copyrightText?: string;
         copyrightUrl?: string;
     }
 };
+
+// Mapper les IDs de section aux composants correspondants
+const sectionComponents: { [key: string]: React.ComponentType<{ counselor: CounselorProfile }> } = {
+  hero: CounselorHero,
+  attention: AttentionSection,
+  about: AboutMeSection,
+  interests: InterestsSection,
+  services: CounselorServicesSection,
+  cta: CounselorCtaSection,
+  pricing: CounselorPricingSection,
+  contact: CounselorContactSection,
+};
+
 
 function CounselorPageContent({ counselor, isLoading, agency }: { counselor: CounselorProfile | null, isLoading: boolean, agency: any }) {
 
@@ -61,13 +85,17 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
     );
   }
 
-  const showAttentionSection = counselor.miniSite?.attentionSection?.enabled !== false;
-  const showAboutSection = counselor.miniSite?.aboutSection?.enabled !== false;
-  const showInterestsSection = counselor.miniSite?.interestsSection?.enabled !== false;
-  const showServicesSection = counselor.miniSite?.servicesSection?.enabled !== false;
-  const showCtaSection = counselor.miniSite?.ctaSection?.enabled !== false;
-  const showPricingSection = counselor.miniSite?.pricingSection?.enabled !== false;
-  const showContactSection = counselor.miniSite?.contactSection?.enabled !== false;
+  // Utiliser l'ordre des sections défini dans la config, sinon un ordre par défaut
+  const sections = counselor.miniSite?.homePageSections || [
+    { id: 'hero', enabled: true, label: 'Hero' },
+    { id: 'attention', enabled: true, label: 'Attention' },
+    { id: 'about', enabled: true, label: 'About' },
+    { id: 'interests', enabled: true, label: 'Interests' },
+    { id: 'services', enabled: true, label: 'Services' },
+    { id: 'cta', enabled: true, label: 'CTA' },
+    { id: 'pricing', enabled: true, label: 'Pricing' },
+    { id: 'contact', enabled: true, label: 'Contact' },
+  ];
 
   const copyrightText = agency?.personalization.copyrightText || "Vapps.";
   const copyrightUrl = agency?.personalization.copyrightUrl || "/";
@@ -76,15 +104,14 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
 
   return (
     <div className="bg-muted/30 min-h-screen">
-      <CounselorHero counselor={counselor} />
       <main>
-        {showAttentionSection && <AttentionSection counselor={counselor} />}
-        {showAboutSection && <AboutMeSection counselor={counselor} />}
-        {showInterestsSection && <InterestsSection counselor={counselor} />}
-        {showServicesSection && <CounselorServicesSection counselor={counselor} />}
-        {showCtaSection && <CounselorCtaSection counselor={counselor} />}
-        {showPricingSection && <CounselorPricingSection counselor={counselor} />}
-        {showContactSection && <CounselorContactSection counselor={counselor} />}
+        {sections.map((sectionConfig) => {
+            if (!sectionConfig.enabled) {
+                return null;
+            }
+            const SectionComponent = sectionComponents[sectionConfig.id];
+            return SectionComponent ? <SectionComponent key={sectionConfig.id} counselor={counselor} /> : null;
+        })}
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
@@ -108,7 +135,7 @@ export default function CounselorPublicProfilePage() {
         setIsLoading(true);
         try {
             const minisitesRef = collection(firestore, 'minisites');
-            // Corrected query using dot notation to search within the 'miniSite' object
+            // La requête qui cherche la bonne propriété au bon endroit
             const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
             
             const querySnapshot = await getDocs(q);
