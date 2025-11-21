@@ -39,6 +39,7 @@ export function ServicesSection() {
                                             src={imageSrc}
                                             alt={service.title}
                                             fill
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                             className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
                                             data-ai-hint={imageHint}
                                         />

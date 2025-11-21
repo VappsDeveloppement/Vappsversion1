@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import Link from "next/link";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
@@ -45,6 +46,7 @@ export function BlogSection() {
                                             src={image.imageUrl}
                                             alt={image.description}
                                             fill
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                             className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
                                             data-ai-hint={image.imageHint}
                                         />
@@ -72,5 +74,3 @@ export function BlogSection() {
         </section>
     );
 }
-
-    

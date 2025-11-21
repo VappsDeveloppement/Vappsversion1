@@ -1,3 +1,4 @@
+
 import Image from "next/image";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Card, CardContent } from "@/components/ui/card";
@@ -55,6 +56,7 @@ export function OtherActivitiesSection() {
                                                         src={image.imageUrl}
                                                         alt={image.description}
                                                         fill
+                                                        sizes="(max-width: 640px) 100vw, 33vw"
                                                         className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
                                                         data-ai-hint={image.imageHint}
                                                     />

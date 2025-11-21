@@ -32,6 +32,7 @@ export function AboutSection() {
                                 src={aboutImage}
                                 alt="Image section A propos"
                                 fill
+                                sizes="(max-width: 768px) 100vw, 50vw"
                                 className="object-cover transition-transform duration-300 ease-in-out hover:scale-105"
                                 data-ai-hint={aboutImageHint}
                             />
@@ -60,6 +61,7 @@ export function AboutSection() {
                                             src={imageSrc}
                                             alt={pillar.title}
                                             fill
+                                            sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                             className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
                                             data-ai-hint={imageHint}
                                         />
@@ -94,6 +96,7 @@ export function AboutSection() {
                                                     src={imageSrc}
                                                     alt={expertise.title}
                                                     fill
+                                                    sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
                                                     className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
                                                     data-ai-hint={imageHint}
                                                 />
@@ -113,5 +116,3 @@ export function AboutSection() {
         </section>
     );
 }
-
-    
