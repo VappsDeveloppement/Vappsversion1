@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -58,7 +57,6 @@ export type Plan = {
   price: number;
   period: string;
   features: string[];
-  appointmentCredits: number;
   isFeatured: boolean;
   isPublic: boolean;
   imageUrl?: string;
@@ -75,10 +73,6 @@ const planSchema = z.object({
   ),
   period: z.string().min(1, 'La période est requise (ex: /mois).'),
   features: z.array(z.object({ value: z.string() })).default([]),
-  appointmentCredits: z.preprocess(
-    (a) => parseInt(z.string().parse(a), 10),
-    z.number().int().min(0, 'Les crédits doivent être positifs.')
-  ),
   imageUrl: z.string().optional(),
   cta: z.string().optional(),
   isPublic: z.boolean().default(false).optional(),
@@ -117,7 +111,6 @@ export function PlanManagement() {
       price: 0,
       period: '/prestation',
       features: [],
-      appointmentCredits: 0,
       imageUrl: '',
       cta: 'Ajouter au devis',
       isPublic: false,
@@ -151,7 +144,6 @@ export function PlanManagement() {
       price: 0,
       period: '/prestation',
       features: [],
-      appointmentCredits: 0,
       imageUrl: '',
       cta: 'Ajouter au devis',
       isPublic: false,
@@ -290,20 +282,7 @@ export function PlanManagement() {
                                 </FormItem>
                             )}
                         />
-                         <FormField
-                            control={form.control}
-                            name="appointmentCredits"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Crédits de RDV inclus</FormLabel>
-                                <FormControl>
-                                <Input type="number" placeholder="4" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-
+                        
                         <div>
                             <FormLabel>Caractéristiques (puces)</FormLabel>
                             <div className="space-y-2 mt-2">
@@ -364,7 +343,7 @@ export function PlanManagement() {
                                 <div className="space-y-0.5">
                                     <FormLabel className="text-base">Affichage public</FormLabel>
                                     <FormDescription>
-                                    Rendre ce modèle sélectionnable sur votre mini-site.
+                                    Rendre ce modèle sélectionnable sur votre mini-site ou la page d'accueil principale.
                                     </FormDescription>
                                 </div>
                                 <FormControl>
@@ -398,7 +377,6 @@ export function PlanManagement() {
             <TableRow>
               <TableHead>Nom du Modèle</TableHead>
               <TableHead>Prix</TableHead>
-              <TableHead>Crédits RDV</TableHead>
               <TableHead>Public</TableHead>
               <TableHead className="text-right">Actions</TableHead>
             </TableRow>
@@ -407,7 +385,7 @@ export function PlanManagement() {
             {isLoading ? (
                 [...Array(3)].map((_, i) => (
                     <TableRow key={i}>
-                        <TableCell colSpan={5}><Skeleton className="h-5 w-full" /></TableCell>
+                        <TableCell colSpan={4}><Skeleton className="h-5 w-full" /></TableCell>
                     </TableRow>
                 ))
             ) : plans && plans.length > 0 ? (
@@ -415,7 +393,6 @@ export function PlanManagement() {
                     <TableRow key={plan.id}>
                         <TableCell className="font-medium">{plan.name}</TableCell>
                         <TableCell>{plan.price}€ {plan.period}</TableCell>
-                        <TableCell>{plan.appointmentCredits}</TableCell>
                         <TableCell>
                            <Badge variant={plan.isPublic ? 'default' : 'secondary'}>
                               {plan.isPublic ? 'Oui' : 'Non'}
@@ -433,7 +410,7 @@ export function PlanManagement() {
                 ))
             ) : (
               <TableRow>
-                <TableCell colSpan={5} className="h-24 text-center">
+                <TableCell colSpan={4} className="h-24 text-center">
                   Aucun modèle de prestation créé.
                 </TableCell>
               </TableRow>
