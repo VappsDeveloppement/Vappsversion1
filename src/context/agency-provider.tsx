@@ -217,7 +217,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
-  { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
 
 const defaultPersonalization: Personalization = {

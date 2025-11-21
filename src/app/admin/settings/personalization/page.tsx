@@ -146,7 +146,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
-  { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
 
 const defaultPersonalization = {
@@ -1890,72 +1889,6 @@ export default function PersonalizationPage() {
                                             Ajouter un accompagnement
                                          </Button>
                                       </section>
-                                    </div>
-                                ) : section.id === 'cta2' ? (
-                                    <div className="space-y-6">
-                                        <div>
-                                            <h4 className="font-medium">Contenu</h4>
-                                            <div className="space-y-4 mt-2">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="cta2-title">Titre</Label>
-                                                    <Input id="cta2-title" value={settings.cta2Section?.title} onChange={e => handleCta2SectionChange('title', e.target.value)} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="cta2-text">Texte</Label>
-                                                    <Textarea id="cta2-text" value={settings.cta2Section?.text} onChange={e => handleCta2SectionChange('text', e.target.value)} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-medium">Bouton</h4>
-                                            <div className="grid grid-cols-2 gap-4 mt-2">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="cta2-button-text">Texte du bouton</Label>
-                                                    <Input id="cta2-button-text" value={settings.cta2Section?.buttonText} onChange={e => handleCta2SectionChange('buttonText', e.target.value)} />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="cta2-button-link">Lien du bouton</Label>
-                                                    <Input id="cta2-button-link" value={settings.cta2Section?.buttonLink} onChange={e => handleCta2SectionChange('buttonLink', e.target.value)} />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div>
-                                            <h4 className="font-medium">Arrière-plan</h4>
-                                            <div className="grid grid-cols-2 gap-8 mt-2">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="cta2-bg-color">Couleur de fond</Label>
-                                                    <div className="flex items-center gap-2">
-                                                        <Input type="color" value={settings.cta2Section?.bgColor} onChange={e => handleCta2SectionChange('bgColor', e.target.value)} className="w-10 h-10 p-1"/>
-                                                        <Input id="cta2-bg-color" value={settings.cta2Section?.bgColor} onChange={e => handleCta2SectionChange('bgColor', e.target.value)} />
-                                                    </div>
-                                                </div>
-                                                <div className="space-y-4">
-                                                    <Label>Image de fond</Label>
-                                                    <div className="flex items-center gap-4">
-                                                        <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden" style={{backgroundColor: settings.cta2Section?.bgColor}}>
-                                                            {cta2ImagePreview && <Image src={cta2ImagePreview} alt="Aperçu CTA 2" layout="fill" objectFit="cover" />}
-                                                        </div>
-                                                        <input
-                                                            type="file"
-                                                            ref={fileInputRef}
-                                                            onChange={createUploadHandler(base64 => {
-                                                                setCta2ImagePreview(base64);
-                                                                handleCta2SectionChange('bgImageUrl', base64);
-                                                            })}
-                                                            className="hidden"
-                                                            accept="image/png, image/jpeg"
-                                                        />
-                                                        <div className="flex flex-col gap-2">
-                                                            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Uploader</Button>
-                                                            <Button variant="destructive" size="sm" onClick={() => {
-                                                                setCta2ImagePreview(null);
-                                                                handleCta2SectionChange('bgImageUrl', null);
-                                                            }}>Supprimer</Button>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
                                     </div>
                                 ) : section.id === 'jobOffers' ? (
                                     <div className="space-y-8">
