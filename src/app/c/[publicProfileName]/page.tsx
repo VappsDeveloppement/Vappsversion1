@@ -32,6 +32,10 @@ type CounselorProfile = {
     photoUrl?: string;
     phone?: string;
     city?: string;
+    address?: string;
+    zipCode?: string;
+    commercialName?: string;
+    siret?: string;
     miniSite?: {
         publicProfileName?: string;
         hero?: any;
@@ -107,7 +111,6 @@ export default function CounselorPublicProfilePage() {
         <ParcoursSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
-        <CounselorActivitiesSection counselor={counselor} />
         <CounselorJobOffersSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
       </main>
