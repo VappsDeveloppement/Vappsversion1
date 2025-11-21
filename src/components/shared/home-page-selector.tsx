@@ -25,7 +25,7 @@ import { Skeleton } from '../ui/skeleton';
 import { Button } from '../ui/button';
 import { ArrowRight } from 'lucide-react';
 import { JobOffersSection } from './job-offers-section';
-import { ParcoursSection } from './parcours-section';
+import { ParcoursSection as AgencyParcoursSection } from './parcours-section';
 
 const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   about: AboutSection,
@@ -39,7 +39,7 @@ const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   whiteLabel: WhiteLabelSection,
   pricing: PricingSection,
   jobOffers: JobOffersSection,
-  parcours: ParcoursSection,
+  parcours: AgencyParcoursSection,
 };
 
 // Héro AVEC fenêtre de connexion

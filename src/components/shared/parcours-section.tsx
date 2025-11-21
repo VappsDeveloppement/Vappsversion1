@@ -3,6 +3,7 @@
 
 import { CheckCircle2 } from "lucide-react";
 import type { ParcoursStep } from "@/app/dashboard/settings/mini-site/page";
+import { useAgency } from "@/context/agency-provider";
 
 type CounselorProfile = {
     miniSite?: {
@@ -18,15 +19,18 @@ type CounselorProfile = {
     };
 };
 
-export function ParcoursSection({ counselor }: { counselor: CounselorProfile }) {
-    const parcoursConfig = counselor.miniSite?.parcoursSection;
+export function ParcoursSection({ counselor }: { counselor?: CounselorProfile }) {
+    const { personalization } = useAgency();
+
+    // Use counselor data if available (mini-site), otherwise fallback to agency-wide personalization
+    const parcoursConfig = counselor?.miniSite?.parcoursSection ?? personalization?.parcoursSection;
+    const primaryColor = counselor?.dashboardTheme?.primaryColor || personalization?.primaryColor || '#10B981';
 
     if (!parcoursConfig?.enabled || !parcoursConfig.steps || parcoursConfig.steps.length === 0) {
         return null;
     }
     
     const { title, subtitle, steps } = parcoursConfig;
-    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
@@ -62,5 +66,3 @@ export function ParcoursSection({ counselor }: { counselor: CounselorProfile }) 
         </section>
     );
 }
-
-    
