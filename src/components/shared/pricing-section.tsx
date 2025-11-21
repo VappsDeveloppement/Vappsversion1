@@ -1,6 +1,7 @@
+
 'use client';
 
-import { Check, Loader2 } from "lucide-react";
+import { Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
@@ -10,8 +11,8 @@ import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from "@/firebase/provider";
 import type { Plan } from "@/components/shared/plan-management";
 import { Skeleton } from "../ui/skeleton";
-import React from "react";
 import { useToast } from "@/hooks/use-toast";
+import React from 'react';
 
 export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
@@ -30,8 +31,8 @@ export function PricingSection() {
 
     const handleButtonClick = (planName: string) => {
         toast({
-            title: "Bouton cliqué !",
-            description: `Vous avez cliqué sur le plan : ${planName}`,
+            title: "Clic détecté !",
+            description: `Le bouton pour le plan '${planName}' fonctionne.`,
         });
     };
 
