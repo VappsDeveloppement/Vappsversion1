@@ -297,12 +297,6 @@ export function Footer() {
                                     {isContactLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                     Envoyer
                                 </Button>
-                                <Dialog>
-                                    <DialogTrigger asChild>
-                                        <Button>Valider un devis</Button>
-                                    </DialogTrigger>
-                                    <QuoteValidationForm />
-                                </Dialog>
                             </div>
                         </form>
                     </div>
