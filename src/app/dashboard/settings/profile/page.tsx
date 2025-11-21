@@ -466,10 +466,10 @@ export default function ProfilePage() {
                         <FormItem>
                             <FormLabel>Couleur Primaire</FormLabel>
                             <FormControl>
-                            <div className="flex items-center gap-2">
-                                <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
-                                <Input type="text" {...field} value={field.value || ''} />
-                            </div>
+                                <div className="flex items-center gap-2">
+                                    <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                    <Input type="text" {...field} value={field.value || ''} />
+                                </div>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -482,10 +482,10 @@ export default function ProfilePage() {
                         <FormItem>
                             <FormLabel>Couleur Secondaire</FormLabel>
                             <FormControl>
-                            <div className="flex items-center gap-2">
-                                <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
-                                <Input type="text" {...field} value={field.value || ''} />
-                            </div>
+                                <div className="flex items-center gap-2">
+                                    <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                    <Input type="text" {...field} value={field.value || ''} />
+                                </div>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -498,10 +498,10 @@ export default function ProfilePage() {
                         <FormItem>
                             <FormLabel>Couleur de Fond</FormLabel>
                             <FormControl>
-                            <div className="flex items-center gap-2">
-                                <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
-                                <Input type="text" {...field} value={field.value || ''} />
-                            </div>
+                                <div className="flex items-center gap-2">
+                                    <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                    <Input type="text" {...field} value={field.value || ''} />
+                                </div>
                             </FormControl>
                             <FormMessage />
                         </FormItem>
