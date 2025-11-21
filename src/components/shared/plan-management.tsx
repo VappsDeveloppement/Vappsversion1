@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -80,7 +79,7 @@ const planSchema = z.object({
   description: z.string().optional(),
   price: z.preprocess(
     (a) => parseFloat(z.string().parse(a)),
-    z.number().positive('Le prix doit être positif.')
+    z.number().min(0, "Le prix doit être un nombre positif.")
   ),
   period: z.string().min(1, 'La période est requise (ex: /prestation).'),
   features: z.array(z.object({ value: z.string() })).default([]),
@@ -148,9 +147,11 @@ export function PlanManagement() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (isSheetOpen) {
       if (editingPlan) {
           form.reset({
               ...editingPlan,
+              price: editingPlan.price || 0,
               features: editingPlan.features.map(f => ({ value: f })),
               cta: editingPlan.cta || 'Choisir cette formule',
               contractId: editingPlan.contractId || 'none'
@@ -171,6 +172,7 @@ export function PlanManagement() {
           });
           setImagePreview(null);
       }
+    }
   }, [editingPlan, isSheetOpen, form]);
 
 
@@ -473,9 +475,9 @@ export function PlanManagement() {
                             <SheetClose asChild>
                                 <Button type="button" variant="outline">Annuler</Button>
                             </SheetClose>
-                            <Button type="submit" disabled={isSubmitting}>
+                            <Button type="submit" disabled={isSubmitting || !form.formState.isDirty}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {editingPlan ? 'Sauvegarder' : 'Créer le modèle'}
+                                {editingPlan ? 'Sauvegarder les modifications' : 'Créer le modèle'}
                             </Button>
                         </SheetFooter>
                     </form>
