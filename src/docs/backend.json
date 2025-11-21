@@ -176,6 +176,26 @@
                     "text": { "type": "string" },
                     "imageUrl": { "type": "string", "format": "uri" }
                 }
+            },
+            "servicesSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "services": { 
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "title": { "type": "string" },
+                                "description": { "type": "string" },
+                                "imageUrl": { "type": "string", "format": "uri" }
+                            }
+                        }
+                    }
+                }
             }
         }
     },

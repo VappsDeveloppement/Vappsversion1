@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser } from '@/firebase';
@@ -12,16 +13,16 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Eye, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Upload, Trash2, Eye, Link as LinkIcon, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Label } from '@/components/ui/label';
 
 
 const heroSchema = z.object({
@@ -55,13 +56,30 @@ const aboutSchema = z.object({
   imageUrl: z.string().nullable().optional(),
 });
 
+const serviceItemSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1, "Le titre est requis."),
+  description: z.string().min(1, "La description est requise."),
+  imageUrl: z.string().nullable().optional(),
+});
+
+const servicesSchema = z.object({
+  enabled: z.boolean().default(false),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  services: z.array(serviceItemSchema).optional(),
+});
+
+
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
   attentionSection: attentionSchema.optional(),
   aboutSection: aboutSchema.optional(),
+  servicesSection: servicesSchema.optional(),
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
+export type ServiceItem = z.infer<typeof serviceItemSchema>;
 
 
 type UserProfile = {
@@ -132,8 +150,19 @@ export default function MiniSitePage() {
         text: '',
         imageUrl: null,
       },
+      servicesSection: {
+          enabled: false,
+          title: 'Mes Services',
+          subtitle: 'Découvrez mes accompagnements',
+          services: [],
+      }
     },
   });
+  
+    const { fields: serviceFields, append: appendService, remove: removeService } = useFieldArray({
+        control: form.control,
+        name: "servicesSection.services",
+    });
 
   useEffect(() => {
     if (userData?.miniSite) {
@@ -187,6 +216,14 @@ export default function MiniSitePage() {
       setIsSubmitting(false);
     }
   };
+  
+    const handleServiceImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            form.setValue(`servicesSection.services.${index}.imageUrl`, base64);
+        }
+    };
 
   const isLoading = isUserLoading || isUserDataLoading;
 
@@ -327,16 +364,61 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="aboutSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Une approche sur-mesure" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="aboutSection.text" render={({ field }) => (<FormItem><FormLabel>Texte (si vide, la bio publique sera utilisée)</FormLabel><FormControl><Textarea placeholder="Parlez de votre parcours, de votre approche..." {...field} rows={5} /></FormControl><FormMessage /></FormItem>)}/>
                              <div>
-                                <Label>Image</Label>
-                                <div className="flex items-center gap-4 mt-2">
-                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
-                                        {aboutImagePreview ? (<Image src={aboutImagePreview} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
-                                    </div>
-                                    <input type="file" ref={fileInputAboutRef} onChange={(e) => handleFileUpload(e, (base64) => { setAboutImagePreview(base64); form.setValue('aboutSection.imageUrl', base64); })} className="hidden" accept="image/*" />
-                                    <div className="flex flex-col gap-2">
-                                        <Button type="button" variant="outline" onClick={() => fileInputAboutRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer l'image</Button>
-                                        {aboutImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={() => { setAboutImagePreview(null); form.setValue('aboutSection.imageUrl', null);}}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
-                                    </div>
+                                 <Label>Image</Label>
+                                 <div className="flex items-center gap-4 mt-2">
+                                     <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                         {aboutImagePreview ? (<Image src={aboutImagePreview} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+                                     </div>
+                                     <input type="file" ref={fileInputAboutRef} onChange={(e) => handleFileUpload(e, (base64) => { setAboutImagePreview(base64); form.setValue('aboutSection.imageUrl', base64); })} className="hidden" accept="image/*" />
+                                     <div className="flex flex-col gap-2">
+                                         <Button type="button" variant="outline" onClick={() => fileInputAboutRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer l'image</Button>
+                                         {aboutImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={() => { setAboutImagePreview(null); form.setValue('aboutSection.imageUrl', null);}}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
+                                     </div>
+                                 </div>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+                
+                 <AccordionItem value="services-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Mes Services"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="servicesSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="servicesSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes Services" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="servicesSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Découvrez mes accompagnements" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            
+                            <div>
+                                <Label>Liste des services</Label>
+                                <div className="space-y-4 mt-2">
+                                    {serviceFields.map((field, index) => (
+                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-medium">Service {index + 1}</h4>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeService(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                             <FormField control={form.control} name={`servicesSection.services.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre du service</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                             <FormField control={form.control} name={`servicesSection.services.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={3} /></FormControl><FormMessage /></FormItem> )}/>
+                                             <div>
+                                                <Label>Image du service</Label>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                        {form.watch(`servicesSection.services.${index}.imageUrl`) ? (<Image src={form.watch(`servicesSection.services.${index}.imageUrl`)!} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+                                                    </div>
+                                                    <input type="file" id={`service-image-${index}`} onChange={(e) => handleServiceImageUpload(index, e)} className="hidden" accept="image/*" />
+                                                    <div className="flex flex-col gap-2">
+                                                        <Button type="button" variant="outline" onClick={() => document.getElementById(`service-image-${index}`)?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
+                                                        <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue(`servicesSection.services.${index}.imageUrl`, null)}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>
+                                                    </div>
+                                                </div>
+                                             </div>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendService({ id: `service-${Date.now()}`, title: 'Nouveau service', description: 'Description du service.', imageUrl: null })}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un service
+                                    </Button>
                                 </div>
                             </div>
                         </div>
@@ -355,5 +437,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
-    

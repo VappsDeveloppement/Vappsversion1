@@ -62,5 +62,3 @@ export function CounselorServicesSection({ counselor }: { counselor: CounselorPr
         </section>
     );
 }
-
-    
