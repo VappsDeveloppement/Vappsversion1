@@ -11,13 +11,11 @@ import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from "@/firebase/provider";
 import type { Plan } from "@/components/shared/plan-management";
 import { Skeleton } from "../ui/skeleton";
-import { useToast } from "@/hooks/use-toast";
-import React from 'react';
+import Link from 'next/link';
 
 export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
-    const { toast } = useToast();
 
     const publicPlansQuery = useMemoFirebase(() => {
         const plansCollectionRef = collection(firestore, 'plans');
@@ -28,14 +26,7 @@ export function PricingSection() {
     
     const isLoading = isAgencyLoading || arePlansLoading;
     const primaryColor = personalization?.primaryColor || '#10B981';
-
-    const handleButtonClick = (planName: string) => {
-        toast({
-            title: "Clic détecté !",
-            description: `Le bouton pour le plan '${planName}' fonctionne.`,
-        });
-    };
-
+    
     if (isLoading) {
         return (
              <section className="bg-background text-foreground py-16 sm:py-24">
@@ -97,12 +88,10 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button 
-                                    className="w-full font-bold"
-                                    style={{ backgroundColor: primaryColor }}
-                                    onClick={() => handleButtonClick(tier.name)}
-                                >
-                                    {tier.cta || 'Choisir cette formule'}
+                                <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }} asChild>
+                                    <Link href="https://holica.fr" target="_blank">
+                                        {tier.cta || 'Choisir cette formule'}
+                                    </Link>
                                 </Button>
                             </CardFooter>
                         </Card>
