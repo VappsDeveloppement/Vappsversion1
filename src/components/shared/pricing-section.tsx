@@ -1,44 +1,22 @@
-
 'use client';
 
-import { Check, EyeOff, Eye, Loader2 } from "lucide-react";
+import { Check, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useDoc, useMemoFirebase, setDocumentNonBlocking, useAuth } from "@/firebase";
-import { collection, query, where, doc } from "firebase/firestore";
+import { useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from "@/firebase/provider";
 import type { Plan } from "@/components/shared/plan-management";
 import { Skeleton } from "../ui/skeleton";
-import React, { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from "../ui/input";
+import React from "react";
 import { useToast } from "@/hooks/use-toast";
-import { createUserWithEmailAndPassword } from "firebase/auth";
-
-const signupFormSchema = z.object({
-  firstName: z.string().min(1, "Le prénom est requis."),
-  lastName: z.string().min(1, "Le nom est requis."),
-  email: z.string().email("L'adresse email est invalide."),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères."),
-});
-type SignupFormData = z.infer<typeof signupFormSchema>;
 
 export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
-    const auth = useAuth();
     const { toast } = useToast();
-
-    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
-    const [showPassword, setShowPassword] = useState(false);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const publicPlansQuery = useMemoFirebase(() => {
         const plansCollectionRef = collection(firestore, 'plans');
@@ -47,18 +25,15 @@ export function PricingSection() {
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
     
-    const form = useForm<SignupFormData>({
-        resolver: zodResolver(signupFormSchema),
-        defaultValues: {
-            firstName: '',
-            lastName: '',
-            email: '',
-            password: '',
-        },
-    });
-
     const isLoading = isAgencyLoading || arePlansLoading;
     const primaryColor = personalization?.primaryColor || '#10B981';
+
+    const handleButtonClick = (planName: string) => {
+        toast({
+            title: "Bouton cliqué !",
+            description: `Vous avez cliqué sur le plan : ${planName}`,
+        });
+    };
 
     if (isLoading) {
         return (
@@ -81,51 +56,6 @@ export function PricingSection() {
     if (!plans || plans.length === 0) {
         return null;
     }
-
-    const handleChoosePlan = (plan: Plan) => {
-        setSelectedPlan(plan);
-        setIsDialogOpen(true);
-    }
-    
-    const onSubmit = async (data: SignupFormData) => {
-        if (!selectedPlan) return;
-        setIsSubmitting(true);
-        try {
-            const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
-            const user = userCredential.user;
-
-            const userDocRef = doc(firestore, 'users', user.uid);
-            const newUserDoc = {
-                id: user.uid,
-                firstName: data.firstName,
-                lastName: data.lastName,
-                email: user.email,
-                role: 'conseiller',
-                dateJoined: new Date().toISOString(),
-                planId: selectedPlan.id,
-                subscriptionStatus: 'pending_payment',
-            };
-            await setDocumentNonBlocking(userDocRef, newUserDoc, { merge: false });
-
-            toast({ title: "Compte créé !", description: "Vous allez être redirigé pour finaliser votre abonnement." });
-
-            if (selectedPlan.paypalSubscriptionId) {
-                window.location.href = `https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=${selectedPlan.paypalSubscriptionId}`;
-            } else {
-                 toast({ title: "Action requise", description: "Veuillez contacter l'administrateur pour finaliser votre abonnement." });
-            }
-
-        } catch (error: any) {
-            console.error("Signup error:", error);
-            let message = "Une erreur est survenue lors de l'inscription.";
-            if (error.code === 'auth/email-already-in-use') {
-                message = "Cette adresse e-mail est déjà utilisée.";
-            }
-            toast({ variant: 'destructive', title: 'Erreur', description: message });
-            setIsSubmitting(false);
-        }
-    };
-
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
@@ -166,7 +96,11 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }} onClick={() => handleChoosePlan(tier)}>
+                                <Button 
+                                    className="w-full font-bold" 
+                                    style={{ backgroundColor: primaryColor }}
+                                    onClick={() => handleButtonClick(tier.name)}
+                                >
                                     {tier.cta || 'Choisir cette formule'}
                                 </Button>
                             </CardFooter>
@@ -174,50 +108,6 @@ export function PricingSection() {
                     ))}
                 </div>
             </div>
-
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                <DialogContent className="sm:max-w-md">
-                     <DialogHeader>
-                        <DialogTitle>Souscrire à l'offre "{selectedPlan?.name}"</DialogTitle>
-                        <DialogDescription>Créez votre compte conseiller pour commencer.</DialogDescription>
-                    </DialogHeader>
-                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="firstName" render={({ field }) => (
-                                    <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                )} />
-                                <FormField control={form.control} name="lastName" render={({ field }) => (
-                                    <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                )} />
-                            </div>
-                            <FormField control={form.control} name="email" render={({ field }) => (
-                                <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
-                            )} />
-                            <FormField control={form.control} name="password" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Mot de passe</FormLabel>
-                                    <FormControl>
-                                        <div className="relative">
-                                            <Input type={showPassword ? "text" : "password"} {...field} />
-                                            <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                            </Button>
-                                        </div>
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )} />
-                            <DialogFooter>
-                                <Button type="submit" disabled={isSubmitting} className="w-full">
-                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Valider et Payer
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            </Dialog>
         </section>
     );
 }
