@@ -2,7 +2,6 @@
 'use client';
 
 import { CheckCircle2 } from "lucide-react";
-import { useAgency } from "@/context/agency-provider";
 
 type ParcoursStep = {
     id: string;
@@ -24,20 +23,15 @@ type CounselorProfile = {
     };
 };
 
-export function ParcoursSection({ counselor }: { counselor?: CounselorProfile }) {
-    const agencyData = useAgency(); // Fallback to agency data if counselor is not provided
-    
-    // Determine which data source to use
-    const source = counselor ? counselor.miniSite : agencyData.personalization;
-    const primaryColor = counselor ? counselor.dashboardTheme?.primaryColor : agencyData.personalization.primaryColor;
-    
-    const parcoursConfig = source?.parcoursSection || {};
+export function ParcoursSection({ counselor }: { counselor: CounselorProfile }) {
+    const parcoursConfig = counselor.miniSite?.parcoursSection || {};
     
     if (!parcoursConfig.enabled) {
         return null;
     }
     
     const { title, subtitle, steps } = parcoursConfig;
+    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     if (!steps || steps.length === 0) {
         return null;
@@ -57,7 +51,7 @@ export function ParcoursSection({ counselor }: { counselor?: CounselorProfile })
                         {steps.map((step) => (
                             <div key={step.id} className="flex flex-col items-center">
                                 <div className="relative bg-background p-1 z-10">
-                                    <CheckCircle2 className="h-12 w-12 text-primary" style={{ color: primaryColor }}/>
+                                    <CheckCircle2 className="h-12 w-12" style={{ color: primaryColor }}/>
                                 </div>
                                 <div className="pt-6">
                                     <h3 className="font-bold text-lg mb-2">{step.title}</h3>
