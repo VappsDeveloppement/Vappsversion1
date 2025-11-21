@@ -7,6 +7,7 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
+import { AttentionSection } from '@/components/shared/attention-section';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Wrench } from 'lucide-react';
@@ -25,6 +26,7 @@ type CounselorProfile = {
     miniSite?: {
         publicProfileName?: string;
         hero?: any;
+        attentionSection?: any;
     };
     dashboardTheme?: {
         primaryColor?: string;
@@ -81,8 +83,8 @@ export default function CounselorPublicProfilePage() {
   return (
     <div className="bg-muted/30 min-h-screen">
       <main>
-        {/* Affichage unique de la section Héro */}
         <CounselorHero counselor={counselor} />
+        <AttentionSection counselor={counselor} />
         
         <div className="flex flex-col items-center justify-center text-center p-12 my-12 border-2 border-dashed rounded-lg h-96 max-w-4xl mx-auto">
             <Wrench className="h-16 w-16 text-muted-foreground mb-4" />
@@ -99,5 +101,3 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
-
-    

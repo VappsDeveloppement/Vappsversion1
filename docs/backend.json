@@ -145,7 +145,6 @@
                 "properties": {
                     "title": { "type": "string" },
                     "subtitle": { "type": "string" },
-                    "text": { "type": "string" },
                     "ctaText": { "type": "string" },
                     "ctaLink": { "type": "string" },
                     "cta2Text": { "type": "string" },
@@ -157,6 +156,15 @@
                     "bgImageUrl": { "type": "string", "format": "uri" },
                     "titleColor": { "type": "string" },
                     "subtitleColor": { "type": "string" }
+                }
+            },
+            "attentionSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "text": { "type": "string" }
                 }
             }
         }

@@ -40,7 +40,20 @@ const heroSchema = z.object({
   subtitleColor: z.string().optional(),
 });
 
-type HeroFormData = z.infer<typeof heroSchema>;
+const attentionSchema = z.object({
+  enabled: z.boolean().default(false),
+  title: z.string().optional(),
+  subtitle: z.string().optional(),
+  text: z.string().optional(),
+});
+
+const miniSiteSchema = z.object({
+  hero: heroSchema.optional(),
+  attentionSection: attentionSchema.optional(),
+});
+
+type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
+
 
 type UserProfile = {
   id: string;
@@ -48,9 +61,7 @@ type UserProfile = {
   lastName: string;
   email: string;
   publicProfileName?: string;
-  miniSite?: {
-    hero?: HeroFormData;
-  };
+  miniSite?: MiniSiteFormData;
   dashboardTheme?: any;
 };
 
@@ -78,29 +89,37 @@ export default function MiniSitePage() {
 
   const [bgImagePreview, setBgImagePreview] = useState<string | null | undefined>(null);
 
-  const form = useForm<HeroFormData>({
-    resolver: zodResolver(heroSchema),
+  const form = useForm<MiniSiteFormData>({
+    resolver: zodResolver(miniSiteSchema),
     defaultValues: {
-      title: '',
-      subtitle: '',
-      ctaText: '',
-      ctaLink: '',
-      cta2Text: '',
-      cta2Link: '',
-      showPhoto: true,
-      showPhone: true,
-      showLocation: true,
-      bgColor: '#111827',
-      bgImageUrl: null,
-      titleColor: '#FFFFFF',
-      subtitleColor: '#E5E7EB',
+      hero: {
+        title: '',
+        subtitle: '',
+        ctaText: '',
+        ctaLink: '',
+        cta2Text: '',
+        cta2Link: '',
+        showPhoto: true,
+        showPhone: true,
+        showLocation: true,
+        bgColor: '#111827',
+        bgImageUrl: null,
+        titleColor: '#FFFFFF',
+        subtitleColor: '#E5E7EB',
+      },
+      attentionSection: {
+        enabled: false,
+        title: 'Attention',
+        subtitle: '',
+        text: '',
+      },
     },
   });
 
   useEffect(() => {
-    if (userData?.miniSite?.hero) {
-      form.reset(userData.miniSite.hero);
-      setBgImagePreview(userData.miniSite.hero.bgImageUrl);
+    if (userData?.miniSite) {
+      form.reset(userData.miniSite);
+      setBgImagePreview(userData.miniSite.hero?.bgImageUrl);
     }
   }, [userData, form]);
 
@@ -109,41 +128,40 @@ export default function MiniSitePage() {
     if (file) {
       const base64 = await toBase64(file);
       setBgImagePreview(base64);
-      form.setValue('bgImageUrl', base64);
+      form.setValue('hero.bgImageUrl', base64);
     }
   };
   
   const handleRemovePhoto = () => {
     setBgImagePreview(null);
-    form.setValue('bgImageUrl', null);
+    form.setValue('hero.bgImageUrl', null);
   };
 
-  const onSubmit = async (data: HeroFormData) => {
+  const onSubmit = async (data: MiniSiteFormData) => {
     if (!user || !userDocRef) return;
     setIsSubmitting(true);
 
     try {
+      const fullMiniSiteData = {
+          ...userData?.miniSite,
+          ...data,
+      };
+
       // 1. Update the user document
       await setDocumentNonBlocking(userDocRef, {
-        miniSite: {
-          ...userData?.miniSite,
-          hero: data
-        }
+        miniSite: fullMiniSiteData,
       }, { merge: true });
 
       // 2. Update the public minisite document
       if(userData?.role === 'conseiller') {
           const minisiteDocRef = doc(firestore, 'minisites', user.uid);
           await setDocumentNonBlocking(minisiteDocRef, {
-              miniSite: {
-                ...userData?.miniSite,
-                hero: data
-              }
+              miniSite: fullMiniSiteData,
           }, { merge: true });
       }
 
       toast({
-        title: 'Section Héro mise à jour',
+        title: 'Mini-site mis à jour',
         description: 'Les modifications de votre page publique ont été sauvegardées.',
       });
     } catch (e) {
@@ -230,14 +248,14 @@ export default function MiniSitePage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Accordion type="single" collapsible defaultValue="hero-section" className="w-full">
-                <AccordionItem value="hero-section">
-                    <AccordionTrigger className='text-lg font-medium'>Section Héro</AccordionTrigger>
+            <Accordion type="single" collapsible defaultValue="hero-section" className="w-full space-y-4">
+                <AccordionItem value="hero-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section Héro</AccordionTrigger>
                     <AccordionContent>
-                        <div className="space-y-6 pt-4">
+                        <div className="space-y-6 p-6">
                             <FormField
                                 control={form.control}
-                                name="title"
+                                name="hero.title"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Titre principal</FormLabel>
@@ -250,7 +268,7 @@ export default function MiniSitePage() {
                             />
                             <FormField
                                 control={form.control}
-                                name="subtitle"
+                                name="hero.subtitle"
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Sous-titre</FormLabel>
@@ -262,19 +280,19 @@ export default function MiniSitePage() {
                                 )}
                             />
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField control={form.control} name="ctaText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton principal</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton principal</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="hero.ctaText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton principal</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="hero.ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton principal</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField control={form.control} name="cta2Text" render={({ field }) => (<FormItem><FormLabel>Texte du bouton secondaire</FormLabel><FormControl><Input placeholder="Mon Espace" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="cta2Link" render={({ field }) => (<FormItem><FormLabel>Lien du bouton secondaire</FormLabel><FormControl><Input placeholder="/application" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="hero.cta2Text" render={({ field }) => (<FormItem><FormLabel>Texte du bouton secondaire</FormLabel><FormControl><Input placeholder="Mon Espace" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="hero.cta2Link" render={({ field }) => (<FormItem><FormLabel>Lien du bouton secondaire</FormLabel><FormControl><Input placeholder="/application" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
 
                             <div className="space-y-4 rounded-lg border p-4">
                                 <h4 className="text-sm font-medium">Options d'affichage</h4>
-                                <FormField control={form.control} name="showPhoto" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma photo de profil</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="showPhone" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher mon numéro de téléphone</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="showLocation" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma ville</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="hero.showPhoto" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma photo de profil</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="hero.showPhone" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher mon numéro de téléphone</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="hero.showLocation" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma ville</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
                             </div>
 
                             <div className="space-y-6 rounded-lg border p-4">
@@ -289,15 +307,82 @@ export default function MiniSitePage() {
                                         {bgImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={handleRemovePhoto}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
                                     </div>
                                 </div>
-                                <FormField control={form.control} name="bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="hero.bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
                             </div>
                             <div className="space-y-6 rounded-lg border p-4">
                                 <h4 className="text-sm font-medium">Couleurs du texte</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    <FormField control={form.control} name="titleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
-                                    <FormField control={form.control} name="subtitleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du sous-titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                    <FormField control={form.control} name="hero.titleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                    <FormField control={form.control} name="hero.subtitleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du sous-titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
                                 </div>
                             </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="attention-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Attention"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                             <FormField
+                                control={form.control}
+                                name="attentionSection.enabled"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel className="text-base">Afficher cette section</FormLabel>
+                                            <FormDescription>
+                                                Active ou désactive la section "Attention" sur votre mini-site.
+                                            </FormDescription>
+                                        </div>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="attentionSection.title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Titre</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Titre de la section" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                             <FormField
+                                control={form.control}
+                                name="attentionSection.subtitle"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Sous-titre (optionnel)</FormLabel>
+                                        <FormControl>
+                                            <Input placeholder="Sous-titre" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="attentionSection.text"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Texte</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Contenu de la section..." {...field} rows={5} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
                         </div>
                     </AccordionContent>
                 </AccordionItem>
