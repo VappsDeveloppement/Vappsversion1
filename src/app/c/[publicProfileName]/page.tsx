@@ -7,24 +7,10 @@ import { useMemoFirebase } from '@/firebase';
 import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
-import { AboutMeSection } from '@/components/shared/about-me-section';
-import { AttentionSection } from '@/components/shared/attention-section';
-import { InterestsSection } from '@/components/shared/interests-section';
-import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
-import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
-import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
-import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle } from 'lucide-react';
 import { useAgency } from '@/context/agency-provider';
-
-// Définir le type Section pour correspondre à la configuration
-type Section = {
-    id: string;
-    label: string;
-    enabled: boolean;
-};
 
 type CounselorProfile = {
     id: string;
@@ -36,8 +22,7 @@ type CounselorProfile = {
     photoUrl?: string;
     miniSite?: {
         publicProfileName?: string;
-        homePageSections?: Section[];
-        [key: string]: any;
+        hero?: any;
     };
     agencyInfo?: {
         copyrightText?: string;
@@ -45,31 +30,7 @@ type CounselorProfile = {
     }
 };
 
-const sectionComponents: { [key: string]: React.ComponentType<{ counselor: CounselorProfile }> } = {
-  hero: CounselorHero,
-  attentionSection: AttentionSection,
-  aboutSection: AboutMeSection,
-  interestsSection: InterestsSection,
-  servicesSection: CounselorServicesSection,
-  ctaSection: CounselorCtaSection,
-  pricingSection: CounselorPricingSection,
-  contactSection: CounselorContactSection,
-};
-
-const defaultSectionsOrder: Section[] = [
-    { id: 'hero', enabled: true, label: 'Hero' },
-    { id: 'attentionSection', enabled: true, label: 'Attention' },
-    { id: 'aboutSection', enabled: true, label: 'À Propos' },
-    { id: 'interestsSection', enabled: true, label: 'Centres d\'intérêt' },
-    { id: 'servicesSection', enabled: true, label: 'Services' },
-    { id: 'ctaSection', enabled: true, label: 'Appel à l\'action' },
-    { id: 'pricingSection', enabled: true, label: 'Formules' },
-    { id: 'contactSection', enabled: true, label: 'Contact' },
-];
-
-
 function CounselorPageContent({ counselor, isLoading, agency }: { counselor: CounselorProfile | null, isLoading: boolean, agency: any }) {
-
   if (isLoading) {
     return (
         <div className="space-y-8 p-8">
@@ -95,8 +56,6 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
     );
   }
   
-  const sections = counselor.miniSite?.homePageSections || defaultSectionsOrder;
-
   const copyrightText = agency?.personalization.copyrightText || "Vapps.";
   const copyrightUrl = agency?.personalization.copyrightUrl || "/";
   const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
@@ -105,17 +64,7 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
   return (
     <div className="bg-muted/30 min-h-screen">
       <main>
-        {sections.map((sectionConfig) => {
-            if (!sectionConfig.enabled) {
-                return null;
-            }
-            // The 'hero' section is handled separately as it's part of the header
-            if (sectionConfig.id === 'hero') {
-                return <CounselorHero key={sectionConfig.id} counselor={counselor} />;
-            }
-            const SectionComponent = sectionComponents[sectionConfig.id];
-            return SectionComponent ? <SectionComponent key={sectionConfig.id} counselor={counselor} /> : null;
-        })}
+        <CounselorHero counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
