@@ -23,6 +23,7 @@ import Image from 'next/image';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { AboutMeSection } from '@/components/shared/about-me-section';
+import { ActivitiesSection } from '@/components/shared/activities-section';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { ParcoursSection } from '@/components/shared/parcours-section';
 
@@ -56,10 +57,18 @@ const attentionSchema = z.object({
 const aboutSchema = z.object({
   enabled: z.boolean().default(true),
   imageUrl: z.string().optional(),
+  title: z.string().optional(),
+  text: z.string().optional(),
+});
+
+const activitiesSchema = z.object({
+  enabled: z.boolean().default(true),
+  imageUrl: z.string().optional(),
   videoUrl: z.string().optional(),
   title: z.string().optional(),
   text: z.string().optional(),
 });
+
 
 const serviceItemSchema = z.object({
     id: z.string(),
@@ -98,6 +107,7 @@ const miniSiteSchema = z.object({
     hero: heroSchema,
     attentionSection: attentionSchema,
     aboutSection: aboutSchema,
+    activitiesSection: activitiesSchema,
     parcoursSection: parcoursSchema,
     servicesSection: servicesSchema,
     sections: z.array(sectionConfigSchema),
@@ -130,9 +140,15 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
     aboutSection: {
         enabled: true,
         imageUrl: '',
-        videoUrl: '',
         title: 'À propos de moi',
         text: "Votre biographie ou texte de présentation s'affichera ici.",
+    },
+    activitiesSection: {
+        enabled: true,
+        imageUrl: '',
+        videoUrl: '',
+        title: 'Mes Activités',
+        text: "Présentez ici vos activités, ateliers ou conférences.",
     },
     parcoursSection: {
         enabled: true,
@@ -159,6 +175,7 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         { id: 'hero', label: 'Héro', enabled: true },
         { id: 'attentionSection', label: 'Attention', enabled: true },
         { id: 'aboutSection', label: 'À propos', enabled: true },
+        { id: 'activitiesSection', label: 'Mes Activités', enabled: true },
         { id: 'parcoursSection', label: 'Parcours', enabled: true },
         { id: 'servicesSection', label: 'Services', enabled: true },
     ]
@@ -184,6 +201,7 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
         hero: CounselorHero,
         attentionSection: AttentionSection,
         aboutSection: AboutMeSection,
+        activitiesSection: ActivitiesSection,
         parcoursSection: ParcoursSection,
         servicesSection: CounselorServicesSection,
     };
@@ -200,9 +218,6 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             {sections.map((section: Section) => {
                 if (!section.enabled) return null;
                 const Component = sectionComponents[section.id];
-                if (section.id === 'hero') {
-                    return <CounselorHero key={section.id} counselor={counselorPreviewData} />
-                }
                 return Component ? <Component key={section.id} counselor={counselorPreviewData} /> : null;
             })}
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
@@ -221,6 +236,7 @@ export default function MiniSitePage() {
   
   const bgImageInputRef = useRef<HTMLInputElement>(null);
   const aboutImageInputRef = useRef<HTMLInputElement>(null);
+  const activitiesImageInputRef = useRef<HTMLInputElement>(null);
   const servicesImageInputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const userDocRef = useMemoFirebase(() => {
@@ -260,6 +276,7 @@ export default function MiniSitePage() {
             hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
             attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
             aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
+            activitiesSection: { ...defaultMiniSiteConfig.activitiesSection, ...(userData.miniSite.activitiesSection || {}) },
             parcoursSection: { ...defaultMiniSiteConfig.parcoursSection, ...(userData.miniSite.parcoursSection || {}) },
             servicesSection: { ...defaultMiniSiteConfig.servicesSection, ...(userData.miniSite.servicesSection || {}) },
             sections: userData.miniSite.sections || defaultMiniSiteConfig.sections,
@@ -269,6 +286,8 @@ export default function MiniSitePage() {
 
   const [bgImagePreview, setBgImagePreview] = useState(form.getValues('hero.bgImageUrl'));
   const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
+  const [activitiesImagePreview, setActivitiesImagePreview] = useState(form.getValues('activitiesSection.imageUrl'));
+
 
     useEffect(() => {
         setBgImagePreview(form.watch('hero.bgImageUrl'));
@@ -277,6 +296,10 @@ export default function MiniSitePage() {
     useEffect(() => {
         setAboutImagePreview(form.watch('aboutSection.imageUrl'));
     }, [form.watch('aboutSection.imageUrl')]);
+
+    useEffect(() => {
+        setActivitiesImagePreview(form.watch('activitiesSection.imageUrl'));
+    }, [form.watch('activitiesSection.imageUrl')]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>, fieldName: any) => {
       const file = event.target.files?.[0];
@@ -436,7 +459,7 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="aboutSection.title" render={({ field }) => ( <FormItem> <FormLabel>Titre</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
                             <FormField control={form.control} name="aboutSection.text" render={({ field }) => ( <FormItem> <FormLabel>Texte</FormLabel> <FormControl> <Textarea {...field} rows={8}/> </FormControl> <FormMessage /> </FormItem> )}/>
                             <div>
-                                <FormLabel>Média</FormLabel>
+                                <FormLabel>Image</FormLabel>
                                 <div className="mt-2 flex items-center gap-4">
                                     <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
                                         {aboutImagePreview ? <Image src={aboutImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Image</span>}
@@ -448,7 +471,39 @@ export default function MiniSitePage() {
                                     </div>
                                 </div>
                             </div>
-                             <FormField control={form.control} name="aboutSection.videoUrl" render={({ field }) => ( <FormItem> <FormLabel>Ou URL de la vidéo</FormLabel> <FormControl> <Input {...field} placeholder="https://www.youtube.com/embed/..."/> </FormControl> <FormMessage /> </FormItem> )}/>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="activities-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='bg-muted/50 px-6 py-4 font-semibold text-lg'>Section "Mes Activités"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="p-6 space-y-6">
+                            <FormField control={form.control} name="activitiesSection.title" render={({ field }) => ( <FormItem> <FormLabel>Titre</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                            <FormField control={form.control} name="activitiesSection.text" render={({ field }) => ( <FormItem> <FormLabel>Texte</FormLabel> <FormControl> <Textarea {...field} rows={8}/> </FormControl> <FormMessage /> </FormItem> )}/>
+                            <div>
+                                <FormLabel>Média (Vidéo ou Image)</FormLabel>
+                                <div className="mt-2 p-4 border rounded-md space-y-4">
+                                    <FormField control={form.control} name="activitiesSection.videoUrl" render={({ field }) => ( <FormItem> <FormLabel>URL de la vidéo (prioritaire)</FormLabel> <FormControl> <Input {...field} placeholder="https://www.youtube.com/embed/..."/> </FormControl> <FormMessage /> </FormItem> )}/>
+                                    <div className="flex items-center gap-2">
+                                        <div className="flex-grow border-t"></div>
+                                        <span className="text-xs text-muted-foreground">OU</span>
+                                        <div className="flex-grow border-t"></div>
+                                    </div>
+                                    <div>
+                                        <FormLabel>Image</FormLabel>
+                                        <div className="mt-2 flex items-center gap-4">
+                                            <div className="w-24 h-16 rounded border bg-muted flex items-center justify-center">
+                                                {activitiesImagePreview ? <Image src={activitiesImagePreview} alt="Aperçu" width={96} height={64} className="object-cover h-full w-full rounded" /> : <span className="text-xs text-muted-foreground">Image</span>}
+                                            </div>
+                                            <input type="file" ref={activitiesImageInputRef} onChange={(e) => handleFileUpload(e, 'activitiesSection.imageUrl')} className="hidden" accept="image/*" />
+                                            <div className="flex flex-col gap-1">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => activitiesImageInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Changer l'image</Button>
+                                                <Button type="button" variant="ghost" size="sm" onClick={() => setValue('activitiesSection.imageUrl', '')}><Trash2 className="mr-2 h-4 w-4" /> Retirer</Button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </AccordionContent>
                 </AccordionItem>

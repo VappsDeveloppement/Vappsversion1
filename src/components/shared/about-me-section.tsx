@@ -10,8 +10,6 @@ type CounselorProfile = {
         aboutSection?: {
             enabled?: boolean;
             imageUrl?: string;
-            videoUrl?: string;
-            mediaText?: string;
             title?: string;
             subtitle?: string;
             text?: string;
@@ -26,44 +24,22 @@ export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
         return null;
     }
 
-    const title = aboutConfig.title || "Trouver Votre Voie";
+    const title = aboutConfig.title || "À propos de moi";
     const subtitle = aboutConfig.subtitle || "Une approche sur-mesure";
     const textToDisplay = aboutConfig.text || counselor.publicBio || "Contenu de la biographie à venir.";
     const imageUrl = aboutConfig.imageUrl;
-    const videoUrl = aboutConfig.videoUrl;
 
-    const renderMedia = () => {
-        if (videoUrl) {
-            return (
-                 <div className="aspect-video w-full">
-                    <iframe
-                        className="w-full h-full rounded-lg shadow-lg"
-                        src={videoUrl.replace("watch?v=", "embed/")}
-                        title="Vidéo de présentation"
-                        frameBorder="0"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                        allowFullScreen
-                    ></iframe>
-                </div>
-            )
-        }
-        if (imageUrl) {
-            return (
-                <div className="w-full h-64 md:h-80 relative rounded-lg overflow-hidden shadow-lg">
-                    <Image
-                        src={imageUrl}
-                        alt={title}
-                        fill
-                        className="object-cover"
-                        data-ai-hint="woman bike"
-                    />
-                </div>
-            )
-        }
-        return null;
-    }
-
-    const mediaContent = renderMedia();
+    const mediaContent = imageUrl ? (
+        <div className="w-full h-64 md:h-80 relative rounded-lg overflow-hidden shadow-lg">
+            <Image
+                src={imageUrl}
+                alt={title}
+                fill
+                className="object-cover"
+                data-ai-hint="portrait professional"
+            />
+        </div>
+    ) : null;
 
     return (
         <section className="py-16 sm:py-24 bg-white">
@@ -75,7 +51,7 @@ export function AboutMeSection({ counselor }: { counselor: CounselorProfile }) {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-12 items-center">
                     {mediaContent}
                     <div className={!mediaContent ? "md:col-span-2 text-center" : ""}>
-                        <p className="text-muted-foreground text-lg">
+                        <p className="text-muted-foreground text-lg whitespace-pre-wrap">
                             {textToDisplay}
                         </p>
                     </div>

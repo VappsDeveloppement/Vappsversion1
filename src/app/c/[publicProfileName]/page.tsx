@@ -13,6 +13,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useAgency } from '@/context/agency-provider';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { AboutMeSection } from '@/components/shared/about-me-section';
+import { ActivitiesSection } from '@/components/shared/activities-section';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { ParcoursSection } from '@/components/shared/parcours-section';
 
@@ -29,8 +30,10 @@ type CounselorProfile = {
         hero?: any;
         attentionSection?: any;
         aboutSection?: any;
+        activitiesSection?: any;
         servicesSection?: any;
         parcoursSection?: any;
+        sections?: any[];
     };
     agencyInfo?: {
         copyrightText?: string;
@@ -42,6 +45,7 @@ const sectionComponents: { [key: string]: React.ComponentType<{ counselor: Couns
   hero: CounselorHero,
   attentionSection: AttentionSection,
   aboutSection: AboutMeSection,
+  activitiesSection: ActivitiesSection,
   parcoursSection: ParcoursSection,
   servicesSection: CounselorServicesSection,
 };
@@ -77,13 +81,7 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
   const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
   const primaryColor = counselor.miniSite?.hero?.primaryColor || '#10B981';
 
-  const sections = counselor.miniSite?.sections || [
-    { id: 'hero', enabled: true },
-    { id: 'attentionSection', enabled: true },
-    { id: 'aboutSection', enabled: true },
-    { id: 'parcoursSection', enabled: true },
-    { id: 'servicesSection', enabled: true },
-  ];
+  const sections = counselor.miniSite?.sections || [];
 
   return (
     <div className="bg-muted/30 min-h-screen">
@@ -91,10 +89,6 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
         {sections.map((section: { id: string; enabled: boolean }) => {
           if (!section.enabled) return null;
           const Component = sectionComponents[section.id];
-          // The hero is handled specially because it's the header.
-          if (section.id === 'hero') {
-            return <CounselorHero key={section.id} counselor={counselor} />;
-          }
           return Component ? <Component key={section.id} counselor={counselor} /> : null;
         })}
       </main>
