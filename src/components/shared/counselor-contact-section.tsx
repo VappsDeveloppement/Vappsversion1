@@ -29,6 +29,13 @@ type CounselorProfile = {
             enabled?: boolean;
             title?: string;
             subtitle?: string;
+            commercialName?: string;
+            siret?: string;
+            address?: string;
+            zipCode?: string;
+            city?: string;
+            email?: string;
+            phone?: string;
         }
     };
     dashboardTheme?: {
@@ -51,7 +58,17 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
         return null;
     }
 
-    const fullAddress = [counselor.address, counselor.zipCode, counselor.city].filter(Boolean).join(', ');
+    const info = {
+        commercialName: contactConfig.commercialName || counselor.commercialName,
+        siret: contactConfig.siret || counselor.siret,
+        address: contactConfig.address || counselor.address,
+        zipCode: contactConfig.zipCode || counselor.zipCode,
+        city: contactConfig.city || counselor.city,
+        email: contactConfig.email || counselor.email,
+        phone: contactConfig.phone || counselor.phone,
+    };
+
+    const fullAddress = [info.address, info.zipCode, info.city].filter(Boolean).join(', ');
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -98,16 +115,16 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                         {counselor.publicTitle && <p className="font-semibold mb-6" style={{color: counselor.dashboardTheme?.primaryColor}}>{counselor.publicTitle}</p>}
                         
                         <div className="space-y-4 text-muted-foreground">
-                            {counselor.commercialName && (
+                            {info.commercialName && (
                                 <div className="flex items-center gap-3">
                                     <Building className="h-5 w-5 text-primary" />
-                                    <span>{counselor.commercialName}</span>
+                                    <span>{info.commercialName}</span>
                                 </div>
                             )}
-                             {counselor.siret && (
+                             {info.siret && (
                                 <div className="flex items-center gap-3">
                                     <Briefcase className="h-5 w-5 text-primary" />
-                                    <span>SIRET: {counselor.siret}</span>
+                                    <span>SIRET: {info.siret}</span>
                                 </div>
                             )}
                             {fullAddress && (
@@ -116,16 +133,16 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                                     <span>{fullAddress}</span>
                                 </div>
                             )}
-                            {counselor.email && (
+                            {info.email && (
                                 <div className="flex items-center gap-3">
                                     <Mail className="h-5 w-5 text-primary" />
-                                    <a href={`mailto:${counselor.email}`} className="hover:underline">{counselor.email}</a>
+                                    <a href={`mailto:${info.email}`} className="hover:underline">{info.email}</a>
                                 </div>
                             )}
-                             {counselor.phone && (
+                             {info.phone && (
                                 <div className="flex items-center gap-3">
                                     <Phone className="h-5 w-5 text-primary" />
-                                    <a href={`tel:${counselor.phone}`} className="hover:underline">{counselor.phone}</a>
+                                    <a href={`tel:${info.phone}`} className="hover:underline">{info.phone}</a>
                                 </div>
                             )}
                         </div>
@@ -169,3 +186,5 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
         </section>
     );
 }
+
+    

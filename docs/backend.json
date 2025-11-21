@@ -287,7 +287,14 @@
                 "properties": {
                     "enabled": { "type": "boolean" },
                     "title": { "type": "string" },
-                    "subtitle": { "type": "string" }
+                    "subtitle": { "type": "string" },
+                    "commercialName": { "type": "string" },
+                    "siret": { "type": "string" },
+                    "address": { "type": "string" },
+                    "zipCode": { "type": "string" },
+                    "city": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "phone": { "type": "string" }
                 }
             }
         }
@@ -303,6 +310,10 @@
             "email": { "type": "string", "format": "email" },
             "phone": { "type": "string" },
             "city": { "type": "string" },
+            "address": { "type": "string" },
+            "zipCode": { "type": "string" },
+            "commercialName": { "type": "string" },
+            "siret": { "type": "string" },
             "photoUrl": { "type": "string", "format": "uri" },
             "publicTitle": { "type": "string" },
             "publicBio": { "type": "string" },
@@ -920,3 +931,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    

@@ -143,6 +143,13 @@ const contactSectionSchema = z.object({
   enabled: z.boolean().default(false),
   title: z.string().optional(),
   subtitle: z.string().optional(),
+  commercialName: z.string().optional(),
+  siret: z.string().optional(),
+  address: z.string().optional(),
+  zipCode: z.string().optional(),
+  city: z.string().optional(),
+  email: z.string().email().optional().or(z.literal('')),
+  phone: z.string().optional(),
 }).optional();
 
 
@@ -295,7 +302,14 @@ export default function MiniSitePage() {
       contactSection: {
         enabled: false,
         title: "Contactez-moi",
-        subtitle: "Un projet, une question ? N'hésitez pas."
+        subtitle: "Un projet, une question ? N'hésitez pas.",
+        commercialName: '',
+        siret: '',
+        address: '',
+        zipCode: '',
+        city: '',
+        email: '',
+        phone: '',
       },
     },
   });
@@ -354,6 +368,13 @@ export default function MiniSitePage() {
          contactSection: {
             ...form.getValues().contactSection,
             ...userData.miniSite.contactSection,
+            commercialName: userData.miniSite.contactSection?.commercialName || userData.commercialName || '',
+            siret: userData.miniSite.contactSection?.siret || userData.siret || '',
+            address: userData.miniSite.contactSection?.address || userData.address || '',
+            zipCode: userData.miniSite.contactSection?.zipCode || userData.zipCode || '',
+            city: userData.miniSite.contactSection?.city || userData.city || '',
+            email: userData.miniSite.contactSection?.email || userData.email || '',
+            phone: userData.miniSite.contactSection?.phone || userData.phone || '',
          },
        };
       form.reset(initialMiniSiteData);
@@ -361,6 +382,15 @@ export default function MiniSitePage() {
       setAboutImagePreview(userData.miniSite.aboutSection?.imageUrl);
       setCtaImagePreview(userData.miniSite.ctaSection?.bgImageUrl);
       setActivitiesImagePreview(userData.miniSite.activitiesSection?.imageUrl);
+    } else if (userData) {
+        // Pre-fill contact section from main profile on first load
+        form.setValue('contactSection.commercialName', userData.commercialName || '');
+        form.setValue('contactSection.siret', userData.siret || '');
+        form.setValue('contactSection.address', userData.address || '');
+        form.setValue('contactSection.zipCode', userData.zipCode || '');
+        form.setValue('contactSection.city', userData.city || '');
+        form.setValue('contactSection.email', userData.email || '');
+        form.setValue('contactSection.phone', userData.phone || '');
     }
   }, [userData, form]);
 
@@ -881,6 +911,18 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="contactSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="contactSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Contactez-moi" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="contactSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Un projet, une question ? N'hésitez pas." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <div className="border-t pt-6 space-y-4">
+                                <h4 className="font-medium text-sm text-muted-foreground">Informations de contact (pré-remplies depuis votre profil)</h4>
+                                <FormField control={form.control} name="contactSection.commercialName" render={({ field }) => (<FormItem><FormLabel>Nom Commercial</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.siret" render={({ field }) => (<FormItem><FormLabel>SIRET</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.address" render={({ field }) => (<FormItem><FormLabel>Adresse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="contactSection.zipCode" render={({ field }) => (<FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                    <FormField control={form.control} name="contactSection.city" render={({ field }) => (<FormItem><FormLabel>Ville</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                </div>
+                                <FormField control={form.control} name="contactSection.email" render={({ field }) => (<FormItem><FormLabel>Email de contact</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.phone" render={({ field }) => (<FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            </div>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
@@ -897,3 +939,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
