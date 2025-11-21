@@ -288,7 +288,7 @@ export function PricingSection() {
                                             </FormControl>
                                             <div className="space-y-1 leading-none">
                                                 <FormLabel>
-                                                    Je reconnais avoir lu et accepté les termes du contrat.
+                                                    Je confirme avoir lu et accepté les termes du contrat.
                                                 </FormLabel>
                                                 <FormMessage />
                                             </div>
