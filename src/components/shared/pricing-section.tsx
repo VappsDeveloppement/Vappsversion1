@@ -46,7 +46,7 @@ export function PricingSection() {
     }
     
     if (!plans || plans.length === 0) {
-        return null;
+        return null; // Don't render the section if there are no public plans
     }
 
     return (
@@ -88,7 +88,7 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }} asChild>
+                                <Button className="w-full font-bold" asChild style={{ backgroundColor: primaryColor }}>
                                     <Link href="https://holica.fr" target="_blank">
                                         {tier.cta || 'Choisir cette formule'}
                                     </Link>
