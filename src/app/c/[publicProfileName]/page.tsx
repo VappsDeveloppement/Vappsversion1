@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React from 'react';
@@ -10,6 +9,7 @@ import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import { AttentionSection } from '@/components/shared/attention-section';
 import { AboutMeSection } from '@/components/shared/about-me-section';
+import { ParcoursSection } from '@/components/shared/parcours-section';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertTriangle, Wrench } from 'lucide-react';
@@ -32,6 +32,7 @@ type CounselorProfile = {
         attentionSection?: any;
         aboutSection?: any;
         servicesSection?: any;
+        parcoursSection?: any;
     };
     dashboardTheme?: {
         primaryColor?: string;
@@ -91,6 +92,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorHero counselor={counselor} />
         <AttentionSection counselor={counselor} />
         <AboutMeSection counselor={counselor} />
+        <ParcoursSection counselor={counselor} />
         <CounselorServicesSection counselor={counselor} />
         
         <div className="flex flex-col items-center justify-center text-center p-12 my-12 border-2 border-dashed rounded-lg h-96 max-w-4xl mx-auto">
@@ -108,3 +110,5 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
+
+    
