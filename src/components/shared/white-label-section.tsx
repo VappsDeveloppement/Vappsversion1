@@ -79,6 +79,7 @@ function PlanSelectorCard() {
                         src={selectedPlan.imageUrl}
                         alt={selectedPlan.name}
                         fill
+                        sizes="100vw"
                         className="object-cover"
                     />
                 </div>
@@ -114,9 +115,7 @@ function PlanSelectorCard() {
                 )}
             </CardContent>
             <CardFooter>
-                 <Button className="w-full font-bold">
-                    {selectedPlan?.cta || 'Choisir ce plan'}
-                </Button>
+                 {/* Le bouton a été supprimé ici */}
             </CardFooter>
         </Card>
     )
