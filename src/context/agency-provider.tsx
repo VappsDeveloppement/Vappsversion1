@@ -82,7 +82,7 @@ interface ParcoursSectionPersonalization {
     steps: ParcoursStep[];
 }
 
-interface ContactSectionPersonalization {
+interface ActivitiesSectionPersonalization {
     enabled: boolean;
     title: string;
     text: string;
@@ -174,7 +174,7 @@ interface Personalization {
     videoSection: VideoSectionPersonalization;
     servicesSection: ServicesSectionPersonalization;
     parcoursSection: ParcoursSectionPersonalization;
-    contactSection: ContactSectionPersonalization;
+    activitiesSection: ActivitiesSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
     gdprSettings: GdprSettings;
@@ -333,7 +333,7 @@ const defaultPersonalization: Personalization = {
         subtitle: "Mon approche pour votre réussite",
         steps: [],
     },
-     contactSection: {
+     activitiesSection: {
         enabled: false,
         title: "Nos autres activités",
         text: "Nous accompagnons également les entreprises",
@@ -470,9 +470,9 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                         ...defaultPersonalization.parcoursSection,
                         ...(fetchedAgencyData.personalization?.parcoursSection || {}),
                     },
-                     contactSection: {
-                        ...defaultPersonalization.contactSection,
-                        ...(fetchedAgencyData.personalization?.contactSection || {}),
+                     activitiesSection: {
+                        ...defaultPersonalization.activitiesSection,
+                        ...(fetchedAgencyData.personalization?.activitiesSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,

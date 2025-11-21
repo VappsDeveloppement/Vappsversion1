@@ -101,7 +101,7 @@ const eventItemSchema = z.object({
   date: z.string().min(1, "La date est requise."),
 });
 
-const contactSchema = z.object({
+const activitiesSchema = z.object({
   enabled: z.boolean().default(false),
   title: z.string().optional(),
   text: z.string().optional(),
@@ -123,7 +123,7 @@ const miniSiteSchema = z.object({
   servicesSection: servicesSchema.optional(),
   parcoursSection: parcoursSchema.optional(),
   ctaSection: ctaSchema.optional(),
-  contactSection: contactSchema,
+  activitiesSection: activitiesSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -159,7 +159,7 @@ export default function MiniSitePage() {
   const fileInputHeroRef = useRef<HTMLInputElement>(null);
   const fileInputAboutRef = useRef<HTMLInputElement>(null);
   const fileInputCtaRef = useRef<HTMLInputElement>(null);
-  const fileInputContactRef = useRef<HTMLInputElement>(null);
+  const fileInputActivitiesRef = useRef<HTMLInputElement>(null);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -171,7 +171,7 @@ export default function MiniSitePage() {
   const [heroBgImagePreview, setHeroBgImagePreview] = useState<string | null | undefined>(null);
   const [aboutImagePreview, setAboutImagePreview] = useState<string | null | undefined>(null);
   const [ctaImagePreview, setCtaImagePreview] = useState<string | null | undefined>(null);
-  const [contactImagePreview, setContactImagePreview] = useState<string | null | undefined>(null);
+  const [activitiesImagePreview, setActivitiesImagePreview] = useState<string | null | undefined>(null);
 
   const form = useForm<MiniSiteFormData>({
     resolver: zodResolver(miniSiteSchema),
@@ -226,7 +226,7 @@ export default function MiniSitePage() {
           bgColor: '#F9FAFB',
           bgImageUrl: null
       },
-      contactSection: {
+      activitiesSection: {
         enabled: false,
         title: "Nos autres activités",
         text: "Nous accompagnons également les entreprises",
@@ -254,7 +254,7 @@ export default function MiniSitePage() {
 
     const { fields: eventFields, append: appendEvent, remove: removeEvent } = useFieldArray({
         control: form.control,
-        name: "contactSection.events",
+        name: "activitiesSection.events",
     });
 
 
@@ -274,17 +274,17 @@ export default function MiniSitePage() {
             ...userData.miniSite.parcoursSection,
             steps: userData.miniSite.parcoursSection?.steps || [],
          },
-         contactSection: {
-            ...form.getValues().contactSection,
-            ...userData.miniSite.contactSection,
-            events: userData.miniSite.contactSection?.events || [],
+         activitiesSection: {
+            ...form.getValues().activitiesSection,
+            ...userData.miniSite.activitiesSection,
+            events: userData.miniSite.activitiesSection?.events || [],
          }
        };
       form.reset(initialMiniSiteData);
       setHeroBgImagePreview(userData.miniSite.hero?.bgImageUrl);
       setAboutImagePreview(userData.miniSite.aboutSection?.imageUrl);
       setCtaImagePreview(userData.miniSite.ctaSection?.bgImageUrl);
-      setContactImagePreview(userData.miniSite.contactSection?.imageUrl);
+      setActivitiesImagePreview(userData.miniSite.activitiesSection?.imageUrl);
     }
   }, [userData, form]);
 
@@ -603,19 +603,19 @@ export default function MiniSitePage() {
                     </AccordionContent>
                 </AccordionItem>
 
-                 <AccordionItem value="contact-section" className='border rounded-lg overflow-hidden'>
+                 <AccordionItem value="activities-section" className='border rounded-lg overflow-hidden'>
                     <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Autres Activités"</AccordionTrigger>
                     <AccordionContent>
                         <div className="space-y-6 p-6">
-                            <FormField control={form.control} name="contactSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                            <FormField control={form.control} name="contactSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Nos autres activités" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="contactSection.text" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Nous accompagnons également les entreprises" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="activitiesSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="activitiesSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Nos autres activités" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="activitiesSection.text" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Nous accompagnons également les entreprises" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             
                             <div className="space-y-6 rounded-lg border p-4">
                                 <h4 className="text-sm font-medium">Média (colonne de gauche)</h4>
                                 <FormField
                                     control={form.control}
-                                    name="contactSection.mediaType"
+                                    name="activitiesSection.mediaType"
                                     render={({ field }) => (
                                         <FormItem className="space-y-3">
                                         <FormLabel>Type de média</FormLabel>
@@ -639,19 +639,19 @@ export default function MiniSitePage() {
                                         </FormItem>
                                     )}
                                 />
-                                {form.watch('contactSection.mediaType') === 'video' ? (
-                                    <FormField control={form.control} name="contactSection.videoUrl" render={({ field }) => (<FormItem><FormLabel>URL de la Vidéo</FormLabel><FormControl><Input placeholder="https://www.youtube.com/embed/..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                {form.watch('activitiesSection.mediaType') === 'video' ? (
+                                    <FormField control={form.control} name="activitiesSection.videoUrl" render={({ field }) => (<FormItem><FormLabel>URL de la Vidéo</FormLabel><FormControl><Input placeholder="https://www.youtube.com/embed/..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 ) : (
                                     <div>
                                         <Label>Image</Label>
                                         <div className="flex items-center gap-4 mt-2">
                                             <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
-                                                {contactImagePreview ? (<Image src={contactImagePreview} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+                                                {activitiesImagePreview ? (<Image src={activitiesImagePreview} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
                                             </div>
-                                            <input type="file" ref={fileInputContactRef} onChange={(e) => handleFileUpload(e, (base64) => { setContactImagePreview(base64); form.setValue('contactSection.imageUrl', base64); })} className="hidden" accept="image/*" />
+                                            <input type="file" ref={fileInputActivitiesRef} onChange={(e) => handleFileUpload(e, (base64) => { setActivitiesImagePreview(base64); form.setValue('activitiesSection.imageUrl', base64); })} className="hidden" accept="image/*" />
                                             <div className="flex flex-col gap-2">
-                                                <Button type="button" variant="outline" onClick={() => fileInputContactRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
-                                                {contactImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={() => { setContactImagePreview(null); form.setValue('contactSection.imageUrl', null);}}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
+                                                <Button type="button" variant="outline" onClick={() => fileInputActivitiesRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
+                                                {activitiesImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={() => { setActivitiesImagePreview(null); form.setValue('activitiesSection.imageUrl', null);}}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
                                             </div>
                                         </div>
                                     </div>
@@ -660,8 +660,8 @@ export default function MiniSitePage() {
 
                             <div className="space-y-6 rounded-lg border p-4">
                                 <h4 className="text-sm font-medium">Centres d'intérêt (sous le média)</h4>
-                                <FormField control={form.control} name="contactSection.interestsTitle" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes centres d'intérêt" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="contactSection.interests" render={({ field }) => (
+                                <FormField control={form.control} name="activitiesSection.interestsTitle" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes centres d'intérêt" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="activitiesSection.interests" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Liste des intérêts</FormLabel>
                                         <FormControl>
@@ -680,8 +680,8 @@ export default function MiniSitePage() {
                                     <div className="space-y-4 mt-2">
                                         {eventFields.map((field, index) => (
                                             <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
-                                                <div className="col-span-5"><FormField control={form.control} name={`contactSection.events.${index}.title`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Titre de l'événement" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
-                                                <div className="col-span-5"><FormField control={form.control} name={`contactSection.events.${index}.date`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Date" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
+                                                <div className="col-span-5"><FormField control={form.control} name={`activitiesSection.events.${index}.title`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Titre de l'événement" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
+                                                <div className="col-span-5"><FormField control={form.control} name={`activitiesSection.events.${index}.date`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Date" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
                                                 <div className="col-span-2"><Button type="button" variant="ghost" size="icon" onClick={() => removeEvent(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
                                             </div>
                                         ))}
@@ -690,8 +690,8 @@ export default function MiniSitePage() {
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un événement
                                     </Button>
                                 </div>
-                                <FormField control={form.control} name="contactSection.eventsButtonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="J'ai participé à un évènement" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="contactSection.eventsButtonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="activitiesSection.eventsButtonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="J'ai participé à un évènement" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="activitiesSection.eventsButtonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             </div>
                         </div>
                     </AccordionContent>
@@ -709,4 +709,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
