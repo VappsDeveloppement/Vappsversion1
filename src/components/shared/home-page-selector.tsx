@@ -27,7 +27,7 @@ import { Button } from '../ui/button';
 import { ArrowRight } from 'lucide-react';
 import { JobOffersSection } from './job-offers-section';
 
-const sectionComponents: { [key: string]: React.ComponentType } = {
+const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   about: AboutSection,
   parcours: ParcoursSection,
   cta: CtaSection,

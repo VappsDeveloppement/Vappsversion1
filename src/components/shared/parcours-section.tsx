@@ -2,6 +2,7 @@
 'use client';
 
 import { CheckCircle2 } from "lucide-react";
+import { useAgency } from "@/context/agency-provider";
 
 type ParcoursStep = {
     id: string;
@@ -20,8 +21,11 @@ type CounselorProfile = {
     };
 };
 
-export function ParcoursSection({ counselor }: { counselor: CounselorProfile }) {
-    const parcoursConfig = counselor.miniSite?.parcoursSection || {};
+export function ParcoursSection({ counselor }: { counselor?: CounselorProfile }) {
+    const { personalization } = useAgency();
+    
+    // Use counselor-specific config if available, otherwise fallback to agency's personalization
+    const parcoursConfig = counselor?.miniSite?.parcoursSection || personalization?.parcoursSection || {};
     
     if (!parcoursConfig.enabled) {
         return null;
