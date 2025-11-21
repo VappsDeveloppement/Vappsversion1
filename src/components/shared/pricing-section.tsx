@@ -11,7 +11,7 @@ import { collection, query, where, doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import type { Plan } from "@/components/shared/plan-management";
 import { Skeleton } from "../ui/skeleton";
-import React from "react";
+import React, { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 
@@ -21,18 +21,17 @@ type Contract = {
     content: string;
 };
 
-function ContractModal({ contractId, buttonText, primaryColor }: { contractId: string; buttonText: string; primaryColor: string }) {
+function ContractModal({ contractId, primaryColor, children }: { contractId: string; primaryColor: string, children: React.ReactNode }) {
     const firestore = useFirestore();
+    const [isOpen, setIsOpen] = useState(false);
     const contractRef = useMemoFirebase(() => doc(firestore, 'contracts', contractId), [firestore, contractId]);
     const { data: contract, isLoading } = useDoc<Contract>(contractRef);
 
     return (
-        <Dialog>
-            <DialogTrigger asChild>
-                 <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
-                    {buttonText}
-                </Button>
-            </DialogTrigger>
+        <Dialog open={isOpen} onOpenChange={setIsOpen}>
+            <div onClick={() => setIsOpen(true)}>
+              {children}
+            </div>
             <DialogContent className="sm:max-w-3xl">
                  <DialogHeader>
                     <DialogTitle>{isLoading ? 'Chargement...' : contract?.title}</DialogTitle>
@@ -131,7 +130,11 @@ export function PricingSection() {
                             </CardContent>
                             <CardFooter>
                                 {tier.contractId ? (
-                                    <ContractModal contractId={tier.contractId} buttonText={tier.cta || 'Choisir cette formule'} primaryColor={primaryColor} />
+                                    <ContractModal contractId={tier.contractId} primaryColor={primaryColor}>
+                                        <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                            {tier.cta || 'Choisir cette formule'}
+                                        </Button>
+                                    </ContractModal>
                                 ) : (
                                      <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
                                         {tier.cta || 'Choisir cette formule'}
