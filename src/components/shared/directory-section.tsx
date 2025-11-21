@@ -1,8 +1,7 @@
 
-
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useFirestore } from '@/firebase/provider';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
@@ -21,34 +20,45 @@ type Counselor = {
     publicTitle?: string;
     city?: string;
     photoUrl?: string;
-    publicProfileName?: string;
+    miniSite?: {
+        publicProfileName?: string;
+    };
 };
 
 export function DirectorySection() {
     const firestore = useFirestore();
     const [searchTerm, setSearchTerm] = useState('');
 
+    // Query the public 'minisites' collection instead of the protected 'users' collection.
     const counselorsQuery = useMemoFirebase(() => {
-        const baseQuery = query(collection(firestore, 'users'), where('role', '==', 'conseiller'));
+        const baseQuery = collection(firestore, 'minisites');
         if (searchTerm) {
-            // Firestore doesn't support partial string matches like 'includes'.
-            // A more robust solution would use a search service like Algolia.
-            // For now, we'll keep it simple and filter on the client side.
-             return baseQuery;
+             // Firestore doesn't support partial string matches natively for this field.
+            // Client-side filtering will be used.
+            return baseQuery;
         }
         return query(baseQuery, limit(9));
-    }, [firestore, searchTerm]);
+    }, [firestore]);
 
     const { data: counselors, isLoading } = useCollection<Counselor>(counselorsQuery);
-
+    
     const filteredCounselors = useMemo(() => {
         if (!counselors) return [];
-        if (!searchTerm) return counselors;
         
-        const lowercasedTerm = searchTerm.toLowerCase();
-        return counselors.filter(counselor =>
-            counselor.city?.toLowerCase().includes(lowercasedTerm)
-        );
+        let results = counselors;
+
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            results = results.filter(counselor =>
+                counselor.city?.toLowerCase().includes(lowercasedTerm) ||
+                counselor.firstName?.toLowerCase().includes(lowercasedTerm) ||
+                counselor.lastName?.toLowerCase().includes(lowercasedTerm)
+            );
+        }
+        
+        // As we are not ordering by a specific field in the query,
+        // we can take the first 9 results after filtering.
+        return results.slice(0, 9);
 
     }, [counselors, searchTerm]);
 
@@ -67,7 +77,7 @@ export function DirectorySection() {
                     <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                         <Input
-                            placeholder="Rechercher par ville..."
+                            placeholder="Rechercher par ville ou nom..."
                             className="pl-10"
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
@@ -102,8 +112,8 @@ export function DirectorySection() {
                                     )}
                                 </CardContent>
                                 <CardFooter className="p-4">
-                                    <Button asChild className="w-full" disabled={!counselor.publicProfileName}>
-                                        <Link href={counselor.publicProfileName ? `/c/${counselor.publicProfileName}` : '#'}>
+                                    <Button asChild className="w-full" disabled={!counselor.miniSite?.publicProfileName}>
+                                        <Link href={counselor.miniSite?.publicProfileName ? `/c/${counselor.miniSite.publicProfileName}` : '#'}>
                                             Voir le profil
                                         </Link>
                                     </Button>
