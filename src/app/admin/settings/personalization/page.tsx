@@ -1268,26 +1268,8 @@ export default function PersonalizationPage() {
             </CardHeader>
             <CardContent className="space-y-8">
               <section>
-                <h3 className="text-lg font-medium mb-4">Version de la page d'accueil</h3>
-                 <RadioGroup value={settings.homePageVersion} onValueChange={(value) => handleFieldChange('homePageVersion', value)} className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="tunnel" id="tunnel" />
-                        <Label htmlFor="tunnel">Version Tunnel de vente</Label>
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-6">Une page complète avec plusieurs sections, conçue pour présenter l'offre et convertir les visiteurs.</p>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="application" id="application" />
-                        <Label htmlFor="application">Version Application</Label>
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-6">Une page simple avec un formulaire de connexion, pour un accès direct à l'application.</p>
-                </RadioGroup>
-              </section>
-              
-              <div className="border-t -mx-6"></div>
-
-              <section>
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
-                 <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
+                 <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil. Activez ou désactivez les sections selon vos besoins.</p>
                  
                  <Accordion type="single" collapsible className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => {
@@ -2243,3 +2225,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    

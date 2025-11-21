@@ -142,7 +142,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
-  { id: 'shop', label: 'Boutique', enabled: true },
+  { id: 'directory', label: 'Annuaire des conseillers', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
   { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
   { id: 'blog', label: 'Blog', enabled: true },
@@ -214,17 +214,17 @@ const defaultPersonalization = {
       mainText: "Chez Vapps, nous croyons qu'il n'existe pas de chemin unique. C'est pourquoi nous proposons une approche holistique et inclusive, qui prend en compte votre personnalité, vos compétences, vos envies et vos contraintes.",
       pillarsSectionTitle: "Les piliers de notre accompagnement",
       pillars: [
-        { id: `pillar-${Date.now()}-1`, title: "Notre Méthode", description: "Une approche structurée en 4 étapes pour garantir votre succès.", imageUrl: null },
-        { id: `pillar-${Date.now()}-2`, title: "Nos Outils", description: "Des supports et outils exclusifs pour guider votre réflexion.", imageUrl: null },
-        { id: `pillar-${Date.now()}-3`, title: "Notre Communauté", description: "Rejoignez un réseau d'entraide pour partager et grandir ensemble.", imageUrl: null },
+        { id: `pillar-${Date.now()}-1`, title: 'Nouveau Pilier', description: 'Description du nouveau pilier.', imageUrl: null },
+        { id: `pillar-${Date.now()}-2`, title: 'Nouveau Pilier', description: 'Description du nouveau pilier.', imageUrl: null },
+        { id: `pillar-${Date.now()}-3`, title: 'Nouveau Pilier', description: 'Description du nouveau pilier.', imageUrl: null },
       ],
       showExpertises: true,
       expertisesSectionTitle: "Nos expertises sectorielles",
       expertises: [
-        { id: `expertise-${Date.now()}-1`, title: "Secteur Tech", description: "Conseils pour les métiers du numérique.", imageUrl: null },
-        { id: `expertise-${Date.now()}-2`, title: "Secteur Santé", description: "Évoluer dans le domaine de la santé.", imageUrl: null },
-        { id: `expertise-${Date.now()}-3`, title: "Entrepreneuriat", description: "Passer de l'idée à la création d'entreprise.", imageUrl: null },
-        { id: `expertise-${Date.now()}-4`, title: "Management", description: "Devenir un manager bienveillant et efficace.", imageUrl: null },
+        { id: `expertise-${Date.now()}-1`, title: 'Nouvelle Expertise', description: 'Description de la nouvelle expertise.', imageUrl: null },
+        { id: `expertise-${Date.now()}-2`, title: 'Nouvelle Expertise', description: 'Description de la nouvelle expertise.', imageUrl: null },
+        { id: `expertise-${Date.now()}-3`, title: 'Nouvelle Expertise', description: 'Description de la nouvelle expertise.', imageUrl: null },
+        { id: `expertise-${Date.now()}-4`, title: 'Nouvelle Expertise', description: 'Description de la nouvelle expertise.', imageUrl: null },
       ]
     },
     parcoursSection: {
@@ -277,9 +277,9 @@ const defaultPersonalization = {
         subtitle: "Construisons ensemble votre avenir",
         description: "Que vous soyez en quête de sens, en reconversion ou désireux d'évoluer, nous avons une solution pour vous.",
         services: [
-            { id: `service-${Date.now()}-1`, title: "Bilan de Compétences", description: "Faites le point sur vos forces et aspirations pour définir un projet clair.", imageUrl: null },
-            { id: `service-${Date.now()}-2`, title: "Coaching Carrière", description: "Un accompagnement personnalisé pour atteindre vos objectifs professionnels.", imageUrl: null },
-            { id: `service-${Date.now()}-3`, title: "Formation au Leadership", description: "Développez vos compétences managériales et devenez un leader inspirant.", imageUrl: null },
+            { id: `service-${Date.now()}-1`, title: 'Nouvel Accompagnement', description: 'Description du nouvel accompagnement.', imageUrl: null },
+            { id: `service-${Date.now()}-2`, title: 'Nouvel Accompagnement', description: 'Description du nouvel accompagnement.', imageUrl: null },
+            { id: `service-${Date.now()}-3`, title: 'Nouvel Accompagnement', description: 'Description du nouvel accompagnement.', imageUrl: null },
         ] as ServiceItem[]
     },
     paymentSettings: {
@@ -844,7 +844,7 @@ export default function PersonalizationPage() {
       <div>
         <h1 className="text-3xl font-bold font-headline">Personnalisation</h1>
         <p className="text-muted-foreground">
-          Gérez la personnalisation de la plateforme pour votre agence : **{agency?.name || '...'}**
+          Gérez la personnalisation de la plateforme.
         </p>
       </div>
       
@@ -873,7 +873,7 @@ export default function PersonalizationPage() {
                 <div className="space-y-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <div className="space-y-2">
-                        <Label htmlFor="company-name">Nom de l'entreprise / agence</Label>
+                        <Label htmlFor="company-name">Nom de l'entreprise / conseiller</Label>
                         <Input id="company-name" placeholder="Votre Nom Commercial" value={settings.legalInfo?.companyName} onChange={e => handleLegalInfoChange('companyName', e.target.value)} />
                         </div>
                         <div className="space-y-2">
@@ -1264,30 +1264,12 @@ export default function PersonalizationPage() {
           <Card>
             <CardHeader>
               <CardTitle>Page d'accueil</CardTitle>
-              <CardDescription>Configurez le contenu de la page d'accueil de l'agence.</CardDescription>
+              <CardDescription>Configurez le contenu de la page d'accueil.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-8">
               <section>
-                <h3 className="text-lg font-medium mb-4">Version de la page d'accueil (Pour les Agences)</h3>
-                 <RadioGroup value={settings.homePageVersion} onValueChange={(value) => handleFieldChange('homePageVersion', value)} className="space-y-2">
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="tunnel" id="tunnel" />
-                        <Label htmlFor="tunnel">Version Tunnel de vente</Label>
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-6">Une page complète avec plusieurs sections, conçue pour présenter l'offre et convertir les visiteurs.</p>
-                    <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="application" id="application" />
-                        <Label htmlFor="application">Version Application</Label>
-                    </div>
-                    <p className="text-sm text-muted-foreground ml-6">Une page simple avec un formulaire de connexion, pour un accès direct à l'application.</p>
-                </RadioGroup>
-              </section>
-              
-              <div className="border-t -mx-6"></div>
-
-              <section>
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
-                 <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil version tunnel. Activez ou désactivez les sections selon vos besoins.</p>
+                 <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil. Activez ou désactivez les sections selon vos besoins.</p>
                  
                  <Accordion type="single" collapsible className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => {
@@ -2243,3 +2225,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    
