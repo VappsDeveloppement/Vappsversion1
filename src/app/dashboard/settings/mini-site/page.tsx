@@ -15,13 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Eye } from 'lucide-react';
+import { Loader2, Upload, Trash2, Eye, Link as LinkIcon } from 'lucide-react';
 import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Link as LinkIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Label } from '@/components/ui/label';
 
 
 const heroSchema = z.object({
@@ -355,3 +355,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
