@@ -7,7 +7,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem } from '@/app/admin/settings/personalization/page';
+import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem, ParcoursStep } from '@/app/dashboard/settings/mini-site/page';
 
 interface Pillar {
   id: string;
@@ -35,7 +35,9 @@ interface AboutSectionPersonalization {
 }
 
 interface CtaSectionPersonalization {
+    enabled: boolean;
     title: string;
+    subtitle: string;
     text: string;
     buttonText: string;
     buttonLink: string;
@@ -71,6 +73,14 @@ interface ServicesSectionPersonalization {
     description: string;
     services: ServiceItem[];
 }
+
+interface ParcoursSectionPersonalization {
+    enabled: boolean;
+    title: string;
+    subtitle: string;
+    steps: ParcoursStep[];
+}
+
 
 interface PaymentSettings {
     ribIban: string;
@@ -148,6 +158,7 @@ interface Personalization {
     jobOffersSection: JobOffersSectionPersonalization;
     videoSection: VideoSectionPersonalization;
     servicesSection: ServicesSectionPersonalization;
+    parcoursSection: ParcoursSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
     gdprSettings: GdprSettings;
@@ -254,11 +265,13 @@ const defaultPersonalization: Personalization = {
       ]
     },
     ctaSection: {
-        title: "Prêt à tester le futur ?",
-        text: "Rejoignez notre communauté de bêta-testeurs et découvrez des applications innovantes avant tout le monde.",
-        buttonText: "Devenir bêta-testeur",
-        buttonLink: "#",
-        bgColor: "#f0fdf4",
+        enabled: false,
+        title: "Prêt(e) à passer à l'action ?",
+        subtitle: "",
+        text: "Contactez-moi dès aujourd'hui pour planifier votre première séance.",
+        buttonText: "Prendre rendez-vous",
+        buttonLink: "#contact",
+        bgColor: "#F9FAFB",
         bgImageUrl: null
     },
     cta2Section: {
@@ -297,6 +310,12 @@ const defaultPersonalization: Personalization = {
             { id: `service-2`, title: "Coaching Carrière", description: "Un accompagnement personnalisé pour atteindre vos objectifs professionnels.", imageUrl: null },
             { id: `service-3`, title: "Formation au Leadership", description: "Développez vos compétences managériales et devenez un leader inspirant.", imageUrl: null },
         ]
+    },
+    parcoursSection: {
+        enabled: false,
+        title: "Etapes d'accompagnement",
+        subtitle: "Mon approche pour votre réussite",
+        steps: [],
     },
     paymentSettings: {
         ribIban: "",
@@ -414,6 +433,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                     servicesSection: {
                         ...defaultPersonalization.servicesSection,
                         ...(fetchedAgencyData.personalization?.servicesSection || {}),
+                    },
+                    parcoursSection: {
+                        ...defaultPersonalization.parcoursSection,
+                        ...(fetchedAgencyData.personalization?.parcoursSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,

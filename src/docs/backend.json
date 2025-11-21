@@ -196,6 +196,38 @@
                         }
                     }
                 }
+            },
+            "parcoursSection": {
+              "type": "object",
+              "properties": {
+                "enabled": { "type": "boolean" },
+                "title": { "type": "string" },
+                "subtitle": { "type": "string" },
+                "steps": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string" },
+                      "title": { "type": "string" },
+                      "description": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            },
+            "ctaSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "text": { "type": "string" },
+                    "buttonText": { "type": "string" },
+                    "buttonLink": { "type": "string" },
+                    "bgColor": { "type": "string" },
+                    "bgImageUrl": { "type": "string", "format": "uri" }
+                }
             }
         }
     },

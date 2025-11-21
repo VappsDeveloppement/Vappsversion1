@@ -74,7 +74,6 @@ const parcoursStepSchema = z.object({
   id: z.string(),
   title: z.string().min(1, "Le titre est requis."),
   description: z.string().min(1, "La description est requise."),
-  imageUrl: z.string().nullable().optional(),
 });
 
 const parcoursSchema = z.object({
@@ -84,6 +83,17 @@ const parcoursSchema = z.object({
   steps: z.array(parcoursStepSchema).optional(),
 });
 
+const ctaSchema = z.object({
+    enabled: z.boolean().default(false),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    text: z.string().optional(),
+    buttonText: z.string().optional(),
+    buttonLink: z.string().optional(),
+    bgColor: z.string().optional(),
+    bgImageUrl: z.string().nullable().optional(),
+});
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -91,6 +101,7 @@ const miniSiteSchema = z.object({
   aboutSection: aboutSchema.optional(),
   servicesSection: servicesSchema.optional(),
   parcoursSection: parcoursSchema.optional(),
+  ctaSection: ctaSchema.optional(),
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -124,6 +135,7 @@ export default function MiniSitePage() {
   
   const fileInputHeroRef = useRef<HTMLInputElement>(null);
   const fileInputAboutRef = useRef<HTMLInputElement>(null);
+  const fileInputCtaRef = useRef<HTMLInputElement>(null);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -134,6 +146,7 @@ export default function MiniSitePage() {
 
   const [heroBgImagePreview, setHeroBgImagePreview] = useState<string | null | undefined>(null);
   const [aboutImagePreview, setAboutImagePreview] = useState<string | null | undefined>(null);
+  const [ctaImagePreview, setCtaImagePreview] = useState<string | null | undefined>(null);
 
   const form = useForm<MiniSiteFormData>({
     resolver: zodResolver(miniSiteSchema),
@@ -174,9 +187,19 @@ export default function MiniSitePage() {
       },
       parcoursSection: {
           enabled: false,
-          title: 'Etapes d\'accompagnement',
+          title: "Etapes d'accompagnement",
           subtitle: 'Mon approche pour votre réussite',
           steps: [],
+      },
+      ctaSection: {
+          enabled: false,
+          title: "Prêt(e) à passer à l'action ?",
+          subtitle: '',
+          text: 'Contactez-moi dès aujourd\'hui pour planifier votre première séance.',
+          buttonText: 'Prendre rendez-vous',
+          buttonLink: '#contact',
+          bgColor: '#F9FAFB',
+          bgImageUrl: null
       },
     },
   });
@@ -196,6 +219,7 @@ export default function MiniSitePage() {
       form.reset(userData.miniSite);
       setHeroBgImagePreview(userData.miniSite.hero?.bgImageUrl);
       setAboutImagePreview(userData.miniSite.aboutSection?.imageUrl);
+      setCtaImagePreview(userData.miniSite.ctaSection?.bgImageUrl);
     }
   }, [userData, form]);
 
@@ -252,14 +276,6 @@ export default function MiniSitePage() {
         }
     };
     
-    const handleParcoursImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const base64 = await toBase64(file);
-            form.setValue(`parcoursSection.steps.${index}.imageUrl`, base64);
-        }
-    };
-
   const isLoading = isUserLoading || isUserDataLoading;
 
   if (isLoading) {
@@ -481,25 +497,42 @@ export default function MiniSitePage() {
                                             </div>
                                              <FormField control={form.control} name={`parcoursSection.steps.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre de l'étape</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                                              <FormField control={form.control} name={`parcoursSection.steps.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={3} /></FormControl><FormMessage /></FormItem> )}/>
-                                            <div>
-                                                <Label>Image de l'étape</Label>
-                                                <div className="flex items-center gap-4 mt-2">
-                                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
-                                                        {form.watch(`parcoursSection.steps.${index}.imageUrl`) ? (<Image src={form.watch(`parcoursSection.steps.${index}.imageUrl`)!} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
-                                                    </div>
-                                                    <input type="file" id={`parcours-image-${index}`} onChange={(e) => handleParcoursImageUpload(index, e)} className="hidden" accept="image/*" />
-                                                    <div className="flex flex-col gap-2">
-                                                        <Button type="button" variant="outline" onClick={() => document.getElementById(`parcours-image-${index}`)?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
-                                                        <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue(`parcoursSection.steps.${index}.imageUrl`, null)}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>
-                                                    </div>
-                                                </div>
-                                            </div>
                                         </div>
                                     ))}
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendStep({ id: `step-${Date.now()}`, title: 'Nouvelle étape', description: 'Description de l\'étape.', imageUrl: null })}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendStep({ id: `step-${Date.now()}`, title: 'Nouvelle étape', description: 'Description de l\'étape.'})}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une étape
                                     </Button>
                                 </div>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
+                 <AccordionItem value="cta-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section CTA</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="ctaSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="ctaSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Prêt(e) à passer à l'action ?" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="ctaSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="ctaSection.text" render={({ field }) => (<FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="ctaSection.buttonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="ctaSection.buttonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            </div>
+                            <div className="space-y-6 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Arrière-plan</h4>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                        {ctaImagePreview ? (<Image src={ctaImagePreview} alt="Aperçu CTA" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+                                    </div>
+                                    <input type="file" ref={fileInputCtaRef} onChange={(e) => handleFileUpload(e, (base64) => { setCtaImagePreview(base64); form.setValue('ctaSection.bgImageUrl', base64); })} className="hidden" accept="image/*" />
+                                    <div className="flex flex-col gap-2">
+                                        <Button type="button" variant="outline" onClick={() => fileInputCtaRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
+                                        {ctaImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={() => { setCtaImagePreview(null); form.setValue('ctaSection.bgImageUrl', null);}}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
+                                    </div>
+                                </div>
+                                <FormField control={form.control} name="ctaSection.bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
                             </div>
                         </div>
                     </AccordionContent>

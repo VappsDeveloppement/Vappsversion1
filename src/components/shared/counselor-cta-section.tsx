@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 type CounselorProfile = {
     miniSite?: {
         ctaSection?: {
+            enabled?: boolean;
             title?: string;
             subtitle?: string;
             text?: string;
@@ -17,18 +18,19 @@ type CounselorProfile = {
             buttonLink?: string;
             bgColor?: string;
             bgImageUrl?: string;
-        },
-        hero?: {
-            primaryColor?: string;
         }
     };
+    dashboardTheme?: {
+        primaryColor?: string;
+    }
 };
 
 export function CounselorCtaSection({ counselor }: { counselor: CounselorProfile }) {
     const ctaConfig = counselor.miniSite?.ctaSection || {};
-    const heroConfig = counselor.miniSite?.hero || {};
+    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     const { 
+        enabled,
         title, 
         subtitle, 
         text, 
@@ -38,7 +40,9 @@ export function CounselorCtaSection({ counselor }: { counselor: CounselorProfile
         bgImageUrl 
     } = ctaConfig;
 
-    const primaryColor = heroConfig.primaryColor || '#10B981';
+    if (!enabled) {
+        return null;
+    }
 
     const sectionStyle = {
         backgroundColor: bgImageUrl ? 'transparent' : (bgColor || 'transparent'),
@@ -61,7 +65,7 @@ export function CounselorCtaSection({ counselor }: { counselor: CounselorProfile
                 {title && <h2 className="text-3xl lg:text-4xl font-bold mb-4">{title}</h2>}
                 {text && <p className="max-w-2xl mx-auto mb-8">{text}</p>}
                 {buttonText && buttonLink && (
-                    <Button size="lg" className="font-bold" asChild style={{ backgroundColor: primaryColor }}>
+                    <Button size="lg" className="font-bold" asChild style={{ backgroundColor: primaryColor, color: 'white' }}>
                         <Link href={buttonLink}>{buttonText}</Link>
                     </Button>
                 )}
