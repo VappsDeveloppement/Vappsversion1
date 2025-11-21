@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -104,7 +104,6 @@ export function PlanManagement() {
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingPlan, setEditingPlan] = useState<Plan | null>(null);
 
   const plansCollectionRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
@@ -134,52 +133,28 @@ export function PlanManagement() {
 
   useEffect(() => {
     if (!isSheetOpen) {
-        setEditingPlan(null);
         form.reset();
         return;
     }
 
-    if (editingPlan) {
-        // Mode édition
-        form.reset({
-            name: editingPlan.name,
-            description: editingPlan.description || '',
-            price: editingPlan.price,
-            period: editingPlan.period,
-            features: editingPlan.features ? editingPlan.features.map(f => ({ value: f })) : [],
-            imageUrl: editingPlan.imageUrl || '',
-            cta: editingPlan.cta || 'Choisir cette formule',
-            contractId: editingPlan.contractId || 'none',
-            isPublic: editingPlan.isPublic || false,
-            isFeatured: editingPlan.isFeatured || false,
-        });
-        setImagePreview(editingPlan.imageUrl || null);
-    } else {
-        // Mode création
-        form.reset({
-            name: '',
-            description: '',
-            price: 0,
-            period: '/prestation',
-            features: [],
-            imageUrl: '',
-            cta: 'Choisir cette formule',
-            contractId: 'none',
-            isPublic: false,
-            isFeatured: false,
-        });
-        setImagePreview(null);
-    }
-}, [isSheetOpen, editingPlan, form]);
+    // Always reset to creation mode
+    form.reset({
+        name: '',
+        description: '',
+        price: 0,
+        period: '/prestation',
+        features: [],
+        imageUrl: '',
+        cta: 'Choisir cette formule',
+        contractId: 'none',
+        isPublic: false,
+        isFeatured: false,
+    });
+    setImagePreview(null);
+  }, [isSheetOpen, form]);
 
 
-  const handleEdit = (plan: Plan) => {
-    setEditingPlan(plan);
-    setIsSheetOpen(true);
-  };
-  
   const handleNew = () => {
-    setEditingPlan(null);
     setIsSheetOpen(true);
   }
 
@@ -222,23 +197,14 @@ export function PlanManagement() {
           const publicPlansQuery = query(collection(firestore, 'plans'), where("isPublic", "==", true), where("counselorId", "==", user.uid));
           const querySnapshot = await getDocs(publicPlansQuery);
           querySnapshot.forEach(docSnap => {
-              if (docSnap.id !== editingPlan?.id) {
-                  const planRef = doc(firestore, 'plans', docSnap.id);
-                  batch.update(planRef, { isFeatured: false });
-              }
+              const planRef = doc(firestore, 'plans', docSnap.id);
+              batch.update(planRef, { isFeatured: false });
           });
       }
 
-
-      if (editingPlan) {
-        const planDocRef = doc(firestore, 'plans', editingPlan.id);
-        batch.set(planDocRef, planData, { merge: true });
-        toast({ title: 'Modèle mis à jour', description: 'Le modèle de prestation a été mis à jour.' });
-      } else {
-        const newPlanRef = doc(collection(firestore, 'plans'));
-        batch.set(newPlanRef, planData);
-        toast({ title: 'Modèle créé', description: 'Le nouveau modèle de prestation a été créé.' });
-      }
+      const newPlanRef = doc(collection(firestore, 'plans'));
+      batch.set(newPlanRef, planData);
+      toast({ title: 'Modèle créé', description: 'Le nouveau modèle de prestation a été créé.' });
 
       await batch.commit();
 
@@ -272,7 +238,7 @@ export function PlanManagement() {
             </SheetTrigger>
             <SheetContent className="sm:max-w-2xl w-full overflow-y-auto">
                 <SheetHeader>
-                    <SheetTitle>{editingPlan ? 'Modifier le Modèle' : 'Créer un Nouveau Modèle'}</SheetTitle>
+                    <SheetTitle>Créer un Nouveau Modèle</SheetTitle>
                 </SheetHeader>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
@@ -470,7 +436,7 @@ export function PlanManagement() {
                             </SheetClose>
                             <Button type="submit" disabled={isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                {editingPlan ? 'Sauvegarder les modifications' : 'Créer le modèle'}
+                                Créer le modèle
                             </Button>
                         </SheetFooter>
                     </form>
@@ -511,9 +477,6 @@ export function PlanManagement() {
                            {plan.isFeatured ? <Star className="h-5 w-5 text-yellow-500 fill-yellow-500" /> : <Star className="h-5 w-5 text-muted-foreground" />}
                         </TableCell>
                         <TableCell className="text-right">
-                           <Button variant="ghost" size="icon" onClick={() => handleEdit(plan)}>
-                                <Edit className="h-4 w-4" />
-                            </Button>
                             <Button variant="ghost" size="icon" onClick={() => handleDelete(plan.id)}>
                                 <Trash2 className="h-4 w-4 text-destructive" />
                             </Button>
