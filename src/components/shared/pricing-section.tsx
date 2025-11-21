@@ -88,11 +88,7 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                <Button className="w-full font-bold" asChild style={{ backgroundColor: primaryColor }}>
-                                    <Link href="https://holica.fr" target="_blank">
-                                        {tier.cta || 'Choisir cette formule'}
-                                    </Link>
-                                </Button>
+                                {/* Button removed as requested */}
                             </CardFooter>
                         </Card>
                     ))}
