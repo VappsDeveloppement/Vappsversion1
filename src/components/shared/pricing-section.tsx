@@ -12,7 +12,7 @@ import { useFirestore } from "@/firebase/provider";
 import type { Plan } from "@/components/shared/plan-management";
 import { Skeleton } from "../ui/skeleton";
 import React, { useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "../ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter, DialogTrigger } from "../ui/dialog";
 import { ScrollArea } from "../ui/scroll-area";
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -40,32 +40,18 @@ const signupFormSchema = z.object({
 });
 type SignupFormData = z.infer<typeof signupFormSchema>;
 
-export function PricingSection() {
-    const { personalization, isLoading: isAgencyLoading } = useAgency();
+function SubscriptionModalContent({ plan, primaryColor }: { plan: Plan, primaryColor: string }) {
     const firestore = useFirestore();
     const auth = useAuth();
     const { toast } = useToast();
 
-    // Modal State
-    const [isModalOpen, setIsModalOpen] = useState(false);
-    const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
-    const [step, setStep] = useState(1);
+    const [step, setStep] = useState(plan.contractId ? 1 : 2);
     const [contractAccepted, setContractAccepted] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const publicPlansQuery = useMemoFirebase(() => {
-        const plansCollectionRef = collection(firestore, 'plans');
-        return query(plansCollectionRef, where("isPublic", "==", true));
-    }, [firestore]);
-
-    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
-    
-    const contractRef = useMemoFirebase(() => selectedPlan?.contractId ? doc(firestore, 'contracts', selectedPlan.contractId) : null, [firestore, selectedPlan]);
+    const contractRef = useMemoFirebase(() => plan.contractId ? doc(firestore, 'contracts', plan.contractId) : null, [firestore, plan]);
     const { data: contract, isLoading: isContractLoading } = useDoc<Contract>(contractRef);
-
-    const isLoading = isAgencyLoading || arePlansLoading;
-    const primaryColor = personalization?.primaryColor || '#10B981';
 
     const form = useForm<SignupFormData>({
         resolver: zodResolver(signupFormSchema),
@@ -77,29 +63,8 @@ export function PricingSection() {
             acceptTerms: false,
         },
     });
-    
-    const handleChoosePlan = (plan: Plan) => {
-        setSelectedPlan(plan);
-        setStep(plan.contractId ? 1 : 2); // Skip to step 2 if no contract
-        setIsModalOpen(true);
-    };
 
-    const handleModalOpenChange = (open: boolean) => {
-        setIsModalOpen(open);
-        if (!open) {
-            // Reset state on close
-            setTimeout(() => {
-                setSelectedPlan(null);
-                setStep(1);
-                setContractAccepted(false);
-                form.reset();
-            }, 300);
-        }
-    };
-    
     const onSubmit = async (data: SignupFormData) => {
-        if (!selectedPlan) return;
-
         setIsSubmitting(true);
         try {
             const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
@@ -113,15 +78,15 @@ export function PricingSection() {
                 email: user.email,
                 role: 'conseiller',
                 dateJoined: new Date().toISOString(),
-                planId: selectedPlan.id,
+                planId: plan.id,
                 subscriptionStatus: 'pending_payment',
             };
             await setDocumentNonBlocking(userDocRef, newUserDoc, { merge: false });
 
             toast({ title: "Compte créé !", description: "Vous allez être redirigé vers PayPal pour finaliser votre abonnement." });
 
-            if (selectedPlan.paypalSubscriptionId) {
-                window.location.href = `https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=${selectedPlan.paypalSubscriptionId}`;
+            if (plan.paypalSubscriptionId) {
+                window.location.href = `https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=${plan.paypalSubscriptionId}`;
             } else {
                  toast({ title: "Action requise", description: "Veuillez contacter l'administrateur pour finaliser votre abonnement." });
             }
@@ -136,6 +101,118 @@ export function PricingSection() {
             setIsSubmitting(false);
         }
     };
+    
+    return (
+        <DialogContent className="sm:max-w-2xl">
+             <DialogHeader>
+                <DialogTitle>
+                    {step === 1 ? (isContractLoading ? 'Chargement...' : contract?.title) : `Souscrire à l'offre "${plan.name}"`}
+                </DialogTitle>
+                <DialogDescription>
+                    {step === 1 ? "Veuillez lire et accepter le contrat pour continuer." : "Créez votre compte conseiller pour commencer."}
+                </DialogDescription>
+            </DialogHeader>
+            {step === 1 ? (
+                <>
+                    {isContractLoading ? (
+                        <Skeleton className="h-64 w-full" />
+                    ) : contract ? (
+                        <ScrollArea className="max-h-[50vh] pr-4 border rounded-md p-4">
+                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contract.content }} />
+                        </ScrollArea>
+                    ) : (
+                        <p className="text-destructive">Contrat non trouvé.</p>
+                    )}
+                    <div className="flex items-center space-x-2 pt-4">
+                        <Checkbox id="terms" checked={contractAccepted} onCheckedChange={(checked) => setContractAccepted(checked as boolean)} />
+                        <label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                            Je reconnais avoir lu et accepté les termes du contrat
+                        </label>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => setStep(2)} disabled={!contractAccepted || !contract}>
+                            Continuer
+                        </Button>
+                    </DialogFooter>
+                </>
+            ) : (
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField control={form.control} name="firstName" render={({ field }) => (
+                                <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <FormField control={form.control} name="lastName" render={({ field }) => (
+                                <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                        </div>
+                        <FormField control={form.control} name="email" render={({ field }) => (
+                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={form.control} name="password" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Mot de passe</FormLabel>
+                                <FormControl>
+                                    <div className="relative">
+                                        <Input type={showPassword ? "text" : "password"} {...field} />
+                                        <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
+                                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </Button>
+                                    </div>
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        {plan.contractId && (
+                            <FormField
+                                control={form.control}
+                                name="acceptTerms"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                    <FormControl>
+                                        <Checkbox
+                                        checked={field.value}
+                                        onCheckedChange={field.onChange}
+                                        />
+                                    </FormControl>
+                                    <div className="space-y-1 leading-none">
+                                        <FormLabel>
+                                            Je confirme avoir lu et accepté les termes du contrat.
+                                        </FormLabel>
+                                        <FormMessage />
+                                    </div>
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+                        <DialogFooter>
+                            {plan.contractId && <Button type="button" variant="ghost" onClick={() => setStep(1)}>Retour au contrat</Button>}
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Valider et Payer
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            )}
+        </DialogContent>
+    );
+}
+
+
+export function PricingSection() {
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
+    const firestore = useFirestore();
+
+    const publicPlansQuery = useMemoFirebase(() => {
+        const plansCollectionRef = collection(firestore, 'plans');
+        return query(plansCollectionRef, where("isPublic", "==", true));
+    }, [firestore]);
+
+    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
+    
+    const isLoading = isAgencyLoading || arePlansLoading;
+    const primaryColor = personalization?.primaryColor || '#10B981';
 
     if (isLoading) {
         return (
@@ -164,19 +241,19 @@ export function PricingSection() {
     }
 
     return (
-        <>
-            <section className="bg-background text-foreground py-16 sm:py-24">
-                <div className="container mx-auto px-4">
-                    <div className="text-center mb-12">
-                        <h2 className="text-3xl lg:text-4xl font-bold">Nos Formules</h2>
-                        <p className="text-lg text-muted-foreground mt-4 max-w-xl mx-auto">
-                            Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.
-                        </p>
-                    </div>
+        <section className="bg-background text-foreground py-16 sm:py-24">
+            <div className="container mx-auto px-4">
+                <div className="text-center mb-12">
+                    <h2 className="text-3xl lg:text-4xl font-bold">Nos Formules</h2>
+                    <p className="text-lg text-muted-foreground mt-4 max-w-xl mx-auto">
+                        Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.
+                    </p>
+                </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
-                        {plans.map((tier) => (
-                            <Card key={tier.id} className={cn("flex flex-col h-full shadow-lg", tier.isFeatured && "border-2 relative")} style={tier.isFeatured ? {borderColor: primaryColor} : {}}>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
+                    {plans.map((tier) => (
+                        <Dialog key={tier.id}>
+                            <Card className={cn("flex flex-col h-full shadow-lg", tier.isFeatured && "border-2 relative")} style={tier.isFeatured ? {borderColor: primaryColor} : {}}>
                                 {tier.isFeatured && (
                                     <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
                                         <div className="text-primary-foreground px-4 py-1 rounded-full text-sm font-semibold" style={{ backgroundColor: primaryColor }}>
@@ -203,111 +280,18 @@ export function PricingSection() {
                                     </ul>
                                 </CardContent>
                                 <CardFooter>
-                                    <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }} onClick={() => handleChoosePlan(tier)}>
-                                        {tier.cta || 'Choisir cette formule'}
-                                    </Button>
+                                    <DialogTrigger asChild>
+                                        <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                            {tier.cta || 'Choisir cette formule'}
+                                        </Button>
+                                    </DialogTrigger>
                                 </CardFooter>
                             </Card>
-                        ))}
-                    </div>
+                            <SubscriptionModalContent plan={tier} primaryColor={primaryColor} />
+                        </Dialog>
+                    ))}
                 </div>
-            </section>
-        
-            <Dialog open={isModalOpen} onOpenChange={handleModalOpenChange}>
-                <DialogContent className="sm:max-w-2xl">
-                     <DialogHeader>
-                        <DialogTitle>
-                            {step === 1 ? (isContractLoading ? 'Chargement...' : contract?.title) : `Souscrire à l'offre "${selectedPlan?.name}"`}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {step === 1 ? "Veuillez lire et accepter le contrat pour continuer." : "Créez votre compte conseiller pour commencer."}
-                        </DialogDescription>
-                    </DialogHeader>
-                    {step === 1 ? (
-                        <>
-                            {isContractLoading ? (
-                                <Skeleton className="h-64 w-full" />
-                            ) : contract ? (
-                                <ScrollArea className="max-h-[50vh] pr-4 border rounded-md p-4">
-                                    <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contract.content }} />
-                                </ScrollArea>
-                            ) : (
-                                <p className="text-destructive">Contrat non trouvé.</p>
-                            )}
-                            <div className="flex items-center space-x-2 pt-4">
-                                <Checkbox id="terms" checked={contractAccepted} onCheckedChange={(checked) => setContractAccepted(checked as boolean)} />
-                                <label htmlFor="terms" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                                    Je reconnais avoir lu et accepté les termes du contrat
-                                </label>
-                            </div>
-                            <DialogFooter>
-                                <Button onClick={() => setStep(2)} disabled={!contractAccepted || !contract}>
-                                    Continuer
-                                </Button>
-                            </DialogFooter>
-                        </>
-                    ) : (
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="firstName" render={({ field }) => (
-                                        <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="lastName" render={({ field }) => (
-                                        <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                </div>
-                                <FormField control={form.control} name="email" render={({ field }) => (
-                                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>
-                                )} />
-                                <FormField control={form.control} name="password" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Mot de passe</FormLabel>
-                                        <FormControl>
-                                            <div className="relative">
-                                                <Input type={showPassword ? "text" : "password"} {...field} />
-                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>
-                                                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                                </Button>
-                                            </div>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                {selectedPlan?.contractId && (
-                                    <FormField
-                                        control={form.control}
-                                        name="acceptTerms"
-                                        render={({ field }) => (
-                                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                                            <FormControl>
-                                                <Checkbox
-                                                checked={field.value}
-                                                onCheckedChange={field.onChange}
-                                                />
-                                            </FormControl>
-                                            <div className="space-y-1 leading-none">
-                                                <FormLabel>
-                                                    Je confirme avoir lu et accepté les termes du contrat.
-                                                </FormLabel>
-                                                <FormMessage />
-                                            </div>
-                                            </FormItem>
-                                        )}
-                                    />
-                                )}
-                                <DialogFooter>
-                                    {selectedPlan?.contractId && <Button type="button" variant="ghost" onClick={() => setStep(1)}>Retour</Button>}
-                                    <Button type="submit" disabled={isSubmitting}>
-                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Valider et Payer
-                                    </Button>
-                                </DialogFooter>
-                            </form>
-                        </Form>
-                    )}
-                </DialogContent>
-            </Dialog>
-        </>
+            </div>
+        </section>
     );
 }
