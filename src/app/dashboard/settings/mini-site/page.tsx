@@ -449,7 +449,7 @@ export default function MiniSitePage() {
                                     </div>
                                 </div>
                             </div>
-                            <div className="space-y-4 rounded-lg border p-4">
+                             <div className="space-y-4 rounded-lg border p-4">
                                 <h4 className="font-medium">Couleurs dominantes</h4>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <FormField
