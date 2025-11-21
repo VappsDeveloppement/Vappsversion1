@@ -57,8 +57,8 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
     const titleColor = heroConfig.titleColor || '#FFFFFF';
     const subtitleColor = heroConfig.subtitleColor || '#E5E7EB';
     
-    // Use the theme color from the user's main profile for the button
-    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
+    // Use the theme color from the counselor's profile, fallback to a default
+    const primaryButtonColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     return (
         <header className="relative text-white overflow-hidden" style={{ backgroundColor: bgImageUrl ? 'transparent' : bgColor }}>
@@ -106,7 +106,7 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
                     <p className="text-xl text-white/90 mt-4" style={{ color: subtitleColor }}>{subtitle}</p>
                     
                     <div className="mt-8 flex flex-wrap justify-center gap-4">
-                        <Button size="lg" className="font-bold text-lg" asChild style={{ backgroundColor: primaryColor, color: 'white' }}>
+                        <Button size="lg" className="font-bold text-lg" asChild style={{ backgroundColor: primaryButtonColor, color: 'white' }}>
                             <Link href={ctaLink}>{ctaText}</Link>
                         </Button>
                          <Button size="lg" variant="outline" className="bg-white/90 text-gray-800 hover:bg-white font-bold text-lg border-transparent">
@@ -118,5 +118,3 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
         </header>
     );
 }
-
-    

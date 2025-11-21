@@ -145,83 +145,18 @@
                 "properties": {
                     "title": { "type": "string" },
                     "subtitle": { "type": "string" },
-                    "text": { "type": "string" },
                     "ctaText": { "type": "string" },
                     "ctaLink": { "type": "string" },
+                    "cta2Text": { "type": "string" },
+                    "cta2Link": { "type": "string" },
                     "showPhoto": { "type": "boolean" },
-                    "bgColor": { "type": "string" },
-                    "bgImageUrl": { "type": "string", "format": "uri" },
                     "showPhone": { "type": "boolean" },
                     "showLocation": { "type": "boolean" },
-                    "primaryColor": { "type": "string" },
-                    "secondaryColor": { "type": "string" }
+                    "bgColor": { "type": "string" },
+                    "bgImageUrl": { "type": "string", "format": "uri" },
+                    "titleColor": { "type": "string" },
+                    "subtitleColor": { "type": "string" }
                 }
-            },
-            "attentionSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "text": { "type": "string" }
-                }
-            },
-            "aboutSection": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean"},
-                "imageUrl": { "type": "string", "format": "uri"},
-                "title": { "type": "string"},
-                "text": { "type": "string"}
-              }
-            },
-            "activitiesSection": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "imageUrl": { "type": "string", "format": "uri" },
-                "videoUrl": { "type": "string", "format": "uri" },
-                "title": { "type": "string" },
-                "text": { "type": "string" }
-              }
-            },
-            "parcoursSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "subtitle": { "type": "string" },
-                    "steps": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "id": { "type": "string" },
-                                "title": { "type": "string" },
-                                "description": { "type": "string" }
-                            }
-                        }
-                    }
-                }
-            },
-            "servicesSection": {
-              "type": "object",
-              "properties": {
-                "enabled": { "type": "boolean" },
-                "title": { "type": "string" },
-                "subtitle": { "type": "string" },
-                "services": {
-                  "type": "array",
-                  "items": {
-                    "type": "object",
-                    "properties": {
-                      "id": { "type": "string" },
-                      "title": { "type": "string" },
-                      "description": { "type": "string" },
-                      "imageUrl": { "type": "string", "format": "uri" }
-                    }
-                  }
-                }
-              }
             }
         }
     },
@@ -239,7 +174,15 @@
             "photoUrl": { "type": "string", "format": "uri" },
             "publicTitle": { "type": "string" },
             "publicBio": { "type": "string" },
-            "miniSite": { "$ref": "#/entities/MiniSite" }
+            "miniSite": { "$ref": "#/entities/MiniSite" },
+            "dashboardTheme": {
+                "type": "object",
+                "properties": {
+                    "primaryColor": { "type": "string" },
+                    "secondaryColor": { "type": "string" },
+                    "bgColor": { "type": "string" }
+                }
+            }
         },
         "required": ["id", "firstName", "lastName", "email"]
     },
