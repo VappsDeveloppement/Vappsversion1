@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -21,6 +21,8 @@ import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Link as LinkIcon } from 'lucide-react';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 const heroSchema = z.object({
   title: z.string().optional(),
@@ -228,80 +230,78 @@ export default function MiniSitePage() {
 
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Section Héro</CardTitle>
-                    <CardDescription>
-                        Personnalisez la section principale de votre page publique.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                    <FormField
-                        control={form.control}
-                        name="title"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Titre principal</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="Donnez un nouvel élan à votre carrière" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="subtitle"
-                        render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Sous-titre</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="Un accompagnement personnalisé pour atteindre vos objectifs." {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormField control={form.control} name="ctaText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton principal</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton principal</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    </div>
-                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <FormField control={form.control} name="cta2Text" render={({ field }) => (<FormItem><FormLabel>Texte du bouton secondaire</FormLabel><FormControl><Input placeholder="Mon Espace" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="cta2Link" render={({ field }) => (<FormItem><FormLabel>Lien du bouton secondaire</FormLabel><FormControl><Input placeholder="/application" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    </div>
-
-                    <div className="space-y-4 rounded-lg border p-4">
-                        <h4 className="text-sm font-medium">Options d'affichage</h4>
-                        <FormField control={form.control} name="showPhoto" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma photo de profil</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                        <FormField control={form.control} name="showPhone" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher mon numéro de téléphone</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                        <FormField control={form.control} name="showLocation" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma ville</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                    </div>
-
-                    <div className="space-y-6 rounded-lg border p-4">
-                        <h4 className="text-sm font-medium">Arrière-plan</h4>
-                         <div className="flex items-center gap-4">
-                            <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
-                                {bgImagePreview ? (<Image src={bgImagePreview} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+            <Accordion type="single" collapsible defaultValue="hero-section" className="w-full">
+                <AccordionItem value="hero-section">
+                    <AccordionTrigger className='text-lg font-medium'>Section Héro</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 pt-4">
+                            <FormField
+                                control={form.control}
+                                name="title"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Titre principal</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Donnez un nouvel élan à votre carrière" {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <FormField
+                                control={form.control}
+                                name="subtitle"
+                                render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Sous-titre</FormLabel>
+                                        <FormControl>
+                                            <Textarea placeholder="Un accompagnement personnalisé pour atteindre vos objectifs." {...field} />
+                                        </FormControl>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="ctaText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton principal</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton principal</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
-                            <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
-                            <div className="flex flex-col gap-2">
-                                <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer l'image</Button>
-                                {bgImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={handleRemovePhoto}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="cta2Text" render={({ field }) => (<FormItem><FormLabel>Texte du bouton secondaire</FormLabel><FormControl><Input placeholder="Mon Espace" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="cta2Link" render={({ field }) => (<FormItem><FormLabel>Lien du bouton secondaire</FormLabel><FormControl><Input placeholder="/application" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+
+                            <div className="space-y-4 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Options d'affichage</h4>
+                                <FormField control={form.control} name="showPhoto" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma photo de profil</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="showPhone" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher mon numéro de téléphone</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="showLocation" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between"><FormLabel>Afficher ma ville</FormLabel><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            </div>
+
+                            <div className="space-y-6 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Arrière-plan</h4>
+                                <div className="flex items-center gap-4">
+                                    <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                        {bgImagePreview ? (<Image src={bgImagePreview} alt="Aperçu" layout="fill" objectFit="cover" />) : (<span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>)}
+                                    </div>
+                                    <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
+                                    <div className="flex flex-col gap-2">
+                                        <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer l'image</Button>
+                                        {bgImagePreview && (<Button type="button" variant="destructive" size="sm" onClick={handleRemovePhoto}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>)}
+                                    </div>
+                                </div>
+                                <FormField control={form.control} name="bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                            </div>
+                            <div className="space-y-6 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Couleurs du texte</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField control={form.control} name="titleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                    <FormField control={form.control} name="subtitleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du sous-titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                </div>
                             </div>
                         </div>
-                        <FormField control={form.control} name="bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond (si pas d'image)</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
-                    </div>
-                     <div className="space-y-6 rounded-lg border p-4">
-                        <h4 className="text-sm font-medium">Couleurs du texte</h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <FormField control={form.control} name="titleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="subtitleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du sous-titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
             <div className="flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
@@ -313,4 +313,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
