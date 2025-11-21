@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Check } from "lucide-react";
@@ -132,10 +131,10 @@ export function PricingSection() {
                             </CardContent>
                             <CardFooter>
                                 {tier.contractId ? (
-                                    <ContractModal contractId={tier.contractId} buttonText={tier.cta || 'Choisir ce plan'} primaryColor={primaryColor} />
+                                    <ContractModal contractId={tier.contractId} buttonText={tier.cta || 'Choisir cette formule'} primaryColor={primaryColor} />
                                 ) : (
                                      <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
-                                        {tier.cta || 'Choisir ce plan'}
+                                        {tier.cta || 'Choisir cette formule'}
                                     </Button>
                                 )}
                             </CardFooter>
