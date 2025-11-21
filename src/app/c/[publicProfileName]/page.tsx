@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useParams } from 'next/navigation';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
@@ -20,6 +20,8 @@ type CounselorProfile = {
     publicTitle?: string;
     publicBio?: string;
     photoUrl?: string;
+    phone?: string;
+    city?: string;
     miniSite?: {
         publicProfileName?: string;
         hero?: any;
@@ -73,7 +75,7 @@ export default function CounselorPublicProfilePage() {
 
   const copyrightText = "VApps";
   const copyrightUrl = "/";
-  const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
+  const footerBgColor = '#f1f5f9';
   const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
   return (
@@ -97,3 +99,5 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
+
+    

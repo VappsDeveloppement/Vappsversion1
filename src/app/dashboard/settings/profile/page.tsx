@@ -184,6 +184,7 @@ export default function ProfilePage() {
             ...userData?.miniSite,
             publicProfileName: publicProfileName,
         },
+        dashboardTheme: data.dashboardTheme, // Pass the theme colors
       };
       await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
     }
@@ -523,3 +524,5 @@ export default function ProfilePage() {
     </div>
   );
 }
+
+    

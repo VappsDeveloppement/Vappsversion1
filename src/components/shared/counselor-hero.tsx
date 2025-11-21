@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React from 'react';
@@ -8,7 +7,6 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Phone, MapPin } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 type CounselorProfile = {
     id: string;
@@ -120,3 +118,5 @@ export function CounselorHero({ counselor }: { counselor: CounselorProfile }) {
         </header>
     );
 }
+
+    
