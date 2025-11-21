@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -425,8 +426,8 @@ export default function MiniSitePage() {
                                                 <FormLabel>Couleur de fond</FormLabel>
                                                 <FormControl>
                                                     <div className="flex items-center gap-2">
-                                                        <Input type="color" value={field.value} onChange={field.onChange} className="p-1 h-10 w-10" />
-                                                        <Input type="text" value={field.value} onChange={field.onChange} />
+                                                        <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                        <Input type="text" {...field} />
                                                     </div>
                                                 </FormControl>
                                                 <FormMessage />
@@ -459,8 +460,8 @@ export default function MiniSitePage() {
                                                 <FormLabel>Couleur primaire (boutons, liens)</FormLabel>
                                                 <FormControl>
                                                     <div className="flex items-center gap-2">
-                                                        <Input type="color" value={field.value} onChange={field.onChange} className="p-1 h-10 w-10" />
-                                                        <Input type="text" value={field.value} onChange={field.onChange} />
+                                                        <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                        <Input type="text" {...field} />
                                                     </div>
                                                 </FormControl>
                                                 <FormMessage />
@@ -475,8 +476,8 @@ export default function MiniSitePage() {
                                                 <FormLabel>Couleur secondaire</FormLabel>
                                                 <FormControl>
                                                     <div className="flex items-center gap-2">
-                                                        <Input type="color" value={field.value} onChange={field.onChange} className="p-1 h-10 w-10" />
-                                                        <Input type="text" value={field.value} onChange={field.onChange} />
+                                                        <Input type="color" {...field} className="p-1 h-10 w-10" />
+                                                        <Input type="text" {...field} />
                                                     </div>
                                                 </FormControl>
                                                 <FormMessage />
