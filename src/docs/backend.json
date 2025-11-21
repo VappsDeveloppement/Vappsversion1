@@ -230,6 +230,18 @@
                     "bgImageUrl": { "type": "string", "format": "uri" }
                 }
             },
+            "pricingSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "planIds": { 
+                        "type": "array",
+                        "items": { "type": "string" }
+                    }
+                }
+            },
             "activitiesSection": {
                 "type": "object",
                 "properties": {
@@ -875,3 +887,4 @@
   }
 }
 
+    

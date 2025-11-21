@@ -204,6 +204,7 @@ const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
+  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'shop', label: 'Boutique', enabled: true },
@@ -310,9 +311,9 @@ const defaultPersonalization: Personalization = {
         title: "Nos Offres d'Emploi",
         subtitle: "Rejoignez une équipe dynamique et passionnée.",
         offers: [
-            { id: `job-1`, title: "Développeur Full-Stack", contractType: "CDI", location: "Paris, France" },
-            { id: `job-2`, title: "Chef de Projet Digital", contractType: "CDI", location: "Lyon, France" },
-            { id: `job-3`, title: "UX/UI Designer", contractType: "Alternance", location: "Télétravail" },
+            { id: `job-${Date.now()}-1`, title: "Développeur Full-Stack", contractType: "CDI", location: "Paris, France" },
+            { id: `job-${Date.now()}-2`, title: "Chef de Projet Digital", contractType: "CDI", location: "Lyon, France" },
+            { id: `job-${Date.now()}-3`, title: "UX/UI Designer", contractType: "Alternance", location: "Télétravail" },
         ]
     },
     videoSection: {
@@ -555,3 +556,5 @@ export function useAgency() {
     }
     return context;
 };
+
+    
