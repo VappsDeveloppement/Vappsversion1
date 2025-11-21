@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Loader2 } from 'lucide-react';
+import { Mail, Phone, MapPin, Loader2, Building, Briefcase } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -22,6 +22,8 @@ type CounselorProfile = {
     city?: string;
     address?: string;
     zipCode?: string;
+    commercialName?: string;
+    siret?: string;
     miniSite?: {
         contactSection?: {
             enabled?: boolean;
@@ -92,10 +94,22 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                     {/* Left Column: Counselor Info */}
                     <div className="bg-muted p-8 rounded-lg">
-                        <h3 className="text-2xl font-bold mb-6">{counselor.firstName} {counselor.lastName}</h3>
-                        {counselor.publicTitle && <p className="text-primary font-semibold mb-6">{counselor.publicTitle}</p>}
+                        <h3 className="text-2xl font-bold mb-2">{counselor.firstName} {counselor.lastName}</h3>
+                        {counselor.publicTitle && <p className="font-semibold mb-6" style={{color: counselor.dashboardTheme?.primaryColor}}>{counselor.publicTitle}</p>}
                         
                         <div className="space-y-4 text-muted-foreground">
+                            {counselor.commercialName && (
+                                <div className="flex items-center gap-3">
+                                    <Building className="h-5 w-5 text-primary" />
+                                    <span>{counselor.commercialName}</span>
+                                </div>
+                            )}
+                             {counselor.siret && (
+                                <div className="flex items-center gap-3">
+                                    <Briefcase className="h-5 w-5 text-primary" />
+                                    <span>SIRET: {counselor.siret}</span>
+                                </div>
+                            )}
                             {fullAddress && (
                                 <div className="flex items-start gap-3">
                                     <MapPin className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
