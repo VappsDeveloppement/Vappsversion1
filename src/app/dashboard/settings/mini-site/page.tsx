@@ -15,7 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2, Info, PlusCircle, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Palette, FileText, Text, Eye, Upload, Trash2, Info, PlusCircle, Link as LinkIcon, ArrowDown, ArrowUp } from 'lucide-react';
 import Link from 'next/link';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
@@ -33,7 +33,6 @@ import { CounselorPricingSection } from '@/components/shared/counselor-pricing-s
 import type { Plan } from '@/components/shared/plan-management';
 import { Checkbox } from '@/components/ui/checkbox';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
-import { useAgency } from '@/context/agency-provider';
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -123,6 +122,12 @@ const contactSchema = z.object({
   links: z.array(contactLinkSchema).default([]),
 });
 
+const sectionSchema = z.object({
+    id: z.string(),
+    label: z.string(),
+    enabled: z.boolean(),
+    isLocked: z.boolean().optional(),
+});
 
 const miniSiteSchema = z.object({
     hero: heroSchema,
@@ -133,6 +138,7 @@ const miniSiteSchema = z.object({
     ctaSection: ctaSchema,
     pricingSection: pricingSchema,
     contactSection: contactSchema,
+    homePageSections: z.array(sectionSchema).optional(),
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -202,7 +208,17 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         text: "N'hésitez pas à me contacter pour toute question ou pour démarrer votre accompagnement.",
         imageUrl: "",
         links: []
-    }
+    },
+    homePageSections: [
+        { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
+        { id: 'attentionSection', label: 'Section "Attention"', enabled: true },
+        { id: 'aboutSection', label: 'À propos de moi', enabled: true },
+        { id: 'interestsSection', label: 'Centres d\'intérêt', enabled: true },
+        { id: 'servicesSection', label: 'Services', enabled: true },
+        { id: 'ctaSection', label: "Appel à l'action (CTA)", enabled: true },
+        { id: 'pricingSection', label: 'Formules (Tarifs)', enabled: true },
+        { id: 'contactSection', label: 'Contact', enabled: true },
+    ]
 };
 
 function HeroSettingsTab({ control, userData }: { control: any, userData: any }) {
@@ -231,7 +247,7 @@ function HeroSettingsTab({ control, userData }: { control: any, userData: any })
     const [bgImagePreview, setBgImagePreview] = useState(form.getValues('bgImageUrl'));
 
     useEffect(() => {
-        setBgImagePreview(form.getValues('bgImageUrl'));
+        setBgImagePreview(form.watch('bgImageUrl'));
     }, [form.watch('bgImageUrl')]);
 
     const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -483,49 +499,27 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         return doc(firestore, 'users', user.uid);
     }, [firestore, user]);
 
-    const form = useForm<{ 
-        attentionSection: z.infer<typeof attentionSchema>, 
-        aboutSection: z.infer<typeof aboutSchema>, 
-        interestsSection: z.infer<typeof interestsSchema>, 
-        servicesSection: z.infer<typeof servicesSchema>,
-        ctaSection: z.infer<typeof ctaSchema>,
-        pricingSection: z.infer<typeof pricingSchema>,
-        contactSection: z.infer<typeof contactSchema>,
-    }>({
-        resolver: zodResolver(z.object({ 
-            attentionSection: attentionSchema, 
-            aboutSection: aboutSchema, 
-            interestsSection: interestsSchema, 
-            servicesSection: servicesSchema,
-            ctaSection: ctaSchema,
-            pricingSection: pricingSchema,
-            contactSection: contactSchema,
-        })),
-        defaultValues: {
-            attentionSection: userData?.miniSite?.attentionSection || defaultMiniSiteConfig.attentionSection,
-            aboutSection: userData?.miniSite?.aboutSection || defaultMiniSiteConfig.aboutSection,
-            interestsSection: userData?.miniSite?.interestsSection || defaultMiniSiteConfig.interestsSection,
-            servicesSection: userData?.miniSite?.servicesSection || defaultMiniSiteConfig.servicesSection,
-            ctaSection: userData?.miniSite?.ctaSection || defaultMiniSiteConfig.ctaSection,
-            pricingSection: userData?.miniSite?.pricingSection || defaultMiniSiteConfig.pricingSection,
-            contactSection: userData?.miniSite?.contactSection || defaultMiniSiteConfig.contactSection,
-        },
+    const form = useForm<MiniSiteFormData>({
+        resolver: zodResolver(miniSiteSchema),
+        defaultValues: defaultMiniSiteConfig
     });
     
     useEffect(() => {
         if (userData?.miniSite) {
             form.reset({
+                hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
                 attentionSection: { ...defaultMiniSiteConfig.attentionSection, ...(userData.miniSite.attentionSection || {}) },
                 aboutSection: { ...defaultMiniSiteConfig.aboutSection, ...(userData.miniSite.aboutSection || {}) },
                 interestsSection: { 
                     ...defaultMiniSiteConfig.interestsSection, 
                     ...(userData.miniSite.interestsSection || {}),
-                    features: (userData.miniSite.interestsSection?.features || []).map((f:string) => ({ value: f }))
+                    features: (userData.miniSite.interestsSection?.features || []).map((f:string | {value:string}) => (typeof f === 'string' ? {value: f} : f))
                 },
                 servicesSection: { ...defaultMiniSiteConfig.servicesSection, ...(userData.miniSite.servicesSection || {}) },
                 ctaSection: { ...defaultMiniSiteConfig.ctaSection, ...(userData.miniSite.ctaSection || {}) },
                 pricingSection: { ...defaultMiniSiteConfig.pricingSection, ...(userData.miniSite.pricingSection || {}) },
                 contactSection: { ...defaultMiniSiteConfig.contactSection, ...(userData.miniSite.contactSection || {}) },
+                homePageSections: userData.miniSite.homePageSections || defaultMiniSiteConfig.homePageSections,
             });
         }
     }, [userData, form]);
@@ -545,6 +539,11 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         name: "contactSection.links",
     });
 
+    const { fields: sectionFields, move: moveSection } = useFieldArray({
+        control: form.control,
+        name: "homePageSections",
+    });
+
     const [aboutImagePreview, setAboutImagePreview] = useState(form.getValues('aboutSection.imageUrl'));
     const [ctaImagePreview, setCtaImagePreview] = useState(form.getValues('ctaSection.bgImageUrl'));
     const [contactImagePreview, setContactImagePreview] = useState(form.getValues('contactSection.imageUrl'));
@@ -557,7 +556,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
         setContactImagePreview(form.watch('contactSection.imageUrl'));
     }, [form.watch('aboutSection.imageUrl'), form.watch('ctaSection.bgImageUrl'), form.watch('contactSection.imageUrl')]);
 
-    const onSubmit = async (data: any) => {
+    const onSubmit = async (data: MiniSiteFormData) => {
         if (!userDocRef) return;
         setIsSubmitting(true);
         try {
@@ -576,6 +575,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                     ctaSection: data.ctaSection,
                     pricingSection: data.pricingSection,
                     contactSection: data.contactSection,
+                    homePageSections: data.homePageSections,
                 },
             }, { merge: true });
             toast({ title: "Paramètres enregistrés", description: "Vos sections ont été mises à jour." });
@@ -626,7 +626,7 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
                                         <div className="space-y-0.5"><FormLabel className="text-base">Afficher la section</FormLabel><FormDescription>Désactivez pour masquer cette section.</FormDescription></div>
                                         <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                                     </FormItem>
-                                )} />
+                                )}/>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     <div className="space-y-4">
                                         <h4 className="font-medium text-center">Colonne de gauche (Média)</h4>
@@ -948,11 +948,126 @@ function SectionsSettingsTab({ control, userData }: { control: any, userData: an
     )
 }
 
+function SectionsOrderTab({ control, userData }: { control: any, userData: any }) {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const userDocRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [firestore, user]);
+
+    const form = useForm<{ homePageSections: z.infer<typeof sectionSchema>[] }>({
+        defaultValues: { homePageSections: defaultMiniSiteConfig.homePageSections },
+    });
+
+    useEffect(() => {
+        if (userData?.miniSite?.homePageSections) {
+            form.reset({ homePageSections: userData.miniSite.homePageSections });
+        }
+    }, [userData, form]);
+
+    const { fields: sectionFields, move: moveSection } = useFieldArray({
+        control: form.control,
+        name: "homePageSections",
+    });
+
+    const onSubmit = async (data: { homePageSections: z.infer<typeof sectionSchema>[] }) => {
+        if (!userDocRef) return;
+        setIsSubmitting(true);
+        try {
+            await setDocumentNonBlocking(userDocRef, {
+                miniSite: {
+                    ...(userData?.miniSite || {}),
+                    homePageSections: data.homePageSections,
+                },
+            }, { merge: true });
+            toast({ title: "Organisation enregistrée", description: "L'ordre de vos sections a été mis à jour." });
+        } catch (error) {
+            toast({ title: "Erreur", description: "Impossible de sauvegarder l'organisation.", variant: "destructive" });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Organisation des Sections</CardTitle>
+                <CardDescription>
+                    Activez, désactivez et réorganisez les sections de votre page publique.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                        <div className="space-y-2">
+                            {sectionFields.map((section, index) => (
+                                <div key={section.id} className="flex items-center gap-2 p-3 border rounded-lg bg-background">
+                                    <div className="flex-1 font-medium">{section.label}</div>
+                                    {!section.isLocked && (
+                                        <div className="flex gap-1">
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => moveSection(index, index - 1)}
+                                                disabled={index === 0 || sectionFields[index - 1].isLocked}
+                                                className="h-8 w-8"
+                                            >
+                                                <ArrowUp className="h-4 w-4" />
+                                            </Button>
+                                            <Button
+                                                type="button"
+                                                variant="ghost"
+                                                size="icon"
+                                                onClick={() => moveSection(index, index + 1)}
+                                                disabled={index === sectionFields.length - 1}
+                                                className="h-8 w-8"
+                                            >
+                                                <ArrowDown className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                    <FormField
+                                        control={form.control}
+                                        name={`homePageSections.${index}.enabled`}
+                                        render={({ field }) => (
+                                            <FormItem className="p-2">
+                                                <FormControl>
+                                                    <Switch
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                        disabled={section.isLocked}
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                        <div className="flex justify-end pt-6 border-t">
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Enregistrer l'organisation
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+    );
+}
+
 function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
     const counselorPreviewData = {
         ...(userData || {}),
         miniSite: {
             ...userData?.miniSite,
+            ...formData,
             hero: formData.hero,
             attentionSection: formData.attentionSection,
             aboutSection: formData.aboutSection,
@@ -982,14 +1097,20 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
             </SheetDescription>
           </SheetHeader>
           <div className="h-[calc(100vh-80px)] overflow-y-auto bg-muted">
-             <CounselorHero counselor={counselorPreviewData} />
-             {counselorPreviewData.miniSite.attentionSection?.enabled && <AttentionSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.aboutSection?.enabled && <AboutMeSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.interestsSection?.enabled && <InterestsSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.servicesSection?.enabled && <CounselorServicesSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.ctaSection?.enabled && <CounselorCtaSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.pricingSection?.enabled && <CounselorPricingSection counselor={counselorPreviewData} />}
-             {counselorPreviewData.miniSite.contactSection?.enabled && <CounselorContactSection counselor={counselorPreviewData} />}
+             {(counselorPreviewData.miniSite.homePageSections || defaultMiniSiteConfig.homePageSections || []).map((section: any) => {
+                if (!section.enabled) return null;
+                switch (section.id) {
+                    case 'hero': return <CounselorHero key={section.id} counselor={counselorPreviewData} />;
+                    case 'attentionSection': return <AttentionSection key={section.id} counselor={counselorPreviewData} />;
+                    case 'aboutSection': return <AboutMeSection key={section.id} counselor={counselorPreviewData} />;
+                    case 'interestsSection': return <InterestsSection key={section.id} counselor={counselorPreviewData} />;
+                    case 'servicesSection': return <CounselorServicesSection key={section.id} counselor={counselorPreviewData} />;
+                    case 'ctaSection': return <CounselorCtaSection key={section.id} counselor={counselorPreviewData} />;
+                    case 'pricingSection': return <CounselorPricingSection key={section.id} counselor={counselorPreviewData} />;
+                    case 'contactSection': return <CounselorContactSection key={section.id} counselor={counselorPreviewData} />;
+                    default: return null;
+                }
+             })}
              <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
                 <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
              </footer>
@@ -1038,9 +1159,9 @@ export default function MiniSitePage() {
                 </SheetTrigger>
                 <PreviewPanel formData={watchedFormData} userData={userData} />
             </Sheet>
-            {user && userData?.publicProfileName && (
+            {user && userData?.miniSite?.publicProfileName && (
                 <Button asChild>
-                    <Link href={`/c/${userData.publicProfileName}`} target="_blank">
+                    <Link href={`/c/${userData.miniSite.publicProfileName}`} target="_blank">
                         Ouvrir la page publique
                     </Link>
                 </Button>
@@ -1048,25 +1169,30 @@ export default function MiniSitePage() {
         </div>
       </div>
       <Tabs defaultValue="hero-content">
-        <TabsList className="grid w-full grid-cols-2">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="hero-content">
             <Text className="mr-2 h-4 w-4" />
             Contenu Héro
           </TabsTrigger>
-          <TabsTrigger value="personal-page">
+          <TabsTrigger value="sections-content">
             <FileText className="mr-2 h-4 w-4" />
             Sections de la Page
+          </TabsTrigger>
+          <TabsTrigger value="sections-order">
+            <Palette className="mr-2 h-4 w-4" />
+            Organisation
           </TabsTrigger>
         </TabsList>
         <TabsContent value="hero-content">
           <HeroSettingsTab control={form.control} userData={userData} />
         </TabsContent>
-        <TabsContent value="personal-page">
+        <TabsContent value="sections-content">
           <SectionsSettingsTab control={form.control} userData={userData} />
+        </TabsContent>
+         <TabsContent value="sections-order">
+          <SectionsOrderTab control={form.control} userData={userData} />
         </TabsContent>
       </Tabs>
     </div>
   );
 }
-
-    

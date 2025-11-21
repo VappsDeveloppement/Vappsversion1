@@ -45,7 +45,6 @@ type CounselorProfile = {
     }
 };
 
-// Mapper les IDs de section aux composants correspondants
 const sectionComponents: { [key: string]: React.ComponentType<{ counselor: CounselorProfile }> } = {
   hero: CounselorHero,
   attentionSection: AttentionSection,
@@ -56,6 +55,17 @@ const sectionComponents: { [key: string]: React.ComponentType<{ counselor: Couns
   pricingSection: CounselorPricingSection,
   contactSection: CounselorContactSection,
 };
+
+const defaultSectionsOrder: Section[] = [
+    { id: 'hero', enabled: true, label: 'Hero' },
+    { id: 'attentionSection', enabled: true, label: 'Attention' },
+    { id: 'aboutSection', enabled: true, label: 'À Propos' },
+    { id: 'interestsSection', enabled: true, label: 'Centres d\'intérêt' },
+    { id: 'servicesSection', enabled: true, label: 'Services' },
+    { id: 'ctaSection', enabled: true, label: 'Appel à l\'action' },
+    { id: 'pricingSection', enabled: true, label: 'Formules' },
+    { id: 'contactSection', enabled: true, label: 'Contact' },
+];
 
 
 function CounselorPageContent({ counselor, isLoading, agency }: { counselor: CounselorProfile | null, isLoading: boolean, agency: any }) {
@@ -84,18 +94,8 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
         </div>
     );
   }
-
-  // Utiliser l'ordre des sections défini dans la config, sinon un ordre par défaut
-  const sections = counselor.miniSite?.homePageSections || [
-    { id: 'hero', enabled: true, label: 'Hero' },
-    { id: 'attentionSection', enabled: true, label: 'Attention' },
-    { id: 'aboutSection', enabled: true, label: 'About' },
-    { id: 'interestsSection', enabled: true, label: 'Interests' },
-    { id: 'servicesSection', enabled: true, label: 'Services' },
-    { id: 'ctaSection', enabled: true, label: 'CTA' },
-    { id: 'pricingSection', enabled: true, label: 'Pricing' },
-    { id: 'contactSection', enabled: true, label: 'Contact' },
-  ];
+  
+  const sections = counselor.miniSite?.homePageSections || defaultSectionsOrder;
 
   const copyrightText = agency?.personalization.copyrightText || "Vapps.";
   const copyrightUrl = agency?.personalization.copyrightUrl || "/";
@@ -108,6 +108,10 @@ function CounselorPageContent({ counselor, isLoading, agency }: { counselor: Cou
         {sections.map((sectionConfig) => {
             if (!sectionConfig.enabled) {
                 return null;
+            }
+            // The 'hero' section is handled separately as it's part of the header
+            if (sectionConfig.id === 'hero') {
+                return <CounselorHero key={sectionConfig.id} counselor={counselor} />;
             }
             const SectionComponent = sectionComponents[sectionConfig.id];
             return SectionComponent ? <SectionComponent key={sectionConfig.id} counselor={counselor} /> : null;
@@ -135,7 +139,6 @@ export default function CounselorPublicProfilePage() {
         setIsLoading(true);
         try {
             const minisitesRef = collection(firestore, 'minisites');
-            // Correct query path
             const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
             
             const querySnapshot = await getDocs(q);
