@@ -3,19 +3,14 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { CounselorHero } from '@/components/shared/counselor-hero';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle } from 'lucide-react';
-import { useAgency } from '@/context/agency-provider';
-import { AttentionSection } from '@/components/shared/attention-section';
-import { AboutMeSection } from '@/components/shared/about-me-section';
-import { ActivitiesSection } from '@/components/shared/activities-section';
-import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
-import { ParcoursSection } from '@/components/shared/parcours-section';
+import { AlertTriangle, Wrench } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type CounselorProfile = {
     id: string;
@@ -28,115 +23,77 @@ type CounselorProfile = {
     miniSite?: {
         publicProfileName?: string;
         hero?: any;
-        attentionSection?: any;
-        aboutSection?: any;
-        activitiesSection?: any;
-        servicesSection?: any;
-        parcoursSection?: any;
-        sections?: any[];
     };
-    agencyInfo?: {
-        copyrightText?: string;
-        copyrightUrl?: string;
+    dashboardTheme?: {
+        primaryColor?: string;
     }
 };
 
-const sectionComponents: { [key: string]: React.ComponentType<{ counselor: CounselorProfile }> } = {
-  hero: CounselorHero,
-  attentionSection: AttentionSection,
-  aboutSection: AboutMeSection,
-  activitiesSection: ActivitiesSection,
-  parcoursSection: ParcoursSection,
-  servicesSection: CounselorServicesSection,
-};
+export default function CounselorPublicProfilePage() {
+  const params = useParams();
+  const firestore = useFirestore();
+  const publicProfileName = params.publicProfileName as string;
 
-function CounselorPageContent({ counselor, isLoading, agency }: { counselor: CounselorProfile | null, isLoading: boolean, agency: any }) {
+  const counselorQuery = useMemoFirebase(() => {
+    if (!publicProfileName || !firestore) return null;
+    return query(
+        collection(firestore, 'minisites'), 
+        where("miniSite.publicProfileName", "==", publicProfileName), 
+        limit(1)
+    );
+  }, [publicProfileName, firestore]);
+
+  const { data: counselors, isLoading, error } = useCollection<CounselorProfile>(counselorQuery);
+
+  const counselor = counselors?.[0];
+
   if (isLoading) {
     return (
         <div className="space-y-8 p-8">
             <Skeleton className="h-48 w-full" />
             <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-32 w-full" />
         </div>
     );
   }
 
-  if (!counselor) {
+  if (!counselor || error) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-muted">
             <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
-            <h1 className="text-2xl font-bold">Profil non disponible</h1>
+            <h1 className="text-2xl font-bold">Profil non trouvé</h1>
             <p className="text-muted-foreground mt-2">
-                Le profil que vous cherchez n'existe pas ou n'est plus disponible.
+                Le profil que vous cherchez n'existe pas ou le lien est incorrect.
             </p>
-            <Link href="/" className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50">
-                Retour à l'accueil
-            </Link>
+            <Button asChild className="mt-6">
+                <Link href="/">Retour à l'accueil</Link>
+            </Button>
         </div>
     );
   }
-  
-  const copyrightText = agency?.personalization.copyrightText || "Vapps.";
-  const copyrightUrl = agency?.personalization.copyrightUrl || "/";
-  const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
-  const primaryColor = counselor.miniSite?.hero?.primaryColor || '#10B981';
 
-  const sections = counselor.miniSite?.sections || [];
+  const copyrightText = "VApps";
+  const copyrightUrl = "/";
+  const footerBgColor = counselor.miniSite?.hero?.bgColor || '#f1f5f9';
+  const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
   return (
     <div className="bg-muted/30 min-h-screen">
       <main>
-        {sections.map((section: { id: string; enabled: boolean }) => {
-          if (!section.enabled) return null;
-          const Component = sectionComponents[section.id];
-          return Component ? <Component key={section.id} counselor={counselor} /> : null;
-        })}
+        {/* Affichage unique de la section Héro */}
+        <CounselorHero counselor={counselor} />
+        
+        <div className="flex flex-col items-center justify-center text-center p-12 my-12 border-2 border-dashed rounded-lg h-96 max-w-4xl mx-auto">
+            <Wrench className="h-16 w-16 text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold">Plus de contenu à venir</h3>
+            <p className="text-muted-foreground mt-2 max-w-md">
+                Cette page est en cours de construction. D'autres sections seront bientôt disponibles.
+            </p>
+        </div>
+
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>
       </footer>
     </div>
   );
-}
-
-export default function CounselorPublicProfilePage() {
-  const params = useParams();
-  const firestore = useFirestore();
-  const { agency, isLoading: isAgencyLoading } = useAgency();
-  const publicProfileName = params.publicProfileName as string;
-  const [counselor, setCounselor] = useState<CounselorProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    if (!publicProfileName || !firestore) return;
-
-    const findCounselor = async () => {
-        setIsLoading(true);
-        try {
-            const minisitesRef = collection(firestore, 'minisites');
-            const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
-            
-            const querySnapshot = await getDocs(q);
-
-            if (!querySnapshot.empty) {
-                const counselorDoc = querySnapshot.docs[0];
-                setCounselor(counselorDoc.data() as CounselorProfile);
-            } else {
-                console.log(`No minisite found for publicProfileName: ${publicProfileName}`);
-                setCounselor(null);
-            }
-        } catch (error) {
-            console.error("Error fetching counselor by public name:", error);
-            setCounselor(null);
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    findCounselor();
-  }, [publicProfileName, firestore]);
-
-  const finalLoadingState = isLoading || isAgencyLoading;
-
-  return <CounselorPageContent counselor={counselor} isLoading={finalLoadingState} agency={agency} />
 }
