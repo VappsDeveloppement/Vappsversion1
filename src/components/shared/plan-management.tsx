@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -147,33 +147,40 @@ export function PlanManagement() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  useEffect(() => {
+      if (editingPlan) {
+          form.reset({
+              ...editingPlan,
+              features: editingPlan.features.map(f => ({ value: f })),
+              cta: editingPlan.cta || 'Choisir cette formule',
+              contractId: editingPlan.contractId || 'none'
+          });
+          setImagePreview(editingPlan.imageUrl || null);
+      } else {
+          form.reset({
+              name: '',
+              description: '',
+              price: 0,
+              period: '/prestation',
+              features: [],
+              imageUrl: '',
+              cta: 'Choisir cette formule',
+              contractId: 'none',
+              isPublic: false,
+              isFeatured: false,
+          });
+          setImagePreview(null);
+      }
+  }, [editingPlan, isSheetOpen, form]);
+
+
   const handleEdit = (plan: Plan) => {
     setEditingPlan(plan);
-    form.reset({
-      ...plan,
-      features: plan.features.map(f => ({ value: f })),
-      cta: plan.cta || 'Choisir cette formule',
-      contractId: plan.contractId || 'none'
-    });
-    setImagePreview(plan.imageUrl || null);
     setIsSheetOpen(true);
   };
   
   const handleNew = () => {
     setEditingPlan(null);
-    form.reset({
-      name: '',
-      description: '',
-      price: 0,
-      period: '/prestation',
-      features: [],
-      imageUrl: '',
-      cta: 'Choisir cette formule',
-      contractId: 'none',
-      isPublic: false,
-      isFeatured: false,
-    });
-    setImagePreview(null);
     setIsSheetOpen(true);
   }
 
