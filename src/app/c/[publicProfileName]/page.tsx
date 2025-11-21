@@ -103,15 +103,6 @@ export default function CounselorPublicProfilePage() {
         <CounselorCtaSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
         <InterestsSection counselor={counselor} />
-        
-        <div className="flex flex-col items-center justify-center text-center p-12 my-12 border-2 border-dashed rounded-lg h-96 max-w-4xl mx-auto">
-            <Wrench className="h-16 w-16 text-muted-foreground mb-4" />
-            <h3 className="text-xl font-semibold">Plus de contenu à venir</h3>
-            <p className="text-muted-foreground mt-2 max-w-md">
-                Cette page est en cours de construction. D'autres sections seront bientôt disponibles.
-            </p>
-        </div>
-
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
         <p className="text-muted-foreground">© {new Date().getFullYear()} - <Link href={copyrightUrl} className="hover:underline" style={{color: primaryColor}}>{copyrightText}</Link></p>

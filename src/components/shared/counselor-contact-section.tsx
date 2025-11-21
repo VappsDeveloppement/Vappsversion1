@@ -4,16 +4,20 @@
 import React from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import Link from 'next/link';
-import { Send, Link as LinkIcon, Calendar } from 'lucide-react';
+import { Calendar, ArrowRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
 type ContactLink = {
     text: string;
     url: string;
 };
+
+type EventItem = {
+    id: string;
+    title: string;
+    date: string;
+}
 
 type CounselorProfile = {
     miniSite?: {
@@ -24,13 +28,16 @@ type CounselorProfile = {
             imageUrl?: string;
             videoUrl?: string;
             links?: ContactLink[];
+            events?: EventItem[];
+            eventsButtonText?: string;
+            eventsButtonLink?: string;
         }
     };
 };
 
 export function CounselorContactSection({ counselor }: { counselor: CounselorProfile }) {
     const contactConfig = counselor.miniSite?.contactSection || {};
-    const { enabled, title, text, imageUrl, videoUrl, links } = contactConfig;
+    const { enabled, title, text, imageUrl, videoUrl, links, events, eventsButtonText, eventsButtonLink } = contactConfig;
 
     if (!enabled) {
         return null;
@@ -43,7 +50,7 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                     <iframe
                         className="w-full h-full rounded-lg shadow-lg"
                         src={videoUrl.replace("watch?v=", "embed/")}
-                        title="Vidéo de présentation des activités"
+                        title={title || "Vidéo de présentation"}
                         frameBorder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                         allowFullScreen
@@ -56,7 +63,7 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                 <div className="relative w-full h-64 mb-6 rounded-lg overflow-hidden">
                     <Image
                         src={imageUrl}
-                        alt={title || "Image de contact"}
+                        alt={title || "Image de présentation"}
                         layout="fill"
                         objectFit="cover"
                         data-ai-hint="presentation activities"
@@ -68,32 +75,22 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
     }
 
     return (
-        <section id="contact" className="py-16 sm:py-24 bg-white">
+        <section id="activities" className="py-16 sm:py-24 bg-white">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl font-bold">{title || "Contactez-moi"}</h2>
-                    {text && <p className="text-muted-foreground mt-2">{text}</p>}
+                    <h2 className="text-3xl font-bold">{title || "Autres Activités"}</h2>
+                    {text && <p className="text-muted-foreground mt-2 max-w-2xl mx-auto">{text}</p>}
                 </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
+                    {/* Left Column: Media */}
                     <div>
                         {renderMedia()}
-                        {links && links.length > 0 && (
-                            <div className="space-y-3">
-                                {links.map((link, index) => (
-                                    <Button key={index} asChild variant="link" className="text-lg p-0 h-auto justify-center md:justify-start">
-                                        <Link href={link.url} target="_blank" rel="noopener noreferrer">
-                                            <LinkIcon className="mr-2 h-4 w-4" />
-                                            {link.text}
-                                        </Link>
-                                    </Button>
-                                ))}
-                            </div>
-                        )}
                     </div>
                     
-                    <div className="grid grid-cols-1 gap-8">
-                        <Card className="h-full">
+                    {/* Right Column: Events */}
+                    <div>
+                         <Card className="h-full">
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
                                     <Calendar className="h-5 w-5" />
@@ -101,28 +98,30 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <p className="text-sm text-muted-foreground">
-                                    Cette section affichera la liste de vos prochains événements.
-                                </p>
+                                {events && events.length > 0 ? (
+                                    <ul className="space-y-4">
+                                        {events.map((event) => (
+                                            <li key={event.id} className="flex justify-between items-center">
+                                                <span className="font-medium">{event.title}</span>
+                                                <span className="text-sm text-primary font-semibold">{event.date}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-muted-foreground">
+                                        Aucun événement à venir pour le moment.
+                                    </p>
+                                )}
                             </CardContent>
-                        </Card>
-
-                        <Card className="h-full">
-                             <CardHeader>
-                                <CardTitle>Envoyer un message</CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                                 <form className="space-y-4">
-                                    <Input placeholder="Nom &amp; Prénom" />
-                                    <Input type="tel" placeholder="Téléphone" />
-                                    <Input type="email" placeholder="Email" />
-                                    <Textarea placeholder="Votre message..." rows={3} />
-                                    <Button className="w-full">
-                                        <Send className="mr-2 h-4 w-4" />
-                                        Envoyer
+                            {(eventsButtonText && eventsButtonLink) && (
+                                <CardFooter>
+                                    <Button asChild className="w-full">
+                                        <Link href={eventsButtonLink}>
+                                            {eventsButtonText} <ArrowRight className="ml-2 h-4 w-4"/>
+                                        </Link>
                                     </Button>
-                                </form>
-                            </CardContent>
+                                </CardFooter>
+                            )}
                         </Card>
                     </div>
                 </div>
@@ -130,3 +129,4 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
         </section>
     );
 }
+
