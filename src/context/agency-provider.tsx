@@ -318,21 +318,6 @@ const defaultPersonalization: Personalization = {
         subtitle: "Mon approche pour votre réussite",
         steps: [],
     },
-    contactSection: {
-        enabled: false,
-        title: 'Autres Activités',
-        text: 'Nous accompagnons également les entreprises.',
-        imageUrl: null,
-        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
-        events: [],
-        eventsButtonText: "Voir tous les événements",
-        eventsButtonLink: "/events"
-      },
-    interestsSection: {
-        enabled: false,
-        title: 'Mes centres d\'intérêt',
-        features: [],
-    },
     paymentSettings: {
         ribIban: "",
         ribBic: "",
@@ -453,14 +438,6 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                     parcoursSection: {
                         ...defaultPersonalization.parcoursSection,
                         ...(fetchedAgencyData.personalization?.parcoursSection || {}),
-                    },
-                     contactSection: {
-                        ...defaultPersonalization.contactSection,
-                        ...(fetchedAgencyData.personalization?.contactSection || {}),
-                    },
-                    interestsSection: {
-                        ...defaultPersonalization.interestsSection,
-                        ...(fetchedAgencyData.personalization?.interestsSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,

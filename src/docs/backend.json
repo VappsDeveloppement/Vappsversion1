@@ -228,37 +228,6 @@
                     "bgColor": { "type": "string" },
                     "bgImageUrl": { "type": "string", "format": "uri" }
                 }
-            },
-            "contactSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "text": { "type": "string" },
-                    "imageUrl": { "type": "string", "format": "uri" },
-                    "videoUrl": { "type": "string", "format": "uri" },
-                    "links": {
-                        "type": "array",
-                        "items": {
-                            "type": "object",
-                            "properties": {
-                                "text": { "type": "string" },
-                                "url": { "type": "string", "format": "uri" }
-                            }
-                        }
-                    }
-                }
-            },
-            "interestsSection": {
-                "type": "object",
-                "properties": {
-                    "enabled": { "type": "boolean" },
-                    "title": { "type": "string" },
-                    "features": {
-                        "type": "array",
-                        "items": { "type": "string" }
-                    }
-                }
             }
         }
     },
