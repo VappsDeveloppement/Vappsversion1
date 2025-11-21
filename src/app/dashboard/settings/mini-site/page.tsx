@@ -42,8 +42,6 @@ const heroSchema = z.object({
     showLocation: z.boolean().default(true),
     bgColor: z.string().optional(),
     bgImageUrl: z.string().optional(),
-    primaryColor: z.string().optional(),
-    secondaryColor: z.string().optional(),
     titleColor: z.string().optional(),
     subtitleColor: z.string().optional(),
     cta2Text: z.string().optional(),
@@ -59,7 +57,6 @@ const sectionConfigSchema = z.object({
 
 const miniSiteSchema = z.object({
     hero: heroSchema,
-    sections: z.array(sectionConfigSchema),
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -80,19 +77,9 @@ const defaultMiniSiteConfig: MiniSiteFormData = {
         showLocation: true,
         bgColor: '#111827',
         bgImageUrl: '',
-        primaryColor: '#0ea5e9',
-        secondaryColor: '#f8fafc',
         titleColor: '#FFFFFF',
         subtitleColor: '#E5E7EB',
     },
-    sections: [
-        { id: 'hero', label: 'Héro', enabled: true },
-        { id: 'attentionSection', label: 'Attention', enabled: true },
-        { id: 'aboutSection', label: 'À propos', enabled: true },
-        { id: 'activitiesSection', label: 'Mes Activités', enabled: true },
-        { id: 'parcoursSection', label: 'Parcours', enabled: true },
-        { id: 'servicesSection', label: 'Services', enabled: true },
-    ]
 };
 
 function PreviewPanel({ formData, userData }: { formData: any, userData: any }) {
@@ -109,11 +96,12 @@ function PreviewPanel({ formData, userData }: { formData: any, userData: any }) 
     const footerBgColor = formData.hero?.bgColor || '#f1f5f9';
     const primaryColor = counselorPreviewData.dashboardTheme?.primaryColor || '#10B981';
 
-    const sections = formData.sections || [];
+    const sections = [
+      { id: 'hero', enabled: true },
+    ];
 
     const sectionComponents: { [key: string]: React.ComponentType<{ counselor: any }> } = {
         hero: CounselorHero,
-        // The other sections are removed but we keep the mapping in case we add them back
     };
 
     return (
@@ -161,17 +149,10 @@ export default function MiniSitePage() {
   const { watch, setValue, control } = form;
   const watchedFormData = watch();
   
-   const { fields: sectionFields, move: moveSection, update: updateSection } = useFieldArray({
-    control,
-    name: "sections",
-  });
-
-  
   useEffect(() => {
     if (userData?.miniSite) {
         form.reset({
             hero: { ...defaultMiniSiteConfig.hero, ...(userData.miniSite.hero || {}) },
-            sections: userData.miniSite.sections || defaultMiniSiteConfig.sections,
         });
     }
   }, [userData, form]);
@@ -248,9 +229,39 @@ export default function MiniSitePage() {
                     <AccordionContent>
                         <div className="p-6 space-y-6">
                             <FormField control={form.control} name="hero.title" render={({ field }) => ( <FormItem> <FormLabel>Titre principal</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                            <FormField control={form.control} name="hero.titleColor" render={({ field }) => (<FormItem> <FormLabel>Couleur du titre principal</FormLabel> <FormControl><div className="flex items-center gap-2"><Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" /><Input type="text" {...field} value={field.value || ''} /></div></FormControl> <FormMessage /></FormItem>)} />
+                            <FormField
+                              control={form.control}
+                              name="hero.titleColor"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Couleur du titre principal</FormLabel>
+                                  <FormControl>
+                                    <div className="flex items-center gap-2">
+                                      <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                      <Input type="text" {...field} value={field.value || ''} />
+                                    </div>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
                             <FormField control={form.control} name="hero.subtitle" render={({ field }) => ( <FormItem> <FormLabel>Sous-titre</FormLabel> <FormControl> <Textarea {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
-                            <FormField control={form.control} name="hero.subtitleColor" render={({ field }) => (<FormItem> <FormLabel>Couleur du sous-titre</FormLabel> <FormControl><div className="flex items-center gap-2"><Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" /><Input type="text" {...field} value={field.value || ''} /></div></FormControl> <FormMessage /></FormItem>)} />
+                            <FormField
+                              control={form.control}
+                              name="hero.subtitleColor"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Couleur du sous-titre</FormLabel>
+                                  <FormControl>
+                                    <div className="flex items-center gap-2">
+                                      <Input type="color" {...field} value={field.value || ''} className="p-1 h-10 w-10" />
+                                      <Input type="text" {...field} value={field.value || ''} />
+                                    </div>
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="hero.ctaText" render={({ field }) => ( <FormItem> <FormLabel>Texte du bouton d'action 1</FormLabel> <FormControl> <Input {...field} /> </FormControl> <FormMessage /> </FormItem> )}/>
