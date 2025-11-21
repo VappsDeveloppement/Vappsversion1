@@ -214,7 +214,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
-  { id: 'shop', label: 'Boutique', enabled: true },
+  { id: 'directory', label: 'Annuaire des conseillers', enabled: true },
   { id: 'services', label: 'Accompagnements', enabled: true },
   { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
   { id: 'blog', label: 'Blog', enabled: true },
