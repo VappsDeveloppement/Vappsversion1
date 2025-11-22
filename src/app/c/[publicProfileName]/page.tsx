@@ -13,7 +13,7 @@ import { AboutMeSection } from '@/components/shared/about-me-section';
 import { ParcoursSection } from '@/components/shared/parcours-section';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Wrench } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { CounselorServicesSection } from '@/components/shared/counselor-services-section';
 import { CounselorCtaSection } from '@/components/shared/counselor-cta-section';
@@ -76,14 +76,13 @@ export default function CounselorPublicProfilePage() {
 
   if (isLoading) {
     return (
-        <div className="space-y-8 p-8">
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-64 w-full" />
+        <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-muted">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
         </div>
     );
   }
 
-  if (!counselor || error) {
+  if (error || !counselor) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-muted">
             <AlertTriangle className="h-16 w-16 text-destructive mb-4" />
