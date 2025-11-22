@@ -116,7 +116,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorJobOffersSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
-        {counselor.miniSite?.trainingCatalogSection?.enabled && <TrainingCatalogSection />}
+        {counselor.miniSite?.trainingCatalogSection?.enabled && <TrainingCatalogSection primaryColor={primaryColor} />}
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />

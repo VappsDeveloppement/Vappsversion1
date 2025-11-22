@@ -44,7 +44,7 @@ const trainings = [
     }
 ];
 
-export function TrainingCatalogSection() {
+export function TrainingCatalogSection({ primaryColor = '#10B981' }: { primaryColor?: string }) {
     const [searchTerm, setSearchTerm] = useState('');
 
     const filteredTrainings = useMemo(() => {
@@ -116,7 +116,7 @@ export function TrainingCatalogSection() {
                                                     <p className="text-muted-foreground text-sm">{training.description}</p>
                                                 </CardContent>
                                                 <CardFooter>
-                                                    <Button asChild className="w-full">
+                                                    <Button asChild className="w-full" style={{ backgroundColor: primaryColor }}>
                                                         <Link href="#">Voir le programme</Link>
                                                     </Button>
                                                 </CardFooter>

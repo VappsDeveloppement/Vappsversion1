@@ -80,6 +80,7 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
     const [subject, setSubject] = useState('');
     const [message, setMessage] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     if (!contactConfig.enabled) {
         return null;
@@ -141,36 +142,36 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                     {/* Left Column: Counselor Info */}
                     <div className="bg-muted p-8 rounded-lg">
                         <h3 className="text-2xl font-bold mb-2">{counselor.firstName} {counselor.lastName}</h3>
-                        {counselor.publicTitle && <p className="font-semibold mb-6" style={{color: counselor.dashboardTheme?.primaryColor}}>{counselor.publicTitle}</p>}
+                        {counselor.publicTitle && <p className="font-semibold mb-6" style={{color: primaryColor}}>{counselor.publicTitle}</p>}
                         
                         <div className="space-y-4 text-muted-foreground">
                             {info.commercialName && (
                                 <div className="flex items-center gap-3">
-                                    <Building className="h-5 w-5 text-primary" />
+                                    <Building className="h-5 w-5" style={{ color: primaryColor }} />
                                     <span>{info.commercialName}</span>
                                 </div>
                             )}
                              {info.siret && (
                                 <div className="flex items-center gap-3">
-                                    <Briefcase className="h-5 w-5 text-primary" />
+                                    <Briefcase className="h-5 w-5" style={{ color: primaryColor }} />
                                     <span>SIRET: {info.siret}</span>
                                 </div>
                             )}
                             {fullAddress && (
                                 <div className="flex items-start gap-3">
-                                    <MapPin className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
+                                    <MapPin className="h-5 w-5 mt-1 flex-shrink-0" style={{ color: primaryColor }} />
                                     <span>{fullAddress}</span>
                                 </div>
                             )}
                             {info.email && (
                                 <div className="flex items-center gap-3">
-                                    <Mail className="h-5 w-5 text-primary" />
+                                    <Mail className="h-5 w-5" style={{ color: primaryColor }} />
                                     <a href={`mailto:${info.email}`} className="hover:underline">{info.email}</a>
                                 </div>
                             )}
                              {info.phone && (
                                 <div className="flex items-center gap-3">
-                                    <Phone className="h-5 w-5 text-primary" />
+                                    <Phone className="h-5 w-5" style={{ color: primaryColor }} />
                                     <a href={`tel:${info.phone}`} className="hover:underline">{info.phone}</a>
                                 </div>
                             )}
@@ -220,7 +221,7 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                                 <Label htmlFor="contact-message">Message</Label>
                                 <Textarea id="contact-message" value={message} onChange={(e) => setMessage(e.target.value)} rows={5} required />
                             </div>
-                            <Button type="submit" disabled={isLoading} className="w-full" style={{ backgroundColor: counselor.dashboardTheme?.primaryColor }}>
+                            <Button type="submit" disabled={isLoading} className="w-full" style={{ backgroundColor: primaryColor }}>
                                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                 Envoyer le message
                             </Button>
