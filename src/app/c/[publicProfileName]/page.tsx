@@ -112,6 +112,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
         <CounselorJobOffersSection counselor={counselor} />
+        <CounselorActivitiesSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
