@@ -184,6 +184,14 @@ function ApplicationHomePage() {
                         const SectionComponent = sectionComponents[section.id];
                         return SectionComponent ? <SectionComponent key={section.id} /> : null;
                     }
+                    if (section.id === 'pricing') {
+                        const SectionComponent = sectionComponents[section.id];
+                        return SectionComponent ? <SectionComponent key={section.id} /> : null;
+                    }
+                    if (section.id === 'trainingCatalog') {
+                         const SectionComponent = sectionComponents[section.id];
+                        return SectionComponent ? <SectionComponent key={section.id} /> : null;
+                    }
                     return null;
                 })}
             </main>
@@ -214,5 +222,3 @@ export function HomePageSelector() {
 
   return <TunnelHomePage />;
 }
-
-    

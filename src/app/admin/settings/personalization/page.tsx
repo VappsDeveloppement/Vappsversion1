@@ -28,6 +28,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { sendTestEmail } from "@/app/actions/email";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import Link from 'next/link';
+import { TrainingCatalogSection } from "@/components/shared/training-catalog-section";
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -2226,7 +2227,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
 
     
