@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -25,6 +26,7 @@ const paymentSettingsSchema = z.object({
     ribIban: z.string().optional(),
     ribBic: z.string().optional(),
     paypalClientId: z.string().optional(),
+    paypalClientSecret: z.string().optional(),
     paypalMeLink: z.string().optional(),
 });
 
@@ -184,7 +186,8 @@ export default function CounselorParametersPage() {
                                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">PayPal</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                             <FormField control={form.control} name="paymentSettings.paypalClientId" render={({ field }) => (<FormItem><FormLabel>Client ID PayPal</FormLabel><FormControl><Input placeholder="Votre Client ID" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="paymentSettings.paypalMeLink" render={({ field }) => (<FormItem><FormLabel>Lien PayPal.Me</FormLabel><FormControl><Input placeholder="https://paypal.me/votrecompte" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentSettings.paypalClientSecret" render={({ field }) => (<FormItem><FormLabel>Client Secret PayPal</FormLabel><FormControl><Input type="password" placeholder="Votre Client Secret" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentSettings.paypalMeLink" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Lien PayPal.Me</FormLabel><FormControl><Input placeholder="https://paypal.me/votrecompte" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     </section>
                                 </CardContent>

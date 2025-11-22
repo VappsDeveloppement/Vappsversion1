@@ -139,13 +139,17 @@ export type Section = {
 const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
+  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'directory', label: 'Annuaire des conseillers', enabled: true },
+  { id: 'services', label: 'Accompagnements', enabled: true },
   { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
+  { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
+  { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
 
 const defaultPersonalization = {
@@ -196,6 +200,7 @@ const defaultPersonalization = {
     ],
     copyrightText: "Vapps.",
     copyrightUrl: "/",
+    homePageVersion: 'tunnel',
     homePageSections: defaultHomePageSections,
     legalInfo: {
         companyName: "", structureType: "", capital: "", siret: "", addressStreet: "", addressZip: "", addressCity: "",
@@ -1312,7 +1317,21 @@ export default function PersonalizationPage() {
                                 <div className="p-6 border-t bg-muted/50">
                                 {section.id === 'hero' ? (
                                     <div className="space-y-6">
-                                        <div className="mt-6 pt-6 border-t">
+                                        <div>
+                                            <Label className="text-base font-medium">Style de la section Héro</Label>
+                                            <RadioGroup value={settings.heroStyle} onValueChange={(value) => handleFieldChange('heroStyle', value)} className="mt-2 space-y-2">
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="application" id="hero-application" />
+                                                    <Label htmlFor="hero-application">Avec fenêtre de connexion</Label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="tunnel" id="hero-tunnel" />
+                                                    <Label htmlFor="hero-tunnel">Sans fenêtre de connexion (Tunnel)</Label>
+                                                </div>
+                                            </RadioGroup>
+                                        </div>
+
+                                        <div className="border-t pt-6 mt-6">
                                             <h4 className="font-medium">Image de fond & Couleur</h4>
                                             <div className="flex items-center gap-4 mt-4">
                                                 <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden" style={{backgroundColor: heroImagePreview ? 'transparent' : settings.heroBgColor}}>
@@ -1890,6 +1909,72 @@ export default function PersonalizationPage() {
                                          </Button>
                                       </section>
                                     </div>
+                                ) : section.id === 'cta2' ? (
+                                    <div className="space-y-6">
+                                        <div>
+                                            <h4 className="font-medium">Contenu</h4>
+                                            <div className="space-y-4 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-title">Titre</Label>
+                                                    <Input id="cta2-title" value={settings.cta2Section?.title} onChange={e => handleCta2SectionChange('title', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-text">Texte</Label>
+                                                    <Textarea id="cta2-text" value={settings.cta2Section?.text} onChange={e => handleCta2SectionChange('text', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium">Bouton</h4>
+                                            <div className="grid grid-cols-2 gap-4 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-button-text">Texte du bouton</Label>
+                                                    <Input id="cta2-button-text" value={settings.cta2Section?.buttonText} onChange={e => handleCta2SectionChange('buttonText', e.target.value)} />
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-button-link">Lien du bouton</Label>
+                                                    <Input id="cta2-button-link" value={settings.cta2Section?.buttonLink} onChange={e => handleCta2SectionChange('buttonLink', e.target.value)} />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h4 className="font-medium">Arrière-plan</h4>
+                                            <div className="grid grid-cols-2 gap-8 mt-2">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="cta2-bg-color">Couleur de fond</Label>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input type="color" value={settings.cta2Section?.bgColor} onChange={e => handleCta2SectionChange('bgColor', e.target.value)} className="w-10 h-10 p-1"/>
+                                                        <Input id="cta2-bg-color" value={settings.cta2Section?.bgColor} onChange={e => handleCta2SectionChange('bgColor', e.target.value)} />
+                                                    </div>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <Label>Image de fond</Label>
+                                                    <div className="flex items-center gap-4">
+                                                        <div className="w-20 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden" style={{backgroundColor: settings.cta2Section?.bgColor}}>
+                                                            {cta2ImagePreview && <Image src={cta2ImagePreview} alt="Aperçu CTA 2" layout="fill" objectFit="cover" />}
+                                                        </div>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            onChange={createUploadHandler(base64 => {
+                                                                setCta2ImagePreview(base64);
+                                                                handleCta2SectionChange('bgImageUrl', base64);
+                                                            })}
+                                                            className="hidden"
+                                                            accept="image/png, image/jpeg"
+                                                        />
+                                                        <div className="flex flex-col gap-2">
+                                                            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>Uploader</Button>
+                                                            <Button variant="destructive" size="sm" onClick={() => {
+                                                                setCta2ImagePreview(null);
+                                                                handleCta2SectionChange('bgImageUrl', null);
+                                                            }}>Supprimer</Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 ) : section.id === 'jobOffers' ? (
                                     <div className="space-y-8">
                                       <section>
@@ -2140,9 +2225,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
-
-    
 
     
