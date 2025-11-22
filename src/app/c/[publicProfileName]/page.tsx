@@ -111,11 +111,11 @@ export default function CounselorPublicProfilePage() {
         <AboutMeSection counselor={counselor} />
         <CounselorServicesSection counselor={counselor} />
         <ParcoursSection counselor={counselor} />
+        <CounselorJobOffersSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
-        <CounselorJobOffersSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
