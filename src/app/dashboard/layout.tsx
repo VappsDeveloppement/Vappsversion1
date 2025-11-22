@@ -15,6 +15,7 @@ import {
   FileText,
   Globe,
   Loader2,
+  Settings,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -49,6 +50,7 @@ const mainMenuItems = [
 const profileMenuItems = [
     { href: "/dashboard/settings/profile", label: "Mes infos & coordonnées", icon: <FileText /> },
     { href: "/dashboard/settings/mini-site", label: "Mon Mini-site", icon: <Globe /> },
+    { href: "/dashboard/settings/parameters", label: "Mes Paramètres", icon: <Settings /> },
 ];
 
 const supportMenuItem = { href: "/dashboard/settings/support", label: "Support", icon: <LifeBuoy /> };
@@ -276,3 +278,5 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+    
