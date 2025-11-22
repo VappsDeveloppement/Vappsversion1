@@ -5,14 +5,14 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { signInWithEmailAndPassword } from 'firebase/auth';
+import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from '@/hooks/use-toast';
 
@@ -21,9 +21,16 @@ const loginSchema = z.object({
     password: z.string().min(6, { message: "Le mot de passe doit contenir au moins 6 caractères." }),
 });
 
+const forgotPasswordSchema = z.object({
+    email: z.string().email({ message: "Veuillez saisir une adresse e-mail valide." }),
+});
+
+
 export function LoginForm() {
     const [showPassword, setShowPassword] = useState(false);
     const [isLoginLoading, setIsLoginLoading] = useState(false);
+    const [isPasswordResetLoading, setIsPasswordResetLoading] = useState(false);
+    const [isPasswordResetDialogOpen, setIsPasswordResetDialogOpen] = useState(false);
     const auth = useAuth();
     const router = useRouter();
     const { toast } = useToast();
@@ -31,6 +38,11 @@ export function LoginForm() {
     const loginForm = useForm<z.infer<typeof loginSchema>>({
         resolver: zodResolver(loginSchema),
         defaultValues: { email: "", password: "" },
+    });
+    
+    const forgotPasswordForm = useForm<z.infer<typeof forgotPasswordSchema>>({
+        resolver: zodResolver(forgotPasswordSchema),
+        defaultValues: { email: "" },
     });
 
     async function onLogin(values: z.infer<typeof loginSchema>) {
@@ -46,6 +58,26 @@ export function LoginForm() {
             toast({ variant: "destructive", title: "Erreur de connexion", description: errorMessage });
         } finally {
             setIsLoginLoading(false);
+        }
+    }
+    
+    async function onForgotPassword(values: z.infer<typeof forgotPasswordSchema>) {
+        setIsPasswordResetLoading(true);
+        try {
+            await sendPasswordResetEmail(auth, values.email);
+            toast({
+                title: "E-mail de réinitialisation envoyé",
+                description: "Si un compte existe pour cette adresse, un e-mail avec un lien de réinitialisation a été envoyé.",
+            });
+            setIsPasswordResetDialogOpen(false); // Close dialog on success
+        } catch (error: any) {
+             toast({
+                variant: "destructive",
+                title: "Erreur",
+                description: "Une erreur est survenue lors de l'envoi de l'e-mail de réinitialisation.",
+            });
+        } finally {
+            setIsPasswordResetLoading(false);
         }
     }
 
@@ -83,9 +115,47 @@ export function LoginForm() {
                             {isLoginLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Se connecter'}
                         </Button>
                         <div className="text-center">
-                            <Link href="#" className="text-sm text-gray-600 hover:underline">
-                                Mot de passe oublié ?
-                            </Link>
+                            <Dialog open={isPasswordResetDialogOpen} onOpenChange={setIsPasswordResetDialogOpen}>
+                                <DialogTrigger asChild>
+                                     <button type="button" className="text-sm text-gray-600 hover:underline">
+                                        Mot de passe oublié ?
+                                    </button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Réinitialiser le mot de passe</DialogTitle>
+                                        <DialogDescription>
+                                            Saisissez votre adresse e-mail pour recevoir un lien de réinitialisation.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <Form {...forgotPasswordForm}>
+                                        <form onSubmit={forgotPasswordForm.handleSubmit(onForgotPassword)} className="space-y-4">
+                                            <FormField
+                                                control={forgotPasswordForm.control}
+                                                name="email"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Email</FormLabel>
+                                                        <FormControl>
+                                                            <Input placeholder="votre@email.com" {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <DialogFooter>
+                                                <DialogClose asChild>
+                                                    <Button type="button" variant="outline">Annuler</Button>
+                                                </DialogClose>
+                                                <Button type="submit" disabled={isPasswordResetLoading}>
+                                                    {isPasswordResetLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                    Envoyer le lien
+                                                </Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                     </form>
                 </Form>
