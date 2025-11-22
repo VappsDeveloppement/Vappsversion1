@@ -316,6 +316,7 @@ const SubscriptionPlanManager = ({ plans, onSave }: PlanManagerProps) => {
                                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                                         </FormItem>
                                     )}/>
+                                    <FormField control={form.control} name="paypalSubscriptionId" render={({ field }) => (<FormItem><FormLabel>ID Abonnement PayPal</FormLabel><FormControl><Input placeholder="P-..." {...field} /></FormControl><FormDescription>L'identifiant du plan d'abonnement créé dans votre compte PayPal.</FormDescription><FormMessage /></FormItem>)} />
                                     <SheetFooter className="pt-6">
                                         <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                         <Button type="submit">Sauvegarder</Button>
@@ -2589,9 +2590,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
-    
-
-    
-
-
