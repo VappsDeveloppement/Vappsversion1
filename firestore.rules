@@ -43,13 +43,17 @@ service cloud.firestore {
     }
 
     // Allow counselors to list their own quotes and anyone to read a single quote for validation.
+    // Superadmins can list all quotes.
     match /quotes/{quoteId} {
-      allow get: if true; // Anyone can read a single document (for validation page)
+      allow get: if true;
       allow list: if request.auth != null && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' ||
           request.query.where.counselorId == request.auth.uid
-          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
       );
-      allow write: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow write: if request.auth != null && (
+          (request.resource.data.counselorId == request.auth.uid) ||
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+      );
     }
     
     match /invoices/{invoiceId} {
