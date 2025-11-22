@@ -99,7 +99,6 @@ function PlanSelectorCard() {
     }, [plans, selectedPlanId]);
     
     React.useEffect(() => {
-        // Reset contract acceptance when dialog opens or plan changes
         if(isDialogOpen) {
             setContractAccepted(false);
         }
@@ -118,10 +117,12 @@ function PlanSelectorCard() {
              await setDocumentNonBlocking(userDocRef, {
                 firstName: values.firstName,
                 lastName: values.lastName,
+                email: user.email,
                 role: 'conseiller',
                 planId: selectedPlan.id,
                 subscriptionStatus: 'pending_payment',
                 counselorId: user.uid,
+                dateJoined: new Date().toISOString(),
             }, { merge: true });
 
             toast({
@@ -184,7 +185,7 @@ function PlanSelectorCard() {
         );
     }
     
-    const showContract = selectedPlan && selectedPlan.contractId && contract;
+    const showContract = selectedPlan && selectedPlan.contractId;
     const formDisabled = showContract && !contractAccepted;
 
     return (
@@ -248,9 +249,19 @@ function PlanSelectorCard() {
 
             {showContract && (
                 <div className='space-y-4'>
-                    <p className='font-medium text-sm'>{contract.title}</p>
+                    <p className='font-medium text-sm'>{isContractLoading ? <Skeleton className="h-5 w-3/4" /> : contract?.title}</p>
                     <ScrollArea className="h-64 w-full rounded-md border p-4">
-                        <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contract.content }} />
+                       {isContractLoading ? (
+                            <div className="space-y-2">
+                                <Skeleton className="h-4 w-full" />
+                                <Skeleton className="h-4 w-5/6" />
+                                <Skeleton className="h-4 w-full" />
+                            </div>
+                       ) : contract ? (
+                             <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: contract.content }} />
+                       ) : (
+                            <p className="text-destructive text-sm">Impossible de charger le contrat.</p>
+                       )}
                     </ScrollArea>
                     <div className="flex items-center space-x-2">
                         <Checkbox id="terms" checked={contractAccepted} onCheckedChange={(checked) => setContractAccepted(checked as boolean)} />
