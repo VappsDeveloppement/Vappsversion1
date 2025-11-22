@@ -83,7 +83,9 @@ export function LoginForm() {
                             {isLoginLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Se connecter'}
                         </Button>
                         <div className="text-center">
-                            <p className="text-sm text-gray-600">Pas de compte ? Créez le premier utilisateur dans la console Firebase pour commencer.</p>
+                            <Link href="#" className="text-sm text-gray-600 hover:underline">
+                                Mot de passe oublié ?
+                            </Link>
                         </div>
                     </form>
                 </Form>
