@@ -179,6 +179,10 @@ const contactSectionSchema = z.object({
   socialLinks: socialLinksSchema,
 }).optional();
 
+const trainingCatalogSectionSchema = z.object({
+    enabled: z.boolean().default(false),
+}).optional();
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -192,6 +196,7 @@ const miniSiteSchema = z.object({
   pricingSection: pricingSchema,
   jobOffersSection: jobOffersSectionSchema,
   contactSection: contactSectionSchema,
+  trainingCatalogSection: trainingCatalogSectionSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -339,6 +344,9 @@ export default function MiniSitePage() {
         subtitle: 'Rejoignez une équipe dynamique et passionnée.',
         offers: [],
       },
+      trainingCatalogSection: {
+        enabled: false,
+      },
       contactSection: {
         enabled: false,
         title: "Contactez-moi",
@@ -422,6 +430,10 @@ export default function MiniSitePage() {
             ...form.getValues().jobOffersSection,
             ...userData.miniSite.jobOffersSection,
             offers: userData.miniSite.jobOffersSection?.offers || [],
+         },
+         trainingCatalogSection: {
+            ...form.getValues().trainingCatalogSection,
+            ...userData.miniSite.trainingCatalogSection,
          },
          contactSection: {
             ...form.getValues().contactSection,
@@ -872,6 +884,23 @@ export default function MiniSitePage() {
                     </AccordionContent>
                 </AccordionItem>
                 
+                <AccordionItem value="training-catalog-section" className="border rounded-lg overflow-hidden">
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Catalogue de formation"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="trainingCatalogSection.enabled" render={({ field }) => (
+                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                    <div className="space-y-0.5">
+                                        <FormLabel className="text-base">Afficher cette section</FormLabel>
+                                        <p className="text-sm text-muted-foreground">Affiche le catalogue de formation de la plateforme sur votre mini-site.</p>
+                                    </div>
+                                    <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                </FormItem>
+                            )}/>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
                 <AccordionItem value="testimonials-section" className="border rounded-lg overflow-hidden">
                     <AccordionTrigger className="text-lg font-medium px-6 py-4 bg-muted/50">Section "Témoignages"</AccordionTrigger>
                     <AccordionContent>

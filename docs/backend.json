@@ -334,6 +334,12 @@
                     }
                 }
             },
+            "trainingCatalogSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" }
+                }
+            },
             "contactSection": {
                 "type": "object",
                 "properties": {
@@ -999,5 +1005,3 @@
   }
 }
 
-
-    

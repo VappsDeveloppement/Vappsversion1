@@ -21,6 +21,7 @@ import { CounselorPricingSection } from '@/components/shared/counselor-pricing-s
 import { CounselorJobOffersSection } from '@/components/shared/counselor-job-offers-section';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 import { CounselorTestimonialsSection } from '@/components/shared/counselor-testimonials-section';
+import { TrainingCatalogSection } from '@/components/shared/training-catalog-section';
 
 type CounselorProfile = {
     id: string;
@@ -49,6 +50,9 @@ type CounselorProfile = {
         activitiesSection?: any;
         jobOffersSection?: any;
         contactSection?: any;
+        trainingCatalogSection?: {
+            enabled?: boolean;
+        };
     };
     dashboardTheme?: {
         primaryColor?: string;
@@ -112,6 +116,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorJobOffersSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
+        {counselor.miniSite?.trainingCatalogSection?.enabled && <TrainingCatalogSection />}
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
