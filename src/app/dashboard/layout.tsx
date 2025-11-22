@@ -44,7 +44,6 @@ const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
-  { href: "/dashboard/billing", label: "Facturation", icon: <CreditCard /> },
 ];
 
 const profileMenuItems = [
@@ -278,5 +277,3 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
-
-    

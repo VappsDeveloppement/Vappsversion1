@@ -36,7 +36,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
-  { href: "/admin/billing", label: "Abonnements", icon: <CreditCard /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
   { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
 ];
