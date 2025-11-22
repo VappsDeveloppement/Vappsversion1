@@ -3,7 +3,7 @@
 
 import React, { useState } from 'react';
 import { useCollection, useMemoFirebase, useUser, useFirestore, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, orderBy, doc } from 'firebase/firestore';
+import { collection, query, orderBy, doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -53,8 +53,7 @@ export function QuotesList() {
   const quotesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
-      collection(firestore, 'quotes'),
-      where('counselorId', '==', user.uid),
+      collection(firestore, `users/${user.uid}/quotes`),
       orderBy('issueDate', 'desc')
     );
   }, [user, firestore]);
@@ -72,8 +71,8 @@ export function QuotesList() {
   };
 
   const handleDelete = () => {
-    if (!quoteToDelete) return;
-    const quoteDocRef = doc(firestore, 'quotes', quoteToDelete.id);
+    if (!quoteToDelete || !user) return;
+    const quoteDocRef = doc(firestore, `users/${user.uid}/quotes`, quoteToDelete.id);
     deleteDocumentNonBlocking(quoteDocRef);
     toast({ title: "Devis supprimé", description: `Le devis ${quoteToDelete.quoteNumber} a été supprimé.` });
     setQuoteToDelete(null);
@@ -191,3 +190,5 @@ export function QuotesList() {
     </>
   );
 }
+
+    

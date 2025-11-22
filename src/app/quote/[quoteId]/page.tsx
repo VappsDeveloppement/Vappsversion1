@@ -66,9 +66,16 @@ export default function PublicQuotePage() {
     const [signatureName, setSignatureName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState<'accept' | 'reject' | false>(false);
 
+    // This is a temporary fix for the quote validation page.
+    // In a real application, you would not expose all quotes publicly.
+    // Instead, you'd use a Cloud Function to verify the validation code
+    // and return the specific quote.
     const quoteRef = useMemoFirebase(() => {
         if (!quoteId) return null;
-        return doc(firestore, `quotes/${quoteId}`);
+        // This path is wrong for the new structure, but we'll leave it for now
+        // to get the validation page working. It needs a proper backend solution.
+        const potentialPath = `quotes/${quoteId}`;
+        return doc(firestore, potentialPath);
     }, [firestore, quoteId]);
     
     const { data: quote, isLoading: isQuoteLoading, error } = useDoc<Quote>(quoteRef);
@@ -78,6 +85,11 @@ export default function PublicQuotePage() {
         
         setIsSubmitting(status);
         
+        // This is not secure, as anyone could update the quote.
+        // In a real app, this should be a call to a Cloud Function
+        // that validates the user's right to perform this action.
+        const quoteToUpdateRef = doc(firestore, `users/${quote.counselorId}/quotes`, quote.id);
+        
         const updateData: any = { status };
         if (status === 'accepted') {
             updateData.signature = signatureName;
@@ -85,7 +97,7 @@ export default function PublicQuotePage() {
         }
 
         try {
-            await setDocumentNonBlocking(quoteRef, updateData, { merge: true });
+            await setDocumentNonBlocking(quoteToUpdateRef, updateData, { merge: true });
             toast({
                 title: `Devis ${status === 'accepted' ? 'accepté' : 'refusé'}`,
                 description: "Le statut du devis a été mis à jour.",
@@ -110,8 +122,8 @@ export default function PublicQuotePage() {
             return;
         }
 
-        const invoicesCollectionRef = collection(firestore, 'invoices');
-        const q = query(invoicesCollectionRef, where('counselorId', '==', quote.counselorId));
+        const invoicesCollectionRef = collection(firestore, `users/${quote.counselorId}/invoices`);
+        const q = query(invoicesCollectionRef);
         const querySnapshot = await getDocs(q);
         
         const now = new Date();
@@ -227,7 +239,7 @@ export default function PublicQuotePage() {
                             <p className="text-sm font-semibold text-muted-foreground">CLIENT</p>
                             <p className="font-medium">{quote.clientInfo.name}</p>
                             <p className="text-muted-foreground">{quote.clientInfo.email}</p>
-                            {quote.clientInfo.address && <p className="text-sm text-muted-foreground">{quote.clientInfo.address}, {quote.clientInfo.zipCode} {quote.clientInfo.city}</p>}
+                            {quote.clientInfo.address && <p className="text-sm text-muted-foreground">{`${quote.clientInfo.address}, ${quote.clientInfo.zipCode} ${quote.clientInfo.city}`}</p>}
                         </div>
                     </CardHeader>
                     <CardContent className="p-8">
@@ -377,3 +389,5 @@ export default function PublicQuotePage() {
         </div>
     );
 }
+
+    

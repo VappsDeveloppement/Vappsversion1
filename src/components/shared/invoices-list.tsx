@@ -3,7 +3,7 @@
 
 import React from 'react';
 import { useCollection, useMemoFirebase, useUser, useFirestore } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -45,8 +45,7 @@ export function InvoicesList() {
   const invoicesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
-      collection(firestore, 'invoices'),
-      where('counselorId', '==', user.uid),
+      collection(firestore, `users/${user.uid}/invoices`),
       orderBy('issueDate', 'desc')
     );
   }, [user, firestore]);
@@ -125,3 +124,5 @@ export function InvoicesList() {
     </Card>
   );
 }
+
+    

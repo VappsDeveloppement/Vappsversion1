@@ -146,8 +146,8 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
     const generateQuoteNumber = async () => {
         if (!user) return `DEVIS-${new Date().getFullYear()}-0001`;
-        const quotesCollectionRef = collection(firestore, 'quotes');
-        const q = query(quotesCollectionRef, where("counselorId", "==", user.uid));
+        const quotesCollectionRef = collection(firestore, `users/${user.uid}/quotes`);
+        const q = query(quotesCollectionRef);
         const querySnapshot = await getDocs(q);
         const now = new Date();
         const year = now.getFullYear();
@@ -260,12 +260,12 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
         
         try {
             if (initialData) {
-                const quoteDocRef = doc(firestore, 'quotes', initialData.id);
+                const quoteDocRef = doc(firestore, `users/${user.uid}/quotes`, initialData.id);
                 await setDocumentNonBlocking(quoteDocRef, quoteData, { merge: true });
                 toast({ title: "Devis mis à jour", description: "Le devis a été sauvegardé avec succès."});
                 return initialData.id;
             } else {
-                const quotesCollectionRef = collection(firestore, 'quotes');
+                const quotesCollectionRef = collection(firestore, `users/${user.uid}/quotes`);
                 const newDocRef = doc(quotesCollectionRef);
                 await setDocumentNonBlocking(newDocRef, { ...quoteData, id: newDocRef.id }, {});
                 toast({ title: "Devis créé", description: "Le devis a été sauvegardé avec succès."});
@@ -326,7 +326,7 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
 
             if (result.success) {
                 // Update status on the client side after successful email send
-                const quoteRef = doc(firestore, 'quotes', quoteId);
+                const quoteRef = doc(firestore, `users/${user.uid}/quotes`, quoteId);
                 await setDocumentNonBlocking(quoteRef, { status: 'sent' }, { merge: true });
                 toast({ title: "E-mail envoyé", description: `Le devis a été envoyé à ${selectedClient.email}.`});
                 setOpen(false);
@@ -686,3 +686,4 @@ export function NewQuoteForm({ setOpen, initialData }: NewQuoteFormProps) {
     );
 }
 
+    

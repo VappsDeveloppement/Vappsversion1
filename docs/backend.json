@@ -891,16 +891,6 @@
         }
       },
       {
-        "path": "/quotes/{quoteId}",
-        "definition": {
-          "entityName": "Quote",
-          "schema": {
-            "$ref": "#/backend/entities/Quote"
-          },
-          "description": "Stores all quotes, segregated by counselorId."
-        }
-      },
-      {
         "path": "/contracts/{contractId}",
         "definition": {
           "entityName": "Contract",
@@ -908,16 +898,6 @@
             "$ref": "#/backend/entities/Contract"
           },
           "description": "Stores all contract templates, segregated by counselorId."
-        }
-      },
-      {
-        "path": "/invoices/{invoiceId}",
-        "definition": {
-          "entityName": "Invoice",
-          "schema": {
-            "$ref": "#/backend/entities/Invoice"
-          },
-          "description": "Stores all invoices, segregated by counselorId."
         }
       },
        {
@@ -942,6 +922,26 @@
           "entityName": "FaqItem",
           "schema": { "$ref": "#/backend/entities/FaqItem" },
           "description": "Stores all FAQ items. Items with scope 'general' are for the whole platform, 'counselor' scope requires a counselorId."
+        }
+      },
+      {
+        "path": "/users/{userId}/quotes/{quoteId}",
+        "definition": {
+          "entityName": "Quote",
+          "schema": {
+            "$ref": "#/backend/entities/Quote"
+          },
+          "description": "Stores quotes for a specific user (counselor). Path-based ownership ensures a user can only access their own quotes."
+        }
+      },
+       {
+        "path": "/users/{userId}/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Stores invoices for a specific user (counselor)."
         }
       },
       {
@@ -998,5 +998,6 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
 
     
