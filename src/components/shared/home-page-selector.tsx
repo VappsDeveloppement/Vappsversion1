@@ -161,6 +161,11 @@ function TunnelHomePage() {
             if (section.id === 'hero') return <HeroSection key={section.id} />;
             
             const SectionComponent = sectionComponents[section.id];
+            
+            if (section.id === 'trainingCatalog') {
+              return SectionComponent ? <SectionComponent key={section.id} primaryColor={personalization.primaryColor} /> : null;
+            }
+
             return SectionComponent ? <SectionComponent key={section.id} /> : null;
           })}
       </main>
@@ -190,7 +195,7 @@ function ApplicationHomePage() {
                     }
                     if (section.id === 'trainingCatalog') {
                          const SectionComponent = sectionComponents[section.id];
-                        return SectionComponent ? <SectionComponent key={section.id} /> : null;
+                         return SectionComponent ? <SectionComponent key={section.id} primaryColor={personalization.primaryColor} /> : null;
                     }
                     return null;
                 })}
@@ -222,5 +227,3 @@ export function HomePageSelector() {
 
   return <TunnelHomePage />;
 }
-
-    
