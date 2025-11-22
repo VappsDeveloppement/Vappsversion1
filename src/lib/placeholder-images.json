@@ -167,6 +167,18 @@
       "description": "A planner and a calendar on a desk",
       "imageUrl": "https://images.unsplash.com/photo-1525422847952-7f91db09a364?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       "imageHint": "planner desk"
+    },
+    {
+      "id": "training-4",
+      "description": "Two people shaking hands over a table",
+      "imageUrl": "https://images.unsplash.com/photo-1520881363902-a0ff4e722963?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "handshake deal"
+    },
+    {
+      "id": "training-5",
+      "description": "A wall covered in colorful sticky notes",
+      "imageUrl": "https://images.unsplash.com/photo-1542744173-05336fcc7ad4?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "sticky notes"
     }
   ]
 }
