@@ -21,6 +21,7 @@ import { CounselorActivitiesSection } from '@/components/shared/counselor-activi
 import { CounselorPricingSection } from '@/components/shared/counselor-pricing-section';
 import { CounselorJobOffersSection } from '@/components/shared/counselor-job-offers-section';
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
+import { CounselorTestimonialsSection } from '@/components/shared/counselor-testimonials-section';
 
 type CounselorProfile = {
     id: string;
@@ -45,6 +46,7 @@ type CounselorProfile = {
         parcoursSection?: any;
         ctaSection?: any;
         pricingSection?: any;
+        testimonialsSection?: any;
         activitiesSection?: any;
         jobOffersSection?: any;
         contactSection?: any;
@@ -111,8 +113,9 @@ export default function CounselorPublicProfilePage() {
         <ParcoursSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
-        <CounselorJobOffersSection counselor={counselor} />
+        <CounselorTestimonialsSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
+        <CounselorJobOffersSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
@@ -121,5 +124,3 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
-
-    

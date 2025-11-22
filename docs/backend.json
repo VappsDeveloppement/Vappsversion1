@@ -251,6 +251,26 @@
                     }
                 }
             },
+            "testimonialsSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" },
+                    "testimonials": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "authorName": { "type": "string" },
+                                "authorTitle": { "type": "string" },
+                                "text": { "type": "string" }
+                            }
+                        }
+                    }
+                }
+            },
             "activitiesSection": {
                 "type": "object",
                 "properties": {
