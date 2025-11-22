@@ -25,29 +25,9 @@ import { useRouter } from 'next/navigation';
 import { ScrollArea } from '../ui/scroll-area';
 import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
+import { useAgency } from '@/context/agency-provider';
+import type { SubscriptionPlan, WhiteLabelStat } from '@/app/admin/settings/personalization/page';
 
-const signupSchema = z.object({
-    firstName: z.string().min(1, "Le prénom est requis."),
-    lastName: z.string().min(1, "Le nom de famille est requis."),
-    email: z.string().email("Veuillez entrer une adresse e-mail valide."),
-    password: z.string().min(6, "Le mot de passe doit comporter au moins 6 caractères."),
-});
-
-type Plan = {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  period: string;
-  features: string[];
-  isFeatured: boolean;
-  isPublic: boolean;
-  imageUrl?: string;
-  cta?: string;
-  counselorId?: string;
-  contractId?: string;
-  paypalSubscriptionId?: string;
-};
 
 type Contract = {
     id: string;
@@ -55,30 +35,35 @@ type Contract = {
     content: string;
 };
 
+const signUpFormSchema = z.object({
+    firstName: z.string().min(1, "Le prénom est requis."),
+    lastName: z.string().min(1, "Le nom de famille est requis."),
+    email: z.string().email("Veuillez entrer une adresse e-mail valide."),
+    password: z.string().min(6, "Le mot de passe doit comporter au moins 6 caractères."),
+});
+
+type SignUpFormData = z.infer<typeof signUpFormSchema>;
+
 
 function PlanSelectorCard() {
     const firestore = useFirestore();
     const auth = useAuth();
     const { toast } = useToast();
     const router = useRouter();
+    const { personalization } = useAgency();
 
     const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [contractAccepted, setContractAccepted] = useState(false);
 
-    const form = useForm<z.infer<typeof signupSchema>>({
-        resolver: zodResolver(signupSchema),
+    const form = useForm<SignUpFormData>({
+        resolver: zodResolver(signUpFormSchema),
         defaultValues: { firstName: '', lastName: '', email: '', password: '' },
     });
 
-    const publicPlansQuery = useMemoFirebase(() => {
-        const plansCollectionRef = collection(firestore, 'plans');
-        return query(plansCollectionRef, where("isPublic", "==", true));
-    }, [firestore]);
+    const plans = personalization?.whiteLabelSection?.plans || [];
 
-    const { data: plans, isLoading } = useCollection<Plan>(publicPlansQuery);
-    
     const selectedPlan = useMemo(() => {
         if (!selectedPlanId || !plans) return null;
         return plans.find(p => p.id === selectedPlanId);
@@ -105,7 +90,7 @@ function PlanSelectorCard() {
     }, [isDialogOpen, selectedPlanId]);
 
 
-    const onSubmit = async (values: z.infer<typeof signupSchema>) => {
+    const onSubmit = async (values: SignUpFormData) => {
         if (!selectedPlan) return;
         setIsSubmitting(true);
 
@@ -153,23 +138,7 @@ function PlanSelectorCard() {
         }
     };
     
-    if (isLoading) {
-        return (
-             <Card className="overflow-hidden">
-                <div className="relative h-48 w-full bg-muted"></div>
-                <CardContent className="p-6">
-                    <Skeleton className="h-8 w-3/4 mb-4" />
-                    <Skeleton className="h-10 w-full mb-6" />
-                    <Skeleton className="h-20 w-full" />
-                </CardContent>
-                 <CardFooter>
-                    <Skeleton className="h-10 w-full" />
-                </CardFooter>
-            </Card>
-        )
-    }
-
-    if (!plans || plans.length === 0) {
+    if (plans.length === 0) {
         return (
             <Card className="overflow-hidden">
                 <CardContent className="p-6">
@@ -204,7 +173,7 @@ function PlanSelectorCard() {
             )}
             <CardHeader>
                 <Tabs value={selectedPlanId || ''} onValueChange={setSelectedPlanId} className="w-full">
-                    <TabsList className="grid w-full grid-cols-3">
+                    <TabsList className={cn("grid w-full", plans.length === 1 && "grid-cols-1", plans.length === 2 && "grid-cols-2", plans.length >= 3 && "grid-cols-3")}>
                         {plans.slice(0, 3).map(plan => (
                              <TabsTrigger key={plan.id} value={plan.id}>{plan.name}</TabsTrigger>
                         ))}
@@ -222,7 +191,7 @@ function PlanSelectorCard() {
                             <span className="text-muted-foreground">{selectedPlan.period}</span>
                         </div>
                         <ul className="space-y-3">
-                            {selectedPlan.features.map((feature, i) => (
+                            {(selectedPlan.features || []).map((feature, i) => (
                                 <li key={i} className="flex items-start gap-2 text-sm">
                                     <Check className="h-5 w-5 text-green-500 mt-0.5 flex-shrink-0" />
                                     <span className="text-muted-foreground">{feature}</span>
@@ -295,15 +264,47 @@ function PlanSelectorCard() {
     )
 }
 
+const statIcons = {
+    Users: Users,
+    Percent: Percent,
+    Star: Star,
+};
+
 
 export function WhiteLabelSection() {
+    const { personalization, isLoading } = useAgency();
+    const wl = personalization?.whiteLabelSection;
+
+    if (isLoading) {
+        return (
+            <section className="bg-background text-foreground py-16 sm:py-24">
+                <div className="container mx-auto px-4">
+                    <Skeleton className="h-12 w-1/2 mx-auto mb-6" />
+                    <Skeleton className="h-6 w-3/4 mx-auto mb-12" />
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                        <div className="space-y-8">
+                            <Skeleton className="aspect-video w-full rounded-lg" />
+                            <Skeleton className="h-40 w-full rounded-lg" />
+                        </div>
+                        <div>
+                             <Skeleton className="h-[500px] w-full rounded-lg" />
+                        </div>
+                    </div>
+                </div>
+            </section>
+        );
+    }
+    
+    if (!wl) return null;
+
+
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl lg:text-4xl font-bold">Notre Plateforme en Marque Blanche</h2>
+                    <h2 className="text-3xl lg:text-4xl font-bold">{wl.title}</h2>
                     <p className="text-lg text-muted-foreground mt-4 max-w-3xl mx-auto">
-                        Offrez une expérience de coaching et d'accompagnement de premier ordre, entièrement personnalisée à votre image de marque.
+                        {wl.description}
                     </p>
                 </div>
 
@@ -311,14 +312,18 @@ export function WhiteLabelSection() {
                     {/* Left Column */}
                     <div className="space-y-8">
                         <div className="aspect-video w-full">
-                            <iframe
-                                className="w-full h-full rounded-lg shadow-xl"
-                                src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                                title="YouTube video player"
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
-                                allowFullScreen>
-                            </iframe>
+                            {wl.mediaType === 'video' ? (
+                                <iframe
+                                    className="w-full h-full rounded-lg shadow-xl"
+                                    src={wl.videoUrl}
+                                    title="YouTube video player"
+                                    frameBorder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                                    allowFullScreen>
+                                </iframe>
+                            ) : (
+                                wl.imageUrl && <Image src={wl.imageUrl} alt="Média Marque Blanche" width={1280} height={720} className="w-full h-full object-cover rounded-lg shadow-xl" />
+                            )}
                         </div>
                         <Card>
                             <CardHeader>
@@ -326,25 +331,17 @@ export function WhiteLabelSection() {
                             </CardHeader>
                             <CardContent>
                                 <div className="grid grid-cols-3 gap-4 text-center mb-6">
-                                    <div className="flex flex-col items-center">
-                                        <Users className="h-8 w-8 text-green-500 mb-2" />
-                                        <p className="text-2xl font-bold">1,200+</p>
-                                        <p className="text-sm text-muted-foreground">Bêta-testeurs</p>
-                                    </div>
-                                    <div className="flex flex-col items-center">
-                                        <Percent className="h-8 w-8 text-green-500 mb-2" />
-                                        <p className="text-2xl font-bold">98%</p>
-                                        <p className="text-sm text-muted-foreground">Réussite aux tests</p>
-                                    </div>
-                                    <div className="flex flex-col items-center">
-                                        <Star className="h-8 w-8 text-green-500 mb-2" />
-                                        <p className="text-2xl font-bold">4.9/5</p>
-                                        <p className="text-sm text-muted-foreground">Note Globale</p>
-                                    </div>
+                                   {wl.stats?.map(stat => {
+                                       const Icon = statIcons[stat.icon];
+                                       return (
+                                            <div key={stat.id} className="flex flex-col items-center">
+                                                <Icon className="h-8 w-8 text-primary mb-2" />
+                                                <p className="text-2xl font-bold">{stat.value}</p>
+                                                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                                            </div>
+                                       )
+                                   })}
                                 </div>
-                                <Button className="w-full bg-green-500 hover:bg-green-600 text-white font-bold">
-                                    Évaluer l'application
-                                </Button>
                             </CardContent>
                         </Card>
                     </div>

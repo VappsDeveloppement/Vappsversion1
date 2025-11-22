@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle, Edit } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle, Edit, Percent, Star, Users } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -151,6 +151,17 @@ export type SubscriptionPlan = {
   features: string[];
   isFeatured: boolean;
   isPublic: boolean;
+  imageUrl?: string;
+  cta?: string;
+  contractId?: string;
+  paypalSubscriptionId?: string;
+};
+
+export type WhiteLabelStat = {
+  id: string;
+  icon: 'Users' | 'Percent' | 'Star';
+  value: string;
+  label: string;
 };
 
 const planFormSchema = z.object({
@@ -162,30 +173,27 @@ const planFormSchema = z.object({
   features: z.array(z.object({ text: z.string() })).optional(),
   isFeatured: z.boolean().default(false),
   isPublic: z.boolean().default(true),
+  imageUrl: z.string().nullable().optional(),
+  cta: z.string().optional(),
+  contractId: z.string().optional(),
+  paypalSubscriptionId: z.string().optional(),
 });
 
 type PlanFormData = z.infer<typeof planFormSchema>;
 
-const SubscriptionPlanManager = () => {
-    const { personalization, agency, isLoading } = useAgency();
-    const firestore = useFirestore();
-    const { toast } = useToast();
+type PlanManagerProps = {
+    plans: SubscriptionPlan[];
+    onSave: (plans: SubscriptionPlan[]) => void;
+};
 
+
+const SubscriptionPlanManager = ({ plans, onSave }: PlanManagerProps) => {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const form = useForm<PlanFormData>({
         resolver: zodResolver(planFormSchema),
-        defaultValues: {
-            id: '',
-            name: '',
-            description: '',
-            price: 0,
-            period: '/mois',
-            features: [],
-            isFeatured: false,
-            isPublic: true,
-        },
     });
 
     const { fields, append, remove } = useFieldArray({
@@ -193,65 +201,53 @@ const SubscriptionPlanManager = () => {
         name: "features"
     });
 
-    const plans = personalization?.pricingSection?.plans || [];
-
     const handleNewPlan = () => {
         setEditingPlan(null);
         form.reset({
             id: `plan-${Date.now()}`,
-            name: '',
-            description: '',
-            price: 0,
-            period: '/mois',
-            features: [],
-            isFeatured: false,
-            isPublic: true,
+            name: '', description: '', price: 0, period: '/mois',
+            features: [{ text: '' }], isFeatured: false, isPublic: true,
+            imageUrl: null,
         });
+        setImagePreview(null);
         setIsSheetOpen(true);
     };
 
     const handleEditPlan = (plan: SubscriptionPlan) => {
         setEditingPlan(plan);
         form.reset({ ...plan, features: plan.features?.map(f => ({ text: f })) || [] });
+        setImagePreview(plan.imageUrl || null);
         setIsSheetOpen(true);
     };
     
     const handleDeletePlan = (planId: string) => {
-        if (!agency) return;
-
         const updatedPlans = plans.filter(p => p.id !== planId);
-        const agencyRef = doc(firestore, 'agencies', agency.id);
-
-        setDocumentNonBlocking(agencyRef, {
-            personalization: { pricingSection: { plans: updatedPlans } }
-        }, { merge: true });
-        
-        toast({ title: "Plan supprimé" });
+        onSave(updatedPlans);
     };
 
     const onSubmit = (data: PlanFormData) => {
-        if (!agency) return;
-
         const newPlan: SubscriptionPlan = {
             ...data,
-            features: data.features?.map(f => f.text) || [],
+            features: data.features?.map(f => f.text).filter(Boolean) || [],
+            imageUrl: imagePreview,
         };
         
         let updatedPlans: SubscriptionPlan[];
-
         if (editingPlan) {
             updatedPlans = plans.map(p => p.id === newPlan.id ? newPlan : p);
         } else {
             updatedPlans = [...plans, newPlan];
         }
-        
-        const agencyRef = doc(firestore, 'agencies', agency.id);
-        setDocumentNonBlocking(agencyRef, {
-            personalization: { pricingSection: { plans: updatedPlans } }
-        }, { merge: true });
-
-        toast({ title: editingPlan ? "Plan mis à jour" : "Plan créé" });
+        onSave(updatedPlans);
         setIsSheetOpen(false);
+    };
+    
+     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            setImagePreview(base64);
+        }
     };
 
     return (
@@ -259,51 +255,73 @@ const SubscriptionPlanManager = () => {
             <div className="flex justify-between items-center mb-4">
                 <div>
                     <h4 className="font-medium">Gestion des Formules</h4>
-                    <p className="text-sm text-muted-foreground">Créez et gérez les formules qui apparaîtront sur votre page d'accueil.</p>
+                    <p className="text-sm text-muted-foreground">Créez et gérez les formules de la section.</p>
                 </div>
                  <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                     <SheetTrigger asChild>
-                        <Button onClick={handleNewPlan}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter</Button>
+                        <Button type="button" onClick={handleNewPlan}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter</Button>
                     </SheetTrigger>
-                    <SheetContent className="sm:max-w-xl w-full overflow-y-auto">
+                    <SheetContent className="sm:max-w-2xl w-full">
                         <SheetHeader>
                             <SheetTitle>{editingPlan ? 'Modifier' : 'Ajouter'} une formule</SheetTitle>
                         </SheetHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
-                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la formule</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="period" render={({ field }) => (<FormItem><FormLabel>Période</FormLabel><FormControl><Input placeholder="/mois, /an, etc." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                </div>
-                                <div>
-                                    <Label>Caractéristiques</Label>
-                                    <div className="space-y-2 mt-2">
-                                        {fields.map((field, index) => (
-                                            <div key={field.id} className="flex items-center gap-2">
-                                                <FormField control={form.control} name={`features.${index}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                            </div>
-                                        ))}
+                         <ScrollArea className="h-[calc(100vh-8rem)]">
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
+                                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la formule</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="period" render={({ field }) => (<FormItem><FormLabel>Période</FormLabel><FormControl><Input placeholder="/mois, /an, etc." {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
-                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ text: "" })} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter une caractéristique</Button>
-                                </div>
-                                 <FormField control={form.control} name="isFeatured" render={({ field }) => (
-                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                        <div className="space-y-1 leading-none">
-                                            <FormLabel>Mettre en avant</FormLabel>
-                                            <FormDescription>Ce plan sera mis en évidence sur la page.</FormDescription>
+                                    <div>
+                                        <Label>Caractéristiques</Label>
+                                        <div className="space-y-2 mt-2">
+                                            {fields.map((field, index) => (
+                                                <div key={field.id} className="flex items-center gap-2">
+                                                    <FormField control={form.control} name={`features.${index}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </div>
+                                            ))}
                                         </div>
-                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                                    </FormItem>
-                                )}/>
-                                <SheetFooter className="pt-6">
-                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                    <Button type="submit">Sauvegarder</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
+                                        <Button type="button" variant="outline" size="sm" onClick={() => append({ text: "" })} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter une caractéristique</Button>
+                                    </div>
+                                     <div>
+                                        <Label>Image de la formule (optionnel)</Label>
+                                        <div className="flex items-center gap-4 mt-2">
+                                            {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={80} height={80} className="rounded-md object-cover" /> : <div className="h-20 w-20 bg-muted rounded-md" />}
+                                            <input type="file" id="plan-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
+                                            <div className="flex flex-col gap-2">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('plan-image-upload')?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                {imagePreview && <Button type="button" variant="destructive" size="sm" onClick={() => setImagePreview(null)}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                     <FormField control={form.control} name="isFeatured" render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                            <div className="space-y-1 leading-none">
+                                                <FormLabel>Mettre en avant</FormLabel>
+                                                <FormDescription>Ce plan sera mis en évidence sur la page.</FormDescription>
+                                            </div>
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        </FormItem>
+                                    )}/>
+                                    <FormField control={form.control} name="isPublic" render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                            <div className="space-y-1 leading-none">
+                                                <FormLabel>Plan Public</FormLabel>
+                                                <FormDescription>Afficher ce plan sur les pages publiques (ex: marque blanche).</FormDescription>
+                                            </div>
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        </FormItem>
+                                    )}/>
+                                    <SheetFooter className="pt-6">
+                                        <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                        <Button type="submit">Sauvegarder</Button>
+                                    </SheetFooter>
+                                </form>
+                            </Form>
+                         </ScrollArea>
                     </SheetContent>
                 </Sheet>
             </div>
@@ -313,19 +331,17 @@ const SubscriptionPlanManager = () => {
                         <TableRow>
                             <TableHead>Nom</TableHead>
                             <TableHead>Prix</TableHead>
-                            <TableHead>Période</TableHead>
+                            <TableHead>Public</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading ? (
-                            <TableRow><TableCell colSpan={4}><Skeleton className="h-8" /></TableCell></TableRow>
-                        ) : plans.length > 0 ? (
+                        {plans.length > 0 ? (
                             plans.map(plan => (
                                 <TableRow key={plan.id}>
                                     <TableCell className="font-medium">{plan.name}</TableCell>
-                                    <TableCell>{plan.price}€</TableCell>
-                                    <TableCell>{plan.period}</TableCell>
+                                    <TableCell>{plan.price}€ {plan.period}</TableCell>
+                                    <TableCell>{plan.isPublic ? <CheckCircle className="h-5 w-5 text-green-500" /> : <EyeOff className="h-5 w-5 text-muted-foreground" />}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEditPlan(plan)}><Edit className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleDeletePlan(plan.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -355,7 +371,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
-  { id: 'trainingCatalog', label: 'Catalogue de formation', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
   { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
@@ -490,6 +505,19 @@ const defaultPersonalization = {
             { id: `service-${Date.now()}-3`, title: 'Nouvel Accompagnement', description: 'Description du nouvel accompagnement.', imageUrl: null },
         ] as ServiceItem[]
     },
+     whiteLabelSection: {
+        title: "Notre Plateforme en Marque Blanche",
+        description: "Offrez une expérience de coaching et d'accompagnement de premier ordre, entièrement personnalisée à votre image de marque.",
+        mediaType: 'video',
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        imageUrl: null,
+        stats: [
+            { id: 'stat-1', icon: 'Users', value: '1,200+', label: 'Bêta-testeurs' },
+            { id: 'stat-2', icon: 'Percent', value: '98%', label: 'Réussite aux tests' },
+            { id: 'stat-3', icon: 'Star', value: '4.9/5', label: 'Note Globale' },
+        ],
+        plans: [],
+    },
     paymentSettings: {
         ribIban: "",
         ribBic: "",
@@ -597,6 +625,8 @@ export default function PersonalizationPage() {
   const [aboutImagePreview, setAboutImagePreview] = React.useState(personalization?.aboutSection?.mainImageUrl);
   const [ctaImagePreview, setCtaImagePreview] = React.useState(personalization?.ctaSection?.bgImageUrl);
   const [cta2ImagePreview, setCta2ImagePreview] = React.useState(personalization?.cta2Section?.bgImageUrl);
+  const [whiteLabelImagePreview, setWhiteLabelImagePreview] = React.useState(personalization?.whiteLabelSection?.imageUrl);
+
   const [showSmtpPass, setShowSmtpPass] = useState(false);
   const [isTestingEmail, setIsTestingEmail] = useState(false);
   const [testEmail, setTestEmail] = useState("");
@@ -639,6 +669,10 @@ export default function PersonalizationPage() {
           ...defaultPersonalization.servicesSection,
           ...(personalization.servicesSection || {})
         },
+        whiteLabelSection: {
+            ...defaultPersonalization.whiteLabelSection,
+            ...(personalization.whiteLabelSection || {}),
+        },
         paymentSettings: {
             ...defaultPersonalization.paymentSettings,
             ...(personalization.paymentSettings || {})
@@ -680,6 +714,11 @@ export default function PersonalizationPage() {
         setCta2ImagePreview(personalization.cta2Section.bgImageUrl);
       } else {
         setCta2ImagePreview(null);
+      }
+      if (personalization.whiteLabelSection?.imageUrl) {
+        setWhiteLabelImagePreview(personalization.whiteLabelSection.imageUrl);
+      } else {
+        setWhiteLabelImagePreview(null);
       }
     }
   }, [personalization]);
@@ -870,6 +909,22 @@ export default function PersonalizationPage() {
   const removeAccompagnement = (index: number) => {
     const newServices = settings.servicesSection.services.filter((_, i) => i !== index);
     handleServicesSectionChange('services', newServices);
+  };
+  
+  const handleWhiteLabelSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+        ...prev,
+        whiteLabelSection: {
+            ...prev.whiteLabelSection,
+            [field]: value,
+        },
+    }));
+  };
+
+  const handleWhiteLabelStatChange = (index: number, field: keyof WhiteLabelStat, value: string) => {
+    const newStats = [...(settings.whiteLabelSection.stats)];
+    (newStats[index] as any)[field] = value;
+    handleWhiteLabelSectionChange('stats', newStats);
   };
 
 
@@ -2020,7 +2075,76 @@ export default function PersonalizationPage() {
                                             <Label htmlFor="pricing-description">Description</Label>
                                             <Textarea id="pricing-description" value={settings.pricingSection?.description} onChange={e => handlePricingSectionChange('description', e.target.value)} />
                                         </div>
-                                        <SubscriptionPlanManager />
+                                        <SubscriptionPlanManager 
+                                            plans={settings.pricingSection?.plans || []}
+                                            onSave={(updatedPlans) => handlePricingSectionChange('plans', updatedPlans)}
+                                        />
+                                    </div>
+                                ) : section.id === 'whiteLabel' ? (
+                                    <div className="space-y-8">
+                                        <div className="text-center">
+                                            <div className="space-y-2">
+                                                <Label htmlFor="wl-title">Titre de la section</Label>
+                                                <Input id="wl-title" className="text-center" value={settings.whiteLabelSection?.title} onChange={(e) => handleWhiteLabelSectionChange('title', e.target.value)} />
+                                            </div>
+                                            <div className="space-y-2 mt-4">
+                                                <Label htmlFor="wl-description">Description de la section</Label>
+                                                <Textarea id="wl-description" className="text-center" value={settings.whiteLabelSection?.description} onChange={(e) => handleWhiteLabelSectionChange('description', e.target.value)} />
+                                            </div>
+                                        </div>
+                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+                                            <div className="space-y-6">
+                                                <Card>
+                                                    <CardHeader><CardTitle>Média</CardTitle></CardHeader>
+                                                    <CardContent className="space-y-4">
+                                                         <RadioGroup value={settings.whiteLabelSection?.mediaType} onValueChange={(value) => handleWhiteLabelSectionChange('mediaType', value)} className="flex space-x-4">
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="video" id="wl-video" /><Label htmlFor="wl-video">Vidéo</Label></div>
+                                                            <div className="flex items-center space-x-2"><RadioGroupItem value="image" id="wl-image" /><Label htmlFor="wl-image">Image</Label></div>
+                                                        </RadioGroup>
+                                                         {settings.whiteLabelSection?.mediaType === 'video' ? (
+                                                            <div className="space-y-2">
+                                                                <Label htmlFor="wl-video-url">URL Vidéo</Label>
+                                                                <Input id="wl-video-url" value={settings.whiteLabelSection.videoUrl} onChange={(e) => handleWhiteLabelSectionChange('videoUrl', e.target.value)} />
+                                                            </div>
+                                                        ) : (
+                                                            <div className="space-y-2">
+                                                                <Label>Image</Label>
+                                                                <div className="flex items-center gap-4">
+                                                                    {whiteLabelImagePreview && <Image src={whiteLabelImagePreview} alt="Aperçu" width={80} height={45} className="rounded-md object-cover" />}
+                                                                    <input type="file" ref={fileInputRef} onChange={createUploadHandler(base64 => { setWhiteLabelImagePreview(base64); handleWhiteLabelSectionChange('imageUrl', base64); })} className="hidden" />
+                                                                    <Button type="button" variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}><Upload className="mr-2 h-4 w-4"/>Uploader</Button>
+                                                                </div>
+                                                            </div>
+                                                        )}
+                                                    </CardContent>
+                                                </Card>
+                                                <Card>
+                                                     <CardHeader><CardTitle>Statistiques</CardTitle></CardHeader>
+                                                     <CardContent className="space-y-4">
+                                                        {settings.whiteLabelSection?.stats?.map((stat, index) => (
+                                                            <div key={stat.id} className="flex items-center gap-4">
+                                                                <Select value={stat.icon} onValueChange={(value) => handleWhiteLabelStatChange(index, 'icon', value)}>
+                                                                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                                                                    <SelectContent>
+                                                                        <SelectItem value="Users"><Users className="h-4 w-4" /></SelectItem>
+                                                                        <SelectItem value="Percent"><Percent className="h-4 w-4" /></SelectItem>
+                                                                        <SelectItem value="Star"><Star className="h-4 w-4" /></SelectItem>
+                                                                    </SelectContent>
+                                                                </Select>
+                                                                <Input value={stat.value} onChange={(e) => handleWhiteLabelStatChange(index, 'value', e.target.value)} placeholder="Valeur" />
+                                                                <Input value={stat.label} onChange={(e) => handleWhiteLabelStatChange(index, 'label', e.target.value)} placeholder="Label" />
+                                                            </div>
+                                                        ))}
+                                                     </CardContent>
+                                                </Card>
+                                            </div>
+                                            <div className="space-y-6">
+                                                <SubscriptionPlanManager 
+                                                    plans={settings.whiteLabelSection?.plans || []}
+                                                    onSave={(updatedPlans) => handleWhiteLabelSectionChange('plans', updatedPlans)}
+                                                />
+                                            </div>
+                                        </div>
                                     </div>
                                 ) : section.id === 'video' ? (
                                     <div className="space-y-8">
@@ -2468,3 +2592,4 @@ export default function PersonalizationPage() {
     
 
     
+

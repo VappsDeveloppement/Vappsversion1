@@ -8,7 +8,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem, ParcoursStep, SubscriptionPlan } from '@/app/admin/settings/personalization/page';
+import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem, ParcoursStep, SubscriptionPlan, WhiteLabelStat } from '@/app/admin/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -102,6 +102,17 @@ interface PricingSectionPersonalization {
     plans: SubscriptionPlan[];
 }
 
+interface WhiteLabelSectionPersonalization {
+    title: string;
+    description: string;
+    mediaType: 'video' | 'image';
+    videoUrl: string;
+    imageUrl: string | null;
+    stats: WhiteLabelStat[];
+    plans: SubscriptionPlan[];
+}
+
+
 interface ContactSectionPersonalization {
   enabled: boolean;
   title: string;
@@ -187,6 +198,7 @@ interface Personalization {
     parcoursSection: ParcoursSectionPersonalization;
     activitiesSection: ActivitiesSectionPersonalization;
     pricingSection: PricingSectionPersonalization;
+    whiteLabelSection: WhiteLabelSectionPersonalization;
     contactSection: ContactSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
@@ -218,7 +230,6 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
-  { id: 'trainingCatalog', label: 'Catalogue de formation', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
 ];
 
@@ -367,6 +378,19 @@ const defaultPersonalization: Personalization = {
         description: "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.",
         plans: [],
       },
+      whiteLabelSection: {
+        title: "Notre Plateforme en Marque Blanche",
+        description: "Offrez une expérience de coaching et d'accompagnement de premier ordre, entièrement personnalisée à votre image de marque.",
+        mediaType: 'video',
+        videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
+        imageUrl: null,
+        stats: [
+            { id: 'stat-1', icon: 'Users', value: '1,200+', label: 'Bêta-testeurs' },
+            { id: 'stat-2', icon: 'Percent', value: '98%', label: 'Réussite aux tests' },
+            { id: 'stat-3', icon: 'Star', value: '4.9/5', label: 'Note Globale' },
+        ],
+        plans: [],
+      },
     contactSection: {
       enabled: false,
       title: "Contactez-moi",
@@ -501,6 +525,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                         ...defaultPersonalization.pricingSection,
                         ...(fetchedAgencyData.personalization?.pricingSection || {}),
                     },
+                    whiteLabelSection: {
+                        ...defaultPersonalization.whiteLabelSection,
+                        ...(fetchedAgencyData.personalization?.whiteLabelSection || {}),
+                    },
                     contactSection: {
                         ...defaultPersonalization.contactSection,
                         ...(fetchedAgencyData.personalization?.contactSection || {}),
@@ -575,3 +603,4 @@ export function useAgency() {
     
 
     
+
