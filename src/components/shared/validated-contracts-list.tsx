@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { AlertCircle, MoreHorizontal, Trash2, Clock } from 'lucide-react';
+import { AlertCircle, MoreHorizontal, Trash2, Clock, CheckCircle } from 'lucide-react';
 import type { Plan } from './plan-management';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '../ui/dropdown-menu';
 import { Button } from '../ui/button';
@@ -67,6 +67,12 @@ export function ValidatedContractsList() {
         const userRef = doc(firestore, 'users', user.id);
         setDocumentNonBlocking(userRef, { subscriptionStatus: 'pending_payment' }, { merge: true });
         toast({ title: 'Statut mis à jour', description: `L'abonnement de ${user.firstName} ${user.lastName} est maintenant "En attente de paiement".` });
+    };
+
+    const handleSetActive = (user: SubscribedUser) => {
+        const userRef = doc(firestore, 'users', user.id);
+        setDocumentNonBlocking(userRef, { subscriptionStatus: 'active' }, { merge: true });
+        toast({ title: 'Statut mis à jour', description: `L'abonnement de ${user.firstName} ${user.lastName} est maintenant "Actif".` });
     };
 
     const handleDeleteClick = (user: SubscribedUser) => {
@@ -140,6 +146,10 @@ export function ValidatedContractsList() {
                                                     </Button>
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
+                                                     <DropdownMenuItem onClick={() => handleSetActive(user)}>
+                                                        <CheckCircle className="mr-2 h-4 w-4" />
+                                                        Marquer comme payé
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleSetPending(user)}>
                                                         <Clock className="mr-2 h-4 w-4" />
                                                         Mettre en attente
