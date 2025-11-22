@@ -1,4 +1,5 @@
 
+
 {
   "entities": {
     "User": {
@@ -550,94 +551,6 @@
         "isRead"
       ]
     },
-    "Invoice": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Invoice",
-      "type": "object",
-      "description": "Represents an invoice for coaching sessions or other services, generated from an accepted quote.",
-      "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the invoice." },
-        "invoiceNumber": { "type": "string", "description": "The user-facing invoice number." },
-        "counselorId": { "type": "string", "description": "The ID of the counselor who issued the invoice." },
-        "clientId": { "type": "string" },
-        "clientInfo": { "type": "object", "description": "A snapshot of the client's information." },
-        "quoteNumber": { "type": "string", "description": "The number of the original quote." },
-        "issueDate": { "type": "string", "format": "date" },
-        "dueDate": { "type": "string", "format": "date" },
-        "status": { "type": "string", "enum": ["pending", "paid", "overdue", "cancelled"], "description": "The status of the invoice." },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "description": { "type": "string" },
-              "quantity": { "type": "number" },
-              "unitPrice": { "type": "number" },
-              "total": { "type": "number" }
-            },
-            "required": ["description", "quantity", "unitPrice", "total"]
-          }
-        },
-        "subtotal": { "type": "number" },
-        "tax": { "type": "number" },
-        "total": { "type": "number" }
-      },
-      "required": ["id", "invoiceNumber", "counselorId", "clientId", "quoteNumber", "issueDate", "dueDate", "status", "items", "total"]
-    },
-    "Quote": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Quote",
-      "type": "object",
-      "description": "Represents a quote or estimate for services.",
-      "properties": {
-        "id": { "type": "string", "description": "Unique identifier for the quote." },
-        "quoteNumber": { "type": "string", "description": "The user-facing quote number." },
-        "validationCode": { "type": "string", "description": "A secret code for the client to validate the quote." },
-        "counselorId": { "type": "string", "description": "The ID of the counselor who created the quote." },
-        "clientId": { "type": "string" },
-        "clientInfo": { "type": "object", "description": "A snapshot of the client's information at the time of quote creation." },
-        "agencyInfo": { "type": "object", "description": "A snapshot of the agency's information." },
-        "issueDate": { "type": "string", "format": "date" },
-        "expiryDate": { "type": "string", "format": "date" },
-        "status": { "type": "string", "enum": ["draft", "sent", "accepted", "rejected"], "description": "The status of the quote." },
-        "items": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "description": { "type": "string" },
-              "quantity": { "type": "number" },
-              "unitPrice": { "type": "number" },
-              "total": { "type": "number" }
-            },
-            "required": ["description", "quantity", "unitPrice", "total"]
-          }
-        },
-        "subtotal": { "type": "number" },
-        "tax": { "type": "number" },
-        "total": { "type": "number" },
-        "notes": { "type": "string" },
-        "contractId": { "type": "string", "description": "ID of the attached contract template." },
-        "contractTitle": { "type": "string", "description": "Title of the attached contract." },
-        "contractContent": { "type": "string", "description": "Snapshot of the contract HTML content." },
-        "signature": { "type": "string", "description": "The name entered by the client as a signature." },
-        "signedDate": { "type": "string", "format": "date-time", "description": "Timestamp of when the quote was signed." }
-      },
-      "required": ["id", "quoteNumber", "validationCode", "counselorId", "clientId", "issueDate", "status", "items", "total"]
-    },
-    "Contract": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Contract",
-        "type": "object",
-        "description": "Represents a contract template for a counselor.",
-        "properties": {
-            "id": { "type": "string", "description": "Unique identifier for the contract." },
-            "counselorId": { "type": "string", "description": "The ID of the counselor this contract belongs to." },
-            "title": { "type": "string", "description": "The title of the contract template." },
-            "content": { "type": "string", "description": "The HTML content of the contract." }
-        },
-        "required": ["id", "counselorId", "title", "content"]
-    },
     "Consent": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Consent",
@@ -710,66 +623,20 @@
         "status"
       ]
     },
-    "Plan": {
+    "SubscriptionPlan": {
       "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Plan",
+      "title": "SubscriptionPlan",
       "type": "object",
-      "description": "Represents a pricing plan or a prestation model. Can be global, public, or counselor-specific.",
+      "description": "Represents a pricing plan for the white-label service.",
       "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the plan."
-        },
-        "counselorId": {
-            "type": "string",
-            "description": "The ID of the counselor this plan belongs to (for non-public plans)."
-        },
-        "name": {
-          "type": "string",
-          "description": "The name of the plan (e.g., 'Essentiel', 'Pro', 'Bilan de compétences')."
-        },
-        "description": {
-          "type": "string",
-          "description": "A short description of the plan."
-        },
-        "features": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "A list of features included in the plan."
-        },
-        "price": {
-          "type": "number",
-          "description": "The price of the plan."
-        },
-        "period": {
-          "type": "string",
-          "description": "The billing period (e.g., '/mois', '/an', '/prestation')."
-        },
-        "imageUrl": {
-          "type": "string",
-          "description": "URL of an image associated with the plan.",
-          "format": "uri"
-        },
-        "isFeatured": {
-          "type": "boolean",
-          "description": "Whether the plan should be highlighted as 'featured'."
-        },
-        "isPublic": {
-          "type": "boolean",
-          "description": "Whether the plan should be displayed on the public pricing page. If false, it's a counselor-specific template."
-        },
-        "cta": {
-          "type": "string",
-          "description": "The text for the call-to-action button."
-        },
-        "contractId": {
-          "type": "string",
-          "description": "The ID of the contract to be displayed when the CTA is clicked."
-        },
-        "paypalSubscriptionId": {
-            "type": "string",
-            "description": "The ID of the PayPal subscription button for this plan."
-        }
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "period": { "type": "string", "description": "e.g., /mois, /an" },
+        "features": { "type": "array", "items": { "type": "string" } },
+        "isFeatured": { "type": "boolean" },
+        "isPublic": { "type": "boolean" }
       },
       "required": ["id", "name", "price", "period"]
     },
@@ -874,26 +741,6 @@
           "description": "Stores the public-facing profile data for a counselor's mini-site. The document ID is the counselor's user ID."
         }
       },
-      {
-        "path": "/plans/{planId}",
-        "definition": {
-          "entityName": "Plan",
-          "schema": {
-            "$ref": "#/backend/entities/Plan"
-          },
-          "description": "Stores all available pricing plans and prestation models for the platform. `isPublic` flag determines visibility on the public pricing page. Counselor-specific plans have a `counselorId`."
-        }
-      },
-      {
-        "path": "/contracts/{contractId}",
-        "definition": {
-          "entityName": "Contract",
-          "schema": {
-            "$ref": "#/backend/entities/Contract"
-          },
-          "description": "Stores all contract templates, segregated by counselorId."
-        }
-      },
        {
         "path": "/gdpr_requests/{requestId}",
         "definition": {
@@ -916,26 +763,6 @@
           "entityName": "FaqItem",
           "schema": { "$ref": "#/backend/entities/FaqItem" },
           "description": "Stores all FAQ items. Items with scope 'general' are for the whole platform, 'counselor' scope requires a counselorId."
-        }
-      },
-      {
-        "path": "/users/{userId}/quotes/{quoteId}",
-        "definition": {
-          "entityName": "Quote",
-          "schema": {
-            "$ref": "#/backend/entities/Quote"
-          },
-          "description": "Stores quotes for a specific user (counselor). Path-based ownership ensures a user can only access their own quotes."
-        }
-      },
-       {
-        "path": "/users/{userId}/invoices/{invoiceId}",
-        "definition": {
-          "entityName": "Invoice",
-          "schema": {
-            "$ref": "#/backend/entities/Invoice"
-          },
-          "description": "Stores invoices for a specific user (counselor)."
         }
       },
       {

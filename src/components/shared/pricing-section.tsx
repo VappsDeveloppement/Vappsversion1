@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Check } from "lucide-react";
@@ -6,25 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from 'firebase/firestore';
-import { useFirestore } from "@/firebase/provider";
-import type { Plan } from "@/components/shared/plan-management";
+import type { SubscriptionPlan } from "@/app/admin/settings/personalization/page";
 import { Skeleton } from "../ui/skeleton";
 import Link from 'next/link';
 
 export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
-    const firestore = useFirestore();
-
-    const publicPlansQuery = useMemoFirebase(() => {
-        const plansCollectionRef = collection(firestore, 'plans');
-        return query(plansCollectionRef, where("isPublic", "==", true));
-    }, [firestore]);
-
-    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
     
-    const isLoading = isAgencyLoading || arePlansLoading;
+    const plans = personalization?.pricingSection?.plans || [];
+    
+    const isLoading = isAgencyLoading;
     const primaryColor = personalization?.primaryColor || '#10B981';
     
     if (isLoading) {
@@ -53,14 +45,14 @@ export function PricingSection() {
         <section className="bg-background text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl lg:text-4xl font-bold">Nos Formules</h2>
+                    <h2 className="text-3xl lg:text-4xl font-bold">{personalization?.pricingSection?.title || "Nos Formules"}</h2>
                     <p className="text-lg text-muted-foreground mt-4 max-w-xl mx-auto">
-                        Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.
+                        {personalization?.pricingSection?.description || "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins."}
                     </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
-                    {plans.map((tier) => (
+                    {plans.filter(p => p.isPublic).map((tier) => (
                         <Card key={tier.id} className={cn("flex flex-col h-full shadow-lg", tier.isFeatured && "border-2 relative")} style={tier.isFeatured ? {borderColor: primaryColor} : {}}>
                             {tier.isFeatured && (
                                 <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
@@ -79,7 +71,7 @@ export function PricingSection() {
                             </CardHeader>
                             <CardContent className="flex-1">
                                 <ul className="space-y-3">
-                                    {tier.features.map((feature, i) => (
+                                    {tier.features?.map((feature, i) => (
                                         <li key={i} className="flex items-start gap-2">
                                             <Check className="h-5 w-5 text-green-500 mt-1 flex-shrink-0" />
                                             <span className="text-muted-foreground">{feature}</span>
@@ -88,7 +80,9 @@ export function PricingSection() {
                                 </ul>
                             </CardContent>
                             <CardFooter>
-                                {/* Button removed as requested */}
+                                <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                    <Link href="/application">Choisir ce plan</Link>
+                                </Button>
                             </CardFooter>
                         </Card>
                     ))}

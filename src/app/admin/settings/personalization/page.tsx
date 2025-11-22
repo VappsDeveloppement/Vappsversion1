@@ -9,17 +9,20 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import React, { useEffect, useRef, useState } from "react";
+import { useForm, useFieldArray } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle, Edit } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAgency } from "@/context/agency-provider";
-import { setDocumentNonBlocking } from "@/firebase";
-import { doc } from "firebase/firestore";
+import { setDocumentNonBlocking, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { doc, collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -28,7 +31,10 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { sendTestEmail } from "@/app/actions/email";
 import { PayPalScriptProvider, PayPalButtons } from "@paypal/react-paypal-js";
 import Link from 'next/link';
-import { TrainingCatalogSection } from "@/components/shared/training-catalog-section";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -134,6 +140,206 @@ export type Section = {
   label: string;
   enabled: boolean;
   isLocked?: boolean; // To prevent moving certain sections like hero/footer
+};
+
+export type SubscriptionPlan = {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  period: string;
+  features: string[];
+  isFeatured: boolean;
+  isPublic: boolean;
+};
+
+const planFormSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1, "Le nom est requis."),
+  description: z.string().optional(),
+  price: z.coerce.number().min(0, "Le prix doit être positif."),
+  period: z.string().min(1, "La période est requise (ex: /mois)."),
+  features: z.array(z.object({ text: z.string() })).optional(),
+  isFeatured: z.boolean().default(false),
+  isPublic: z.boolean().default(true),
+});
+
+type PlanFormData = z.infer<typeof planFormSchema>;
+
+const SubscriptionPlanManager = () => {
+    const { personalization, agency, isLoading } = useAgency();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingPlan, setEditingPlan] = useState<SubscriptionPlan | null>(null);
+
+    const form = useForm<PlanFormData>({
+        resolver: zodResolver(planFormSchema),
+        defaultValues: {
+            id: '',
+            name: '',
+            description: '',
+            price: 0,
+            period: '/mois',
+            features: [],
+            isFeatured: false,
+            isPublic: true,
+        },
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "features"
+    });
+
+    const plans = personalization?.pricingSection?.plans || [];
+
+    const handleNewPlan = () => {
+        setEditingPlan(null);
+        form.reset({
+            id: `plan-${Date.now()}`,
+            name: '',
+            description: '',
+            price: 0,
+            period: '/mois',
+            features: [],
+            isFeatured: false,
+            isPublic: true,
+        });
+        setIsSheetOpen(true);
+    };
+
+    const handleEditPlan = (plan: SubscriptionPlan) => {
+        setEditingPlan(plan);
+        form.reset({ ...plan, features: plan.features?.map(f => ({ text: f })) || [] });
+        setIsSheetOpen(true);
+    };
+    
+    const handleDeletePlan = (planId: string) => {
+        if (!agency) return;
+
+        const updatedPlans = plans.filter(p => p.id !== planId);
+        const agencyRef = doc(firestore, 'agencies', agency.id);
+
+        setDocumentNonBlocking(agencyRef, {
+            personalization: { pricingSection: { plans: updatedPlans } }
+        }, { merge: true });
+        
+        toast({ title: "Plan supprimé" });
+    };
+
+    const onSubmit = (data: PlanFormData) => {
+        if (!agency) return;
+
+        const newPlan: SubscriptionPlan = {
+            ...data,
+            features: data.features?.map(f => f.text) || [],
+        };
+        
+        let updatedPlans: SubscriptionPlan[];
+
+        if (editingPlan) {
+            updatedPlans = plans.map(p => p.id === newPlan.id ? newPlan : p);
+        } else {
+            updatedPlans = [...plans, newPlan];
+        }
+        
+        const agencyRef = doc(firestore, 'agencies', agency.id);
+        setDocumentNonBlocking(agencyRef, {
+            personalization: { pricingSection: { plans: updatedPlans } }
+        }, { merge: true });
+
+        toast({ title: editingPlan ? "Plan mis à jour" : "Plan créé" });
+        setIsSheetOpen(false);
+    };
+
+    return (
+         <div>
+            <div className="flex justify-between items-center mb-4">
+                <div>
+                    <h4 className="font-medium">Gestion des Formules</h4>
+                    <p className="text-sm text-muted-foreground">Créez et gérez les formules qui apparaîtront sur votre page d'accueil.</p>
+                </div>
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetTrigger asChild>
+                        <Button onClick={handleNewPlan}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter</Button>
+                    </SheetTrigger>
+                    <SheetContent className="sm:max-w-xl w-full overflow-y-auto">
+                        <SheetHeader>
+                            <SheetTitle>{editingPlan ? 'Modifier' : 'Ajouter'} une formule</SheetTitle>
+                        </SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la formule</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="period" render={({ field }) => (<FormItem><FormLabel>Période</FormLabel><FormControl><Input placeholder="/mois, /an, etc." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                </div>
+                                <div>
+                                    <Label>Caractéristiques</Label>
+                                    <div className="space-y-2 mt-2">
+                                        {fields.map((field, index) => (
+                                            <div key={field.id} className="flex items-center gap-2">
+                                                <FormField control={form.control} name={`features.${index}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ text: "" })} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter une caractéristique</Button>
+                                </div>
+                                 <FormField control={form.control} name="isFeatured" render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                        <div className="space-y-1 leading-none">
+                                            <FormLabel>Mettre en avant</FormLabel>
+                                            <FormDescription>Ce plan sera mis en évidence sur la page.</FormDescription>
+                                        </div>
+                                        <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                    </FormItem>
+                                )}/>
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+            </div>
+             <div className="border rounded-lg">
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Nom</TableHead>
+                            <TableHead>Prix</TableHead>
+                            <TableHead>Période</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? (
+                            <TableRow><TableCell colSpan={4}><Skeleton className="h-8" /></TableCell></TableRow>
+                        ) : plans.length > 0 ? (
+                            plans.map(plan => (
+                                <TableRow key={plan.id}>
+                                    <TableCell className="font-medium">{plan.name}</TableCell>
+                                    <TableCell>{plan.price}€</TableCell>
+                                    <TableCell>{plan.period}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditPlan(plan)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDeletePlan(plan.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground h-24">Aucune formule créée.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+             </div>
+        </div>
+    );
 };
 
 
@@ -308,6 +514,11 @@ const defaultPersonalization = {
         dpoEmail: "",
         dpoPhone: "",
         dpoAddress: "",
+    },
+    pricingSection: {
+        title: "Nos Formules",
+        description: "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.",
+        plans: [],
     }
 };
 
@@ -439,6 +650,10 @@ export default function PersonalizationPage() {
         gdprSettings: {
             ...defaultPersonalization.gdprSettings,
             ...(personalization.gdprSettings || {})
+        },
+        pricingSection: {
+            ...defaultPersonalization.pricingSection,
+            ...(personalization.pricingSection || {})
         }
       }));
       if (personalization.logoDataUrl) {
@@ -667,6 +882,16 @@ export default function PersonalizationPage() {
         }
     }))
   }
+  
+  const handlePricingSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+        ...prev,
+        pricingSection: {
+            ...prev.pricingSection,
+            [field]: value
+        }
+    }))
+  };
 
   const handlePaymentSettingsChange = (field: string, value: any) => {
     setSettings(prev => ({
@@ -1273,7 +1498,7 @@ export default function PersonalizationPage() {
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
                  <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil. Activez ou désactivez les sections selon vos besoins.</p>
                  
-                 <Accordion type="single" collapsible className="w-full space-y-2">
+                 <Accordion type="multiple" defaultValue={['pricing']} className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => {
                        return(
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
@@ -1784,6 +2009,18 @@ export default function PersonalizationPage() {
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+                                ) : section.id === 'pricing' ? (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pricing-title">Titre</Label>
+                                            <Input id="pricing-title" value={settings.pricingSection?.title} onChange={e => handlePricingSectionChange('title', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="pricing-description">Description</Label>
+                                            <Textarea id="pricing-description" value={settings.pricingSection?.description} onChange={e => handlePricingSectionChange('description', e.target.value)} />
+                                        </div>
+                                        <SubscriptionPlanManager />
                                     </div>
                                 ) : section.id === 'video' ? (
                                     <div className="space-y-8">

@@ -8,7 +8,7 @@ import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
-import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem, ParcoursStep } from '@/app/admin/settings/personalization/page';
+import type { Section, HeroNavLink, JobOffer, SecondaryVideo, ServiceItem, ParcoursStep, SubscriptionPlan } from '@/app/admin/settings/personalization/page';
 
 interface Pillar {
   id: string;
@@ -97,10 +97,9 @@ interface ActivitiesSectionPersonalization {
 }
 
 interface PricingSectionPersonalization {
-    enabled: boolean;
     title: string;
-    subtitle: string;
-    planIds: string[];
+    description: string;
+    plans: SubscriptionPlan[];
 }
 
 interface ContactSectionPersonalization {
@@ -364,10 +363,9 @@ const defaultPersonalization: Personalization = {
         eventsButtonLink: "#",
       },
       pricingSection: {
-        enabled: false,
-        title: 'Mes Formules',
-        subtitle: '',
-        planIds: [],
+        title: 'Nos Formules',
+        description: "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.",
+        plans: [],
       },
     contactSection: {
       enabled: false,
