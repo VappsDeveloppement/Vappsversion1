@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle, Edit, Percent, Star, Users } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle, Percent, Star, Users, Edit } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -35,6 +35,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -215,7 +216,7 @@ const SubscriptionPlanManager = ({ plans, onSave }: PlanManagerProps) => {
 
     const handleEditPlan = (plan: SubscriptionPlan) => {
         setEditingPlan(plan);
-        form.reset({ ...plan, features: plan.features?.map(f => ({ text: f })) || [] });
+        form.reset({ ...plan, features: (plan.features || []).map(f => ({ text: f })) });
         setImagePreview(plan.imageUrl || null);
         setIsSheetOpen(true);
     };
@@ -1553,7 +1554,7 @@ export default function PersonalizationPage() {
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
                  <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil. Activez ou désactivez les sections selon vos besoins.</p>
                  
-                 <Accordion type="multiple" defaultValue={['pricing']} className="w-full space-y-2">
+                 <Accordion type="multiple" defaultValue={['pricing', 'whiteLabel']} className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => {
                        return(
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
@@ -2592,4 +2593,5 @@ export default function PersonalizationPage() {
     
 
     
+
 
