@@ -27,6 +27,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Plan } from '@/components/shared/plan-management';
 import { useCollection } from '@/firebase/firestore/use-collection';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 
 
 const heroSchema = z.object({
@@ -103,6 +104,7 @@ const testimonialSchema = z.object({
     authorName: z.string().min(1, 'Le nom de l\'auteur est requis.'),
     authorTitle: z.string().min(1, 'Le titre/poste est requis.'),
     text: z.string().min(1, 'Le témoignage est requis.'),
+    photoUrl: z.string().nullable().optional(),
 });
 
 const testimonialsSectionSchema = z.object({
@@ -218,6 +220,7 @@ export default function MiniSitePage() {
   const fileInputAboutRef = useRef<HTMLInputElement>(null);
   const fileInputCtaRef = useRef<HTMLInputElement>(null);
   const fileInputActivitiesRef = useRef<HTMLInputElement>(null);
+  const fileInputTestimonialRef = useRef<HTMLInputElement>(null);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -296,9 +299,9 @@ export default function MiniSitePage() {
         title: "Ce qu'ils pensent de mon travail",
         subtitle: "La satisfaction de mes clients est ma priorité",
         testimonials: [
-            { id: `testimonial-${Date.now()}-1`, authorName: 'Jean Dupont', authorTitle: 'Chef de projet', text: "Un accompagnement exceptionnel qui a transformé ma vision professionnelle. Je recommande vivement !" },
-            { id: `testimonial-${Date.now()}-2`, authorName: 'Marie Curie', authorTitle: 'Entrepreneure', text: "Grâce à ce coaching, j'ai pu lancer mon projet avec confiance et méthode. Une aide précieuse." },
-            { id: `testimonial-${Date.now()}-3`, authorName: 'Paul Valéry', authorTitle: 'Étudiant en reconversion', text: "J'étais perdu, et j'ai trouvé une nouvelle voie qui me passionne. Merci pour tout." },
+            { id: `testimonial-${Date.now()}-1`, authorName: 'Jean Dupont', authorTitle: 'Chef de projet', text: "Un accompagnement exceptionnel qui a transformé ma vision professionnelle. Je recommande vivement !", photoUrl: null },
+            { id: `testimonial-${Date.now()}-2`, authorName: 'Marie Curie', authorTitle: 'Entrepreneure', text: "Grâce à ce coaching, j'ai pu lancer mon projet avec confiance et méthode. Une aide précieuse.", photoUrl: null },
+            { id: `testimonial-${Date.now()}-3`, authorName: 'Paul Valéry', authorTitle: 'Étudiant en reconversion', text: "J'étais perdu, et j'ai trouvé une nouvelle voie qui me passionne. Merci pour tout.", photoUrl: null },
         ],
       },
       activitiesSection: {
@@ -835,10 +838,26 @@ export default function MiniSitePage() {
                                             <FormField control={form.control} name={`testimonialsSection.testimonials.${index}.authorName`} render={({ field }) => (<FormItem><FormLabel>Nom de l'auteur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                             <FormField control={form.control} name={`testimonialsSection.testimonials.${index}.authorTitle`} render={({ field }) => (<FormItem><FormLabel>Titre/Poste de l'auteur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                             <FormField control={form.control} name={`testimonialsSection.testimonials.${index}.text`} render={({ field }) => (<FormItem><FormLabel>Texte du témoignage</FormLabel><FormControl><Textarea {...field} rows={3} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <div>
+                                                <Label>Photo de l'auteur</Label>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <Avatar className="h-16 w-16">
+                                                        <AvatarImage src={form.watch(`testimonialsSection.testimonials.${index}.photoUrl`) || undefined} />
+                                                        <AvatarFallback>
+                                                            {form.watch(`testimonialsSection.testimonials.${index}.authorName`)?.charAt(0) || '?'}
+                                                        </AvatarFallback>
+                                                    </Avatar>
+                                                    <input type="file" ref={fileInputTestimonialRef} onChange={(e) => handleFileUpload(e, (base64) => form.setValue(`testimonialsSection.testimonials.${index}.photoUrl`, base64))} className="hidden" accept="image/*" />
+                                                    <div className="flex flex-col gap-2">
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => fileInputTestimonialRef.current?.click()}><Upload className="mr-2 h-4 w-4" />Changer</Button>
+                                                        <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue(`testimonialsSection.testimonials.${index}.photoUrl`, null)}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     ))}
                                     {testimonialFields.length < 3 && (
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendTestimonial({ id: `testimonial-${Date.now()}`, authorName: '', authorTitle: '', text: ''})}>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendTestimonial({ id: `testimonial-${Date.now()}`, authorName: '', authorTitle: '', text: '', photoUrl: null})}>
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un témoignage
                                     </Button>
                                     )}
@@ -1010,3 +1029,5 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    

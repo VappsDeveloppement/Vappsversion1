@@ -10,6 +10,7 @@ type Testimonial = {
     authorName: string;
     authorTitle: string;
     text: string;
+    photoUrl?: string | null;
 };
 
 type CounselorProfile = {
@@ -48,7 +49,7 @@ export function CounselorTestimonialsSection({ counselor }: { counselor: Counsel
                         <Card key={testimonial.id} className="bg-background shadow-lg">
                             <CardContent className="p-8 flex flex-col items-center text-center">
                                 <Avatar className="w-20 h-20 mb-4 border-2" style={{borderColor: primaryColor}}>
-                                    {/* For now, using placeholders. You could add photoUrl to testimonials. */}
+                                    <AvatarImage src={testimonial.photoUrl || undefined} alt={testimonial.authorName} />
                                     <AvatarFallback className="text-2xl bg-muted">{testimonial.authorName.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <p className="text-muted-foreground italic mb-4">"{testimonial.text}"</p>
@@ -62,3 +63,5 @@ export function CounselorTestimonialsSection({ counselor }: { counselor: Counsel
         </section>
     );
 }
+
+    
