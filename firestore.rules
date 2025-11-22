@@ -25,11 +25,11 @@ service cloud.firestore {
         || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && resource.data.counselorId == request.auth.uid)
       );
       allow write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // This rule allows users to access their own subcollections (quotes, invoices, etc.)
-    match /users/{userId}/{document=**} {
-       allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      // This rule allows users to access their own subcollections (quotes, invoices, etc.)
+      match /{document=**} {
+         allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
     }
 
     match /plans/{planId} {
@@ -66,5 +66,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
