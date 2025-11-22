@@ -98,6 +98,21 @@ const ctaSchema = z.object({
     bgImageUrl: z.string().nullable().optional(),
 });
 
+const testimonialSchema = z.object({
+    id: z.string(),
+    authorName: z.string().min(1, 'Le nom de l\'auteur est requis.'),
+    authorTitle: z.string().min(1, 'Le titre/poste est requis.'),
+    text: z.string().min(1, 'Le témoignage est requis.'),
+});
+
+const testimonialsSectionSchema = z.object({
+    enabled: z.boolean().default(false),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    testimonials: z.array(testimonialSchema).optional(),
+}).optional();
+
+
 const eventItemSchema = z.object({
   id: z.string(),
   title: z.string().min(1, "Le titre est requis."),
@@ -160,6 +175,7 @@ const miniSiteSchema = z.object({
   servicesSection: servicesSchema.optional(),
   parcoursSection: parcoursSchema.optional(),
   ctaSection: ctaSchema.optional(),
+  testimonialsSection: testimonialsSectionSchema,
   activitiesSection: activitiesSchema,
   pricingSection: pricingSchema,
   jobOffersSection: jobOffersSectionSchema,
@@ -171,6 +187,7 @@ export type ServiceItem = z.infer<typeof serviceItemSchema>;
 export type ParcoursStep = z.infer<typeof parcoursStepSchema>;
 export type EventItem = z.infer<typeof eventItemSchema>;
 export type JobOffer = z.infer<typeof jobOfferSchema>;
+export type Testimonial = z.infer<typeof testimonialSchema>;
 
 
 type UserProfile = {
@@ -274,6 +291,16 @@ export default function MiniSitePage() {
           bgColor: '#F9FAFB',
           bgImageUrl: null
       },
+      testimonialsSection: {
+        enabled: false,
+        title: "Ce qu'ils pensent de mon travail",
+        subtitle: "La satisfaction de mes clients est ma priorité",
+        testimonials: [
+            { id: `testimonial-${Date.now()}-1`, authorName: 'Jean Dupont', authorTitle: 'Chef de projet', text: "Un accompagnement exceptionnel qui a transformé ma vision professionnelle. Je recommande vivement !" },
+            { id: `testimonial-${Date.now()}-2`, authorName: 'Marie Curie', authorTitle: 'Entrepreneure', text: "Grâce à ce coaching, j'ai pu lancer mon projet avec confiance et méthode. Une aide précieuse." },
+            { id: `testimonial-${Date.now()}-3`, authorName: 'Paul Valéry', authorTitle: 'Étudiant en reconversion', text: "J'étais perdu, et j'ai trouvé une nouvelle voie qui me passionne. Merci pour tout." },
+        ],
+      },
       activitiesSection: {
         enabled: false,
         title: "Nos autres activités",
@@ -324,6 +351,11 @@ export default function MiniSitePage() {
       name: "parcoursSection.steps",
     });
 
+    const { fields: testimonialFields, append: appendTestimonial, remove: removeTestimonial } = useFieldArray({
+        control: form.control,
+        name: "testimonialsSection.testimonials",
+    });
+
     const { fields: eventFields, append: appendEvent, remove: removeEvent } = useFieldArray({
         control: form.control,
         name: "activitiesSection.events",
@@ -349,6 +381,11 @@ export default function MiniSitePage() {
             ...form.getValues().parcoursSection,
             ...userData.miniSite.parcoursSection,
             steps: userData.miniSite.parcoursSection?.steps || [],
+         },
+         testimonialsSection: {
+            ...form.getValues().testimonialsSection,
+            ...userData.miniSite.testimonialsSection,
+            testimonials: userData.miniSite.testimonialsSection?.testimonials || [],
          },
          activitiesSection: {
             ...form.getValues().activitiesSection,
@@ -776,6 +813,40 @@ export default function MiniSitePage() {
                         </div>
                     </AccordionContent>
                 </AccordionItem>
+                
+                <AccordionItem value="testimonials-section" className="border rounded-lg overflow-hidden">
+                    <AccordionTrigger className="text-lg font-medium px-6 py-4 bg-muted/50">Section "Témoignages"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="testimonialsSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="testimonialsSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Ce qu'ils pensent de mon travail" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="testimonialsSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="La satisfaction de mes clients est ma priorité" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <div>
+                                <Label>Liste des témoignages</Label>
+                                <div className="space-y-4 mt-2">
+                                    {testimonialFields.map((field, index) => (
+                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-medium">Témoignage {index + 1}</h4>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeTestimonial(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                            <FormField control={form.control} name={`testimonialsSection.testimonials.${index}.authorName`} render={({ field }) => (<FormItem><FormLabel>Nom de l'auteur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name={`testimonialsSection.testimonials.${index}.authorTitle`} render={({ field }) => (<FormItem><FormLabel>Titre/Poste de l'auteur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name={`testimonialsSection.testimonials.${index}.text`} render={({ field }) => (<FormItem><FormLabel>Texte du témoignage</FormLabel><FormControl><Textarea {...field} rows={3} /></FormControl><FormMessage /></FormItem>)}/>
+                                        </div>
+                                    ))}
+                                    {testimonialFields.length < 3 && (
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendTestimonial({ id: `testimonial-${Date.now()}`, authorName: '', authorTitle: '', text: ''})}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un témoignage
+                                    </Button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
 
                  <AccordionItem value="activities-section" className='border rounded-lg overflow-hidden'>
                     <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Autres Activités"</AccordionTrigger>
@@ -939,5 +1010,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
-    
