@@ -210,13 +210,16 @@ const AgencyContext = createContext<AgencyContextType | undefined>(undefined);
 const defaultHomePageSections: Section[] = [
   { id: 'hero', label: 'Hero (Titre & Connexion)', enabled: true, isLocked: true },
   { id: 'about', label: 'À propos (Trouver votre voie)', enabled: true },
+  { id: 'parcours', label: 'Parcours de transformation', enabled: true },
   { id: 'cta', label: "Appel à l'action (CTA)", enabled: true },
   { id: 'video', label: 'Vidéo', enabled: true },
   { id: 'directory', label: 'Annuaire des conseillers', enabled: true },
+  { id: 'services', label: 'Accompagnements', enabled: true },
   { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'trainingCatalog', label: 'Catalogue de formation', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
 ];
 
@@ -568,6 +571,8 @@ export function useAgency() {
     return context;
 };
 
+
+    
 
     
 
