@@ -1,8 +1,9 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
-import { Mail, Phone, MapPin, Loader2, Building, Briefcase } from 'lucide-react';
+import { Mail, Phone, MapPin, Loader2, Building, Briefcase, Linkedin, Facebook, Instagram, Youtube, Twitter } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,6 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
+import Link from 'next/link';
 
 type CounselorProfile = {
     id: string;
@@ -36,11 +38,34 @@ type CounselorProfile = {
             city?: string;
             email?: string;
             phone?: string;
+            socialLinks?: {
+                facebook?: string;
+                instagram?: string;
+                x?: string;
+                linkedin?: string;
+                tiktok?: string;
+                youtube?: string;
+            }
         }
     };
     dashboardTheme?: {
         primaryColor?: string;
     }
+};
+
+const socialIconMap = {
+    linkedin: Linkedin,
+    facebook: Facebook,
+    instagram: Instagram,
+    x: Twitter,
+    youtube: Youtube,
+    tiktok: () => (
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-primary">
+        <path d="M12.52.02C13.84 0 15.14.32 16.2 1.02a8.03 8.03 0 0 1 4.78 4.78c.7 1.06 1.02 2.36 1.02 3.68s-.32 2.62-1.02 3.68a8.03 8.03 0 0 1-4.78 4.78c-1.06.7-2.36 1.02-3.68 1.02s-2.62-.32-3.68-1.02a8.03 8.03 0 0 1-4.78-4.78c-.7-1.06-1.02-2.36-1.02-3.68s.32-2.62 1.02-3.68a8.03 8.03 0 0 1 4.78-4.78C9.9 0.32 11.2 0 12.52 0.02Z"/>
+        <path d="M12.52 0.02C13.84 0 15.14.32 16.2 1.02a8.03 8.03 0 0 1 4.78 4.78c.7 1.06 1.02 2.36 1.02 3.68s-.32 2.62-1.02 3.68a8.03 8.03 0 0 1-4.78 4.78c-1.06.7-2.36 1.02-3.68 1.02s-2.62-.32-3.68-1.02a8.03 8.03 0 0 1-4.78-4.78c-.7-1.06-1.02-2.36-1.02-3.68s.32-2.62 1.02-3.68a8.03 8.03 0 0 1 4.78-4.78C9.9 0.32 11.2 0 12.52 0.02Z"/>
+        <path d="m8.5 7.5.9-2.5 3.3 2.8 2-2.6"/>
+      </svg>
+    )
 };
 
 export function CounselorContactSection({ counselor }: { counselor: CounselorProfile }) {
@@ -66,9 +91,11 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
         city: contactConfig.city,
         email: contactConfig.email,
         phone: contactConfig.phone,
+        socialLinks: contactConfig.socialLinks,
     };
 
     const fullAddress = [info.address, info.zipCode, info.city].filter(Boolean).join(', ');
+    const socialLinksEntries = Object.entries(info.socialLinks || {}).filter(([_, url]) => url);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -146,6 +173,22 @@ export function CounselorContactSection({ counselor }: { counselor: CounselorPro
                                 </div>
                             )}
                         </div>
+
+                        {socialLinksEntries.length > 0 && (
+                            <div className="mt-8 pt-6 border-t">
+                                <h4 className="font-semibold mb-4">Suivez-moi</h4>
+                                <div className="flex flex-wrap gap-4">
+                                    {socialLinksEntries.map(([network, url]) => {
+                                        const Icon = socialIconMap[network as keyof typeof socialIconMap];
+                                        return Icon ? (
+                                            <a key={network} href={url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-primary">
+                                                <Icon className="h-6 w-6" />
+                                            </a>
+                                        ) : null;
+                                    })}
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     {/* Right Column: Contact Form */}

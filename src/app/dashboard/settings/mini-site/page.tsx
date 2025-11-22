@@ -17,7 +17,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Eye, Link as LinkIcon, PlusCircle, CheckCircle } from 'lucide-react';
+import { Loader2, Upload, Trash2, Eye, Link as LinkIcon, PlusCircle, CheckCircle, Facebook, Instagram, Linkedin, Youtube, Twitter } from 'lucide-react';
 import Image from 'next/image';
 import { Switch } from '@/components/ui/switch';
 import Link from 'next/link';
@@ -156,6 +156,15 @@ const jobOffersSectionSchema = z.object({
     offers: z.array(jobOfferSchema).optional(),
 }).optional();
 
+const socialLinksSchema = z.object({
+    facebook: z.string().url().or(z.literal('')).optional(),
+    instagram: z.string().url().or(z.literal('')).optional(),
+    x: z.string().url().or(z.literal('')).optional(),
+    linkedin: z.string().url().or(z.literal('')).optional(),
+    tiktok: z.string().url().or(z.literal('')).optional(),
+    youtube: z.string().url().or(z.literal('')).optional(),
+}).optional();
+
 const contactSectionSchema = z.object({
   enabled: z.boolean().default(false),
   title: z.string().optional(),
@@ -167,6 +176,7 @@ const contactSectionSchema = z.object({
   city: z.string().optional(),
   email: z.string().email().optional().or(z.literal('')),
   phone: z.string().optional(),
+  socialLinks: socialLinksSchema,
 }).optional();
 
 
@@ -340,6 +350,14 @@ export default function MiniSitePage() {
         city: '',
         email: '',
         phone: '',
+        socialLinks: {
+          facebook: '',
+          instagram: '',
+          x: '',
+          linkedin: '',
+          tiktok: '',
+          youtube: '',
+        },
       },
     },
   });
@@ -415,6 +433,10 @@ export default function MiniSitePage() {
             city: userData.miniSite.contactSection?.city || userData.city || '',
             email: userData.miniSite.contactSection?.email || userData.email || '',
             phone: userData.miniSite.contactSection?.phone || userData.phone || '',
+            socialLinks: {
+              ...form.getValues().contactSection?.socialLinks,
+              ...userData.miniSite.contactSection?.socialLinks,
+            }
          },
        };
       form.reset(initialMiniSiteData);
@@ -719,6 +741,39 @@ export default function MiniSitePage() {
                     </AccordionContent>
                 </AccordionItem>
 
+                 <AccordionItem value="job-offers-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Offres d'emploi"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="jobOffersSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="jobOffersSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes Offres d'Emploi" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="jobOffersSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Rejoignez mon équipe" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            
+                            <div>
+                                <Label>Liste des offres</Label>
+                                <div className="space-y-4 mt-2">
+                                    {jobOfferFields.map((field, index) => (
+                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-medium">Offre {index + 1}</h4>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeJobOffer(index)}>
+                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                </Button>
+                                            </div>
+                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.contractType`} render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.location`} render={({ field }) => ( <FormItem><FormLabel>Lieu</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendJobOffer({ id: `job-${Date.now()}`, title: 'Nouveau Poste', contractType: 'CDI', location: 'À distance'})}>
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une offre
+                                    </Button>
+                                </div>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
                  <AccordionItem value="cta-section" className='border rounded-lg overflow-hidden'>
                     <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section CTA</AccordionTrigger>
                     <AccordionContent>
@@ -961,40 +1016,7 @@ export default function MiniSitePage() {
                     </AccordionContent>
                 </AccordionItem>
                 
-                <AccordionItem value="job-offers-section" className='border rounded-lg overflow-hidden'>
-                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Offres d'emploi"</AccordionTrigger>
-                    <AccordionContent>
-                        <div className="space-y-6 p-6">
-                            <FormField control={form.control} name="jobOffersSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
-                            <FormField control={form.control} name="jobOffersSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes Offres d'Emploi" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="jobOffersSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Rejoignez mon équipe" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            
-                            <div>
-                                <Label>Liste des offres</Label>
-                                <div className="space-y-4 mt-2">
-                                    {jobOfferFields.map((field, index) => (
-                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="font-medium">Offre {index + 1}</h4>
-                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeJobOffer(index)}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            </div>
-                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.contractType`} render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                             <FormField control={form.control} name={`jobOffersSection.offers.${index}.location`} render={({ field }) => ( <FormItem><FormLabel>Lieu</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                        </div>
-                                    ))}
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendJobOffer({ id: `job-${Date.now()}`, title: 'Nouveau Poste', contractType: 'CDI', location: 'À distance'})}>
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une offre
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    </AccordionContent>
-                </AccordionItem>
-
-                 <AccordionItem value="contact-section" className='border rounded-lg overflow-hidden'>
+                <AccordionItem value="contact-section" className='border rounded-lg overflow-hidden'>
                     <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Contact"</AccordionTrigger>
                     <AccordionContent>
                         <div className="space-y-6 p-6">
@@ -1012,6 +1034,15 @@ export default function MiniSitePage() {
                                 </div>
                                 <FormField control={form.control} name="contactSection.email" render={({ field }) => (<FormItem><FormLabel>Email de contact</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="contactSection.phone" render={({ field }) => (<FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            </div>
+                            <div className="border-t pt-6 space-y-4">
+                                <h4 className="font-medium">Réseaux Sociaux</h4>
+                                <FormField control={form.control} name="contactSection.socialLinks.linkedin" render={({ field }) => (<FormItem><div className="flex items-center gap-2"><Linkedin className="h-5 w-5" /><FormLabel className="w-20">LinkedIn</FormLabel><FormControl><Input placeholder="URL de votre profil LinkedIn" {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.socialLinks.facebook" render={({ field }) => (<FormItem><div className="flex items-center gap-2"><Facebook className="h-5 w-5" /><FormLabel className="w-20">Facebook</FormLabel><FormControl><Input placeholder="URL de votre page Facebook" {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.socialLinks.instagram" render={({ field }) => (<FormItem><div className="flex items-center gap-2"><Instagram className="h-5 w-5" /><FormLabel className="w-20">Instagram</FormLabel><FormControl><Input placeholder="URL de votre profil Instagram" {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.socialLinks.x" render={({ field }) => (<FormItem><div className="flex items-center gap-2"><Twitter className="h-5 w-5" /><FormLabel className="w-20">X (Twitter)</FormLabel><FormControl><Input placeholder="URL de votre profil X" {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.socialLinks.youtube" render={({ field }) => (<FormItem><div className="flex items-center gap-2"><Youtube className="h-5 w-5" /><FormLabel className="w-20">YouTube</FormLabel><FormControl><Input placeholder="URL de votre chaîne YouTube" {...field} /></FormControl></div><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="contactSection.socialLinks.tiktok" render={({ field }) => (<FormItem><FormLabel>TikTok</FormLabel><FormControl><Input placeholder="URL de votre profil TikTok" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             </div>
                         </div>
                     </AccordionContent>
