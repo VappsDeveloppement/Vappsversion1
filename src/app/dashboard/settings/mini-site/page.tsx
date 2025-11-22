@@ -114,6 +114,12 @@ const testimonialsSectionSchema = z.object({
     testimonials: z.array(testimonialSchema).optional(),
 }).optional();
 
+const interestItemSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, "Le texte est requis."),
+  link: z.string().url("Veuillez entrer une URL valide.").optional().or(z.literal('')),
+});
+
 
 const eventItemSchema = z.object({
   id: z.string(),
@@ -129,7 +135,7 @@ const activitiesSchema = z.object({
   imageUrl: z.string().nullable().optional(),
   videoUrl: z.string().optional(),
   interestsTitle: z.string().optional(),
-  interests: z.string().optional(),
+  interests: z.array(interestItemSchema).optional(),
   events: z.array(eventItemSchema).optional(),
   eventsButtonText: z.string().optional(),
   eventsButtonLink: z.string().optional(),
@@ -205,6 +211,7 @@ export type ParcoursStep = z.infer<typeof parcoursStepSchema>;
 export type EventItem = z.infer<typeof eventItemSchema>;
 export type JobOffer = z.infer<typeof jobOfferSchema>;
 export type Testimonial = z.infer<typeof testimonialSchema>;
+export type InterestItem = z.infer<typeof interestItemSchema>;
 
 
 type UserProfile = {
@@ -327,7 +334,7 @@ export default function MiniSitePage() {
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
         imageUrl: null,
         interestsTitle: "Mes centres d'intérêt",
-        interests: "Coaching individuel, Bilan de compétences, Reconversion professionnelle",
+        interests: [],
         events: [],
         eventsButtonText: "J'ai participé à un évènement",
         eventsButtonLink: "#",
@@ -395,6 +402,11 @@ export default function MiniSitePage() {
         name: "jobOffersSection.offers",
     });
 
+    const { fields: interestFields, append: appendInterest, remove: removeInterest } = useFieldArray({
+        control: form.control,
+        name: "activitiesSection.interests",
+    });
+
 
   useEffect(() => {
     if (userData?.miniSite) {
@@ -420,6 +432,7 @@ export default function MiniSitePage() {
             ...form.getValues().activitiesSection,
             ...userData.miniSite.activitiesSection,
             events: userData.miniSite.activitiesSection?.events || [],
+            interests: userData.miniSite.activitiesSection?.interests || [],
          },
          pricingSection: {
             ...form.getValues().pricingSection,
@@ -1008,17 +1021,22 @@ export default function MiniSitePage() {
 
                             <div className="space-y-6 rounded-lg border p-4">
                                 <h4 className="text-sm font-medium">Centres d'intérêt (sous le média)</h4>
-                                <FormField control={form.control} name="activitiesSection.interestsTitle" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes centres d'intérêt" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="activitiesSection.interests" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Liste des intérêts</FormLabel>
-                                        <FormControl>
-                                            <Textarea placeholder="Coaching individuel, Bilan de compétences, ..." {...field} />
-                                        </FormControl>
-                                        <p className="text-sm text-muted-foreground">Séparez chaque centre d'intérêt par une virgule.</p>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
+                                 <FormField control={form.control} name="activitiesSection.interestsTitle" render={({ field }) => (<FormItem><FormLabel>Titre de la section</FormLabel><FormControl><Input placeholder="Mes centres d'intérêt" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <div>
+                                    <Label>Liste des intérêts</Label>
+                                     <div className="space-y-4 mt-2">
+                                        {interestFields.map((field, index) => (
+                                            <div key={field.id} className="grid grid-cols-12 gap-2 items-start">
+                                                <div className="col-span-5"><FormField control={form.control} name={`activitiesSection.interests.${index}.text`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Texte de l'intérêt" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
+                                                <div className="col-span-6"><FormField control={form.control} name={`activitiesSection.interests.${index}.link`} render={({ field }) => (<FormItem><FormControl><Input placeholder="Lien (optionnel)" {...field}/></FormControl><FormMessage/></FormItem>)}/></div>
+                                                <div className="col-span-1"><Button type="button" variant="ghost" size="icon" onClick={() => removeInterest(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendInterest({ id: `interest-${Date.now()}`, text: '', link: ''})} className="mt-2">
+                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un intérêt
+                                    </Button>
+                                </div>
                             </div>
 
                             <div className="space-y-6 rounded-lg border p-4">

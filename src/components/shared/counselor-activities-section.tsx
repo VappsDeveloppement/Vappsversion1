@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -7,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, CheckCircle } from 'lucide-react';
+import type { InterestItem } from '@/app/dashboard/settings/mini-site/page';
 
 type CounselorProfile = {
     miniSite?: {
@@ -18,7 +20,7 @@ type CounselorProfile = {
             imageUrl?: string;
             videoUrl?: string;
             interestsTitle?: string;
-            interests?: string;
+            interests?: InterestItem[];
             events?: { id: string; title: string; date: string }[];
             eventsButtonText?: string;
             eventsButtonLink?: string;
@@ -51,8 +53,6 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
         return null;
     }
     
-    const interestsList = interests?.split(',').map(item => item.trim()).filter(item => item) || [];
-
     return (
         <section className="py-16 sm:py-24 bg-white">
             <div className="container mx-auto px-4">
@@ -84,16 +84,23 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
                             </div>
                         ) : null}
 
-                        {interestsList.length > 0 && (
+                        {interests && interests.length > 0 && (
                              <div>
                                 {interestsTitle && <h3 className="text-2xl font-bold mb-4">{interestsTitle}</h3>}
                                 <div className="flex flex-wrap gap-3">
-                                    {interestsList.map((interest, index) => (
-                                        <div key={index} className="flex items-center gap-2 bg-muted rounded-full px-4 py-2 text-sm">
-                                            <CheckCircle className="h-4 w-4" style={{ color: primaryColor }} />
-                                            <span>{interest}</span>
-                                        </div>
-                                    ))}
+                                    {interests.map((interest) => {
+                                        const Wrapper = interest.link ? Link : 'div';
+                                        const props = interest.link ? { href: interest.link, target: '_blank', rel: 'noopener noreferrer' } : {};
+                                        
+                                        return (
+                                            <Wrapper key={interest.id} {...props}>
+                                                <div className="flex items-center gap-2 bg-muted rounded-full px-4 py-2 text-sm cursor-pointer hover:bg-muted/80">
+                                                    <CheckCircle className="h-4 w-4" style={{ color: primaryColor }} />
+                                                    <span>{interest.text}</span>
+                                                </div>
+                                            </Wrapper>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}

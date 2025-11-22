@@ -130,29 +130,6 @@
             "type": "string",
             "enum": ["pending_payment", "active", "cancelled", "trial"],
             "description": "The status of the user's subscription."
-        },
-        "paymentSettings": {
-            "type": "object",
-            "description": "Counselor-specific payment settings.",
-            "properties": {
-                "ribIban": { "type": "string" },
-                "ribBic": { "type": "string" },
-                "paypalClientId": { "type": "string" },
-                "paypalMeLink": { "type": "string" }
-            }
-        },
-        "emailSettings": {
-            "type": "object",
-            "description": "Counselor-specific email (SMTP) settings.",
-            "properties": {
-                "smtpHost": { "type": "string" },
-                "smtpPort": { "type": "number" },
-                "smtpUser": { "type": "string" },
-                "smtpPass": { "type": "string" },
-                "smtpSecure": { "type": "boolean" },
-                "fromEmail": { "type": "string", "format": "email" },
-                "fromName": { "type": "string" }
-            }
         }
       },
       "required": [
@@ -304,7 +281,18 @@
                     "imageUrl": { "type": "string", "format": "uri" },
                     "videoUrl": { "type": "string", "format": "uri" },
                     "interestsTitle": { "type": "string" },
-                    "interests": { "type": "string" },
+                    "interests": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "text": { "type": "string" },
+                                "link": { "type": "string", "format": "uri" }
+                            },
+                            "required": ["id", "text"]
+                        }
+                    },
                     "events": {
                       "type": "array",
                       "items": {
@@ -1004,4 +992,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
