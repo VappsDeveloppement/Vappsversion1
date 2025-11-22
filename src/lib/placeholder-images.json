@@ -149,6 +149,24 @@
       "description": "A city street corner with bicycles parked",
       "imageUrl": "https://images.unsplash.com/photo-1559348349-86f1f65817fe?q=80&w=1964&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
       "imageHint": "city street"
+    },
+    {
+      "id": "training-1",
+      "description": "Team working together in an office",
+      "imageUrl": "https://images.unsplash.com/photo-1522202176988-66273c2fd55f?q=80&w=2071&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "team office"
+    },
+    {
+      "id": "training-2",
+      "description": "Person speaking at a conference",
+      "imageUrl": "https://images.unsplash.com/photo-1543269865-cbf427effbad?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "public speaking"
+    },
+    {
+      "id": "training-3",
+      "description": "A planner and a calendar on a desk",
+      "imageUrl": "https://images.unsplash.com/photo-1525422847952-7f91db09a364?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
+      "imageHint": "planner desk"
     }
   ]
 }

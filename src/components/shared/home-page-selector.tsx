@@ -25,6 +25,7 @@ import { Button } from '../ui/button';
 import { ArrowRight } from 'lucide-react';
 import { JobOffersSection } from './job-offers-section';
 import { ParcoursSection as AgencyParcoursSection } from './parcours-section';
+import { TrainingCatalogSection } from './training-catalog-section';
 
 const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   about: AboutSection,
@@ -38,6 +39,7 @@ const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   pricing: PricingSection,
   jobOffers: JobOffersSection,
   parcours: AgencyParcoursSection,
+  trainingCatalog: TrainingCatalogSection,
 };
 
 // Héro AVEC fenêtre de connexion
