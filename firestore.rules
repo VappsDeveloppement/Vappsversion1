@@ -43,13 +43,9 @@ service cloud.firestore {
     }
 
     // Allow public read for individual quote validation page
+    // Counselors can list their own quotes thanks to the query in the component
     match /quotes/{quoteId} {
-      allow read, write: if true;
-    }
-    
-    // Allow counselors to list their own quotes
-    match /quotes/{document=**} {
-       allow list: if request.auth != null && request.query.where.counselorId == request.auth.uid;
+      allow read, write: if request.auth != null && (resource == null || resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
     }
     
     match /invoices/{invoiceId} {
