@@ -36,7 +36,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser, useMemoFirebase, useDoc } from "@/firebase";
 import { Skeleton } from "@/components/ui/skeleton";
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useFirestore, useAuth } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -113,6 +113,12 @@ export default function DashboardLayout({
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/application');
+    }
+  }, [isUserLoading, user, router]);
+
   const isSuperAdmin = userData?.role === 'superadmin';
   const isConseiller = userData?.role === 'conseiller';
   
@@ -148,34 +154,14 @@ export default function DashboardLayout({
 
   if (isLoading && !isLoggingOut) {
     return (
-        <SidebarProvider>
-            <div className="flex">
-                <Sidebar>
-                     <SidebarHeader>
-                        <Skeleton className="h-8 w-32" />
-                    </SidebarHeader>
-                    <SidebarContent>
-                        <div className="flex-1 p-2 space-y-1">
-                            {[...Array(5)].map((_, i) => (
-                                <Skeleton key={i} className="h-8 w-full" />
-                            ))}
-                        </div>
-                    </SidebarContent>
-                    <SidebarFooter>
-                        <div className="p-2">
-                            <Skeleton className="h-12 w-full" />
-                        </div>
-                    </SidebarFooter>
-                </Sidebar>
-                <SidebarInset>
-                    <header className="p-4 border-b h-14"></header>
-                    <main className="p-8">
-                        <Skeleton className="h-96 w-full" />
-                    </main>
-                </SidebarInset>
-            </div>
-        </SidebarProvider>
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
     );
+  }
+
+  if (!user) {
+    return null; // or a redirect component
   }
 
 

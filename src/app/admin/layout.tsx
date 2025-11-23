@@ -18,6 +18,7 @@ import {
   FlaskConical,
   ClipboardList,
   Newspaper,
+  Loader2,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -34,9 +35,12 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser, useAuth } from "@/firebase";
-import React from "react";
+import { useUser, useAuth, useMemoFirebase, useDoc } from "@/firebase";
+import React, { useEffect } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { doc } from "firebase/firestore";
+import { useFirestore } from "@/firebase/provider";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
@@ -59,9 +63,25 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const auth = useAuth();
   const router = useRouter();
+  
+  const userDocRef = useMemoFirebase(() => {
+    if (!user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+  useEffect(() => {
+    if (!isUserLoading && !user) {
+      router.push('/application');
+    } else if (!isUserDataLoading && userData?.role !== 'superadmin') {
+      router.push('/dashboard');
+    }
+  }, [isUserLoading, user, isUserDataLoading, userData, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -71,6 +91,16 @@ export default function AdminLayout({
     }
     router.push('/');
   };
+
+  const isLoading = isUserLoading || isUserDataLoading;
+
+  if (isLoading || !user || userData?.role !== 'superadmin') {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <SidebarProvider>
@@ -149,4 +179,3 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
-
