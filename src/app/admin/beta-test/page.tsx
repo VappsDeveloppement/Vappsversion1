@@ -56,15 +56,18 @@ export default function BetaTestPage() {
 
       <Card>
         <CardContent className="p-6">
-          <Tabs defaultValue="features">
+          <Tabs defaultValue="scenario">
             <TabsList className="mb-4">
-              <TabsTrigger value="features">Fonctionnalités</TabsTrigger>
-              <TabsTrigger value="roles">Rôles</TabsTrigger>
+              <TabsTrigger value="scenario">Scénarios</TabsTrigger>
+              <TabsTrigger value="results">Résultats</TabsTrigger>
             </TabsList>
-            <TabsContent value="features" className="space-y-4">
+            <TabsContent value="scenario" className="space-y-4">
                 <div className="flex gap-2">
                     <Badge variant="secondary">Connexion</Badge>
                     <Badge variant="outline">Profil</Badge>
+                     <Button variant="ghost" size="icon" className="h-6 w-6">
+                        <PlusCircle className="h-4 w-4" />
+                    </Button>
                 </div>
                  <div className="flex gap-2 items-center">
                     <Badge variant="secondary">Testeur</Badge>
@@ -74,7 +77,7 @@ export default function BetaTestPage() {
                     </Button>
                 </div>
             </TabsContent>
-            <TabsContent value="roles">
+            <TabsContent value="results">
                  <p className="text-sm text-muted-foreground">Gestion des rôles pour les scénarios de test.</p>
             </TabsContent>
           </Tabs>
