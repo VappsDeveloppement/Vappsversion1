@@ -28,6 +28,7 @@ import { Checkbox } from '../ui/checkbox';
 import { Label } from '../ui/label';
 import { useAgency } from '@/context/agency-provider';
 import type { SubscriptionPlan, WhiteLabelStat } from '@/app/admin/settings/personalization/page';
+import Link from 'next/link';
 
 
 type Contract = {
@@ -343,6 +344,9 @@ export function WhiteLabelSection() {
                                        )
                                    })}
                                 </div>
+                                <Button asChild variant="outline" className="w-full">
+                                    <Link href="/beta-testing">Tester l'application</Link>
+                                </Button>
                             </CardContent>
                         </Card>
                     </div>

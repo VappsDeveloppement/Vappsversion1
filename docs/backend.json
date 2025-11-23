@@ -1,5 +1,4 @@
 
-
 {
   "entities": {
     "User": {
@@ -736,6 +735,37 @@
             "location": { "type": "string" }
         },
         "required": ["id", "title", "contractType", "location"]
+    },
+    "BetaTestResult": {
+      "title": "Beta Test Result",
+      "type": "object",
+      "description": "Stores the results of a public beta test session.",
+      "properties": {
+        "id": { "type": "string" },
+        "tester": {
+          "type": "object",
+          "properties": {
+            "firstName": { "type": "string" },
+            "lastName": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "testCaseId": { "type": "string" },
+              "note": { "type": "string" },
+              "status": { "type": "string", "enum": ["passed", "failed", "blocked", "pending"] }
+            }
+          }
+        },
+        "globalRating": { "type": "number" },
+        "isInterested": { "type": "boolean" },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tester", "results", "globalRating", "isInterested", "submittedAt"]
     }
   },
   "auth": {
@@ -847,9 +877,16 @@
           },
           "description": "Stores email campaigns. Access controlled by administrator roles."
         }
+      },
+      {
+        "path": "/beta_tests_results/{resultId}",
+        "definition": {
+            "entityName": "BetaTestResult",
+            "schema": { "$ref": "#/entities/BetaTestResult" },
+            "description": "Stores results from public beta testers."
+        }
       }
     ],
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
