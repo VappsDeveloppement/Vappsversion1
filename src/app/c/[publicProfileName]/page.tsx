@@ -22,6 +22,7 @@ import { CounselorJobOffersSection } from '@/components/shared/counselor-job-off
 import { CounselorContactSection } from '@/components/shared/counselor-contact-section';
 import { CounselorTestimonialsSection } from '@/components/shared/counselor-testimonials-section';
 import { TrainingCatalogSection } from '@/components/shared/training-catalog-section';
+import { CounselorBlogSection } from '@/components/shared/counselor-blog-section';
 
 type CounselorProfile = {
     id: string;
@@ -50,6 +51,7 @@ type CounselorProfile = {
         activitiesSection?: any;
         jobOffersSection?: any;
         contactSection?: any;
+        blogSection?: any;
         trainingCatalogSection?: {
             enabled?: boolean;
         };
@@ -118,6 +120,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
         {counselor.miniSite?.trainingCatalogSection?.enabled && <TrainingCatalogSection primaryColor={primaryColor} />}
+        <CounselorBlogSection counselor={counselor} />
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
@@ -128,3 +131,5 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
+
+    

@@ -140,6 +140,24 @@
         "dateJoined"
       ]
     },
+    "ContactMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Contact Message",
+      "type": "object",
+      "description": "Represents a message submitted through a public contact form.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "read", "archived"], "default": "new" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "recipientId": { "type": "string", "description": "ID of the counselor or 'agency' for the recipient."}
+      },
+      "required": ["id", "name", "email", "subject", "message", "status", "createdAt"]
+    },
     "MiniSite": {
         "title": "MiniSite",
         "type": "object",
@@ -320,6 +338,14 @@
                             "$ref": "#/entities/JobOffer"
                         }
                     }
+                }
+            },
+            "blogSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" }
                 }
             },
             "trainingCatalogSection": {
@@ -783,6 +809,36 @@
         "submittedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["tester", "results", "globalRating", "isInterested", "submittedAt"]
+    },
+    "BlogCategory": {
+      "title": "Blog Category",
+      "type": "object",
+      "description": "A category for blog articles.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "BlogArticle": {
+      "title": "Blog Article",
+      "type": "object",
+      "description": "A blog article written by a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string", "format": "html" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "categoryId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhotoUrl": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["draft", "pending", "published", "rejected"] },
+        "rejectionReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "publishedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "content", "categoryId", "authorId", "authorName", "status", "createdAt"]
     }
   },
   "auth": {
@@ -821,7 +877,15 @@
           "description": "Stores the public-facing profile data for a counselor's mini-site. The document ID is the counselor's user ID."
         }
       },
-       {
+      {
+        "path": "/contact_messages/{messageId}",
+        "definition": {
+          "entityName": "ContactMessage",
+          "schema": { "$ref": "#/entities/ContactMessage" },
+          "description": "Stores messages submitted from public contact forms."
+        }
+      },
+      {
         "path": "/gdpr_requests/{requestId}",
         "definition": {
           "entityName": "GdprRequest",
@@ -910,8 +974,26 @@
             "schema": { "$ref": "#/entities/BetaTestResult" },
             "description": "Stores results from public beta testers."
         }
+      },
+      {
+        "path": "/blog_categories/{categoryId}",
+        "definition": {
+          "entityName": "BlogCategory",
+          "schema": { "$ref": "#/entities/BlogCategory" },
+          "description": "Stores categories for blog articles."
+        }
+      },
+      {
+        "path": "/articles/{articleId}",
+        "definition": {
+          "entityName": "BlogArticle",
+          "schema": { "$ref": "#/entities/BlogArticle" },
+          "description": "Stores blog articles written by counselors."
+        }
       }
     ],
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    
