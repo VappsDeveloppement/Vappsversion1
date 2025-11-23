@@ -13,7 +13,8 @@ import {
   CreditCard,
   Palette,
   ShieldCheck,
-  UserCircle
+  UserCircle,
+  FlaskConical
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -37,6 +38,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
+  { href: "/admin/beta-test", label: "Beta Test", icon: <FlaskConical /> },
   { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
 ];
 
