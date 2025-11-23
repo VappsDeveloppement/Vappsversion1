@@ -124,26 +124,23 @@ export function Footer() {
             let collectionName = '';
             let data: any = {};
             let successMessage = '';
+            
+            // Default to contact message
+             collectionName = 'contact_messages';
+             data = {
+                name: contactName,
+                email: contactEmail,
+                phone: contactPhone,
+                subject: contactSubject,
+                message: contactMessage,
+                status: 'new',
+                createdAt: new Date().toISOString(),
+                recipientId: 'agency' // General message for the agency
+             };
+             successMessage = "Votre message a bien été envoyé. Nous vous répondrons dans les plus brefs délais.";
 
-            if (contactSubject === "Demande d'information") {
-                collectionName = 'users';
-                const nameParts = contactName.split(' ');
-                const firstName = nameParts.shift() || contactName;
-                const lastName = nameParts.join(' ') || '-';
-                data = {
-                    firstName,
-                    lastName,
-                    email: contactEmail,
-                    phone: contactPhone,
-                    message: contactMessage,
-                    role: 'prospect',
-                    counselorId: '', // Should be assigned by an admin/process later
-                    dateJoined: new Date().toISOString(),
-                    origin: 'Footer Contact Form',
-                    status: 'new'
-                };
-                successMessage = "Merci ! Votre demande a été envoyée et vous avez été ajouté à notre liste de prospects.";
-            } else if (contactSubject === "Données Personnelles") {
+
+            if (contactSubject === "Données Personnelles") {
                 collectionName = 'gdpr_requests';
                  data = {
                     name: contactName,

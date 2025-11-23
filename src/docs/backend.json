@@ -140,6 +140,24 @@
         "dateJoined"
       ]
     },
+    "ContactMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Contact Message",
+      "type": "object",
+      "description": "Represents a message submitted through a public contact form.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "subject": { "type": "string" },
+        "message": { "type": "string" },
+        "status": { "type": "string", "enum": ["new", "read", "archived"], "default": "new" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "recipientId": { "type": "string", "description": "ID of the counselor or 'agency' for the recipient."}
+      },
+      "required": ["id", "name", "email", "subject", "message", "status", "createdAt"]
+    },
     "MiniSite": {
         "title": "MiniSite",
         "type": "object",
@@ -412,7 +430,13 @@
             "homePageVersion": { "type": "string" },
             "homePageSections": { "type": "array", "items": { "type": "object" } },
             "legalInfo": { "type": "object" },
-            "whiteLabelSection": { "$ref": "#/entities/WhiteLabelSection" }
+            "whiteLabelSection": { "$ref": "#/entities/WhiteLabelSection" },
+            "betaTesting": {
+                "type": "object",
+                "properties": {
+                    "testUrl": { "type": "string", "format": "uri" }
+                }
+            }
           }
         }
       },
@@ -735,6 +759,48 @@
             "location": { "type": "string" }
         },
         "required": ["id", "title", "contractType", "location"]
+    },
+    "BetaScenario": {
+      "title": "Beta Scenario",
+      "type": "object",
+      "description": "A scenario for beta testing.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "roles": { "type": "array" }
+      },
+      "required": ["id", "name", "roles"]
+    },
+    "BetaTestResult": {
+      "title": "Beta Test Result",
+      "type": "object",
+      "description": "Stores the results of a public beta test session.",
+      "properties": {
+        "id": { "type": "string" },
+        "tester": {
+          "type": "object",
+          "properties": {
+            "firstName": { "type": "string" },
+            "lastName": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        },
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "testCaseId": { "type": "string" },
+              "note": { "type": "string" },
+              "status": { "type": "string", "enum": ["passed", "failed", "blocked", "pending"] }
+            }
+          }
+        },
+        "globalRating": { "type": "number" },
+        "isInterested": { "type": "boolean" },
+        "submittedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["tester", "results", "globalRating", "isInterested", "submittedAt"]
     }
   },
   "auth": {
@@ -771,6 +837,14 @@
             "$ref": "#/backend/entities/CounselorProfile"
           },
           "description": "Stores the public-facing profile data for a counselor's mini-site. The document ID is the counselor's user ID."
+        }
+      },
+      {
+        "path": "/contact_messages/{messageId}",
+        "definition": {
+          "entityName": "ContactMessage",
+          "schema": { "$ref": "#/entities/ContactMessage" },
+          "description": "Stores messages submitted from public contact forms."
         }
       },
        {
@@ -845,6 +919,22 @@
             "$ref": "#/backend/entities/EmailCampaign"
           },
           "description": "Stores email campaigns. Access controlled by administrator roles."
+        }
+      },
+      {
+        "path": "/beta_scenarios/{scenarioId}",
+        "definition": {
+            "entityName": "BetaScenario",
+            "schema": { "$ref": "#/entities/BetaScenario" },
+            "description": "Stores beta testing scenarios created by admins."
+        }
+      },
+      {
+        "path": "/beta_tests_results/{resultId}",
+        "definition": {
+            "entityName": "BetaTestResult",
+            "schema": { "$ref": "#/entities/BetaTestResult" },
+            "description": "Stores results from public beta testers."
         }
       }
     ],
