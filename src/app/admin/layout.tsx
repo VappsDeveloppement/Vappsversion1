@@ -17,6 +17,7 @@ import {
   UserCircle,
   FlaskConical,
   ClipboardList,
+  Newspaper,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -39,6 +40,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
+  { href: "/admin/blog", label: "Gestion du Blog", icon: <Newspaper /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
   { href: "/admin/beta-test", label: "Recette de test", icon: <FlaskConical /> },
   { href: "/admin/beta-test/results", label: "Résultats Tests", icon: <ClipboardList /> },
@@ -147,3 +149,4 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
+

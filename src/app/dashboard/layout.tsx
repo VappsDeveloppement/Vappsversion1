@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import Link from "next/link";
@@ -16,6 +17,7 @@ import {
   Globe,
   Loader2,
   Settings,
+  Newspaper,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -197,14 +199,24 @@ export default function DashboardLayout({
                 </SidebarMenuItem>
               ))}
               {isConseiller && (
-                  <SidebarMenuItem>
-                    <Link href="/dashboard/clients">
-                      <SidebarMenuButton isActive={pathname.startsWith("/dashboard/clients")}>
-                          <Users />
-                          <span>Mes Clients</span>
-                      </SidebarMenuButton>
-                    </Link>
-                  </SidebarMenuItem>
+                  <>
+                    <SidebarMenuItem>
+                        <Link href="/dashboard/clients">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/clients")}>
+                            <Users />
+                            <span>Mes Clients</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                     <SidebarMenuItem>
+                        <Link href="/dashboard/blog">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/blog")}>
+                            <Newspaper />
+                            <span>Mon Blog</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                  </>
               )}
                <Accordion type="single" collapsible defaultValue={activeProfilePath ? "profile-menu" : undefined} className="w-full">
                     <AccordionItem value="profile-menu" className="border-none">
@@ -277,3 +289,4 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+

@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -801,6 +800,36 @@
         "submittedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["tester", "results", "globalRating", "isInterested", "submittedAt"]
+    },
+    "BlogCategory": {
+      "title": "Blog Category",
+      "type": "object",
+      "description": "A category for blog articles.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["id", "name"]
+    },
+    "BlogArticle": {
+      "title": "Blog Article",
+      "type": "object",
+      "description": "A blog article written by a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string", "format": "html" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "categoryId": { "type": "string" },
+        "authorId": { "type": "string" },
+        "authorName": { "type": "string" },
+        "authorPhotoUrl": { "type": "string", "format": "uri" },
+        "status": { "type": "string", "enum": ["draft", "pending", "published", "rejected"] },
+        "rejectionReason": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "publishedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "content", "categoryId", "authorId", "authorName", "status", "createdAt"]
     }
   },
   "auth": {
@@ -847,7 +876,7 @@
           "description": "Stores messages submitted from public contact forms."
         }
       },
-       {
+      {
         "path": "/gdpr_requests/{requestId}",
         "definition": {
           "entityName": "GdprRequest",
@@ -935,6 +964,22 @@
             "entityName": "BetaTestResult",
             "schema": { "$ref": "#/entities/BetaTestResult" },
             "description": "Stores results from public beta testers."
+        }
+      },
+      {
+        "path": "/blog_categories/{categoryId}",
+        "definition": {
+          "entityName": "BlogCategory",
+          "schema": { "$ref": "#/entities/BlogCategory" },
+          "description": "Stores categories for blog articles."
+        }
+      },
+      {
+        "path": "/articles/{articleId}",
+        "definition": {
+          "entityName": "BlogArticle",
+          "schema": { "$ref": "#/entities/BlogArticle" },
+          "description": "Stores blog articles written by counselors."
         }
       }
     ],
