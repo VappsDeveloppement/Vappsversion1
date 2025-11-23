@@ -8,14 +8,13 @@ import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlusCircle, Check, X, AlertTriangle, Edit, Sparkles, Trash2, Loader2, Save } from "lucide-react";
+import { PlusCircle, Check, X, AlertTriangle, Edit, Trash2, Save, MoreVertical, ChevronDown, ChevronRight, Folder, UserCheck } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type TestCaseStatus = 'passed' | 'failed' | 'blocked' | 'pending';
 
@@ -23,38 +22,51 @@ interface TestCase {
   id: string;
   title: string;
   description: string;
-  scenario: string;
-  role: string;
   status: TestCaseStatus;
+}
+
+interface Role {
+  id: string;
+  name: string;
+  testCases: TestCase[];
+}
+
+interface Scenario {
+  id: string;
+  name: string;
+  roles: Role[];
 }
 
 const testCaseSchema = z.object({
   title: z.string().min(1, 'Le titre est requis.'),
   description: z.string().min(1, 'La description est requise.'),
-  scenario: z.string().min(1, 'Le scénario est requis.'),
-  role: z.string().min(1, 'Le rôle est requis.'),
 });
 
-const initialScenarios = ['Connexion', 'Profil', 'Facturation'];
-const initialRoles = ['Testeur', 'Administrateur', 'Client'];
-const initialTestCases: TestCase[] = [
+const initialScenarios: Scenario[] = [
   {
-    id: 'case-1',
-    title: "Vérifier que l'ajout d'une nouvelle dépense fonctionne.",
-    description: "Connectez-vous en tant qu'utilisateur, allez dans la section des dépenses, et ajoutez une nouvelle dépense avec un montant, une date et une catégorie. Vérifiez qu'elle apparaît dans la liste.",
-    scenario: 'Facturation',
-    role: 'Testeur',
-    status: 'pending',
+    id: 'scenario-1',
+    name: 'Connexion',
+    roles: [
+      {
+        id: 'role-1-1',
+        name: 'Testeur',
+        testCases: [
+          { id: 'case-1-1-1', title: 'Connexion avec email/mot de passe valide', description: "Vérifier que l'utilisateur peut se connecter avec des identifiants corrects.", status: 'pending' },
+          { id: 'case-1-1-2', title: 'Connexion avec mot de passe invalide', description: "Vérifier qu'un message d'erreur s'affiche en cas de mot de passe incorrect.", status: 'pending' },
+        ],
+      },
+      { id: 'role-1-2', name: 'Administrateur', testCases: [] },
+    ],
   },
   {
-    id: 'case-2',
-    title: "Modifier le profil utilisateur.",
-    description: "Se connecter avec un compte utilisateur, modifier les informations du profil (nom, avatar), et vérifier que les modifications sont sauvegardées et affichées correctement.",
-    scenario: 'Profil',
-    role: 'Utilisateur',
-    status: 'pending',
+    id: 'scenario-2',
+    name: 'Profil',
+    roles: [
+        { id: 'role-2-1', name: 'Utilisateur', testCases: [] },
+    ],
   },
 ];
+
 
 const statusConfig: Record<TestCaseStatus, { text: string; icon: React.ReactNode; className: string }> = {
   passed: { text: "Réussi", icon: <Check className="h-4 w-4" />, className: "bg-green-100 text-green-800 border-green-200 hover:bg-green-200" },
@@ -63,101 +75,134 @@ const statusConfig: Record<TestCaseStatus, { text: string; icon: React.ReactNode
   pending: { text: "En attente", icon: null, className: "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200" },
 };
 
-function TagManager({ title, tags, onTagsChange }: { title: string, tags: string[], onTagsChange: (newTags: string[]) => void }) {
-  const [newTag, setNewTag] = useState('');
-
-  const handleAdd = () => {
-    if (newTag && !tags.includes(newTag)) {
-      onTagsChange([...tags, newTag]);
-      setNewTag('');
-    }
-  };
-
-  const handleRemove = (tagToRemove: string) => {
-    onTagsChange(tags.filter(tag => tag !== tagToRemove));
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-lg">{title}</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-wrap gap-2 mb-4">
-          {tags.map((tag) => (
-            <Badge key={tag} variant="secondary" className="group relative pr-6">
-              {tag}
-              <button
-                onClick={() => handleRemove(tag)}
-                className="absolute top-1/2 right-1 -translate-y-1/2 w-4 h-4 rounded-full bg-muted-foreground/20 text-muted-foreground opacity-0 group-hover:opacity-100"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </Badge>
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <Input 
-            placeholder={`Nouveau ${title.slice(0, -1).toLowerCase()}`}
-            value={newTag}
-            onChange={(e) => setNewTag(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
-          />
-          <Button onClick={handleAdd}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 export default function BetaTestPage() {
-  const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
-  const [scenarios, setScenarios] = useState<string[]>(initialScenarios);
-  const [roles, setRoles] = useState<string[]>(initialRoles);
+  const [scenarios, setScenarios] = useState<Scenario[]>(initialScenarios);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(initialScenarios[0]?.id || null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(initialScenarios[0]?.roles[0]?.id || null);
   
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingCase, setEditingCase] = useState<TestCase | null>(null);
+  const [isTestCaseDialogOpen, setIsTestCaseDialogOpen] = useState(false);
+  const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
 
   const form = useForm<z.infer<typeof testCaseSchema>>({
     resolver: zodResolver(testCaseSchema),
   });
-
+  
   useEffect(() => {
-    if (editingCase) {
-      form.reset(editingCase);
+    if (editingTestCase) {
+      form.reset(editingTestCase);
     } else {
-      form.reset({ title: '', description: '', scenario: '', role: '' });
+      form.reset({ title: '', description: '' });
     }
-  }, [editingCase, isDialogOpen, form]);
+  }, [editingTestCase, isTestCaseDialogOpen, form]);
 
-  const setTestStatus = (id: string, status: TestCaseStatus) => {
-    setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, status } : tc));
+
+  // Scenario Management
+  const addScenario = () => {
+    const name = window.prompt("Nom de la nouvelle fonctionnalité :");
+    if (name) {
+      const newScenario: Scenario = { id: `scenario-${Date.now()}`, name, roles: [] };
+      setScenarios([...scenarios, newScenario]);
+    }
   };
 
-  const handleFormSubmit = (data: z.infer<typeof testCaseSchema>) => {
-    if (editingCase) {
-      // Update existing case
-      setTestCases(prev => prev.map(tc => tc.id === editingCase.id ? { ...editingCase, ...data } : tc));
-    } else {
-      // Add new case
-      const newCase: TestCase = {
-        id: `case-${Date.now()}`,
-        ...data,
-        status: 'pending',
-      };
-      setTestCases(prev => [newCase, ...prev]);
+  const deleteScenario = (scenarioId: string) => {
+    if (window.confirm("Êtes-vous sûr de vouloir supprimer cette fonctionnalité et tous ses rôles/cas de test ?")) {
+      setScenarios(scenarios.filter(s => s.id !== scenarioId));
+      if (selectedScenarioId === scenarioId) {
+        setSelectedScenarioId(scenarios.length > 1 ? scenarios.find(s => s.id !== scenarioId)!.id : null);
+        setSelectedRoleId(null);
+      }
     }
-    setIsDialogOpen(false);
+  };
+
+  // Role Management
+  const addRoleToScenario = (scenarioId: string) => {
+    const name = window.prompt("Nom du nouveau rôle pour cette fonctionnalité :");
+    if (name) {
+      const newRole: Role = { id: `role-${Date.now()}`, name, testCases: [] };
+      setScenarios(scenarios.map(s => s.id === scenarioId ? { ...s, roles: [...s.roles, newRole] } : s));
+    }
   };
   
-  const deleteTestCase = (id: string) => {
-      setTestCases(prev => prev.filter(tc => tc.id !== id));
+  const deleteRoleFromScenario = (scenarioId: string, roleId: string) => {
+     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce rôle ?")) {
+        setScenarios(scenarios.map(s => 
+            s.id === scenarioId 
+            ? { ...s, roles: s.roles.filter(r => r.id !== roleId) } 
+            : s
+        ));
+        if (selectedRoleId === roleId) {
+            setSelectedRoleId(null);
+        }
+     }
+  };
+
+
+  // Test Case Management
+  const handleOpenTestCaseDialog = (testCase: TestCase | null = null) => {
+    setEditingTestCase(testCase);
+    setIsTestCaseDialogOpen(true);
   };
   
-  const handleOpenDialog = (testCase: TestCase | null = null) => {
-      setEditingCase(testCase);
-      setIsDialogOpen(true);
-  }
+  const handleTestCaseFormSubmit = (data: z.infer<typeof testCaseSchema>) => {
+    if (!selectedScenarioId || !selectedRoleId) return;
+
+    setScenarios(scenarios.map(scenario => {
+        if (scenario.id !== selectedScenarioId) return scenario;
+        return {
+            ...scenario,
+            roles: scenario.roles.map(role => {
+                if (role.id !== selectedRoleId) return role;
+                let newTestCases: TestCase[];
+                if (editingTestCase) {
+                    newTestCases = role.testCases.map(tc => tc.id === editingTestCase.id ? { ...editingTestCase, ...data } : tc);
+                } else {
+                    const newTestCase: TestCase = { id: `case-${Date.now()}`, ...data, status: 'pending' };
+                    newTestCases = [newTestCase, ...role.testCases];
+                }
+                return { ...role, testCases: newTestCases };
+            })
+        };
+    }));
+
+    setIsTestCaseDialogOpen(false);
+  };
+
+  const deleteTestCase = (testCaseId: string) => {
+    if (!selectedScenarioId || !selectedRoleId) return;
+    setScenarios(scenarios.map(scenario => 
+        scenario.id === selectedScenarioId ? {
+            ...scenario,
+            roles: scenario.roles.map(role => 
+                role.id === selectedRoleId ? {
+                    ...role,
+                    testCases: role.testCases.filter(tc => tc.id !== testCaseId)
+                } : role
+            )
+        } : scenario
+    ));
+  };
+
+  const setTestStatus = (testCaseId: string, status: TestCaseStatus) => {
+     if (!selectedScenarioId || !selectedRoleId) return;
+     setScenarios(scenarios.map(scenario => 
+        scenario.id === selectedScenarioId ? {
+            ...scenario,
+            roles: scenario.roles.map(role => 
+                role.id === selectedRoleId ? {
+                    ...role,
+                    testCases: role.testCases.map(tc => tc.id === testCaseId ? {...tc, status} : tc)
+                } : role
+            )
+        } : scenario
+    ));
+  };
+
+
+  const selectedScenario = scenarios.find(s => s.id === selectedScenarioId);
+  const selectedRole = selectedScenario?.roles.find(r => r.id === selectedRoleId);
+
 
   return (
     <div className="space-y-6">
@@ -166,113 +211,151 @@ export default function BetaTestPage() {
           <h1 className="text-3xl font-bold font-headline">Recette de test</h1>
           <p className="text-muted-foreground">Gérez les scénarios de test pour l'application.</p>
         </div>
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button onClick={() => handleOpenDialog()}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Nouveau cas de test
-            </Button>
-          </DialogTrigger>
+        <Button onClick={() => addScenario()}>
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Nouveau Scénario
+        </Button>
+      </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-15rem)]">
+            <Card className="md:col-span-3 lg:col-span-2 flex flex-col">
+                <CardHeader className='p-3 border-b'>
+                    <CardTitle className='text-base'>Fonctionnalités</CardTitle>
+                </CardHeader>
+                <CardContent className="p-1 flex-1 overflow-y-auto">
+                    {scenarios.map(scenario => (
+                        <div key={scenario.id} className="group flex items-center justify-between rounded-md text-sm p-2 hover:bg-muted cursor-pointer" data-active={selectedScenarioId === scenario.id} onClick={() => { setSelectedScenarioId(scenario.id); setSelectedRoleId(scenario.roles[0]?.id || null); }}>
+                            <div className="flex items-center gap-2 truncate">
+                                <Folder className="h-4 w-4 text-primary" />
+                                <span className="truncate">{scenario.name}</span>
+                            </div>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); deleteScenario(scenario.id); }}>
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                        </div>
+                    ))}
+                </CardContent>
+            </Card>
+
+            <Card className="md:col-span-9 lg:col-span-10 flex flex-col">
+                 <CardHeader className='p-3 border-b'>
+                    <CardTitle className='text-base'>{selectedScenario?.name || "Sélectionnez un scénario"}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0 flex-1 grid grid-cols-12 overflow-hidden">
+                    <div className="col-span-12 lg:col-span-3 border-r h-full overflow-y-auto">
+                         <div className="p-3 border-b flex justify-between items-center">
+                            <h4 className="text-sm font-semibold">Rôles</h4>
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => selectedScenarioId && addRoleToScenario(selectedScenarioId)} disabled={!selectedScenarioId}>
+                                <PlusCircle className="h-4 w-4"/>
+                            </Button>
+                         </div>
+                         <div className='p-1'>
+                             {selectedScenario?.roles.map(role => (
+                                <div key={role.id} className="group flex items-center justify-between rounded-md text-sm p-2 hover:bg-muted cursor-pointer" data-active={selectedRoleId === role.id} onClick={() => setSelectedRoleId(role.id)}>
+                                    <div className="flex items-center gap-2 truncate">
+                                        <UserCheck className="h-4 w-4 text-muted-foreground" />
+                                        <span className="truncate">{role.name}</span>
+                                    </div>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => {e.stopPropagation(); deleteRoleFromScenario(selectedScenario.id, role.id)}}>
+                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                    </Button>
+                                </div>
+                            ))}
+                         </div>
+                    </div>
+                     <div className="col-span-12 lg:col-span-9 h-full overflow-y-auto">
+                         <div className="p-3 border-b flex justify-between items-center">
+                            <h4 className="text-sm font-semibold">{selectedRole?.name ? `Cas de test pour: ${selectedRole.name}` : "Sélectionnez un rôle"}</h4>
+                            <Button onClick={() => handleOpenTestCaseDialog()} disabled={!selectedRole}>
+                                <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un cas
+                            </Button>
+                         </div>
+                         <div className='p-3'>
+                            {selectedRole ? (
+                                selectedRole.testCases.length > 0 ? (
+                                    <Accordion type="multiple" className="w-full space-y-4">
+                                        {selectedRole.testCases.map((testCase) => (
+                                        <AccordionItem key={testCase.id} value={testCase.id} className="border rounded-lg bg-background">
+                                            <AccordionTrigger className="p-4 hover:no-underline text-left">
+                                                <div className="flex-1 flex items-center gap-4">
+                                                    <div className={cn("w-4 h-4 rounded-full shrink-0", statusConfig[testCase.status].className.split(' ')[0])} />
+                                                    <span className="font-semibold">{testCase.title}</span>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="p-4 border-t">
+                                                <p className="text-muted-foreground mb-6 whitespace-pre-wrap">{testCase.description}</p>
+                                                <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                                                    <div className="flex flex-wrap items-center gap-4">
+                                                        <span className="font-medium text-sm">Résultat du test:</span>
+                                                        <div className="flex gap-2 flex-wrap">
+                                                        {Object.keys(statusConfig).map(statusKey => {
+                                                            const status = statusKey as TestCaseStatus;
+                                                            const config = statusConfig[status];
+                                                            return (
+                                                            <Button
+                                                                key={status}
+                                                                variant="outline"
+                                                                size="sm"
+                                                                className={cn("gap-2", config.className, testCase.status === status && "ring-2 ring-offset-2 ring-primary")}
+                                                                onClick={() => setTestStatus(testCase.id, status)}
+                                                            >
+                                                                {config.icon}
+                                                                {config.text}
+                                                            </Button>
+                                                            );
+                                                        })}
+                                                        </div>
+                                                    </div>
+                                                    <div className="flex justify-end gap-2 pt-4 sm:pt-0 border-t sm:border-t-0 w-full sm:w-auto">
+                                                        <Button variant="ghost" size="sm" onClick={() => handleOpenTestCaseDialog(testCase)}><Edit className="mr-2 h-4 w-4" />Modifier</Button>
+                                                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteTestCase(testCase.id)}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>
+                                                    </div>
+                                                </div>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        ))}
+                                    </Accordion>
+                                ) : (
+                                    <div className="text-center text-muted-foreground py-12">
+                                        <p>Aucun cas de test pour ce rôle.</p>
+                                    </div>
+                                )
+                            ) : (
+                                <div className="text-center text-muted-foreground py-12">
+                                    <p>Veuillez sélectionner une fonctionnalité et un rôle pour voir les cas de test.</p>
+                                </div>
+                            )}
+                         </div>
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+
+        <Dialog open={isTestCaseDialogOpen} onOpenChange={setIsTestCaseDialogOpen}>
           <DialogContent className="sm:max-w-[625px]">
             <DialogHeader>
-              <DialogTitle>{editingCase ? 'Modifier le cas de test' : 'Nouveau cas de test'}</DialogTitle>
+              <DialogTitle>{editingTestCase ? 'Modifier le cas de test' : 'Nouveau cas de test'}</DialogTitle>
               <DialogDescription>
-                Décrivez le cas de test, son scénario et le rôle associé.
+                Décrivez le titre et les étapes pour ce cas de test.
               </DialogDescription>
             </DialogHeader>
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-4 py-4">
+              <form onSubmit={form.handleSubmit(handleTestCaseFormSubmit)} className="space-y-4 py-4">
                 <FormField control={form.control} name="title" render={({ field }) => (
                   <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} placeholder="Ex: Vérifier la connexion utilisateur" /></FormControl><FormMessage /></FormItem>
                 )}/>
                 <FormField control={form.control} name="description" render={({ field }) => (
-                  <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} placeholder="Étapes détaillées pour reproduire le test..." /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel>Description / Étapes</FormLabel><FormControl><Textarea {...field} placeholder="1. Aller à la page de connexion.\n2. Entrer un email valide...\n3. Vérifier que l'utilisateur est redirigé vers le tableau de bord." rows={5} /></FormControl><FormMessage /></FormItem>
                 )}/>
-                <div className="grid grid-cols-2 gap-4">
-                  <FormField control={form.control} name="scenario" render={({ field }) => (
-                    <FormItem><FormLabel>Scénario</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir un scénario" /></SelectTrigger></FormControl><SelectContent>{scenarios.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
-                  )}/>
-                  <FormField control={form.control} name="role" render={({ field }) => (
-                    <FormItem><FormLabel>Rôle</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Choisir un rôle" /></SelectTrigger></FormControl><SelectContent>{roles.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
-                  )}/>
-                </div>
                 <DialogFooter>
-                  <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Annuler</Button>
-                  <Button type="submit"><Save className="mr-2 h-4 w-4" />{editingCase ? 'Sauvegarder' : 'Créer'}</Button>
+                  <Button type="button" variant="outline" onClick={() => setIsTestCaseDialogOpen(false)}>Annuler</Button>
+                  <Button type="submit"><Save className="mr-2 h-4 w-4" />{editingTestCase ? 'Sauvegarder' : 'Créer'}</Button>
                 </DialogFooter>
               </form>
             </Form>
           </DialogContent>
         </Dialog>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <TagManager title="Scénarios" tags={scenarios} onTagsChange={setScenarios} />
-        <TagManager title="Rôles" tags={roles} onTagsChange={setRoles} />
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Liste des cas de test</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Accordion type="multiple" className="w-full space-y-4">
-            {testCases.map((testCase) => (
-              <AccordionItem key={testCase.id} value={testCase.id} className="border rounded-lg bg-background">
-                <AccordionTrigger className="p-4 hover:no-underline text-left">
-                  <div className="flex-1 flex items-center gap-4">
-                    <div className={cn("w-4 h-4 rounded-full shrink-0", statusConfig[testCase.status].className.split(' ')[0])} />
-                    <span className="font-semibold">{testCase.title}</span>
-                  </div>
-                  <div className="flex gap-2 items-center text-sm text-muted-foreground mr-4">
-                    <Badge variant="outline">{testCase.scenario}</Badge>
-                    <Badge variant="outline">{testCase.role}</Badge>
-                  </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 border-t">
-                  <p className="text-muted-foreground mb-6 whitespace-pre-wrap">{testCase.description}</p>
-                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
-                     <div className="flex flex-wrap items-center gap-4">
-                        <span className="font-medium text-sm">Résultat du test:</span>
-                        <div className="flex gap-2 flex-wrap">
-                          {Object.keys(statusConfig).map(statusKey => {
-                            const status = statusKey as TestCaseStatus;
-                            const config = statusConfig[status];
-                            return (
-                              <Button
-                                key={status}
-                                variant="outline"
-                                size="sm"
-                                className={cn(
-                                    "gap-2", config.className,
-                                    testCase.status === status && "ring-2 ring-offset-2 ring-primary"
-                                )}
-                                onClick={() => setTestStatus(testCase.id, status)}
-                              >
-                                {config.icon}
-                                {config.text}
-                              </Button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                      <div className="flex justify-end gap-2 pt-4 sm:pt-0 border-t sm:border-t-0 w-full sm:w-auto">
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(testCase)}><Edit className="mr-2 h-4 w-4" />Modifier</Button>
-                        <Button variant="ghost" size="sm" className="text-destructive" onClick={() => deleteTestCase(testCase.id)}><Trash2 className="mr-2 h-4 w-4" />Supprimer</Button>
-                      </div>
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-            {testCases.length === 0 && (
-                <div className="text-center text-muted-foreground py-12">
-                    <p>Aucun cas de test pour le moment.</p>
-                    <Button variant="link" onClick={() => handleOpenDialog()}>Créer le premier cas de test</Button>
-                </div>
-            )}
-          </Accordion>
-        </CardContent>
-      </Card>
     </div>
   );
 }
+
