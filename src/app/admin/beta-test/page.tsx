@@ -41,6 +41,10 @@ const testCaseSchema = z.object({
   description: z.string().min(1, 'La description est requise.'),
 });
 
+const scenarioSchema = z.object({
+  name: z.string().min(1, 'Le nom de la fonctionnalité est requis.'),
+});
+
 const initialScenarios: Scenario[] = [
   {
     id: 'scenario-1',
@@ -73,26 +77,37 @@ export default function BetaTestPage() {
   
   const [isTestCaseDialogOpen, setIsTestCaseDialogOpen] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
-
-  const form = useForm<z.infer<typeof testCaseSchema>>({
+  
+  const [isScenarioDialogOpen, setIsScenarioDialogOpen] = useState(false);
+  
+  const testCaseForm = useForm<z.infer<typeof testCaseSchema>>({
     resolver: zodResolver(testCaseSchema),
     defaultValues: { title: '', description: '' },
+  });
+
+  const scenarioForm = useForm<z.infer<typeof scenarioSchema>>({
+    resolver: zodResolver(scenarioSchema),
+    defaultValues: { name: '' },
   });
   
   useEffect(() => {
     if (editingTestCase) {
-      form.reset(editingTestCase);
+      testCaseForm.reset(editingTestCase);
     } else {
-      form.reset({ title: '', description: '' });
+      testCaseForm.reset({ title: '', description: '' });
     }
-  }, [editingTestCase, form]);
+  }, [editingTestCase, testCaseForm]);
 
-  const addScenario = () => {
-    const name = window.prompt("Nom de la nouvelle fonctionnalité :");
-    if (name) {
-      const newScenario: Scenario = { id: `scenario-${Date.now()}`, name, roles: [] };
-      setScenarios(currentScenarios => [...currentScenarios, newScenario]);
-    }
+
+  const handleScenarioFormSubmit = (data: z.infer<typeof scenarioSchema>) => {
+    const newScenario: Scenario = {
+      id: `scenario-${Date.now()}`,
+      name: data.name,
+      roles: []
+    };
+    setScenarios(current => [...current, newScenario]);
+    setIsScenarioDialogOpen(false);
+    scenarioForm.reset();
   };
 
   const deleteScenario = (scenarioId: string) => {
@@ -200,6 +215,10 @@ export default function BetaTestPage() {
           <h1 className="text-3xl font-bold font-headline">Recette de test</h1>
           <p className="text-muted-foreground">Gérez les scénarios de test pour l'application.</p>
         </div>
+        <Button onClick={() => setIsScenarioDialogOpen(true)}>
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Nouvelle Fonctionnalité
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-15rem)]">
@@ -230,6 +249,9 @@ export default function BetaTestPage() {
             <div className="col-span-12 lg:col-span-3 border-r h-full overflow-y-auto">
               <div className="p-3 border-b flex justify-between items-center">
                 <h4 className="text-sm font-semibold">Rôles</h4>
+                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => selectedScenarioId && addRoleToScenario(selectedScenarioId)} disabled={!selectedScenarioId}>
+                    <PlusCircle className="h-4 w-4" />
+                </Button>
               </div>
               <div className='p-1'>
                 {selectedScenario?.roles.map(role => (
@@ -314,6 +336,34 @@ export default function BetaTestPage() {
         </Card>
       </div>
 
+       <Dialog open={isScenarioDialogOpen} onOpenChange={setIsScenarioDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Nouvelle Fonctionnalité</DialogTitle>
+            <DialogDescription>
+              Entrez le nom de la nouvelle fonctionnalité à tester.
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...scenarioForm}>
+            <form onSubmit={scenarioForm.handleSubmit(handleScenarioFormSubmit)} className="space-y-4 py-4">
+              <FormField control={scenarioForm.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nom de la fonctionnalité</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Ex: Gestion de profil" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}/>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsScenarioDialogOpen(false)}>Annuler</Button>
+                <Button type="submit"><Save className="mr-2 h-4 w-4" />Créer</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+
       <Dialog open={isTestCaseDialogOpen} onOpenChange={setIsTestCaseDialogOpen}>
         <DialogContent className="sm:max-w-[625px]">
           <DialogHeader>
@@ -322,12 +372,12 @@ export default function BetaTestPage() {
               Décrivez le titre et les étapes pour ce cas de test.
             </DialogDescription>
           </DialogHeader>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleTestCaseFormSubmit)} className="space-y-4 py-4">
-              <FormField control={form.control} name="title" render={({ field }) => (
+          <Form {...testCaseForm}>
+            <form onSubmit={testCaseForm.handleSubmit(handleTestCaseFormSubmit)} className="space-y-4 py-4">
+              <FormField control={testCaseForm.control} name="title" render={({ field }) => (
                 <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} placeholder="Ex: Vérifier la connexion utilisateur" /></FormControl><FormMessage /></FormItem>
               )}/>
-              <FormField control={form.control} name="description" render={({ field }) => (
+              <FormField control={testCaseForm.control} name="description" render={({ field }) => (
                 <FormItem><FormLabel>Description / Étapes</FormLabel><FormControl><Textarea {...field} placeholder="1. Aller à la page de connexion.\n2. Entrer un email valide...\n3. Vérifier que l'utilisateur est redirigé vers le tableau de bord." rows={5} /></FormControl><FormMessage /></FormItem>
               )}/>
               <DialogFooter>
