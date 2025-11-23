@@ -118,6 +118,10 @@ interface BlogSectionPersonalization {
     enabled: boolean;
 }
 
+interface TrainingCatalogSectionPersonalization {
+    enabled: boolean;
+}
+
 
 interface ContactSectionPersonalization {
   enabled: boolean;
@@ -207,6 +211,7 @@ interface Personalization {
     whiteLabelSection: WhiteLabelSectionPersonalization;
     blogSection: BlogSectionPersonalization;
     contactSection: ContactSectionPersonalization;
+    trainingCatalogSection: TrainingCatalogSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
     gdprSettings: GdprSettings;
@@ -237,6 +242,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'trainingCatalog', label: 'Catalogue de formation', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
 ];
 
@@ -403,6 +409,9 @@ const defaultPersonalization: Personalization = {
         description: "Retrouvez nos derniers articles, conseils et actualités.",
         enabled: true,
     },
+    trainingCatalogSection: {
+        enabled: false,
+    },
     contactSection: {
       enabled: false,
       title: "Contactez-moi",
@@ -548,6 +557,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                     contactSection: {
                         ...defaultPersonalization.contactSection,
                         ...(fetchedAgencyData.personalization?.contactSection || {}),
+                    },
+                    trainingCatalogSection: {
+                        ...defaultPersonalization.trainingCatalogSection,
+                        ...(fetchedAgencyData.personalization?.trainingCatalogSection || {}),
                     },
                     paymentSettings: {
                         ...defaultPersonalization.paymentSettings,

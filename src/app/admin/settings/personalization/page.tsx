@@ -373,6 +373,7 @@ const defaultHomePageSections: Section[] = [
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
   { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
+  { id: 'trainingCatalog', label: 'Catalogue de formation', enabled: true },
   { id: 'jobOffers', label: 'Offre emploi', enabled: true },
   { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
@@ -555,6 +556,9 @@ const defaultPersonalization = {
         title: "Nos Formules",
         description: "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.",
         plans: [],
+    },
+    trainingCatalogSection: {
+        enabled: false,
     }
 };
 
@@ -700,6 +704,10 @@ export default function PersonalizationPage() {
         pricingSection: {
             ...defaultPersonalization.pricingSection,
             ...(personalization.pricingSection || {})
+        },
+        trainingCatalogSection: {
+            ...defaultPersonalization.trainingCatalogSection,
+            ...(personalization.trainingCatalogSection || {}),
         }
       }));
       if (personalization.logoDataUrl) {
@@ -944,6 +952,16 @@ export default function PersonalizationPage() {
       ...prev,
       blogSection: {
         ...(prev.blogSection || defaultPersonalization.blogSection),
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleTrainingCatalogSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      trainingCatalogSection: {
+        ...(prev.trainingCatalogSection || defaultPersonalization.trainingCatalogSection),
         [field]: value,
       },
     }));
@@ -2442,6 +2460,27 @@ export default function PersonalizationPage() {
                                             <Textarea id="blog-description" value={settings.blogSection?.description} onChange={e => handleBlogSectionChange('description', e.target.value)} />
                                         </div>
                                     </div>
+                                ) : section.id === 'trainingCatalog' ? (
+                                     <div className="space-y-6">
+                                        <FormField
+                                            control={null as any}
+                                            name="trainingCatalogSection.enabled"
+                                            render={({ field } : any) => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel className="text-base">Afficher le Catalogue de Formation</FormLabel>
+                                                        <FormDescription>Si cette option est activée, la section du catalogue de formation de la plateforme sera affichée sur la page d'accueil.</FormDescription>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Switch
+                                                            checked={settings.trainingCatalogSection?.enabled}
+                                                            onCheckedChange={(checked) => handleTrainingCatalogSectionChange('enabled', checked)}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
+                                    </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>
                                 )}
@@ -2640,4 +2679,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-
