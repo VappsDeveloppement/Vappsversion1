@@ -7,7 +7,7 @@ import { useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Calendar, Edit, Facebook, Home, Linkedin, Loader2, Twitter, User } from 'lucide-react';
+import { AlertTriangle, Calendar, Home, Linkedin, Facebook, Twitter, User } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -31,7 +31,6 @@ type Article = {
     };
 };
 
-// We need the author's public profile name to link back to their page
 type AuthorProfile = {
     miniSite?: {
         publicProfileName?: string;
@@ -50,14 +49,12 @@ export default function ArticleDisplayPage() {
     );
     const { data: article, isLoading, error } = useDoc<Article>(articleRef);
     
-    // Fetch category name separately
     const categoryRef = useMemoFirebase(
         () => (article?.categoryId ? doc(firestore, 'blog_categories', article.categoryId) : null),
         [firestore, article]
     );
     const { data: category } = useDoc(categoryRef);
     
-    // NEW: Fetch author's public profile to get the link
     const authorProfileRef = useMemoFirebase(
         () => (article?.authorId ? doc(firestore, 'minisites', article.authorId) : null),
         [firestore, article]
@@ -200,7 +197,7 @@ export default function ArticleDisplayPage() {
                                     </Button>
                                 </div>
                             </div>
-                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                 <Button asChild variant="outline">
                                     <Link href="/">
                                         <Home className="mr-2 h-4 w-4"/>
