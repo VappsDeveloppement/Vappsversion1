@@ -34,7 +34,9 @@ service cloud.firestore {
 
     match /contact_messages/{messageId} {
         allow create: if true;
-        allow read, write: if request.auth != null; // Admins and counselors can manage messages
+        allow read, write: if request.auth != null && 
+                               (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' && resource.data.recipientId == 'vapps-agency' ||
+                                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && resource.data.recipientId == request.auth.uid);
     }
 
     match /plans/{planId} {
@@ -57,10 +59,12 @@ service cloud.firestore {
     }
 
     match /gdpr_requests/{requestId} {
-        allow read, write: if request.auth != null;
+        allow create: if true; // Allow public creation from contact forms
+        allow read, write: if request.auth != null; // Admins can manage them
     }
 
     match /support_requests/{requestId} {
+        allow create: if true; // Allow public creation
         allow read, write: if request.auth != null;
     }
 

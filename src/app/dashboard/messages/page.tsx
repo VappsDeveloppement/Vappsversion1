@@ -36,12 +36,10 @@ function NewContactsSection() {
     const { data: userData } = useDoc(userDocRef);
 
     const contactsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !userData) return null;
         
-        let recipientId = user.uid; // Default for counselors
-        if (userData?.role === 'superadmin') {
-            recipientId = 'vapps-agency'; // Superadmin sees agency-wide messages
-        }
+        // Superadmin sees agency-wide messages, counselors see their own.
+        const recipientId = userData?.role === 'superadmin' ? 'vapps-agency' : user.uid;
 
         return query(
             collection(firestore, 'contact_messages'), 
