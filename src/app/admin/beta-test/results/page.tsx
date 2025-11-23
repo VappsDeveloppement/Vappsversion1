@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Star, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { cn } from '@/lib/utils';
 
 type TestCaseResult = {
   testCaseId: string;
@@ -119,4 +120,3 @@ export default function BetaTestResultsPage() {
         </div>
     );
 }
-
