@@ -85,16 +85,22 @@ export function BlogSection() {
     const firestore = useFirestore();
     const { personalization, isLoading: isAgencyLoading } = useAgency();
 
+    // Local state to prevent server-side execution of hooks
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => {
+      setIsClient(true);
+    }, []);
+
     const [titleFilter, setTitleFilter] = useState('');
     const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
     const [isCategoryPopoverOpen, setIsCategoryPopoverOpen] = useState(false);
 
-    const categoriesQuery = useMemoFirebase(() => collection(firestore, 'blog_categories'), [firestore]);
+    const categoriesQuery = useMemoFirebase(() => isClient ? collection(firestore, 'blog_categories') : null, [firestore, isClient]);
     const { data: categories, isLoading: areCategoriesLoading } = useCollection<BlogCategory>(categoriesQuery);
 
     const publishedArticlesQuery = useMemoFirebase(() => {
-        return query(collection(firestore, 'articles'), where('status', '==', 'published'));
-    }, [firestore]);
+        return isClient ? query(collection(firestore, 'articles'), where('status', '==', 'published')) : null;
+    }, [firestore, isClient]);
 
     const { data: publishedArticles, isLoading: areArticlesLoading } = useCollection<Article>(publishedArticlesQuery);
     
@@ -122,8 +128,12 @@ export function BlogSection() {
 
     const isLoading = isAgencyLoading || areCategoriesLoading || areArticlesLoading;
 
-    if (isLoading) {
-        return (
+    if (!personalization.blogSection?.enabled && !isLoading) {
+        return null;
+    }
+    
+    if (isLoading && !isClient) {
+       return (
             <section className="bg-background text-foreground py-16 sm:py-24">
                 <div className="container mx-auto px-4">
                     <div className="text-center mb-12"><Skeleton className="h-10 w-1/3 mx-auto" /></div>
@@ -135,9 +145,6 @@ export function BlogSection() {
         );
     }
 
-    if (!personalization.blogSection?.enabled) {
-        return null;
-    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
@@ -189,7 +196,11 @@ export function BlogSection() {
                     </Popover>
                 </div>
 
-                {filteredArticles.length > 0 ? (
+                {isLoading ? (
+                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {[...Array(3)].map((_, i) => <Card key={i}><Skeleton className="h-64 w-full" /></Card>)}
+                    </div>
+                ) : filteredArticles.length > 0 ? (
                     <Carousel opts={{ align: "start", loop: filteredArticles.length > 3 }} className="w-full max-w-6xl mx-auto">
                         <CarouselContent className="-ml-4">
                             {filteredArticles.map((article) => <ArticleCard key={article.id} article={article} />)}
