@@ -497,15 +497,15 @@ export default function BetaTestPage() {
       </Dialog>
 
       <Dialog open={isTestCaseDialogOpen} onOpenChange={setIsTestCaseDialogOpen}>
-        <DialogContent className="sm:max-w-[625px] max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="sm:max-w-2xl max-h-[90vh] flex flex-col p-0">
+          <DialogHeader className="p-6 pb-0">
             <DialogTitle>{editingTestCase ? 'Modifier le cas de test' : 'Nouveau cas de test'}</DialogTitle>
             <DialogDescription>
               Décrivez le titre et les étapes pour ce cas de test. Vous pouvez également ajouter une note ou un média.
             </DialogDescription>
           </DialogHeader>
-          <ScrollArea className="flex-1 -mx-6 px-6">
-            <div className="py-4">
+          <ScrollArea className="flex-1 overflow-y-auto">
+            <div className="px-6 py-4">
               <Form {...testCaseForm}>
                 <form onSubmit={testCaseForm.handleSubmit(handleTestCaseFormSubmit)} className="space-y-6">
                   <FormField control={testCaseForm.control} name="title" render={({ field }) => (
@@ -568,7 +568,7 @@ export default function BetaTestPage() {
                       </div>
                     </div>
                   </div>
-                  <DialogFooter className="sticky bottom-0 bg-background pt-4 -mx-6 px-6 -mb-6 pb-6">
+                   <DialogFooter className="sticky bottom-0 bg-background pt-4 z-10 px-6 pb-6 -mx-6">
                       <Button type="button" variant="outline" onClick={() => setIsTestCaseDialogOpen(false)}>Annuler</Button>
                       <Button type="submit"><Save className="mr-2 h-4 w-4" />{editingTestCase ? 'Sauvegarder' : 'Créer'}</Button>
                   </DialogFooter>
@@ -581,5 +581,3 @@ export default function BetaTestPage() {
     </div>
   );
 }
-
-    
