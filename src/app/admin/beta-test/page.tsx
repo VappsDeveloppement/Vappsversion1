@@ -36,10 +36,32 @@ const initialTestCases: TestCase[] = [
 
 export default function BetaTestPage() {
   const [testCases, setTestCases] = useState<TestCase[]>(initialTestCases);
+  const [scenarios, setScenarios] = useState(['Connexion', 'Profil']);
+  const [roles, setRoles] = useState(['Testeur', 'Administrateur']);
 
   const setTestStatus = (id: string, status: TestCaseStatus) => {
     setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, status } : tc));
   };
+
+  const addTag = (type: 'scenario' | 'role') => {
+    const newTag = window.prompt(`Entrez le nom du nouveau ${type === 'scenario' ? 'scénario' : 'rôle'}:`);
+    if (newTag) {
+      if (type === 'scenario') {
+        setScenarios(prev => [...prev, newTag]);
+      } else {
+        setRoles(prev => [...prev, newTag]);
+      }
+    }
+  };
+
+  const removeTag = (type: 'scenario' | 'role', index: number) => {
+    if (type === 'scenario') {
+      setScenarios(prev => prev.filter((_, i) => i !== index));
+    } else {
+      setRoles(prev => prev.filter((_, i) => i !== index));
+    }
+  };
+
 
   const statusConfig: Record<TestCaseStatus, { text: string; icon: React.ReactNode; className: string }> = {
     passed: { text: "Réussi", icon: <Check />, className: "bg-green-100 text-green-800 border-green-200 hover:bg-green-200" },
@@ -62,23 +84,35 @@ export default function BetaTestPage() {
               <TabsTrigger value="results">Résultats</TabsTrigger>
             </TabsList>
             <TabsContent value="scenario" className="space-y-4">
-                <div className="flex gap-2">
-                    <Badge variant="secondary">Connexion</Badge>
-                    <Badge variant="outline">Profil</Badge>
-                     <Button variant="ghost" size="icon" className="h-6 w-6">
+                <div className="flex items-center gap-2 flex-wrap">
+                    {scenarios.map((scenario, index) => (
+                      <div key={index} className="group relative">
+                        <Badge variant="secondary">{scenario}</Badge>
+                         <button onClick={() => removeTag('scenario', index)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X className="w-3 h-3"/>
+                        </button>
+                      </div>
+                    ))}
+                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addTag('scenario')}>
                         <PlusCircle className="h-4 w-4" />
                     </Button>
                 </div>
-                 <div className="flex gap-2 items-center">
-                    <Badge variant="secondary">Testeur</Badge>
-                    <Badge variant="outline">Administrateur</Badge>
-                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                 <div className="flex items-center gap-2 flex-wrap">
+                    {roles.map((role, index) => (
+                      <div key={index} className="group relative">
+                        <Badge variant="outline">{role}</Badge>
+                        <button onClick={() => removeTag('role', index)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
+                            <X className="w-3 h-3"/>
+                        </button>
+                      </div>
+                    ))}
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addTag('role')}>
                         <PlusCircle className="h-4 w-4" />
                     </Button>
                 </div>
             </TabsContent>
             <TabsContent value="results">
-                 <p className="text-sm text-muted-foreground">Gestion des rôles pour les scénarios de test.</p>
+                 <p className="text-sm text-muted-foreground">Les résultats des tests s'afficheront ici.</p>
             </TabsContent>
           </Tabs>
 
@@ -127,4 +161,4 @@ export default function BetaTestPage() {
       </Card>
     </div>
   );
-}
+ 
