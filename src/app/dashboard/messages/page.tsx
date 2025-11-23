@@ -28,27 +28,35 @@ type ContactMessage = {
 };
 
 function NewContactsSection() {
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
 
     const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
-    const { data: userData } = useDoc(userDocRef);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
     const contactsQuery = useMemoFirebase(() => {
-        if (!user || !userData) return null;
+        if (!user || !userData) return null; // Wait for user and userData
         
-        // Superadmin sees agency-wide messages, counselors see their own.
-        const recipientId = userData?.role === 'superadmin' ? 'vapps-agency' : user.uid;
+        let recipientId: string;
+        if (userData.role === 'superadmin') {
+            recipientId = 'vapps-agency';
+        } else if (userData.role === 'conseiller') {
+            recipientId = user.uid;
+        } else {
+            return null; // Don't fetch for other roles
+        }
 
         return query(
             collection(firestore, 'contact_messages'), 
             where('status', '==', 'new'),
             where('recipientId', '==', recipientId)
         );
-    }, [user, firestore, userData]);
+    }, [user, userData, firestore]);
     
-    const { data: contacts, isLoading } = useCollection<ContactMessage>(contactsQuery);
+    const { data: contacts, isLoading: areContactsLoading } = useCollection<ContactMessage>(contactsQuery);
+    
+    const isLoading = isUserLoading || isUserDataLoading || areContactsLoading;
 
     const handleMarkAsRead = (contactId: string) => {
         const contactRef = doc(firestore, 'contact_messages', contactId);
@@ -60,7 +68,7 @@ function NewContactsSection() {
          <Card className="mb-8">
             <CardHeader>
                 <CardTitle>Nouvelles Demandes de Contact</CardTitle>
-                <CardDescription>Liste des messages reçus depuis les formulaires de contact qui n'ont pas encore été lus.</CardDescription>
+                <CardDescription>Liste des messages reçus qui n'ont pas encore été lus.</CardDescription>
             </CardHeader>
             <CardContent>
                 <Table>
