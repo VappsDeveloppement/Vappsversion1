@@ -75,9 +75,9 @@ const statusConfig: Record<TestCaseStatus, { text: string; icon: React.ReactNode
 
 
 export default function BetaTestPage() {
-  const [scenarios, setScenarios] = useState<Scenario[]>(initialScenarios);
-  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(initialScenarios[0]?.id || null);
-  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(initialScenarios[0]?.roles[0]?.id || null);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   
   const [isTestCaseDialogOpen, setIsTestCaseDialogOpen] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
@@ -99,6 +99,45 @@ export default function BetaTestPage() {
     resolver: zodResolver(roleSchema),
     defaultValues: { name: '' },
   });
+  
+  // Load data from localStorage on mount
+  useEffect(() => {
+    try {
+      const savedScenarios = localStorage.getItem('beta-test-scenarios');
+      if (savedScenarios) {
+        const parsedScenarios = JSON.parse(savedScenarios);
+        setScenarios(parsedScenarios);
+        if (parsedScenarios.length > 0) {
+            setSelectedScenarioId(parsedScenarios[0].id);
+            if (parsedScenarios[0].roles.length > 0) {
+                setSelectedRoleId(parsedScenarios[0].roles[0].id);
+            }
+        }
+      } else {
+        setScenarios(initialScenarios);
+         if (initialScenarios.length > 0) {
+            setSelectedScenarioId(initialScenarios[0].id);
+             if (initialScenarios[0].roles.length > 0) {
+                setSelectedRoleId(initialScenarios[0].roles[0].id);
+            }
+        }
+      }
+    } catch (error) {
+        console.error("Could not load scenarios from localStorage", error);
+        setScenarios(initialScenarios);
+    }
+  }, []);
+
+  // Save data to localStorage on change
+  useEffect(() => {
+    try {
+        if(scenarios.length > 0) {
+            localStorage.setItem('beta-test-scenarios', JSON.stringify(scenarios));
+        }
+    } catch (error) {
+        console.error("Could not save scenarios to localStorage", error);
+    }
+  }, [scenarios]);
   
   useEffect(() => {
     if (editingTestCase) {
