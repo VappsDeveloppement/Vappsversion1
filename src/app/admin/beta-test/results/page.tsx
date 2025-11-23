@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -9,7 +9,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Star, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Star, ThumbsUp, ThumbsDown, Users, CheckCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -49,13 +49,76 @@ export default function BetaTestResultsPage() {
     const resultsQuery = useMemoFirebase(() => query(collection(firestore, 'beta_tests_results')), [firestore]);
     const { data: results, isLoading } = useCollection<BetaTestResult>(resultsQuery);
 
+    const stats = useMemo(() => {
+        if (!results || results.length === 0) {
+            return {
+                totalTests: 0,
+                averageRating: 0,
+                successPercentage: 0,
+            };
+        }
+
+        const totalTests = results.length;
+        const averageRating = results.reduce((sum, r) => sum + r.globalRating, 0) / totalTests;
+        
+        const allTestCases = results.flatMap(r => r.results);
+        const passedCases = allTestCases.filter(tc => tc.status === 'passed').length;
+        const totalCases = allTestCases.length;
+        const successPercentage = totalCases > 0 ? (passedCases / totalCases) * 100 : 0;
+
+        return {
+            totalTests,
+            averageRating: parseFloat(averageRating.toFixed(1)),
+            successPercentage: parseFloat(successPercentage.toFixed(1)),
+        };
+
+    }, [results]);
+
     return (
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold font-headline">Résultats des Tests Publics</h1>
                 <p className="text-muted-foreground">Consultez les retours des testeurs externes.</p>
             </div>
+
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Total des Tests</CardTitle>
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-16" /> : stats.totalTests}</div>
+                        <p className="text-xs text-muted-foreground">testeurs ont soumis leurs retours.</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Note Moyenne</CardTitle>
+                        <Star className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                         <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-16" /> : `${stats.averageRating} / 5`}</div>
+                         <p className="text-xs text-muted-foreground">Note globale moyenne attribuée.</p>
+                    </CardContent>
+                </Card>
+                 <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Taux de Réussite</CardTitle>
+                        <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className="text-2xl font-bold">{isLoading ? <Skeleton className="h-8 w-16" /> : `${stats.successPercentage}%`}</div>
+                        <p className="text-xs text-muted-foreground">Pourcentage de cas de test "Réussi".</p>
+                    </CardContent>
+                </Card>
+            </div>
+
             <Card>
+                <CardHeader>
+                    <CardTitle>Retours Détaillés</CardTitle>
+                    <CardDescription>Liste de tous les retours soumis par les testeurs.</CardDescription>
+                </CardHeader>
                 <CardContent>
                     {isLoading ? (
                         <div className="space-y-4 p-6">
