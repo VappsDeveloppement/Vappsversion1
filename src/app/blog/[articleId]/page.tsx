@@ -7,7 +7,7 @@ import { useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Calendar, Edit, Facebook, Linkedin, Loader2, Twitter } from 'lucide-react';
+import { AlertTriangle, Calendar, Edit, Facebook, Home, Linkedin, Loader2, Twitter } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -153,21 +153,29 @@ function ArticleDisplayPage() {
                     
                     <footer className="mt-12 pt-8 border-t">
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-                             <h4 className="font-semibold">Partager cet article :</h4>
-                            <div className="flex gap-2">
-                                <Button variant="outline" size="icon" onClick={() => shareOnSocial('twitter')}>
-                                    <Twitter className="h-4 w-4" />
-                                    <span className="sr-only">Partager sur Twitter</span>
-                                </Button>
-                                <Button variant="outline" size="icon" onClick={() => shareOnSocial('facebook')}>
-                                    <Facebook className="h-4 w-4" />
-                                     <span className="sr-only">Partager sur Facebook</span>
-                                </Button>
-                                <Button variant="outline" size="icon" onClick={() => shareOnSocial('linkedin')}>
-                                    <Linkedin className="h-4 w-4" />
-                                     <span className="sr-only">Partager sur LinkedIn</span>
-                                </Button>
+                            <div className="flex items-center gap-2">
+                                <h4 className="font-semibold">Partager :</h4>
+                                <div className="flex gap-2">
+                                    <Button variant="outline" size="icon" onClick={() => shareOnSocial('twitter')}>
+                                        <Twitter className="h-4 w-4" />
+                                        <span className="sr-only">Partager sur Twitter</span>
+                                    </Button>
+                                    <Button variant="outline" size="icon" onClick={() => shareOnSocial('facebook')}>
+                                        <Facebook className="h-4 w-4" />
+                                        <span className="sr-only">Partager sur Facebook</span>
+                                    </Button>
+                                    <Button variant="outline" size="icon" onClick={() => shareOnSocial('linkedin')}>
+                                        <Linkedin className="h-4 w-4" />
+                                        <span className="sr-only">Partager sur LinkedIn</span>
+                                    </Button>
+                                </div>
                             </div>
+                            <Button asChild variant="secondary">
+                                <Link href="/">
+                                    <Home className="mr-2 h-4 w-4"/>
+                                    Retour au site
+                                </Link>
+                           </Button>
                         </div>
                     </footer>
                 </article>
