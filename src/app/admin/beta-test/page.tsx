@@ -91,7 +91,7 @@ export default function BetaTestPage() {
     const name = window.prompt("Nom de la nouvelle fonctionnalité :");
     if (name) {
       const newScenario: Scenario = { id: `scenario-${Date.now()}`, name, roles: [] };
-      setScenarios([...scenarios, newScenario]);
+      setScenarios(currentScenarios => [...currentScenarios, newScenario]);
     }
   };
 
@@ -110,7 +110,11 @@ export default function BetaTestPage() {
     const name = window.prompt("Nom du nouveau rôle pour cette fonctionnalité :");
     if (name) {
       const newRole: Role = { id: `role-${Date.now()}`, name, testCases: [] };
-      setScenarios(scenarios.map(s => s.id === scenarioId ? { ...s, roles: [...s.roles, newRole] } : s));
+      setScenarios(currentScenarios => currentScenarios.map(s => 
+        s.id === scenarioId 
+        ? { ...s, roles: [...s.roles, newRole] } 
+        : s
+      ));
     }
   };
   
