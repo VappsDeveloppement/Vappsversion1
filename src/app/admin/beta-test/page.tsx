@@ -16,6 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import Image from 'next/image';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type TestCaseStatus = 'passed' | 'failed' | 'blocked' | 'pending';
 
@@ -495,84 +497,89 @@ export default function BetaTestPage() {
       </Dialog>
 
       <Dialog open={isTestCaseDialogOpen} onOpenChange={setIsTestCaseDialogOpen}>
-        <DialogContent className="sm:max-w-[625px]">
+        <DialogContent className="sm:max-w-[625px] max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>{editingTestCase ? 'Modifier le cas de test' : 'Nouveau cas de test'}</DialogTitle>
             <DialogDescription>
               Décrivez le titre et les étapes pour ce cas de test. Vous pouvez également ajouter une note ou un média.
             </DialogDescription>
           </DialogHeader>
-          <Form {...testCaseForm}>
-            <form onSubmit={testCaseForm.handleSubmit(handleTestCaseFormSubmit)} className="space-y-6 py-4">
-              <FormField control={testCaseForm.control} name="title" render={({ field }) => (
-                <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} placeholder="Ex: Vérifier la connexion utilisateur" /></FormControl><FormMessage /></FormItem>
-              )}/>
-              <FormField control={testCaseForm.control} name="description" render={({ field }) => (
-                <FormItem><FormLabel>Description / Étapes</FormLabel><FormControl><Textarea {...field} placeholder="1. Aller à la page de connexion.\n2. Entrer un email valide...\n3. Vérifier que l'utilisateur est redirigé vers le tableau de bord." rows={5} /></FormControl><FormMessage /></FormItem>
-              )}/>
-              <FormField control={testCaseForm.control} name="note" render={({ field }) => (
-                <FormItem><FormLabel>Note explicative (Optionnel)</FormLabel><FormControl><Textarea {...field} placeholder="Information supplémentaire pour le testeur..." rows={3} /></FormControl><FormMessage /></FormItem>
-              )}/>
+          <ScrollArea className="flex-1 -mx-6 px-6">
+            <div className="py-4">
+              <Form {...testCaseForm}>
+                <form onSubmit={testCaseForm.handleSubmit(handleTestCaseFormSubmit)} className="space-y-6">
+                  <FormField control={testCaseForm.control} name="title" render={({ field }) => (
+                    <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} placeholder="Ex: Vérifier la connexion utilisateur" /></FormControl><FormMessage /></FormItem>
+                  )}/>
+                  <FormField control={testCaseForm.control} name="description" render={({ field }) => (
+                    <FormItem><FormLabel>Description / Étapes</FormLabel><FormControl><Textarea {...field} placeholder="1. Aller à la page de connexion.\n2. Entrer un email valide...\n3. Vérifier que l'utilisateur est redirigé vers le tableau de bord." rows={5} /></FormControl><FormMessage /></FormItem>
+                  )}/>
+                  <FormField control={testCaseForm.control} name="note" render={({ field }) => (
+                    <FormItem><FormLabel>Note explicative (Optionnel)</FormLabel><FormControl><Textarea {...field} placeholder="Information supplémentaire pour le testeur..." rows={3} /></FormControl><FormMessage /></FormItem>
+                  )}/>
 
-              <div>
-                <FormLabel>Média (Optionnel)</FormLabel>
-                <div className="mt-2 space-y-4">
-                  <FormField
-                    control={testCaseForm.control}
-                    name="mediaType"
-                    render={({ field }) => (
-                      <FormItem className="space-y-3">
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            value={field.value}
-                            className="flex items-center space-x-4"
-                          >
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl><RadioGroupItem value="image" /></FormControl>
-                              <FormLabel className="font-normal">Image</FormLabel>
-                            </FormItem>
-                            <FormItem className="flex items-center space-x-2 space-y-0">
-                              <FormControl><RadioGroupItem value="video" /></FormControl>
-                              <FormLabel className="font-normal">Vidéo</FormLabel>
-                            </FormItem>
-                          </RadioGroup>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="flex items-center gap-4">
-                     {mediaPreview ? (
-                        testCaseForm.getValues('mediaType') === 'image' ? (
-                            <Image src={mediaPreview} alt="Aperçu" width={120} height={90} className="rounded-md border object-cover" />
-                        ) : (
-                            <video src={mediaPreview} controls className="rounded-md border w-40"></video>
-                        )
-                     ) : (
-                        <div className="h-24 w-32 bg-muted rounded-md flex items-center justify-center">
-                            <ImageIcon className="h-8 w-8 text-muted-foreground"/>
-                        </div>
-                     )}
-                    <input type="file" ref={mediaInputRef} onChange={handleMediaUpload} className="hidden" accept="image/*,video/*" />
-                     <div className="flex flex-col gap-2">
-                        <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()}><Upload className="mr-2 h-4 w-4"/>Uploader</Button>
-                        {mediaPreview && (
-                            <Button type="button" variant="destructive" size="sm" onClick={() => setMediaPreview(null)}><Trash2 className="mr-2 h-4 w-4"/>Supprimer</Button>
+                  <div>
+                    <FormLabel>Média (Optionnel)</FormLabel>
+                    <div className="mt-2 space-y-4">
+                      <FormField
+                        control={testCaseForm.control}
+                        name="mediaType"
+                        render={({ field }) => (
+                          <FormItem className="space-y-3">
+                            <FormControl>
+                              <RadioGroup
+                                onValueChange={field.onChange}
+                                value={field.value}
+                                className="flex items-center space-x-4"
+                              >
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                  <FormControl><RadioGroupItem value="image" /></FormControl>
+                                  <FormLabel className="font-normal">Image</FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-2 space-y-0">
+                                  <FormControl><RadioGroupItem value="video" /></FormControl>
+                                  <FormLabel className="font-normal">Vidéo</FormLabel>
+                                </FormItem>
+                              </RadioGroup>
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
                         )}
-                     </div>
+                      />
+                      <div className="flex items-center gap-4">
+                         {mediaPreview ? (
+                            testCaseForm.getValues('mediaType') === 'image' ? (
+                                <Image src={mediaPreview} alt="Aperçu" width={120} height={90} className="rounded-md border object-cover" />
+                            ) : (
+                                <video src={mediaPreview} controls className="rounded-md border w-40"></video>
+                            )
+                         ) : (
+                            <div className="h-24 w-32 bg-muted rounded-md flex items-center justify-center">
+                                <ImageIcon className="h-8 w-8 text-muted-foreground"/>
+                            </div>
+                         )}
+                        <input type="file" ref={mediaInputRef} onChange={handleMediaUpload} className="hidden" accept="image/*,video/*" />
+                         <div className="flex flex-col gap-2">
+                            <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()}><Upload className="mr-2 h-4 w-4"/>Uploader</Button>
+                            {mediaPreview && (
+                                <Button type="button" variant="destructive" size="sm" onClick={() => setMediaPreview(null)}><Trash2 className="mr-2 h-4 w-4"/>Supprimer</Button>
+                            )}
+                         </div>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
-
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsTestCaseDialogOpen(false)}>Annuler</Button>
-                <Button type="submit"><Save className="mr-2 h-4 w-4" />{editingTestCase ? 'Sauvegarder' : 'Créer'}</Button>
-              </DialogFooter>
-            </form>
-          </Form>
+                  <DialogFooter className="sticky bottom-0 bg-background pt-4 -mx-6 px-6 -mb-6 pb-6">
+                      <Button type="button" variant="outline" onClick={() => setIsTestCaseDialogOpen(false)}>Annuler</Button>
+                      <Button type="submit"><Save className="mr-2 h-4 w-4" />{editingTestCase ? 'Sauvegarder' : 'Créer'}</Button>
+                  </DialogFooter>
+                </form>
+              </Form>
+            </div>
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>
   );
 }
+
+    
