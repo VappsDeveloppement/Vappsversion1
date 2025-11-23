@@ -23,13 +23,20 @@ type Article = {
     authorName: string;
     authorPhotoUrl?: string | null;
     categoryId: string;
-    categoryName: string; // This will be added in the component
+    categoryName: string;
     status: 'draft' | 'pending' | 'published' | 'rejected';
     publishedAt?: {
         seconds: number;
         nanoseconds: number;
     };
 };
+
+// We need the author's public profile name to link back to their page
+type AuthorProfile = {
+    miniSite?: {
+        publicProfileName?: string;
+    }
+}
 
 function ArticleDisplayPage() {
     const params = useParams();
@@ -49,6 +56,14 @@ function ArticleDisplayPage() {
         [firestore, article]
     );
     const { data: category } = useDoc(categoryRef);
+    
+    // NEW: Fetch author's public profile to get the link
+    const authorProfileRef = useMemoFirebase(
+        () => (article?.authorId ? doc(firestore, 'minisites', article.authorId) : null),
+        [firestore, article]
+    );
+    const { data: authorProfile } = useDoc<AuthorProfile>(authorProfileRef);
+
 
     const fullArticle = useMemo(() => {
         if (!article) return null;
@@ -76,6 +91,10 @@ function ArticleDisplayPage() {
         }
         window.open(shareUrl, '_blank', 'noopener,noreferrer');
     };
+    
+    const authorPublicProfileUrl = authorProfile?.miniSite?.publicProfileName 
+        ? `/c/${authorProfile.miniSite.publicProfileName}` 
+        : null;
 
     if (isLoading) {
         return (
@@ -112,6 +131,23 @@ function ArticleDisplayPage() {
             year: 'numeric', month: 'long', day: 'numeric'
           })
         : 'Date non disponible';
+        
+    const AuthorNameDisplay = () => {
+        const content = (
+            <div className="flex items-center gap-2">
+                <Avatar className="h-8 w-8">
+                    <AvatarImage src={fullArticle.authorPhotoUrl || undefined} alt={fullArticle.authorName} />
+                    <AvatarFallback>{fullArticle.authorName.charAt(0)}</AvatarFallback>
+                </Avatar>
+                <span>Par {fullArticle.authorName}</span>
+            </div>
+        );
+
+        if (authorPublicProfileUrl) {
+            return <Link href={authorPublicProfileUrl} className="hover:underline">{content}</Link>;
+        }
+        return content;
+    };
 
 
     return (
@@ -121,14 +157,8 @@ function ArticleDisplayPage() {
                     <header className="mb-8">
                         <Badge variant="secondary" className="mb-4">{fullArticle.categoryName}</Badge>
                         <h1 className="text-4xl lg:text-5xl font-bold font-headline leading-tight mb-4">{fullArticle.title}</h1>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-2">
-                                <Avatar className="h-8 w-8">
-                                    <AvatarImage src={fullArticle.authorPhotoUrl || undefined} alt={fullArticle.authorName} />
-                                    <AvatarFallback>{fullArticle.authorName.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                                <span>Par {fullArticle.authorName}</span>
-                            </div>
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4 text-sm text-muted-foreground">
+                           <AuthorNameDisplay />
                             <span className="hidden sm:inline">|</span>
                             <div className="flex items-center gap-2">
                                 <Calendar className="h-4 w-4" />
