@@ -1,19 +1,21 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlusCircle, Check, X, AlertTriangle, Edit, Trash2, Save, Folder, UserCheck } from "lucide-react";
+import { PlusCircle, Check, X, AlertTriangle, Edit, Trash2, Save, Folder, UserCheck, Upload, Video, Image as ImageIcon } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import Image from 'next/image';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 type TestCaseStatus = 'passed' | 'failed' | 'blocked' | 'pending';
 
@@ -22,6 +24,9 @@ interface TestCase {
   title: string;
   description: string;
   status: TestCaseStatus;
+  note?: string;
+  mediaUrl?: string;
+  mediaType?: 'image' | 'video';
 }
 
 interface Role {
@@ -39,6 +44,9 @@ interface Scenario {
 const testCaseSchema = z.object({
   title: z.string().min(1, 'Le titre est requis.'),
   description: z.string().min(1, 'La description est requise.'),
+  note: z.string().optional(),
+  mediaUrl: z.string().optional(),
+  mediaType: z.enum(['image', 'video']).optional(),
 });
 
 const scenarioSchema = z.object({
@@ -73,6 +81,13 @@ const statusConfig: Record<TestCaseStatus, { text: string; icon: React.ReactNode
   pending: { text: "En attente", icon: null, className: "bg-gray-100 text-gray-800 border-gray-200 hover:bg-gray-200" },
 };
 
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
 
 export default function BetaTestPage() {
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
@@ -81,13 +96,15 @@ export default function BetaTestPage() {
   
   const [isTestCaseDialogOpen, setIsTestCaseDialogOpen] = useState(false);
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
+  const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   
   const [isScenarioDialogOpen, setIsScenarioDialogOpen] = useState(false);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
+  const mediaInputRef = useRef<HTMLInputElement>(null);
   
   const testCaseForm = useForm<z.infer<typeof testCaseSchema>>({
     resolver: zodResolver(testCaseSchema),
-    defaultValues: { title: '', description: '' },
+    defaultValues: { title: '', description: '', note: '', mediaUrl: '', mediaType: 'image' },
   });
 
   const scenarioForm = useForm<z.infer<typeof scenarioSchema>>({
@@ -100,7 +117,6 @@ export default function BetaTestPage() {
     defaultValues: { name: '' },
   });
   
-  // Load data from localStorage on mount
   useEffect(() => {
     try {
       const savedScenarios = localStorage.getItem('beta-test-scenarios');
@@ -128,7 +144,6 @@ export default function BetaTestPage() {
     }
   }, []);
 
-  // Save data to localStorage on change
   useEffect(() => {
     try {
         if(scenarios.length > 0) {
@@ -140,12 +155,16 @@ export default function BetaTestPage() {
   }, [scenarios]);
   
   useEffect(() => {
-    if (editingTestCase) {
-      testCaseForm.reset(editingTestCase);
-    } else {
-      testCaseForm.reset({ title: '', description: '' });
+    if (isTestCaseDialogOpen) {
+      if (editingTestCase) {
+        testCaseForm.reset(editingTestCase);
+        setMediaPreview(editingTestCase.mediaUrl || null);
+      } else {
+        testCaseForm.reset({ title: '', description: '', note: '', mediaUrl: '', mediaType: 'image' });
+        setMediaPreview(null);
+      }
     }
-  }, [editingTestCase, testCaseForm]);
+  }, [editingTestCase, isTestCaseDialogOpen, testCaseForm]);
 
 
   const handleScenarioFormSubmit = (data: z.infer<typeof scenarioSchema>) => {
@@ -203,6 +222,8 @@ export default function BetaTestPage() {
   
   const handleTestCaseFormSubmit = (data: z.infer<typeof testCaseSchema>) => {
     if (!selectedScenarioId || !selectedRoleId) return;
+    
+    const finalData = { ...data, mediaUrl: mediaPreview };
 
     setScenarios(scenarios.map(scenario => {
         if (scenario.id !== selectedScenarioId) return scenario;
@@ -212,9 +233,9 @@ export default function BetaTestPage() {
                 if (role.id !== selectedRoleId) return role;
                 let newTestCases: TestCase[];
                 if (editingTestCase) {
-                    newTestCases = role.testCases.map(tc => tc.id === editingTestCase.id ? { ...tc, ...data } : tc);
+                    newTestCases = role.testCases.map(tc => tc.id === editingTestCase.id ? { ...tc, ...finalData } : tc);
                 } else {
-                    const newTestCase: TestCase = { id: `case-${Date.now()}`, ...data, status: 'pending' };
+                    const newTestCase: TestCase = { id: `case-${Date.now()}`, ...finalData, status: 'pending' };
                     newTestCases = [newTestCase, ...role.testCases];
                 }
                 return { ...role, testCases: newTestCases };
@@ -254,6 +275,15 @@ export default function BetaTestPage() {
         } : scenario
     ));
   };
+  
+   const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      const base64 = await toBase64(file);
+      setMediaPreview(base64);
+    }
+  };
+
 
   const selectedScenario = scenarios.find(s => s.id === selectedScenarioId);
   const selectedRole = selectedScenario?.roles.find(r => r.id === selectedRoleId);
@@ -336,9 +366,31 @@ export default function BetaTestPage() {
                               <span className="font-semibold">{testCase.title}</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="p-4 border-t">
-                            <p className="text-muted-foreground mb-6 whitespace-pre-wrap">{testCase.description}</p>
-                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+                          <AccordionContent className="p-4 border-t space-y-6">
+                            <div>
+                                <h4 className="font-semibold text-sm mb-2">Description / Étapes</h4>
+                                <p className="text-muted-foreground whitespace-pre-wrap">{testCase.description}</p>
+                            </div>
+
+                             {testCase.note && (
+                                <div>
+                                    <h4 className="font-semibold text-sm mb-2">Note explicative</h4>
+                                    <p className="text-muted-foreground bg-yellow-50 border border-yellow-200 rounded-md p-3 whitespace-pre-wrap">{testCase.note}</p>
+                                </div>
+                             )}
+                             
+                             {testCase.mediaUrl && (
+                                <div>
+                                    <h4 className="font-semibold text-sm mb-2">Média</h4>
+                                    {testCase.mediaType === 'image' ? (
+                                        <Image src={testCase.mediaUrl} alt="Média du cas de test" width={400} height={300} className="rounded-md border object-cover"/>
+                                    ) : (
+                                        <video src={testCase.mediaUrl} controls className="rounded-md border w-full max-w-md"></video>
+                                    )}
+                                </div>
+                             )}
+
+                            <div className="flex flex-col sm:flex-row justify-between items-start gap-4 pt-6 border-t">
                               <div className="flex flex-wrap items-center gap-4">
                                 <span className="font-medium text-sm">Résultat du test:</span>
                                 <div className="flex gap-2 flex-wrap">
@@ -447,17 +499,72 @@ export default function BetaTestPage() {
           <DialogHeader>
             <DialogTitle>{editingTestCase ? 'Modifier le cas de test' : 'Nouveau cas de test'}</DialogTitle>
             <DialogDescription>
-              Décrivez le titre et les étapes pour ce cas de test.
+              Décrivez le titre et les étapes pour ce cas de test. Vous pouvez également ajouter une note ou un média.
             </DialogDescription>
           </DialogHeader>
           <Form {...testCaseForm}>
-            <form onSubmit={testCaseForm.handleSubmit(handleTestCaseFormSubmit)} className="space-y-4 py-4">
+            <form onSubmit={testCaseForm.handleSubmit(handleTestCaseFormSubmit)} className="space-y-6 py-4">
               <FormField control={testCaseForm.control} name="title" render={({ field }) => (
                 <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} placeholder="Ex: Vérifier la connexion utilisateur" /></FormControl><FormMessage /></FormItem>
               )}/>
               <FormField control={testCaseForm.control} name="description" render={({ field }) => (
                 <FormItem><FormLabel>Description / Étapes</FormLabel><FormControl><Textarea {...field} placeholder="1. Aller à la page de connexion.\n2. Entrer un email valide...\n3. Vérifier que l'utilisateur est redirigé vers le tableau de bord." rows={5} /></FormControl><FormMessage /></FormItem>
               )}/>
+              <FormField control={testCaseForm.control} name="note" render={({ field }) => (
+                <FormItem><FormLabel>Note explicative (Optionnel)</FormLabel><FormControl><Textarea {...field} placeholder="Information supplémentaire pour le testeur..." rows={3} /></FormControl><FormMessage /></FormItem>
+              )}/>
+
+              <div>
+                <FormLabel>Média (Optionnel)</FormLabel>
+                <div className="mt-2 space-y-4">
+                  <FormField
+                    control={testCaseForm.control}
+                    name="mediaType"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3">
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            value={field.value}
+                            className="flex items-center space-x-4"
+                          >
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl><RadioGroupItem value="image" /></FormControl>
+                              <FormLabel className="font-normal">Image</FormLabel>
+                            </FormItem>
+                            <FormItem className="flex items-center space-x-2 space-y-0">
+                              <FormControl><RadioGroupItem value="video" /></FormControl>
+                              <FormLabel className="font-normal">Vidéo</FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <div className="flex items-center gap-4">
+                     {mediaPreview ? (
+                        testCaseForm.getValues('mediaType') === 'image' ? (
+                            <Image src={mediaPreview} alt="Aperçu" width={120} height={90} className="rounded-md border object-cover" />
+                        ) : (
+                            <video src={mediaPreview} controls className="rounded-md border w-40"></video>
+                        )
+                     ) : (
+                        <div className="h-24 w-32 bg-muted rounded-md flex items-center justify-center">
+                            <ImageIcon className="h-8 w-8 text-muted-foreground"/>
+                        </div>
+                     )}
+                    <input type="file" ref={mediaInputRef} onChange={handleMediaUpload} className="hidden" accept="image/*,video/*" />
+                     <div className="flex flex-col gap-2">
+                        <Button type="button" variant="outline" onClick={() => mediaInputRef.current?.click()}><Upload className="mr-2 h-4 w-4"/>Uploader</Button>
+                        {mediaPreview && (
+                            <Button type="button" variant="destructive" size="sm" onClick={() => setMediaPreview(null)}><Trash2 className="mr-2 h-4 w-4"/>Supprimer</Button>
+                        )}
+                     </div>
+                  </div>
+                </div>
+              </div>
+
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsTestCaseDialogOpen(false)}>Annuler</Button>
                 <Button type="submit"><Save className="mr-2 h-4 w-4" />{editingTestCase ? 'Sauvegarder' : 'Créer'}</Button>
