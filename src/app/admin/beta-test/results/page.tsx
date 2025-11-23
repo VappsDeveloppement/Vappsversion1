@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -32,6 +32,16 @@ type BetaTestResult = {
   submittedAt: string;
 };
 
+// Types from the test creation page
+interface TestCase {
+  id: string;
+  title: string;
+  description: string;
+}
+interface Role { id: string; name: string; testCases: TestCase[] }
+interface Scenario { id: string; name: string; roles: Role[] }
+
+
 const statusVariant: Record<TestCaseResult['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
   passed: 'default',
   failed: 'destructive',
@@ -51,6 +61,35 @@ export default function BetaTestResultsPage() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [resultToDelete, setResultToDelete] = useState<BetaTestResult | null>(null);
+    const [scenarios, setScenarios] = useState<Scenario[]>([]);
+
+    useEffect(() => {
+        try {
+            const savedScenarios = localStorage.getItem('beta-test-scenarios');
+            if (savedScenarios) {
+                setScenarios(JSON.parse(savedScenarios));
+            }
+        } catch (error) {
+            console.error("Could not load scenarios from localStorage", error);
+        }
+    }, []);
+
+    const testCaseMap = useMemo(() => {
+        const map = new Map<string, { title: string; roleName: string; scenarioName: string }>();
+        scenarios.forEach(scenario => {
+            scenario.roles.forEach(role => {
+                role.testCases.forEach(testCase => {
+                    map.set(testCase.id, {
+                        title: testCase.title,
+                        roleName: role.name,
+                        scenarioName: scenario.name,
+                    });
+                });
+            });
+        });
+        return map;
+    }, [scenarios]);
+
 
     const resultsQuery = useMemoFirebase(() => query(collection(firestore, 'beta_tests_results')), [firestore]);
     const { data: results, isLoading } = useCollection<BetaTestResult>(resultsQuery);
@@ -180,21 +219,29 @@ export default function BetaTestResultsPage() {
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
-                                                    <TableHead>Cas de Test ID</TableHead>
+                                                    <TableHead>Cas de Test</TableHead>
                                                     <TableHead>Statut</TableHead>
                                                     <TableHead>Commentaire</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {result.results.map((testCaseResult, index) => (
-                                                    <TableRow key={index}>
-                                                        <TableCell className="font-mono text-xs">{testCaseResult.testCaseId}</TableCell>
-                                                        <TableCell>
-                                                            <Badge variant={statusVariant[testCaseResult.status]}>{statusText[testCaseResult.status]}</Badge>
-                                                        </TableCell>
-                                                        <TableCell>{testCaseResult.note || '-'}</TableCell>
-                                                    </TableRow>
-                                                ))}
+                                                {result.results.map((testCaseResult, index) => {
+                                                    const testCaseInfo = testCaseMap.get(testCaseResult.testCaseId);
+                                                    return (
+                                                        <TableRow key={index}>
+                                                            <TableCell>
+                                                                <p className="font-medium">{testCaseInfo?.title || 'Titre non trouvé'}</p>
+                                                                <p className="text-xs text-muted-foreground">
+                                                                    {testCaseInfo ? `${testCaseInfo.scenarioName} > ${testCaseInfo.roleName}` : testCaseResult.testCaseId}
+                                                                </p>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Badge variant={statusVariant[testCaseResult.status]}>{statusText[testCaseResult.status]}</Badge>
+                                                            </TableCell>
+                                                            <TableCell>{testCaseResult.note || '-'}</TableCell>
+                                                        </TableRow>
+                                                    )
+                                                })}
                                             </TableBody>
                                         </Table>
                                     </AccordionContent>
