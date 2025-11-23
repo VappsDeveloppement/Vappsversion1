@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -41,6 +42,7 @@ type Article = {
   categoryName: string;
   status: 'draft' | 'pending' | 'published' | 'rejected';
   createdAt: any;
+  publishedAt?: any;
 };
 
 // Schemas
@@ -296,13 +298,14 @@ function ArticleManager() {
         if (!user) return;
         setIsSubmitting(true);
         try {
+            const updateData: Partial<Article> = { ...data };
             if (editingArticle) {
                  const articleRef = doc(firestore, 'articles', editingArticle.id);
-                 await setDocumentNonBlocking(articleRef, data, { merge: true });
+                 await setDocumentNonBlocking(articleRef, updateData, { merge: true });
                  toast({ title: 'Article modifié', description: 'Vos modifications ont été enregistrées.' });
             } else {
                 const articleData = {
-                    ...data,
+                    ...updateData,
                     authorId: user.uid,
                     authorName: user.displayName || `${user.email}`,
                     authorPhotoUrl: user.photoURL || null,
@@ -350,7 +353,11 @@ function ArticleManager() {
     const handleUpdateStatus = async (articleId: string, status: Article['status']) => {
         const articleRef = doc(firestore, 'articles', articleId);
         try {
-            await updateDoc(articleRef, { status });
+            const updateData: Partial<Article> = { status };
+            if (status === 'published') {
+                updateData.publishedAt = serverTimestamp();
+            }
+            await updateDoc(articleRef, updateData);
             toast({ title: 'Statut mis à jour', description: `L'article est maintenant : ${statusText[status]}`});
         } catch (error) {
             toast({ title: 'Erreur', description: 'Impossible de mettre à jour le statut.', variant: 'destructive'});
@@ -448,8 +455,9 @@ function ArticleManager() {
                                                     <Edit className="mr-2 h-4 w-4" /> Voir / Modifier
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleUpdateStatus(article.id, 'published')} disabled={article.status === 'published'}>Mettre en page d'accueil</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleUpdateStatus(article.id, 'draft')} disabled={article.status !== 'published'}>Retirer de la page d'accueil</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(article.id, 'published')} disabled={article.status === 'published'}>Publier</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(article.id, 'draft')} disabled={article.status === 'draft'}>Mettre en brouillon</DropdownMenuItem>
+                                                 <DropdownMenuItem onClick={() => handleUpdateStatus(article.id, 'rejected')} disabled={article.status === 'rejected'}>Rejeter</DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem onClick={() => setArticleToDelete(article)} className="text-destructive">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Supprimer
