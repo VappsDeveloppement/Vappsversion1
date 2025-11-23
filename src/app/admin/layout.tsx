@@ -80,7 +80,7 @@ export default function AdminLayout({
       router.push('/application');
       return;
     }
-    // Cette condition est cruciale : on ne redirige que si TOUT est chargé ET que le rôle n'est pas le bon.
+    // This condition is crucial : on ne redirige que si TOUT est chargé ET que le rôle n'est pas le bon.
     if (!isUserLoading && !isUserDataLoading && userData && userData.role !== 'superadmin') {
       router.push('/dashboard');
     }
@@ -89,15 +89,13 @@ export default function AdminLayout({
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
   const handleLogout = async () => {
-    if (auth) {
-      await auth.signOut();
-    }
-    router.push('/');
+    await auth.signOut();
+    router.push('/application');
   };
 
   // Condition de chargement renforcée : on attend que tout soit prêt.
   const isLoading = isUserLoading || isUserDataLoading;
-  if (isLoading || !userData) {
+  if (isLoading || (user && !userData)) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -106,10 +104,10 @@ export default function AdminLayout({
   }
   
   // Cette vérification finale est une sécurité supplémentaire.
-  if (userData.role !== 'superadmin') {
+  if (!user || (userData && userData.role !== 'superadmin')) {
      return (
       <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        <p>Accès non autorisé.</p>
       </div>
     );
   }

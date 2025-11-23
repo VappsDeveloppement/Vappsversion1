@@ -104,12 +104,11 @@ export default function DashboardLayout({
   const firestore = useFirestore();
   const auth = useAuth();
   const router = useRouter();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const userDocRef = useMemoFirebase(() => {
-    if (!user || isLoggingOut) return null;
+    if (!user) return null;
     return doc(firestore, 'users', user.uid);
-  }, [firestore, user, isLoggingOut]);
+  }, [firestore, user]);
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
@@ -130,11 +129,9 @@ export default function DashboardLayout({
     setIsMounted(true);
   }, []);
   
-  const handleLogout = () => {
-    setIsLoggingOut(true);
-    auth.signOut().then(() => {
-        router.push('/');
-    });
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/application');
   };
 
 
@@ -152,7 +149,7 @@ export default function DashboardLayout({
 
   const isLoading = isUserLoading || isUserDataLoading || !isMounted;
 
-  if (isLoading && !isLoggingOut) {
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -254,8 +251,8 @@ export default function DashboardLayout({
                 <p className="font-semibold text-sm truncate">{userData?.firstName || user?.displayName || 'Utilisateur'}</p>
                 <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
               </div>
-              <Button variant="ghost" size="icon" onClick={handleLogout} disabled={isLoggingOut}>
-                 {isLoggingOut ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+              <Button variant="ghost" size="icon" onClick={handleLogout}>
+                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
           </SidebarFooter>
