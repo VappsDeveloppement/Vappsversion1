@@ -368,7 +368,7 @@ const defaultPersonalization: Personalization = {
         enabled: false,
         title: "Nos autres activités",
         text: "Nous accompagnons également les entreprises",
-        mediaType: 'video',
+        mediaType: 'image',
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
         imageUrl: null,
         interestsTitle: "Mes centres d'intérêt",
@@ -399,9 +399,9 @@ const defaultPersonalization: Personalization = {
         plans: [],
       },
     blogSection: {
-        enabled: true,
         title: "Notre Blog",
-        description: "Retrouvez nos derniers articles, conseils et actualités."
+        description: "Retrouvez nos derniers articles, conseils et actualités.",
+        enabled: true,
     },
     contactSection: {
       enabled: false,
@@ -541,9 +541,9 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                         ...defaultPersonalization.whiteLabelSection,
                         ...(fetchedAgencyData.personalization?.whiteLabelSection || {}),
                     },
-                    blogSection: {
+                     blogSection: {
                         ...defaultPersonalization.blogSection,
-                        ...(fetchedAgencyData.personalization?.blogSection || {})
+                        ...(fetchedAgencyData.personalization?.blogSection || {}),
                     },
                     contactSection: {
                         ...defaultPersonalization.contactSection,

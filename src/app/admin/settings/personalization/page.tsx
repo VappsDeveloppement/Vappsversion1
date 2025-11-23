@@ -521,6 +521,11 @@ const defaultPersonalization = {
         ],
         plans: [],
     },
+    blogSection: {
+        title: "Notre Blog",
+        description: "Retrouvez nos derniers articles, conseils et actualités.",
+        enabled: true,
+    },
     paymentSettings: {
         ribIban: "",
         ribBic: "",
@@ -675,6 +680,10 @@ export default function PersonalizationPage() {
         whiteLabelSection: {
             ...defaultPersonalization.whiteLabelSection,
             ...(personalization.whiteLabelSection || {}),
+        },
+        blogSection: {
+            ...defaultPersonalization.blogSection,
+            ...(personalization.blogSection || {}),
         },
         paymentSettings: {
             ...defaultPersonalization.paymentSettings,
@@ -928,6 +937,16 @@ export default function PersonalizationPage() {
     const newStats = [...(settings.whiteLabelSection.stats)];
     (newStats[index] as any)[field] = value;
     handleWhiteLabelSectionChange('stats', newStats);
+  };
+  
+  const handleBlogSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      blogSection: {
+        ...(prev.blogSection || defaultPersonalization.blogSection),
+        [field]: value,
+      },
+    }));
   };
 
 
@@ -2411,6 +2430,17 @@ export default function PersonalizationPage() {
                                             Ajouter une offre
                                          </Button>
                                       </section>
+                                    </div>
+                                ) : section.id === 'blog' ? (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="blog-title">Titre de la section</Label>
+                                            <Input id="blog-title" value={settings.blogSection?.title} onChange={e => handleBlogSectionChange('title', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="blog-description">Description de la section</Label>
+                                            <Textarea id="blog-description" value={settings.blogSection?.description} onChange={e => handleBlogSectionChange('description', e.target.value)} />
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>
