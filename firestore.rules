@@ -95,7 +95,7 @@ service cloud.firestore {
     match /articles/{articleId} {
         allow read: if resource.data.status == 'published' || 
                        (request.auth != null && (resource.data.authorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
-        allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller';
+        allow create: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
         allow update: if request.auth != null && 
                          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
                          (resource.data.authorId == request.auth.uid && request.resource.data.status != 'published'));
