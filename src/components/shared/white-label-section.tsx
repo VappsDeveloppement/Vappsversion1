@@ -46,6 +46,21 @@ const signUpFormSchema = z.object({
 
 type SignUpFormData = z.infer<typeof signUpFormSchema>;
 
+type TestCaseResult = {
+  testCaseId: string;
+  note: string;
+  status: 'passed' | 'failed' | 'blocked' | 'pending';
+};
+
+type BetaTestResult = {
+  id: string;
+  tester: { firstName: string; lastName: string; email: string; };
+  results: TestCaseResult[];
+  globalRating: number;
+  isInterested: boolean;
+  submittedAt: string;
+};
+
 
 function PlanSelectorCard() {
     const firestore = useFirestore();
@@ -272,6 +287,64 @@ const statIcons = {
     Star: Star,
 };
 
+function DynamicStats() {
+    const firestore = useFirestore();
+    const resultsQuery = useMemoFirebase(() => query(collection(firestore, 'beta_tests_results')), [firestore]);
+    const { data: results, isLoading } = useCollection<BetaTestResult>(resultsQuery);
+
+    const stats = useMemo(() => {
+        if (!results || results.length === 0) {
+            return [
+                { id: 'stat-1', icon: 'Users', value: '0', label: 'Testeurs' },
+                { id: 'stat-2', icon: 'Star', value: 'N/A', label: 'Note Moyenne' },
+                { id: 'stat-3', icon: 'Percent', value: '0%', label: 'Taux de réussite' },
+            ];
+        }
+
+        const totalTests = results.length;
+        const averageRating = results.reduce((sum, r) => sum + r.globalRating, 0) / totalTests;
+        
+        const allTestCases = results.flatMap(r => r.results);
+        const passedCases = allTestCases.filter(tc => tc.status === 'passed').length;
+        const totalCases = allTestCases.length;
+        const successPercentage = totalCases > 0 ? (passedCases / totalCases) * 100 : 0;
+
+        return [
+            { id: 'stat-1', icon: 'Users', value: totalTests.toString(), label: 'Testeurs' },
+            { id: 'stat-2', icon: 'Star', value: `${averageRating.toFixed(1)}/5`, label: 'Note Moyenne' },
+            { id: 'stat-3', icon: 'Percent', value: `${successPercentage.toFixed(0)}%`, label: 'Taux de réussite' },
+        ];
+    }, [results]);
+
+    if (isLoading) {
+        return (
+            <div className="grid grid-cols-3 gap-4 text-center mb-6">
+                {[...Array(3)].map((_, i) => (
+                     <div key={i} className="flex flex-col items-center gap-2">
+                        <Skeleton className="h-8 w-8 rounded-full" />
+                        <Skeleton className="h-7 w-12" />
+                        <Skeleton className="h-4 w-20" />
+                     </div>
+                ))}
+            </div>
+        )
+    }
+
+    return (
+        <div className="grid grid-cols-3 gap-4 text-center mb-6">
+            {stats.map(stat => {
+                const Icon = statIcons[stat.icon as keyof typeof statIcons];
+                return (
+                    <div key={stat.id} className="flex flex-col items-center">
+                        <Icon className="h-8 w-8 text-primary mb-2" />
+                        <p className="text-2xl font-bold">{stat.value}</p>
+                        <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    </div>
+                );
+            })}
+        </div>
+    );
+}
 
 export function WhiteLabelSection() {
     const { personalization, isLoading } = useAgency();
@@ -332,18 +405,23 @@ export function WhiteLabelSection() {
                                 <CardTitle className="text-xl">Évaluation</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                <div className="grid grid-cols-3 gap-4 text-center mb-6">
-                                   {wl.stats?.map(stat => {
-                                       const Icon = statIcons[stat.icon];
-                                       return (
-                                            <div key={stat.id} className="flex flex-col items-center">
-                                                <Icon className="h-8 w-8 text-primary mb-2" />
-                                                <p className="text-2xl font-bold">{stat.value}</p>
-                                                <p className="text-sm text-muted-foreground">{stat.label}</p>
-                                            </div>
-                                       )
-                                   })}
-                                </div>
+                                {wl.statsSource === 'betaTest' ? (
+                                    <DynamicStats />
+                                ) : (
+                                    <div className="grid grid-cols-3 gap-4 text-center mb-6">
+                                    {wl.stats?.map(stat => {
+                                        const Icon = statIcons[stat.icon];
+                                        return (
+                                                <div key={stat.id} className="flex flex-col items-center">
+                                                    <Icon className="h-8 w-8 text-primary mb-2" />
+                                                    <p className="text-2xl font-bold">{stat.value}</p>
+                                                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                                                </div>
+                                        )
+                                    })}
+                                    </div>
+                                )}
+                                
                                 <Button asChild variant="outline" className="w-full">
                                     <Link href="/beta-testing">Tester l'application</Link>
                                 </Button>

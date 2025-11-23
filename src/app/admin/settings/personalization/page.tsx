@@ -513,6 +513,7 @@ const defaultPersonalization = {
         mediaType: 'video',
         videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ',
         imageUrl: null,
+        statsSource: 'manual',
         stats: [
             { id: 'stat-1', icon: 'Users', value: '1,200+', label: 'Bêta-testeurs' },
             { id: 'stat-2', icon: 'Percent', value: '98%', label: 'Réussite aux tests' },
@@ -2123,20 +2124,39 @@ export default function PersonalizationPage() {
                                                 <Card>
                                                      <CardHeader><CardTitle>Statistiques</CardTitle></CardHeader>
                                                      <CardContent className="space-y-4">
-                                                        {settings.whiteLabelSection?.stats?.map((stat, index) => (
-                                                            <div key={stat.id} className="flex items-center gap-4">
-                                                                <Select value={stat.icon} onValueChange={(value) => handleWhiteLabelStatChange(index, 'icon', value)}>
-                                                                    <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
-                                                                    <SelectContent>
-                                                                        <SelectItem value="Users"><Users className="h-4 w-4" /></SelectItem>
-                                                                        <SelectItem value="Percent"><Percent className="h-4 w-4" /></SelectItem>
-                                                                        <SelectItem value="Star"><Star className="h-4 w-4" /></SelectItem>
-                                                                    </SelectContent>
-                                                                </Select>
-                                                                <Input value={stat.value} onChange={(e) => handleWhiteLabelStatChange(index, 'value', e.target.value)} placeholder="Valeur" />
-                                                                <Input value={stat.label} onChange={(e) => handleWhiteLabelStatChange(index, 'label', e.target.value)} placeholder="Label" />
+                                                         <div>
+                                                            <Label className="mb-3 block">Source des statistiques</Label>
+                                                            <RadioGroup value={settings.whiteLabelSection.statsSource} onValueChange={(value) => handleWhiteLabelSectionChange('statsSource', value)} className="space-y-2">
+                                                                <div className="flex items-center space-x-2">
+                                                                    <RadioGroupItem value="manual" id="stats-manual" />
+                                                                    <Label htmlFor="stats-manual">Manuelles</Label>
+                                                                </div>
+                                                                <div className="flex items-center space-x-2">
+                                                                    <RadioGroupItem value="betaTest" id="stats-beta" />
+                                                                    <Label htmlFor="stats-beta">Automatiques (depuis les tests bêta)</Label>
+                                                                </div>
+                                                            </RadioGroup>
+                                                        </div>
+
+                                                        {settings.whiteLabelSection.statsSource === 'manual' && (
+                                                            <div className='space-y-4 pt-4 border-t'>
+                                                                {settings.whiteLabelSection?.stats?.map((stat, index) => (
+                                                                    <div key={stat.id} className="flex items-center gap-4">
+                                                                        <Select value={stat.icon} onValueChange={(value) => handleWhiteLabelStatChange(index, 'icon', value)}>
+                                                                            <SelectTrigger className="w-24"><SelectValue /></SelectTrigger>
+                                                                            <SelectContent>
+                                                                                <SelectItem value="Users"><Users className="h-4 w-4" /></SelectItem>
+                                                                                <SelectItem value="Percent"><Percent className="h-4 w-4" /></SelectItem>
+                                                                                <SelectItem value="Star"><Star className="h-4 w-4" /></SelectItem>
+                                                                            </SelectContent>
+                                                                        </Select>
+                                                                        <Input value={stat.value} onChange={(e) => handleWhiteLabelStatChange(index, 'value', e.target.value)} placeholder="Valeur" />
+                                                                        <Input value={stat.label} onChange={(e) => handleWhiteLabelStatChange(index, 'label', e.target.value)} placeholder="Label" />
+                                                                    </div>
+                                                                ))}
                                                             </div>
-                                                        ))}
+                                                        )}
+
                                                      </CardContent>
                                                 </Card>
                                             </div>
@@ -2590,3 +2610,4 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
