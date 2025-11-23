@@ -1,17 +1,21 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
-import { useCollection, useMemoFirebase } from '@/firebase';
+import React, { useMemo, useState } from 'react';
+import { useCollection, useMemoFirebase, deleteDocumentNonBlocking, doc } from '@/firebase';
 import { collection, query } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-import { Star, ThumbsUp, ThumbsDown, Users, CheckCircle } from 'lucide-react';
+import { Star, ThumbsUp, ThumbsDown, Users, CheckCircle, MoreHorizontal, Trash2, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { useToast } from '@/hooks/use-toast';
 
 type TestCaseResult = {
   testCaseId: string;
@@ -45,6 +49,8 @@ const statusText: Record<TestCaseResult['status'], string> = {
 
 export default function BetaTestResultsPage() {
     const firestore = useFirestore();
+    const { toast } = useToast();
+    const [resultToDelete, setResultToDelete] = useState<BetaTestResult | null>(null);
 
     const resultsQuery = useMemoFirebase(() => query(collection(firestore, 'beta_tests_results')), [firestore]);
     const { data: results, isLoading } = useCollection<BetaTestResult>(resultsQuery);
@@ -73,6 +79,18 @@ export default function BetaTestResultsPage() {
         };
 
     }, [results]);
+    
+    const handleDeleteConfirm = async () => {
+        if (!resultToDelete) return;
+        try {
+            await deleteDocumentNonBlocking(doc(firestore, 'beta_tests_results', resultToDelete.id));
+            toast({ title: 'Succès', description: 'Le résultat du test a été supprimé.' });
+        } catch (error) {
+            toast({ title: 'Erreur', description: 'Impossible de supprimer le résultat du test.', variant: 'destructive' });
+        } finally {
+            setResultToDelete(null);
+        }
+    };
 
     return (
         <div className="space-y-8">
@@ -130,24 +148,34 @@ export default function BetaTestResultsPage() {
                          <Accordion type="multiple" className="w-full">
                             {results.map(result => (
                                 <AccordionItem key={result.id} value={result.id}>
-                                    <AccordionTrigger className="p-4">
-                                        <div className="flex justify-between w-full pr-4">
-                                            <div className='text-left'>
-                                                <p className="font-semibold">{result.tester.firstName} {result.tester.lastName}</p>
-                                                <p className="text-sm text-muted-foreground">{result.tester.email}</p>
-                                            </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex items-center gap-1">
-                                                    {[...Array(5)].map((_, i) => (
-                                                        <Star key={i} className={cn("h-5 w-5", i < result.globalRating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
-                                                    ))}
+                                    <div className="flex items-center p-4">
+                                        <AccordionTrigger className="flex-1">
+                                            <div className="flex justify-between w-full pr-4">
+                                                <div className='text-left'>
+                                                    <p className="font-semibold">{result.tester.firstName} {result.tester.lastName}</p>
+                                                    <p className="text-sm text-muted-foreground">{result.tester.email}</p>
                                                 </div>
-                                                {result.isInterested ? <ThumbsUp className="h-5 w-5 text-green-500"/> : <ThumbsDown className="h-5 w-5 text-red-500" />}
-                                                <p className="text-sm text-muted-foreground">{new Date(result.submittedAt).toLocaleDateString()}</p>
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-1">
+                                                        {[...Array(5)].map((_, i) => (
+                                                            <Star key={i} className={cn("h-5 w-5", i < result.globalRating ? "text-yellow-400 fill-yellow-400" : "text-gray-300")} />
+                                                        ))}
+                                                    </div>
+                                                    {result.isInterested ? <ThumbsUp className="h-5 w-5 text-green-500"/> : <ThumbsDown className="h-5 w-5 text-red-500" />}
+                                                    <p className="text-sm text-muted-foreground">{new Date(result.submittedAt).toLocaleDateString()}</p>
+                                                </div>
                                             </div>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="p-4">
+                                        </AccordionTrigger>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="shrink-0"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem className="text-destructive" onClick={() => setResultToDelete(result)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                    <AccordionContent className="p-4 border-t">
                                         <h4 className="font-semibold mb-2">Détails des cas de test :</h4>
                                         <Table>
                                             <TableHeader>
@@ -180,6 +208,23 @@ export default function BetaTestResultsPage() {
                     )}
                 </CardContent>
             </Card>
+
+            <AlertDialog open={!!resultToDelete} onOpenChange={(open) => !open && setResultToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action supprimera définitivement le résultat du test de <strong>{resultToDelete?.tester.firstName} {resultToDelete?.tester.lastName}</strong>.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive hover:bg-destructive/90">
+                           Supprimer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
