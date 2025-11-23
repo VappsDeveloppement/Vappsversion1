@@ -112,6 +112,12 @@ interface WhiteLabelSectionPersonalization {
     plans: SubscriptionPlan[];
 }
 
+interface BlogSectionPersonalization {
+    title: string;
+    description: string;
+    enabled: boolean;
+}
+
 
 interface ContactSectionPersonalization {
   enabled: boolean;
@@ -199,6 +205,7 @@ interface Personalization {
     activitiesSection: ActivitiesSectionPersonalization;
     pricingSection: PricingSectionPersonalization;
     whiteLabelSection: WhiteLabelSectionPersonalization;
+    blogSection: BlogSectionPersonalization;
     contactSection: ContactSectionPersonalization;
     paymentSettings: PaymentSettings;
     emailSettings: EmailSettings;
@@ -391,6 +398,11 @@ const defaultPersonalization: Personalization = {
         ],
         plans: [],
       },
+    blogSection: {
+        enabled: true,
+        title: "Notre Blog",
+        description: "Retrouvez nos derniers articles, conseils et actualités."
+    },
     contactSection: {
       enabled: false,
       title: "Contactez-moi",
@@ -529,6 +541,10 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                         ...defaultPersonalization.whiteLabelSection,
                         ...(fetchedAgencyData.personalization?.whiteLabelSection || {}),
                     },
+                    blogSection: {
+                        ...defaultPersonalization.blogSection,
+                        ...(fetchedAgencyData.personalization?.blogSection || {})
+                    },
                     contactSection: {
                         ...defaultPersonalization.contactSection,
                         ...(fetchedAgencyData.personalization?.contactSection || {}),
@@ -603,4 +619,3 @@ export function useAgency() {
     
 
     
-
