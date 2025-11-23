@@ -6,7 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Paperclip, Send, MessageSquare, Archive, Mail } from "lucide-react";
+import { Paperclip, Send, MessageSquare, Archive, Mail, Eye } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc } from 'firebase/firestore';
@@ -15,6 +15,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 type ContactMessage = {
     id: string;
@@ -31,27 +33,28 @@ function NewContactsSection() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
+    const [viewingMessage, setViewingMessage] = useState<ContactMessage | null>(null);
 
     const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
     const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
     const contactsQuery = useMemoFirebase(() => {
-        if (!user || !userData) return null; // Wait for user and userData to be loaded
+        if (!userData) return null; 
 
-        let recipientId: string;
         if (userData.role === 'superadmin') {
-            recipientId = 'vapps-agency';
+            return query(
+                collection(firestore, 'contact_messages'),
+                where('status', '==', 'new'),
+                where('recipientId', '==', 'vapps-agency')
+            );
         } else if (userData.role === 'conseiller') {
-            recipientId = user.uid;
-        } else {
-            return null; // Don't fetch for other roles
+             return query(
+                collection(firestore, 'contact_messages'),
+                where('status', '==', 'new'),
+                where('recipientId', '==', user.uid)
+            );
         }
-
-        return query(
-            collection(firestore, 'contact_messages'), 
-            where('status', '==', 'new'),
-            where('recipientId', '==', recipientId)
-        );
+        return null;
     }, [user, userData, firestore]);
     
     const { data: contacts, isLoading: areContactsLoading } = useCollection<ContactMessage>(contactsQuery);
@@ -62,9 +65,11 @@ function NewContactsSection() {
         const contactRef = doc(firestore, 'contact_messages', contactId);
         setDocumentNonBlocking(contactRef, { status: 'read' }, { merge: true });
         toast({ title: "Message marqué comme lu" });
+        setViewingMessage(null); // Close the dialog
     }
 
     return (
+        <>
          <Card className="mb-8">
             <CardHeader>
                 <CardTitle>Nouvelles Demandes de Contact</CardTitle>
@@ -97,9 +102,9 @@ function NewContactsSection() {
                                     </TableCell>
                                     <TableCell>{contact.subject}</TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="outline" size="sm" onClick={() => handleMarkAsRead(contact.id)}>
-                                            <Archive className="mr-2 h-4 w-4" />
-                                            Marquer comme lu
+                                        <Button variant="outline" size="sm" onClick={() => setViewingMessage(contact)}>
+                                            <Eye className="mr-2 h-4 w-4" />
+                                            Voir
                                         </Button>
                                     </TableCell>
                                 </TableRow>
@@ -115,6 +120,45 @@ function NewContactsSection() {
                 </Table>
             </CardContent>
         </Card>
+        <Dialog open={!!viewingMessage} onOpenChange={(open) => !open && setViewingMessage(null)}>
+            <DialogContent className="sm:max-w-lg">
+                 <DialogHeader>
+                    <DialogTitle>Détail du message</DialogTitle>
+                    <DialogDescription>Message reçu le {viewingMessage && new Date(viewingMessage.createdAt).toLocaleDateString('fr-FR')}</DialogDescription>
+                </DialogHeader>
+                {viewingMessage && (
+                    <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+                        <div className="space-y-1">
+                            <Label>Nom</Label>
+                            <p className="text-sm text-muted-foreground">{viewingMessage.name}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Email</Label>
+                            <p className="text-sm text-muted-foreground">{viewingMessage.email}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Téléphone</Label>
+                            <p className="text-sm text-muted-foreground">{viewingMessage.phone}</p>
+                        </div>
+                        <div className="space-y-1">
+                            <Label>Sujet</Label>
+                            <p className="text-sm text-muted-foreground">{viewingMessage.subject}</p>
+                        </div>
+                         <div className="space-y-1">
+                            <Label>Message</Label>
+                            <p className="text-sm text-muted-foreground border bg-muted/50 p-3 rounded-md whitespace-pre-wrap">{viewingMessage.message}</p>
+                        </div>
+                    </div>
+                )}
+                 <DialogFooter>
+                    <Button variant="outline" onClick={() => setViewingMessage(null)}>Fermer</Button>
+                    <Button onClick={() => viewingMessage && handleMarkAsRead(viewingMessage.id)}>
+                        <Archive className="mr-2 h-4 w-4" /> Marquer comme lu
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+        </>
     )
 }
 
@@ -149,5 +193,7 @@ export default function MessagesPage() {
         </div>
     );
 }
+
+    
 
     
