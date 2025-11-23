@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { PlusCircle, Check, X, AlertTriangle, Edit, Trash2, Save, Folder, UserCheck, Upload, Video, Image as ImageIcon } from "lucide-react";
+import { PlusCircle, Check, X, AlertTriangle, Edit, Trash2, Save, Folder, UserCheck, Upload, Video, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import { cn } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -22,6 +22,9 @@ import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonB
 import { collection, doc, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
+import { useAgency } from '@/context/agency-provider';
+import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type TestCaseStatus = 'passed' | 'failed' | 'blocked' | 'pending';
 
@@ -45,6 +48,7 @@ interface Scenario {
   id: string;
   name: string;
   roles: Role[];
+  testUrl?: string;
 }
 
 const testCaseSchema = z.object({
@@ -57,6 +61,7 @@ const testCaseSchema = z.object({
 
 const scenarioSchema = z.object({
   name: z.string().min(1, 'Le nom de la fonctionnalité est requis.'),
+  testUrl: z.string().url("Veuillez entrer une URL valide.").optional().or(z.literal('')),
 });
 
 const roleSchema = z.object({
@@ -81,6 +86,7 @@ const toBase64 = (file: File): Promise<string> =>
 export default function BetaTestPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { agency, personalization, isLoading: isAgencyLoading } = useAgency();
   const scenariosQuery = useMemoFirebase(() => collection(firestore, 'beta_scenarios'), [firestore]);
   const { data: scenarios, isLoading } = useCollection<Scenario>(scenariosQuery);
   
@@ -92,8 +98,17 @@ export default function BetaTestPage() {
   const [mediaPreview, setMediaPreview] = useState<string | null>(null);
   
   const [isScenarioDialogOpen, setIsScenarioDialogOpen] = useState(false);
+  const [editingScenario, setEditingScenario] = useState<Scenario | null>(null);
   const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   const mediaInputRef = useRef<HTMLInputElement>(null);
+
+  const [betaTestUrl, setBetaTestUrl] = useState('');
+  
+  useEffect(() => {
+    if (personalization?.betaTesting?.testUrl) {
+      setBetaTestUrl(personalization.betaTesting.testUrl);
+    }
+  }, [personalization]);
   
   const testCaseForm = useForm<z.infer<typeof testCaseSchema>>({
     resolver: zodResolver(testCaseSchema),
@@ -102,7 +117,7 @@ export default function BetaTestPage() {
 
   const scenarioForm = useForm<z.infer<typeof scenarioSchema>>({
     resolver: zodResolver(scenarioSchema),
-    defaultValues: { name: '' },
+    defaultValues: { name: '', testUrl: '' },
   });
 
   const roleForm = useForm<z.infer<typeof roleSchema>>({
@@ -118,7 +133,7 @@ export default function BetaTestPage() {
       }
     }
   }, [scenarios, selectedScenarioId]);
-  
+
   const updateScenarioInFirestore = async (updatedScenario: Scenario) => {
     const scenarioRef = doc(firestore, 'beta_scenarios', updatedScenario.id);
     await setDoc(scenarioRef, updatedScenario, { merge: true });
@@ -135,18 +150,38 @@ export default function BetaTestPage() {
       }
     }
   }, [editingTestCase, isTestCaseDialogOpen, testCaseForm]);
+  
+   useEffect(() => {
+    if (isScenarioDialogOpen) {
+      if (editingScenario) {
+        scenarioForm.reset({ name: editingScenario.name, testUrl: editingScenario.testUrl || '' });
+      } else {
+        scenarioForm.reset({ name: '', testUrl: '' });
+      }
+    }
+  }, [editingScenario, isScenarioDialogOpen, scenarioForm]);
 
 
   const handleScenarioFormSubmit = async (data: z.infer<typeof scenarioSchema>) => {
-    const newScenario: Scenario = {
-      id: `scenario-${Date.now()}`,
-      name: data.name,
-      roles: []
-    };
-    const scenarioRef = doc(firestore, 'beta_scenarios', newScenario.id);
-    await setDoc(scenarioRef, newScenario);
+    if (editingScenario) {
+        const scenarioRef = doc(firestore, 'beta_scenarios', editingScenario.id);
+        await setDoc(scenarioRef, data, { merge: true });
+        toast({ title: "Fonctionnalité modifiée", description: "Le lien de test a été mis à jour."});
+    } else {
+        const newScenario: Omit<Scenario, 'id'> = {
+          name: data.name,
+          roles: [],
+          testUrl: data.testUrl,
+        };
+        await addDocumentNonBlocking(collection(firestore, 'beta_scenarios'), newScenario);
+    }
+    
     setIsScenarioDialogOpen(false);
-    scenarioForm.reset();
+  };
+  
+   const handleOpenScenarioDialog = (scenario: Scenario | null = null) => {
+    setEditingScenario(scenario);
+    setIsScenarioDialogOpen(true);
   };
 
   const deleteScenario = (scenarioId: string) => {
@@ -254,6 +289,16 @@ export default function BetaTestPage() {
     }
   };
 
+  const handleSaveBetaTestUrl = () => {
+    if (!agency) {
+        toast({ title: "Erreur", description: "Agence non trouvée", variant: "destructive" });
+        return;
+    }
+    const agencyRef = doc(firestore, 'agencies', agency.id);
+    setDocumentNonBlocking(agencyRef, { personalization: { betaTesting: { testUrl: betaTestUrl } } }, { merge: true });
+    toast({ title: "URL de test enregistrée" });
+  };
+
 
   const selectedScenario = scenarios?.find(s => s.id === selectedScenarioId);
   const selectedRole = selectedScenario?.roles.find(r => r.id === selectedRoleId);
@@ -265,13 +310,40 @@ export default function BetaTestPage() {
           <h1 className="text-3xl font-bold font-headline">Recette de test</h1>
           <p className="text-muted-foreground">Gérez les scénarios de test pour l'application.</p>
         </div>
-        <Button onClick={() => setIsScenarioDialogOpen(true)}>
+        <Button onClick={() => handleOpenScenarioDialog(null)}>
             <PlusCircle className="mr-2 h-4 w-4" />
             Nouvelle Fonctionnalité
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-15rem)]">
+       <Card>
+        <CardHeader>
+          <CardTitle>Configuration Globale du Test</CardTitle>
+          <CardDescription>
+            Définissez l'URL de l'application de test qui sera présentée aux testeurs.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+           {isAgencyLoading ? <Skeleton className="h-10 w-full" /> : (
+            <div className="flex items-end gap-2">
+                <div className="flex-grow space-y-2">
+                    <Label htmlFor="beta-test-url">URL de l'application de test</Label>
+                    <Input 
+                        id="beta-test-url" 
+                        placeholder="https://votre-app-de-test.com"
+                        value={betaTestUrl}
+                        onChange={(e) => setBetaTestUrl(e.target.value)}
+                    />
+                </div>
+                <Button onClick={handleSaveBetaTestUrl}>
+                    <Save className="mr-2 h-4 w-4" /> Enregistrer l'URL
+                </Button>
+            </div>
+           )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-21rem)]">
         <Card className="md:col-span-3 lg:col-span-2 flex flex-col">
           <CardHeader className='p-3 border-b'>
             <CardTitle className='text-base'>Fonctionnalités</CardTitle>
@@ -283,9 +355,14 @@ export default function BetaTestPage() {
                   <Folder className="h-4 w-4 text-primary" />
                   <span className="truncate">{scenario.name}</span>
                 </div>
-                <Button variant="ghost" size="icon" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={(e) => { e.stopPropagation(); deleteScenario(scenario.id); }}>
-                  <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
+                 <div className="flex items-center opacity-0 group-hover:opacity-100">
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); handleOpenScenarioDialog(scenario); }}>
+                        <Edit className="h-4 w-4" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => { e.stopPropagation(); deleteScenario(scenario.id); }}>
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                </div>
               </div>
             ))}
           </CardContent>
@@ -411,9 +488,9 @@ export default function BetaTestPage() {
        <Dialog open={isScenarioDialogOpen} onOpenChange={setIsScenarioDialogOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>Nouvelle Fonctionnalité</DialogTitle>
-            <DialogDescription>
-              Entrez le nom de la nouvelle fonctionnalité à tester.
+            <DialogTitle>{editingScenario ? 'Modifier la' : 'Nouvelle'} Fonctionnalité</DialogTitle>
+             <DialogDescription>
+              Entrez le nom de la fonctionnalité et optionnellement l'URL de test.
             </DialogDescription>
           </DialogHeader>
           <Form {...scenarioForm}>
@@ -427,9 +504,18 @@ export default function BetaTestPage() {
                   <FormMessage />
                 </FormItem>
               )}/>
+               <FormField control={scenarioForm.control} name="testUrl" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>URL de test (Optionnel)</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="https://test.monapp.com" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}/>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsScenarioDialogOpen(false)}>Annuler</Button>
-                <Button type="submit"><Save className="mr-2 h-4 w-4" />Créer</Button>
+                <Button type="submit"><Save className="mr-2 h-4 w-4" />{editingScenario ? 'Sauvegarder' : 'Créer'}</Button>
               </DialogFooter>
             </form>
           </Form>

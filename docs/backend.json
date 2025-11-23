@@ -412,7 +412,13 @@
             "homePageVersion": { "type": "string" },
             "homePageSections": { "type": "array", "items": { "type": "object" } },
             "legalInfo": { "type": "object" },
-            "whiteLabelSection": { "$ref": "#/entities/WhiteLabelSection" }
+            "whiteLabelSection": { "$ref": "#/entities/WhiteLabelSection" },
+            "betaTesting": {
+                "type": "object",
+                "properties": {
+                    "testUrl": { "type": "string", "format": "uri" }
+                }
+            }
           }
         }
       },

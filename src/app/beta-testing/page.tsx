@@ -15,13 +15,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Check, CheckCircle, Loader2, Star, ThumbsUp, X, AlertCircle } from 'lucide-react';
+import { Check, CheckCircle, Loader2, Star, ThumbsUp, X, AlertCircle, Link as LinkIcon } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useRouter } from 'next/navigation';
+import { useAgency } from '@/context/agency-provider';
+import Link from 'next/link';
 
 // Types
 type TestCaseStatus = 'passed' | 'failed' | 'blocked' | 'pending';
@@ -36,7 +38,7 @@ interface TestCase {
   status: TestCaseStatus;
 }
 interface Role { id: string; name: string; testCases: TestCase[] }
-interface Scenario { id: string; name: string; roles: Role[] }
+interface Scenario { id: string; name: string; roles: Role[]; testUrl?: string; }
 
 const testerInfoSchema = z.object({
   firstName: z.string().min(1, 'Le prénom est requis.'),
@@ -62,6 +64,7 @@ export default function PublicBetaTestingPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
   const router = useRouter();
+  const { personalization, isLoading: isAgencyLoading } = useAgency();
 
   const scenariosQuery = useMemoFirebase(() => query(collection(firestore, 'beta_scenarios')), [firestore]);
   const { data: scenarios, isLoading: isLoadingScenarios } = useCollection<Scenario>(scenariosQuery);
@@ -132,12 +135,31 @@ export default function PublicBetaTestingPage() {
 
   return (
     <div className="container mx-auto py-12 px-4">
-        <div className="mb-8">
-            <h1 className="text-3xl font-bold">Scénarios de Test</h1>
-            <p className="text-muted-foreground">Merci, {testerInfo.firstName}. Veuillez suivre les scénarios ci-dessous.</p>
+        <div className="mb-8 space-y-4">
+            <div>
+                <h1 className="text-3xl font-bold">Scénarios de Test</h1>
+                <p className="text-muted-foreground">Merci, {testerInfo.firstName}. Veuillez suivre les scénarios ci-dessous.</p>
+            </div>
+             {personalization?.betaTesting?.testUrl && (
+                <Card>
+                    <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="text-sm">
+                            <p className="font-semibold">Informations de connexion pour l'application de test :</p>
+                            <p><span className="text-muted-foreground">Identifiant :</span> demo</p>
+                            <p><span className="text-muted-foreground">Mot de passe :</span> demo</p>
+                        </div>
+                         <Button asChild>
+                            <Link href={personalization.betaTesting.testUrl} target="_blank">
+                                <LinkIcon className="mr-2 h-4 w-4" />
+                                Ouvrir l'application de test
+                            </Link>
+                        </Button>
+                    </CardContent>
+                </Card>
+            )}
         </div>
 
-        {isLoadingScenarios ? (
+        {isLoadingScenarios || isAgencyLoading ? (
             <Skeleton className="h-64 w-full" />
         ) : (
             <Accordion type="multiple" className="w-full space-y-4">
