@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Check, CheckCircle, Loader2, Star, ThumbsUp, X } from 'lucide-react';
+import { Check, CheckCircle, Loader2, Star, ThumbsUp, X, AlertCircle } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Image from 'next/image';
 import { Textarea } from '@/components/ui/textarea';
@@ -61,8 +61,21 @@ export default function PublicBetaTestingPage() {
   const { toast } = useToast();
   const firestore = useFirestore();
 
-  const scenariosQuery = useMemoFirebase(() => query(collection(firestore, 'beta_scenarios')), [firestore]);
-  const { data: scenarios, isLoading: isLoadingScenarios } = useCollection<Scenario>(scenariosQuery);
+  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const [isLoadingScenarios, setIsLoadingScenarios] = useState(true);
+
+  React.useEffect(() => {
+    try {
+      const savedScenarios = localStorage.getItem('beta-test-scenarios');
+      if (savedScenarios) {
+        setScenarios(JSON.parse(savedScenarios));
+      }
+    } catch (error) {
+      console.error("Could not load scenarios from localStorage", error);
+    } finally {
+      setIsLoadingScenarios(false);
+    }
+  }, []);
 
   const form = useForm<TesterInfo>({
     resolver: zodResolver(testerInfoSchema),
