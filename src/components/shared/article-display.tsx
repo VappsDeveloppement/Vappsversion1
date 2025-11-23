@@ -22,10 +22,7 @@ type Article = {
     categoryId: string;
     categoryName: string;
     status: 'draft' | 'pending' | 'published' | 'rejected';
-    publishedAt?: {
-        seconds: number;
-        nanoseconds: number;
-    };
+    publishedAt?: string;
 };
 
 type AuthorProfile = {
@@ -66,7 +63,7 @@ export function ArticleDisplay({ article, authorProfile }: ArticleDisplayProps) 
         : null;
 
     const publishedDate = article.publishedAt
-        ? new Date(article.publishedAt.seconds * 1000).toLocaleDateString('fr-FR', {
+        ? new Date(article.publishedAt).toLocaleDateString('fr-FR', {
             year: 'numeric', month: 'long', day: 'numeric'
         })
         : 'Date non disponible';

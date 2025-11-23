@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, Timestamp } from 'firebase/firestore';
 import { initializeFirebase } from '@/firebase/server';
 import { ArticleDisplay } from '@/components/shared/article-display';
 import { notFound } from 'next/navigation';
@@ -15,11 +14,15 @@ type Article = {
     authorPhotoUrl?: string | null;
     categoryId: string;
     status: 'draft' | 'pending' | 'published' | 'rejected';
-    publishedAt?: {
-        seconds: number;
-        nanoseconds: number;
-    };
+    publishedAt?: string;
+    createdAt: string;
+    categoryName?: string;
 };
+
+type FirebaseArticle = Omit<Article, 'publishedAt' | 'createdAt'> & {
+    publishedAt?: Timestamp;
+    createdAt: Timestamp;
+}
 
 type Category = {
     name: string;
@@ -29,7 +32,7 @@ type AuthorProfile = {
     miniSite?: {
         publicProfileName?: string;
     }
-}
+} | null;
 
 async function getArticleData(articleId: string) {
     const { firestore } = initializeFirebase();
@@ -41,7 +44,13 @@ async function getArticleData(articleId: string) {
         return null;
     }
 
-    const article = { id: articleSnap.id, ...articleSnap.data() } as Article;
+    const firebaseArticle = { id: articleSnap.id, ...articleSnap.data() } as FirebaseArticle;
+
+    const article: Article = {
+        ...firebaseArticle,
+        createdAt: firebaseArticle.createdAt.toDate().toISOString(),
+        publishedAt: firebaseArticle.publishedAt?.toDate().toISOString(),
+    };
 
     let categoryName = 'Non classé';
     if (article.categoryId) {
@@ -52,7 +61,7 @@ async function getArticleData(articleId: string) {
         }
     }
 
-    let authorProfile: AuthorProfile | null = null;
+    let authorProfile: AuthorProfile = null;
     if (article.authorId) {
         const authorProfileRef = doc(firestore, 'minisites', article.authorId);
         const authorProfileSnap = await getDoc(authorProfileRef);
@@ -71,6 +80,7 @@ async function getArticleData(articleId: string) {
 }
 
 
+// Explicitly named the function to help Next.js HMR.
 export default async function ArticlePage({ params }: { params: { articleId: string } }) {
     const data = await getArticleData(params.articleId);
 
