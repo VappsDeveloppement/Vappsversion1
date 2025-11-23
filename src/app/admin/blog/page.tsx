@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -34,6 +33,7 @@ type Article = {
   id: string;
   title: string;
   authorName: string;
+  categoryId: string;
   categoryName: string;
   status: 'draft' | 'pending' | 'published' | 'rejected';
   createdAt: any;
@@ -244,11 +244,16 @@ function ArticleManager() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
 
+    const [titleFilter, setTitleFilter] = useState('');
+    const [categoryFilter, setCategoryFilter] = useState('all');
+    const [statusFilter, setStatusFilter] = useState('all');
+
+
     const categoriesQuery = useMemoFirebase(() => collection(firestore, 'blog_categories'), [firestore]);
     const { data: categories, isLoading: areCategoriesLoading } = useCollection<BlogCategory>(categoriesQuery);
 
     const articlesQuery = useMemoFirebase(() => collection(firestore, 'articles'), [firestore]);
-    const { data: articles, isLoading: areArticlesLoading } = useCollection<Article>(articlesQuery);
+    const { data: allArticles, isLoading: areArticlesLoading } = useCollection<Article>(articlesQuery);
     
     const articleForm = useForm<ArticleFormData>({
         resolver: zodResolver(articleSchema),
@@ -269,7 +274,7 @@ function ArticleManager() {
                 authorId: user.uid,
                 authorName: user.displayName || `${user.email}`,
                 authorPhotoUrl: user.photoURL || null,
-                status: 'draft',
+                status: 'draft' as const,
                 createdAt: serverTimestamp(),
             };
             await addDocumentNonBlocking(collection(firestore, 'articles'), articleData);
@@ -292,14 +297,22 @@ function ArticleManager() {
         }
     };
 
-    const articlesWithCategoryNames = useMemo(() => {
-        if (!articles || !categories) return [];
+    const filteredArticles = useMemo(() => {
+        if (!allArticles || !categories) return [];
         const categoryMap = new Map(categories.map(c => [c.id, c.name]));
-        return articles.map(article => ({
-            ...article,
-            categoryName: categoryMap.get((article as any).categoryId) || 'Non classé',
-        }));
-    }, [articles, categories]);
+        
+        return allArticles
+            .map(article => ({
+                ...article,
+                categoryName: categoryMap.get(article.categoryId) || 'Non classé',
+            }))
+            .filter(article => {
+                const titleMatch = titleFilter ? article.title.toLowerCase().includes(titleFilter.toLowerCase()) : true;
+                const categoryMatch = categoryFilter !== 'all' ? article.categoryId === categoryFilter : true;
+                const statusMatch = statusFilter !== 'all' ? article.status === statusFilter : true;
+                return titleMatch && categoryMatch && statusMatch;
+            });
+    }, [allArticles, categories, titleFilter, categoryFilter, statusFilter]);
 
     return (
         <Card>
@@ -313,6 +326,35 @@ function ArticleManager() {
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Nouvel Article
                     </Button>
+                </div>
+                 <div className="flex flex-col md:flex-row gap-2 mt-4">
+                    <Input
+                        placeholder="Filtrer par titre..."
+                        value={titleFilter}
+                        onChange={(e) => setTitleFilter(e.target.value)}
+                        className="flex-grow"
+                    />
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectValue placeholder="Toutes les catégories" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Toutes les catégories</SelectItem>
+                            {categories?.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                     <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectValue placeholder="Tous les statuts" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous les statuts</SelectItem>
+                            <SelectItem value="draft">Brouillon</SelectItem>
+                            <SelectItem value="pending">En attente</SelectItem>
+                            <SelectItem value="published">Publié</SelectItem>
+                            <SelectItem value="rejected">Rejeté</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             </CardHeader>
             <CardContent>
@@ -329,8 +371,8 @@ function ArticleManager() {
                     <TableBody>
                         {areArticlesLoading ? (
                             [...Array(5)].map((_, i) => <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>)
-                        ) : articlesWithCategoryNames.length > 0 ? (
-                             articlesWithCategoryNames.map(article => (
+                        ) : filteredArticles.length > 0 ? (
+                             filteredArticles.map(article => (
                                 <TableRow key={article.id}>
                                     <TableCell className="font-medium">{article.title}</TableCell>
                                     <TableCell>{article.authorName}</TableCell>
@@ -346,7 +388,7 @@ function ArticleManager() {
                                 <TableCell colSpan={5} className="h-48 text-center">
                                     <Newspaper className="mx-auto h-12 w-12 text-muted-foreground" />
                                     <h3 className="mt-4 text-lg font-semibold">Aucun article</h3>
-                                    <p className="mt-2 text-sm text-muted-foreground">Cliquez sur "Nouvel Article" pour commencer.</p>
+                                    <p className="mt-2 text-sm text-muted-foreground">Aucun article ne correspond à vos filtres ou aucun article n'a été créé.</p>
                                 </TableCell>
                            </TableRow>
                         )}
@@ -426,5 +468,3 @@ export default function AdminBlogManagementPage() {
         </div>
     )
 }
-
-    
