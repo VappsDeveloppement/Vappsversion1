@@ -94,9 +94,6 @@ export default function BetaTestPage() {
                         </button>
                       </div>
                     ))}
-                     <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addTag('scenario')}>
-                        <PlusCircle className="h-4 w-4" />
-                    </Button>
                 </div>
             </TabsContent>
 
@@ -110,9 +107,6 @@ export default function BetaTestPage() {
                         </button>
                       </div>
                     ))}
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => addTag('role')}>
-                        <PlusCircle className="h-4 w-4" />
-                    </Button>
                 </div>
             </TabsContent>
           </Tabs>
