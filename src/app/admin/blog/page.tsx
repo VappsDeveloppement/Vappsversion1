@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from '@/firebase';
-import { collection, doc, serverTimestamp } from 'firebase/firestore';
+import { collection, doc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -16,12 +16,13 @@ import { Input } from '@/components/ui/input';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { PlusCircle, Edit, Trash2, Loader2, Newspaper, Upload } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Newspaper, Upload, MoreHorizontal } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Types
 type BlogCategory = {
@@ -32,6 +33,9 @@ type BlogCategory = {
 type Article = {
   id: string;
   title: string;
+  content: string;
+  imageUrl?: string | null;
+  authorId: string;
   authorName: string;
   categoryId: string;
   categoryName: string;
@@ -243,6 +247,8 @@ function ArticleManager() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [editingArticle, setEditingArticle] = useState<Article | null>(null);
+    const [articleToDelete, setArticleToDelete] = useState<Article | null>(null);
 
     const [titleFilter, setTitleFilter] = useState('');
     const [categoryFilter, setCategoryFilter] = useState('all');
@@ -259,9 +265,30 @@ function ArticleManager() {
         resolver: zodResolver(articleSchema),
     });
 
+    useEffect(() => {
+        if (isSheetOpen) {
+            if (editingArticle) {
+                articleForm.reset({
+                    title: editingArticle.title,
+                    content: editingArticle.content,
+                    imageUrl: editingArticle.imageUrl,
+                    categoryId: editingArticle.categoryId,
+                });
+                setImagePreview(editingArticle.imageUrl || null);
+            } else {
+                articleForm.reset({ title: '', content: '', imageUrl: null, categoryId: '' });
+                setImagePreview(null);
+            }
+        }
+    }, [isSheetOpen, editingArticle, articleForm]);
+
     const handleNewArticle = () => {
-        articleForm.reset({ title: '', content: '', imageUrl: null, categoryId: '' });
-        setImagePreview(null);
+        setEditingArticle(null);
+        setIsSheetOpen(true);
+    };
+    
+    const handleEditArticle = (article: Article) => {
+        setEditingArticle(article);
         setIsSheetOpen(true);
     };
 
@@ -269,20 +296,26 @@ function ArticleManager() {
         if (!user) return;
         setIsSubmitting(true);
         try {
-            const articleData = {
-                ...data,
-                authorId: user.uid,
-                authorName: user.displayName || `${user.email}`,
-                authorPhotoUrl: user.photoURL || null,
-                status: 'draft' as const,
-                createdAt: serverTimestamp(),
-            };
-            await addDocumentNonBlocking(collection(firestore, 'articles'), articleData);
-            toast({ title: 'Article créé', description: "Votre article a été enregistré comme brouillon." });
+            if (editingArticle) {
+                 const articleRef = doc(firestore, 'articles', editingArticle.id);
+                 await setDocumentNonBlocking(articleRef, data, { merge: true });
+                 toast({ title: 'Article modifié', description: 'Vos modifications ont été enregistrées.' });
+            } else {
+                const articleData = {
+                    ...data,
+                    authorId: user.uid,
+                    authorName: user.displayName || `${user.email}`,
+                    authorPhotoUrl: user.photoURL || null,
+                    status: 'draft' as const,
+                    createdAt: serverTimestamp(),
+                };
+                await addDocumentNonBlocking(collection(firestore, 'articles'), articleData);
+                toast({ title: 'Article créé', description: "Votre article a été enregistré comme brouillon." });
+            }
             setIsSheetOpen(false);
         } catch (error) {
             console.error(error);
-            toast({ variant: 'destructive', title: 'Erreur', description: 'Une erreur est survenue lors de la création de l\'article.' });
+            toast({ variant: 'destructive', title: 'Erreur', description: 'Une erreur est survenue.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -313,6 +346,30 @@ function ArticleManager() {
                 return titleMatch && categoryMatch && statusMatch;
             });
     }, [allArticles, categories, titleFilter, categoryFilter, statusFilter]);
+
+    const handleUpdateStatus = async (articleId: string, status: Article['status']) => {
+        const articleRef = doc(firestore, 'articles', articleId);
+        try {
+            await updateDoc(articleRef, { status });
+            toast({ title: 'Statut mis à jour', description: `L'article est maintenant : ${statusText[status]}`});
+        } catch (error) {
+            toast({ title: 'Erreur', description: 'Impossible de mettre à jour le statut.', variant: 'destructive'});
+        }
+    };
+    
+    const handleDeleteArticle = async () => {
+        if (!articleToDelete) return;
+        const articleRef = doc(firestore, 'articles', articleToDelete.id);
+        try {
+            await deleteDocumentNonBlocking(articleRef);
+            toast({ title: 'Article supprimé' });
+        } catch (error) {
+            toast({ title: 'Erreur', description: 'Impossible de supprimer l\'article.', variant: 'destructive'});
+        } finally {
+            setArticleToDelete(null);
+        }
+    };
+
 
     return (
         <Card>
@@ -379,7 +436,26 @@ function ArticleManager() {
                                     <TableCell>{article.categoryName}</TableCell>
                                     <TableCell><Badge variant={statusVariant[article.status]}>{statusText[article.status]}</Badge></TableCell>
                                     <TableCell className="text-right">
-                                        <Button variant="outline" size="sm">Gérer</Button>
+                                       <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                    <MoreHorizontal className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                                                <DropdownMenuItem onClick={() => handleEditArticle(article)}>
+                                                    <Edit className="mr-2 h-4 w-4" /> Voir / Modifier
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(article.id, 'published')} disabled={article.status === 'published'}>Mettre en page d'accueil</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(article.id, 'draft')} disabled={article.status !== 'published'}>Retirer de la page d'accueil</DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => setArticleToDelete(article)} className="text-destructive">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -401,15 +477,15 @@ function ArticleManager() {
                     <Form {...articleForm}>
                         <form onSubmit={articleForm.handleSubmit(handleArticleSubmit)} className="flex flex-col h-full">
                             <SheetHeader>
-                                <SheetTitle>Créer un nouvel article</SheetTitle>
-                                <SheetDescription>Rédigez votre article. Il sera enregistré en tant que brouillon.</SheetDescription>
+                                <SheetTitle>{editingArticle ? "Modifier l'article" : "Créer un nouvel article"}</SheetTitle>
+                                <SheetDescription>{editingArticle ? "Modifiez les détails de l'article ci-dessous." : "Rédigez votre article. Il sera enregistré en tant que brouillon."}</SheetDescription>
                             </SheetHeader>
                             <div className="flex-1 overflow-y-auto pr-6 py-4 space-y-6">
                                 <FormField control={articleForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre de l'article</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                  <FormField control={articleForm.control} name="categoryId" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Catégorie</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger disabled={areCategoriesLoading}>
                                                     <SelectValue placeholder="Sélectionnez une catégorie" />
@@ -439,13 +515,26 @@ function ArticleManager() {
                                 <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                 <Button type="submit" disabled={isSubmitting}>
                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Enregistrer le brouillon
+                                    {editingArticle ? "Enregistrer les modifications" : "Enregistrer le brouillon"}
                                 </Button>
                             </SheetFooter>
                         </form>
                     </Form>
                 </SheetContent>
             </Sheet>
+
+             <AlertDialog open={!!articleToDelete} onOpenChange={(open) => !open && setArticleToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer cet article ?</AlertDialogTitle>
+                        <AlertDialogDescription>Cette action est irréversible. L'article "{articleToDelete?.title}" sera définitivement supprimé.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteArticle} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
 
         </Card>
     );
