@@ -78,7 +78,7 @@ export default function AdminLayout({
   useEffect(() => {
     if (!isUserLoading && !user) {
       router.push('/application');
-    } else if (!isUserDataLoading && userData?.role !== 'superadmin') {
+    } else if (!isUserLoading && !isUserDataLoading && userData?.role !== 'superadmin') {
       router.push('/dashboard');
     }
   }, [isUserLoading, user, isUserDataLoading, userData, router]);
@@ -94,13 +94,24 @@ export default function AdminLayout({
 
   const isLoading = isUserLoading || isUserDataLoading;
 
-  if (isLoading || !user || userData?.role !== 'superadmin') {
+  if (isLoading || !user || !userData) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
+  
+  if (userData.role !== 'superadmin') {
+    // This part should ideally not be reached due to the useEffect redirect,
+    // but it's a good safeguard.
+     return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Accès non autorisé.</p>
+      </div>
+    );
+  }
+
 
   return (
     <SidebarProvider>
