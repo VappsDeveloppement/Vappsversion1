@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Paperclip, Send, MessageSquare, Archive, Mail } from "lucide-react";
-import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -32,14 +32,23 @@ function NewContactsSection() {
     const firestore = useFirestore();
     const { toast } = useToast();
 
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData } = useDoc(userDocRef);
+
     const contactsQuery = useMemoFirebase(() => {
         if (!user) return null;
+        
+        let recipientId = user.uid; // Default for counselors
+        if (userData?.role === 'superadmin') {
+            recipientId = 'vapps-agency'; // Superadmin sees agency-wide messages
+        }
+
         return query(
             collection(firestore, 'contact_messages'), 
-            where('status', '==', 'new')
-            // where('recipientId', '==', user.uid) // or 'agency' for superadmins
+            where('status', '==', 'new'),
+            where('recipientId', '==', recipientId)
         );
-    }, [user, firestore]);
+    }, [user, firestore, userData]);
     
     const { data: contacts, isLoading } = useCollection<ContactMessage>(contactsQuery);
 

@@ -135,7 +135,7 @@ export function Footer() {
                 message: contactMessage,
                 status: 'new',
                 createdAt: new Date().toISOString(),
-                recipientId: 'agency' // General message for the agency
+                recipientId: 'vapps-agency'
              };
              successMessage = "Votre message a bien été envoyé. Nous vous répondrons dans les plus brefs délais.";
 
