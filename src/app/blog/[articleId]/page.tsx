@@ -7,7 +7,7 @@ import { useDoc, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { AlertTriangle, Calendar, Edit, Facebook, Home, Linkedin, Loader2, Twitter } from 'lucide-react';
+import { AlertTriangle, Calendar, Edit, Facebook, Home, Linkedin, Loader2, Twitter, User } from 'lucide-react';
 import Image from 'next/image';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +38,7 @@ type AuthorProfile = {
     }
 }
 
-function ArticleDisplayPage() {
+export default function ArticleDisplayPage() {
     const params = useParams();
     const articleId = params.articleId as string;
     const firestore = useFirestore();
@@ -200,12 +200,22 @@ function ArticleDisplayPage() {
                                     </Button>
                                 </div>
                             </div>
-                            <Button asChild variant="secondary">
-                                <Link href="/">
-                                    <Home className="mr-2 h-4 w-4"/>
-                                    Retour au site
-                                </Link>
-                           </Button>
+                            <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <Button asChild variant="outline">
+                                    <Link href="/">
+                                        <Home className="mr-2 h-4 w-4"/>
+                                        Retour au site
+                                    </Link>
+                               </Button>
+                               {authorPublicProfileUrl && (
+                                   <Button asChild>
+                                       <Link href={authorPublicProfileUrl}>
+                                           <User className="mr-2 h-4 w-4"/>
+                                           Voir le profil du conseiller
+                                       </Link>
+                                   </Button>
+                               )}
+                           </div>
                         </div>
                     </footer>
                 </article>
@@ -213,5 +223,3 @@ function ArticleDisplayPage() {
         </div>
     );
 }
-
-export default ArticleDisplayPage;
