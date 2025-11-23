@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useCollection, useMemoFirebase, addDocumentNonBlocking } from '@/firebase';
@@ -21,6 +21,7 @@ import Image from 'next/image';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useRouter } from 'next/navigation';
 
 // Types
 type TestCaseStatus = 'passed' | 'failed' | 'blocked' | 'pending';
@@ -60,6 +61,7 @@ export default function PublicBetaTestingPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const [scenarios, setScenarios] = useState<Scenario[]>([]);
   const [isLoadingScenarios, setIsLoadingScenarios] = useState(true);
@@ -109,8 +111,8 @@ export default function PublicBetaTestingPage() {
             isInterested,
             submittedAt: new Date().toISOString(),
         });
-        toast({ title: 'Merci !', description: 'Vos retours ont été enregistrés avec succès.' });
-        setTesterInfo(null);
+        toast({ title: 'Merci !', description: 'Vos retours ont été enregistrés avec succès. Vous allez être redirigé.' });
+        router.push('/');
     } catch (error) {
         toast({ title: 'Erreur', description: 'Impossible de soumettre vos résultats.', variant: 'destructive'});
     } finally {
