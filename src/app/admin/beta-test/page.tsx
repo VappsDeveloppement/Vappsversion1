@@ -45,6 +45,10 @@ const scenarioSchema = z.object({
   name: z.string().min(1, 'Le nom de la fonctionnalité est requis.'),
 });
 
+const roleSchema = z.object({
+  name: z.string().min(1, 'Le nom du rôle est requis.'),
+});
+
 const initialScenarios: Scenario[] = [
   {
     id: 'scenario-1',
@@ -79,6 +83,7 @@ export default function BetaTestPage() {
   const [editingTestCase, setEditingTestCase] = useState<TestCase | null>(null);
   
   const [isScenarioDialogOpen, setIsScenarioDialogOpen] = useState(false);
+  const [isRoleDialogOpen, setIsRoleDialogOpen] = useState(false);
   
   const testCaseForm = useForm<z.infer<typeof testCaseSchema>>({
     resolver: zodResolver(testCaseSchema),
@@ -87,6 +92,11 @@ export default function BetaTestPage() {
 
   const scenarioForm = useForm<z.infer<typeof scenarioSchema>>({
     resolver: zodResolver(scenarioSchema),
+    defaultValues: { name: '' },
+  });
+
+  const roleForm = useForm<z.infer<typeof roleSchema>>({
+    resolver: zodResolver(roleSchema),
     defaultValues: { name: '' },
   });
   
@@ -121,16 +131,17 @@ export default function BetaTestPage() {
     }
   };
 
-  const addRoleToScenario = (scenarioId: string) => {
-    const name = window.prompt("Nom du nouveau rôle pour cette fonctionnalité :");
-    if (name) {
-      const newRole: Role = { id: `role-${Date.now()}`, name, testCases: [] };
-      setScenarios(currentScenarios => currentScenarios.map(s => 
-        s.id === scenarioId 
-        ? { ...s, roles: [...s.roles, newRole] } 
-        : s
-      ));
-    }
+  const handleRoleFormSubmit = (data: z.infer<typeof roleSchema>) => {
+    if (!selectedScenarioId) return;
+
+    const newRole: Role = { id: `role-${Date.now()}`, name: data.name, testCases: [] };
+    setScenarios(currentScenarios => currentScenarios.map(s => 
+      s.id === selectedScenarioId 
+      ? { ...s, roles: [...s.roles, newRole] } 
+      : s
+    ));
+    setIsRoleDialogOpen(false);
+    roleForm.reset();
   };
   
   const deleteRoleFromScenario = (scenarioId: string, roleId: string) => {
@@ -249,7 +260,7 @@ export default function BetaTestPage() {
             <div className="col-span-12 lg:col-span-3 border-r h-full overflow-y-auto">
               <div className="p-3 border-b flex justify-between items-center">
                 <h4 className="text-sm font-semibold">Rôles</h4>
-                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => selectedScenarioId && addRoleToScenario(selectedScenarioId)} disabled={!selectedScenarioId}>
+                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setIsRoleDialogOpen(true)} disabled={!selectedScenarioId}>
                     <PlusCircle className="h-4 w-4" />
                 </Button>
               </div>
@@ -357,6 +368,34 @@ export default function BetaTestPage() {
               )}/>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsScenarioDialogOpen(false)}>Annuler</Button>
+                <Button type="submit"><Save className="mr-2 h-4 w-4" />Créer</Button>
+              </DialogFooter>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
+      
+       <Dialog open={isRoleDialogOpen} onOpenChange={setIsRoleDialogOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Nouveau Rôle</DialogTitle>
+            <DialogDescription>
+              Ajouter un nouveau rôle à la fonctionnalité "{selectedScenario?.name}".
+            </DialogDescription>
+          </DialogHeader>
+          <Form {...roleForm}>
+            <form onSubmit={roleForm.handleSubmit(handleRoleFormSubmit)} className="space-y-4 py-4">
+              <FormField control={roleForm.control} name="name" render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Nom du rôle</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder="Ex: Administrateur" />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}/>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsRoleDialogOpen(false)}>Annuler</Button>
                 <Button type="submit"><Save className="mr-2 h-4 w-4" />Créer</Button>
               </DialogFooter>
             </form>
