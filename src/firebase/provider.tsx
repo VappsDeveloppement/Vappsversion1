@@ -3,7 +3,7 @@
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, getDoc, setDoc, collection, getDocs, onSnapshot, query, where } from 'firebase/firestore';
+import { Firestore, doc, getDoc, setDoc, collection, getDocs, query, where } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
@@ -82,49 +82,53 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     const unsubscribe = onAuthStateChanged(
       auth,
-      async (firebaseUser) => { // Auth state determined
+      (firebaseUser) => { // Auth state determined
         if (firebaseUser) {
-            try {
-                const userDocRef = doc(firestore, "users", firebaseUser.uid);
-                const userDocSnap = await getDoc(userDocRef);
+            // This function is now async and self-executing to not block state updates
+            (async () => {
+              try {
+                  const userDocRef = doc(firestore, "users", firebaseUser.uid);
+                  const userDocSnap = await getDoc(userDocRef);
 
-                if (!userDocSnap.exists()) {
-                    // Check if this is the very first user in the entire system.
-                    const usersCollectionRef = collection(firestore, 'users');
-                    const q = query(usersCollectionRef, where("role", "==", "superadmin"));
-                    const superAdminQuerySnap = await getDocs(q);
+                  if (!userDocSnap.exists()) {
+                      // Check if this is the very first user in the entire system.
+                      const usersCollectionRef = collection(firestore, 'users');
+                      const q = query(usersCollectionRef, where("role", "==", "superadmin"));
+                      const superAdminQuerySnap = await getDocs(q);
 
-                    const isFirstUserEver = superAdminQuerySnap.empty;
-                    const isSpecificUser = firebaseUser.email === 'admin@example.com';
-                    const publicProfileName = isSpecificUser ? 'romain-roussey' : '';
+                      const isFirstUserEver = superAdminQuerySnap.empty;
+                      const isSpecificUser = firebaseUser.email === 'admin@example.com';
+                      const publicProfileName = isSpecificUser ? 'romain-roussey' : '';
 
-                    const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
-                    const firstName = nameParts.shift() || 'Nouveau';
-                    const lastName = nameParts.join(' ') || 'Utilisateur';
+                      const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
+                      const firstName = nameParts.shift() || 'Nouveau';
+                      const lastName = nameParts.join(' ') || 'Utilisateur';
 
-                    const newUserDoc: any = {
-                        id: firebaseUser.uid,
-                        firstName: firstName,
-                        lastName: lastName,
-                        email: firebaseUser.email,
-                        role: isFirstUserEver ? 'superadmin' : 'membre',
-                        counselorId: isFirstUserEver ? firebaseUser.uid : '',
-                        dateJoined: new Date().toISOString(),
-                        lastSignInTime: new Date().toISOString(),
-                        phone: firebaseUser.phoneNumber || '',
-                        publicProfileName: publicProfileName,
-                    };
-                    
-                    await setDoc(userDocRef, newUserDoc);
-                    
-                } else {
-                    const lastSignInTime = new Date().toISOString();
-                    await setDoc(userDocRef, { lastSignInTime }, { merge: true });
-                }
-            } catch (error) {
-                console.error("Error handling user document:", error);
-            }
+                      const newUserDoc: any = {
+                          id: firebaseUser.uid,
+                          firstName: firstName,
+                          lastName: lastName,
+                          email: firebaseUser.email,
+                          role: isFirstUserEver ? 'superadmin' : 'membre',
+                          counselorId: isFirstUserEver ? firebaseUser.uid : '',
+                          dateJoined: new Date().toISOString(),
+                          lastSignInTime: new Date().toISOString(),
+                          phone: firebaseUser.phoneNumber || '',
+                          publicProfileName: publicProfileName,
+                      };
+                      
+                      await setDoc(userDocRef, newUserDoc);
+                      
+                  } else {
+                      const lastSignInTime = new Date().toISOString();
+                      await setDoc(userDocRef, { lastSignInTime }, { merge: true });
+                  }
+              } catch (error) {
+                  console.error("Error handling user document:", error);
+              }
+            })(); // Self-execute the async function
         }
+        // This state update now happens immediately, not waiting for the async DB operations
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { // Auth listener error
