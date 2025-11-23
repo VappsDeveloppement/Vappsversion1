@@ -19,13 +19,20 @@ const testEmailSchema = z.object({
     recipient: z.string().email("L'e-mail du destinataire n'est pas valide."),
 });
 
+const replyEmailSchema = z.object({
+    settings: emailSettingsSchema,
+    recipientEmail: z.string().email("L'e-mail du destinataire n'est pas valide."),
+    subject: z.string().min(1, "Le sujet est requis."),
+    htmlBody: z.string().min(1, "Le corps de l'e-mail est requis."),
+});
 
-type SendTestEmailResponse = {
+
+type SendEmailResponse = {
   success: boolean;
   error?: string;
 };
 
-export async function sendTestEmail(data: z.infer<typeof testEmailSchema>): Promise<SendTestEmailResponse> {
+export async function sendTestEmail(data: z.infer<typeof testEmailSchema>): Promise<SendEmailResponse> {
   const validation = testEmailSchema.safeParse(data);
   if (!validation.success) {
     return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
@@ -37,21 +44,15 @@ export async function sendTestEmail(data: z.infer<typeof testEmailSchema>): Prom
     const transporter = nodemailer.createTransport({
       host: settings.smtpHost,
       port: settings.smtpPort,
-      secure: settings.smtpSecure, // true for 465, false for other ports
+      secure: settings.smtpSecure,
       auth: {
         user: settings.smtpUser,
         pass: settings.smtpPass,
       },
-      // Certains serveurs SMTP peuvent nécessiter des configurations TLS spécifiques
-      // tls: {
-      //   ciphers:'SSLv3'
-      // }
     });
 
-    // verify connection configuration
     await transporter.verify();
 
-    // send mail with defined transport object
     await transporter.sendMail({
       from: `"${settings.fromName}" <${settings.fromEmail}>`,
       to: recipient,
@@ -81,5 +82,38 @@ export async function sendTestEmail(data: z.infer<typeof testEmailSchema>): Prom
         errorMessage = error.message || "Impossible d'envoyer l'e-mail de test.";
     }
     return { success: false, error: errorMessage };
+  }
+}
+
+export async function sendReplyEmail(data: z.infer<typeof replyEmailSchema>): Promise<SendEmailResponse> {
+  const validation = replyEmailSchema.safeParse(data);
+  if (!validation.success) {
+    return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
+  }
+
+  const { settings, recipientEmail, subject, htmlBody } = validation.data;
+
+  try {
+    const transporter = nodemailer.createTransport({
+      host: settings.smtpHost,
+      port: settings.smtpPort,
+      secure: settings.smtpSecure,
+      auth: {
+        user: settings.smtpUser,
+        pass: settings.smtpPass,
+      },
+    });
+
+    await transporter.sendMail({
+      from: `"${settings.fromName}" <${settings.fromEmail}>`,
+      to: recipientEmail,
+      subject: subject,
+      html: htmlBody,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error sending reply email:", error);
+    return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi de l'e-mail." };
   }
 }
