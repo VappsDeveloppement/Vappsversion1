@@ -45,11 +45,11 @@ export default function BetaTestPage() {
 
   const addTag = (type: 'scenario' | 'role') => {
     const newTag = window.prompt(`Entrez le nom du nouveau ${type === 'scenario' ? 'scénario' : 'rôle'}:`);
-    if (newTag) {
+    if (newTag && newTag.trim() !== '') {
       if (type === 'scenario') {
-        setScenarios(prev => [...prev, newTag]);
+        setScenarios(prev => [...prev, newTag.trim()]);
       } else {
-        setRoles(prev => [...prev, newTag]);
+        setRoles(prev => [...prev, newTag.trim()]);
       }
     }
   };
@@ -161,4 +161,4 @@ export default function BetaTestPage() {
       </Card>
     </div>
   );
- 
+}
