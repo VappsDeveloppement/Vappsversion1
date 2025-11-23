@@ -78,12 +78,12 @@ export default function BetaTestPage() {
 
       <Card>
         <CardContent className="p-6">
-          <Tabs defaultValue="scenario">
+          <Tabs defaultValue="scenarios">
             <TabsList className="mb-4">
-              <TabsTrigger value="scenario">Scénarios</TabsTrigger>
+              <TabsTrigger value="scenarios">Scénarios</TabsTrigger>
               <TabsTrigger value="results">Résultats</TabsTrigger>
             </TabsList>
-            <TabsContent value="scenario" className="space-y-4">
+            <TabsContent value="scenarios" className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
                     {scenarios.map((scenario, index) => (
                       <div key={index} className="group relative">
