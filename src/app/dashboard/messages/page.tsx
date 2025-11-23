@@ -218,7 +218,7 @@ function NewContactsSection() {
                 <div className="space-y-4 py-4">
                      <div className="space-y-2">
                         <Label htmlFor="reply-to">Destinataire</Label>
-                        <Input id="reply-to" value={replyingToMessage?.email} disabled />
+                        <Input id="reply-to" value={replyingToMessage?.email || ''} disabled />
                     </div>
                     <div className="space-y-2">
                         <Label htmlFor="reply-subject">Sujet</Label>
