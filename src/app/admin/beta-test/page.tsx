@@ -81,8 +81,9 @@ export default function BetaTestPage() {
           <Tabs defaultValue="scenarios">
             <TabsList className="mb-4">
               <TabsTrigger value="scenarios">Scénarios</TabsTrigger>
-              <TabsTrigger value="results">Résultats</TabsTrigger>
+              <TabsTrigger value="roles">Rôles</TabsTrigger>
             </TabsList>
+            
             <TabsContent value="scenarios" className="space-y-4">
                 <div className="flex items-center gap-2 flex-wrap">
                     {scenarios.map((scenario, index) => (
@@ -97,6 +98,9 @@ export default function BetaTestPage() {
                         <PlusCircle className="h-4 w-4" />
                     </Button>
                 </div>
+            </TabsContent>
+
+            <TabsContent value="roles" className="space-y-4">
                  <div className="flex items-center gap-2 flex-wrap">
                     {roles.map((role, index) => (
                       <div key={index} className="group relative">
@@ -110,9 +114,6 @@ export default function BetaTestPage() {
                         <PlusCircle className="h-4 w-4" />
                     </Button>
                 </div>
-            </TabsContent>
-            <TabsContent value="results">
-                 <p className="text-sm text-muted-foreground">Les résultats des tests s'afficheront ici.</p>
             </TabsContent>
           </Tabs>
 
