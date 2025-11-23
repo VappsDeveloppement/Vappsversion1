@@ -33,10 +33,13 @@ service cloud.firestore {
     }
 
     match /contact_messages/{messageId} {
-        allow create: if true;
-        allow read, write: if request.auth != null && 
-                               (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' && resource.data.recipientId == 'vapps-agency' ||
-                                get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && resource.data.recipientId == request.auth.uid);
+      allow create: if true;
+      allow read: if request.auth != null && 
+                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' && resource.data.recipientId == 'vapps-agency' ||
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && resource.data.recipientId == request.auth.uid);
+      allow write: if request.auth != null && 
+                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller');
     }
 
     match /plans/{planId} {
@@ -83,6 +86,21 @@ service cloud.firestore {
       allow list: if true; // Allow public list for stats
       allow get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
       allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    match /blog_categories/{categoryId} {
+        allow get, list: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+        allow write: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+    }
+
+    match /articles/{articleId} {
+        allow read: if resource.data.status == 'published' || 
+                       (request.auth != null && (resource.data.authorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+        allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller';
+        allow update: if request.auth != null && 
+                         (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
+                         (resource.data.authorId == request.auth.uid && request.resource.data.status != 'published'));
+        allow delete: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || resource.data.authorId == request.auth.uid);
     }
   }
 }
