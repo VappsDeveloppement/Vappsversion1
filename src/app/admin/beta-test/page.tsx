@@ -39,10 +39,6 @@ export default function BetaTestPage() {
   const [scenarios, setScenarios] = useState(['Connexion', 'Profil']);
   const [roles, setRoles] = useState(['Testeur', 'Administrateur']);
 
-  const setTestStatus = (id: string, status: TestCaseStatus) => {
-    setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, status } : tc));
-  };
-  
   const addScenario = () => {
     const newScenario = window.prompt(`Entrez le nom du nouveau scénario:`);
     if (newScenario && newScenario.trim() !== '') {
@@ -50,10 +46,13 @@ export default function BetaTestPage() {
     }
   };
   
-   const removeScenario = (index: number) => {
+  const removeScenario = (index: number) => {
     setScenarios(prev => prev.filter((_, i) => i !== index));
   };
-
+  
+  const setTestStatus = (id: string, status: TestCaseStatus) => {
+    setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, status } : tc));
+  };
 
   const statusConfig: Record<TestCaseStatus, { text: string; icon: React.ReactNode; className: string }> = {
     passed: { text: "Réussi", icon: <Check />, className: "bg-green-100 text-green-800 border-green-200 hover:bg-green-200" },
