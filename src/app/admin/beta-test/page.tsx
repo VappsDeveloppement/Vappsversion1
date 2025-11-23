@@ -42,19 +42,17 @@ export default function BetaTestPage() {
   const setTestStatus = (id: string, status: TestCaseStatus) => {
     setTestCases(prev => prev.map(tc => tc.id === id ? { ...tc, status } : tc));
   };
-
-  const addTag = (type: 'scenario' | 'role') => {
-    const newTag = window.prompt(`Entrez le nom du nouveau ${type === 'scenario' ? 'scénario' : 'rôle'}:`);
+  
+  const addTag = (type: 'scenario') => {
+    const newTag = window.prompt(`Entrez le nom du nouveau scénario:`);
     if (newTag && newTag.trim() !== '') {
       if (type === 'scenario') {
         setScenarios(prev => [...prev, newTag.trim()]);
-      } else {
-        setRoles(prev => [...prev, newTag.trim()]);
       }
     }
   };
-
-  const removeTag = (type: 'scenario' | 'role', index: number) => {
+  
+   const removeTag = (type: 'scenario' | 'role', index: number) => {
     if (type === 'scenario') {
       setScenarios(prev => prev.filter((_, i) => i !== index));
     } else {
@@ -81,7 +79,7 @@ export default function BetaTestPage() {
           <Tabs defaultValue="scenarios">
             <TabsList className="mb-4">
               <TabsTrigger value="scenarios">Scénarios</TabsTrigger>
-              <TabsTrigger value="roles">Rôles</TabsTrigger>
+              <TabsTrigger value="roles">Résultats</TabsTrigger>
             </TabsList>
             
             <TabsContent value="scenarios" className="space-y-4">
@@ -94,18 +92,16 @@ export default function BetaTestPage() {
                         </button>
                       </div>
                     ))}
+                    <Button variant="ghost" size="icon" onClick={() => addTag('scenario')} className="h-6 w-6">
+                        <PlusCircle className="h-4 w-4" />
+                    </Button>
                 </div>
             </TabsContent>
 
             <TabsContent value="roles" className="space-y-4">
                  <div className="flex items-center gap-2 flex-wrap">
                     {roles.map((role, index) => (
-                      <div key={index} className="group relative">
-                        <Badge variant="outline">{role}</Badge>
-                        <button onClick={() => removeTag('role', index)} className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity">
-                            <X className="w-3 h-3"/>
-                        </button>
-                      </div>
+                      <Badge key={index} variant="outline">{role}</Badge>
                     ))}
                 </div>
             </TabsContent>
