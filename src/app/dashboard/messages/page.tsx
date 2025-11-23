@@ -36,8 +36,8 @@ function NewContactsSection() {
     const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
     const contactsQuery = useMemoFirebase(() => {
-        if (!user || !userData) return null; // Wait for user and userData
-        
+        if (!user || !userData) return null; // Wait for user and userData to be loaded
+
         let recipientId: string;
         if (userData.role === 'superadmin') {
             recipientId = 'vapps-agency';
@@ -149,3 +149,5 @@ export default function MessagesPage() {
         </div>
     );
 }
+
+    

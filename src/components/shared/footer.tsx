@@ -114,20 +114,15 @@ export function Footer() {
 
     const handleContactSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!contactName || !contactEmail || !contactPhone || !contactSubject || !contactMessage) {
+        if (!contactName || !contactEmail || !contactSubject || !contactMessage) {
             toast({ title: "Erreur", description: "Veuillez remplir tous les champs.", variant: "destructive" });
             return;
         }
         setIsContactLoading(true);
 
         try {
-            let collectionName = '';
-            let data: any = {};
-            let successMessage = '';
-            
-            // Default to contact message
-             collectionName = 'contact_messages';
-             data = {
+            const collectionRef = collection(firestore, 'contact_messages');
+            const data = {
                 name: contactName,
                 email: contactEmail,
                 phone: contactPhone,
@@ -136,52 +131,22 @@ export function Footer() {
                 status: 'new',
                 createdAt: new Date().toISOString(),
                 recipientId: 'vapps-agency'
-             };
-             successMessage = "Votre message a bien été envoyé. Nous vous répondrons dans les plus brefs délais.";
-
-
-            if (contactSubject === "Données Personnelles") {
-                collectionName = 'gdpr_requests';
-                 data = {
-                    name: contactName,
-                    email: contactEmail,
-                    phone: contactPhone,
-                    subject: contactSubject,
-                    message: contactMessage,
-                    status: 'new',
-                    createdAt: new Date().toISOString(),
-                };
-                successMessage = "Votre demande concernant vos données personnelles a bien été prise en compte.";
-            } else if (contactSubject === "Support") {
-                 collectionName = 'support_requests';
-                 data = {
-                    name: contactName,
-                    email: contactEmail,
-                    phone: contactPhone,
-                    subject: contactSubject,
-                    message: contactMessage,
-                    status: 'new',
-                    createdAt: new Date().toISOString(),
-                };
-                successMessage = "Votre demande de support a été envoyée. Notre équipe vous répondra bientôt.";
-            }
+            };
             
-            if (collectionName) {
-                const collectionRef = collection(firestore, collectionName);
-                await addDocumentNonBlocking(collectionRef, data);
-                toast({ title: "Demande envoyée", description: successMessage });
+            await addDocumentNonBlocking(collectionRef, data);
+            
+            toast({ title: "Message envoyé", description: "Votre message a bien été envoyé. Nous vous répondrons dans les plus brefs délais." });
 
-                // Reset form
-                setContactName('');
-                setContactEmail('');
-                setContactPhone('');
-                setContactSubject('');
-                setContactMessage('');
-            }
+            // Reset form
+            setContactName('');
+            setContactEmail('');
+            setContactPhone('');
+            setContactSubject('');
+            setContactMessage('');
 
         } catch (error) {
             console.error("Error submitting contact form:", error);
-            toast({ title: "Erreur", description: "Une erreur est survenue.", variant: "destructive" });
+            toast({ title: "Erreur", description: "Une erreur est survenue lors de l'envoi de votre message.", variant: "destructive" });
         } finally {
             setIsContactLoading(false);
         }
@@ -339,3 +304,5 @@ export function Footer() {
         </footer>
     );
 }
+
+    
