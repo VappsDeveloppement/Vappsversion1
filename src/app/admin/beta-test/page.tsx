@@ -200,10 +200,6 @@ export default function BetaTestPage() {
           <h1 className="text-3xl font-bold font-headline">Recette de test</h1>
           <p className="text-muted-foreground">Gérez les scénarios de test pour l'application.</p>
         </div>
-        <Button onClick={addScenario}>
-          <PlusCircle className="mr-2 h-4 w-4" />
-          Nouvelle Fonctionnalité
-        </Button>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-[calc(100vh-15rem)]">
@@ -234,9 +230,6 @@ export default function BetaTestPage() {
             <div className="col-span-12 lg:col-span-3 border-r h-full overflow-y-auto">
               <div className="p-3 border-b flex justify-between items-center">
                 <h4 className="text-sm font-semibold">Rôles</h4>
-                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => selectedScenarioId && addRoleToScenario(selectedScenarioId)} disabled={!selectedScenarioId}>
-                  <PlusCircle className="h-4 w-4"/>
-                </Button>
               </div>
               <div className='p-1'>
                 {selectedScenario?.roles.map(role => (
