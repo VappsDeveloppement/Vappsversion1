@@ -18,6 +18,10 @@ import Image from 'next/image';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { collection, doc, setDoc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { useToast } from '@/hooks/use-toast';
 
 type TestCaseStatus = 'passed' | 'failed' | 'blocked' | 'pending';
 
@@ -59,23 +63,6 @@ const roleSchema = z.object({
   name: z.string().min(1, 'Le nom du rôle est requis.'),
 });
 
-const initialScenarios: Scenario[] = [
-  {
-    id: 'scenario-1',
-    name: 'Connexion',
-    roles: [
-      {
-        id: 'role-1-1',
-        name: 'Testeur',
-        testCases: [
-          { id: 'case-1-1-1', title: 'Connexion avec email/mot de passe valide', description: "Vérifier que l'utilisateur peut se connecter avec des identifiants corrects.", status: 'pending' },
-          { id: 'case-1-1-2', title: 'Connexion avec mot de passe invalide', description: "Vérifier qu'un message d'erreur s'affiche en cas de mot de passe incorrect.", status: 'pending' },
-        ],
-      },
-    ],
-  },
-];
-
 const statusConfig: Record<TestCaseStatus, { text: string; icon: React.ReactNode; className: string }> = {
   passed: { text: "Réussi", icon: <Check className="h-4 w-4" />, className: "bg-green-100 text-green-800 border-green-200 hover:bg-green-200" },
   failed: { text: "Échoué", icon: <X className="h-4 w-4" />, className: "bg-red-100 text-red-800 border-red-200 hover:bg-red-200" },
@@ -92,7 +79,11 @@ const toBase64 = (file: File): Promise<string> =>
   });
 
 export default function BetaTestPage() {
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const scenariosQuery = useMemoFirebase(() => collection(firestore, 'beta_scenarios'), [firestore]);
+  const { data: scenarios, isLoading } = useCollection<Scenario>(scenariosQuery);
+  
   const [selectedScenarioId, setSelectedScenarioId] = useState<string | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
   
@@ -120,41 +111,18 @@ export default function BetaTestPage() {
   });
   
   useEffect(() => {
-    try {
-      const savedScenarios = localStorage.getItem('beta-test-scenarios');
-      if (savedScenarios) {
-        const parsedScenarios = JSON.parse(savedScenarios);
-        setScenarios(parsedScenarios);
-        if (parsedScenarios.length > 0) {
-            setSelectedScenarioId(parsedScenarios[0].id);
-            if (parsedScenarios[0].roles.length > 0) {
-                setSelectedRoleId(parsedScenarios[0].roles[0].id);
-            }
-        }
-      } else {
-        setScenarios(initialScenarios);
-         if (initialScenarios.length > 0) {
-            setSelectedScenarioId(initialScenarios[0].id);
-             if (initialScenarios[0].roles.length > 0) {
-                setSelectedRoleId(initialScenarios[0].roles[0].id);
-            }
-        }
+    if (scenarios && scenarios.length > 0 && !selectedScenarioId) {
+      setSelectedScenarioId(scenarios[0].id);
+      if (scenarios[0].roles.length > 0) {
+        setSelectedRoleId(scenarios[0].roles[0].id);
       }
-    } catch (error) {
-        console.error("Could not load scenarios from localStorage", error);
-        setScenarios(initialScenarios);
     }
-  }, []);
-
-  useEffect(() => {
-    try {
-        if(scenarios.length > 0) {
-            localStorage.setItem('beta-test-scenarios', JSON.stringify(scenarios));
-        }
-    } catch (error) {
-        console.error("Could not save scenarios to localStorage", error);
-    }
-  }, [scenarios]);
+  }, [scenarios, selectedScenarioId]);
+  
+  const updateScenarioInFirestore = async (updatedScenario: Scenario) => {
+    const scenarioRef = doc(firestore, 'beta_scenarios', updatedScenario.id);
+    await setDoc(scenarioRef, updatedScenario, { merge: true });
+  };
   
   useEffect(() => {
     if (isTestCaseDialogOpen) {
@@ -169,48 +137,51 @@ export default function BetaTestPage() {
   }, [editingTestCase, isTestCaseDialogOpen, testCaseForm]);
 
 
-  const handleScenarioFormSubmit = (data: z.infer<typeof scenarioSchema>) => {
+  const handleScenarioFormSubmit = async (data: z.infer<typeof scenarioSchema>) => {
     const newScenario: Scenario = {
       id: `scenario-${Date.now()}`,
       name: data.name,
       roles: []
     };
-    setScenarios(current => [...current, newScenario]);
+    const scenarioRef = doc(firestore, 'beta_scenarios', newScenario.id);
+    await setDoc(scenarioRef, newScenario);
     setIsScenarioDialogOpen(false);
     scenarioForm.reset();
   };
 
   const deleteScenario = (scenarioId: string) => {
     if (window.confirm("Êtes-vous sûr de vouloir supprimer cette fonctionnalité et tous ses rôles/cas de test ?")) {
-      const newScenarios = scenarios.filter(s => s.id !== scenarioId);
-      setScenarios(newScenarios);
+      const scenarioRef = doc(firestore, 'beta_scenarios', scenarioId);
+      deleteDocumentNonBlocking(scenarioRef);
       if (selectedScenarioId === scenarioId) {
-        setSelectedScenarioId(newScenarios[0]?.id || null);
-        setSelectedRoleId(newScenarios[0]?.roles[0]?.id || null);
+        setSelectedScenarioId(null);
+        setSelectedRoleId(null);
       }
     }
   };
 
-  const handleRoleFormSubmit = (data: z.infer<typeof roleSchema>) => {
-    if (!selectedScenarioId) return;
+  const handleRoleFormSubmit = async (data: z.infer<typeof roleSchema>) => {
+    if (!selectedScenarioId || !scenarios) return;
+
+    const currentScenario = scenarios.find(s => s.id === selectedScenarioId);
+    if (!currentScenario) return;
 
     const newRole: Role = { id: `role-${Date.now()}`, name: data.name, testCases: [] };
-    setScenarios(currentScenarios => currentScenarios.map(s => 
-      s.id === selectedScenarioId 
-      ? { ...s, roles: [...s.roles, newRole] } 
-      : s
-    ));
+    const updatedRoles = [...currentScenario.roles, newRole];
+    await updateScenarioInFirestore({ ...currentScenario, roles: updatedRoles });
+    
     setIsRoleDialogOpen(false);
     roleForm.reset();
   };
   
-  const deleteRoleFromScenario = (scenarioId: string, roleId: string) => {
-     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce rôle ?")) {
-        setScenarios(scenarios.map(s => 
-            s.id === scenarioId 
-            ? { ...s, roles: s.roles.filter(r => r.id !== roleId) } 
-            : s
-        ));
+  const deleteRoleFromScenario = async (scenarioId: string, roleId: string) => {
+     if (window.confirm("Êtes-vous sûr de vouloir supprimer ce rôle ?") && scenarios) {
+        const currentScenario = scenarios.find(s => s.id === scenarioId);
+        if (!currentScenario) return;
+
+        const updatedRoles = currentScenario.roles.filter(r => r.id !== roleId);
+        await updateScenarioInFirestore({ ...currentScenario, roles: updatedRoles });
+
         if (selectedRoleId === roleId) {
             setSelectedRoleId(null);
         }
@@ -222,60 +193,57 @@ export default function BetaTestPage() {
     setIsTestCaseDialogOpen(true);
   };
   
-  const handleTestCaseFormSubmit = (data: z.infer<typeof testCaseSchema>) => {
-    if (!selectedScenarioId || !selectedRoleId) return;
+  const handleTestCaseFormSubmit = async (data: z.infer<typeof testCaseSchema>) => {
+    if (!selectedScenarioId || !selectedRoleId || !scenarios) return;
     
     const finalData = { ...data, mediaUrl: mediaPreview };
+    const currentScenario = scenarios.find(s => s.id === selectedScenarioId);
+    if (!currentScenario) return;
 
-    setScenarios(scenarios.map(scenario => {
-        if (scenario.id !== selectedScenarioId) return scenario;
-        return {
-            ...scenario,
-            roles: scenario.roles.map(role => {
-                if (role.id !== selectedRoleId) return role;
-                let newTestCases: TestCase[];
-                if (editingTestCase) {
-                    newTestCases = role.testCases.map(tc => tc.id === editingTestCase.id ? { ...tc, ...finalData } : tc);
-                } else {
-                    const newTestCase: TestCase = { id: `case-${Date.now()}`, ...finalData, status: 'pending' };
-                    newTestCases = [newTestCase, ...role.testCases];
-                }
-                return { ...role, testCases: newTestCases };
-            })
-        };
-    }));
+    const updatedRoles = currentScenario.roles.map(role => {
+      if (role.id !== selectedRoleId) return role;
+      let newTestCases: TestCase[];
+      if (editingTestCase) {
+          newTestCases = role.testCases.map(tc => tc.id === editingTestCase.id ? { ...tc, ...finalData } : tc);
+      } else {
+          const newTestCase: TestCase = { id: `case-${Date.now()}`, ...finalData, status: 'pending' };
+          newTestCases = [newTestCase, ...role.testCases];
+      }
+      return { ...role, testCases: newTestCases };
+    });
 
+    await updateScenarioInFirestore({ ...currentScenario, roles: updatedRoles });
     setIsTestCaseDialogOpen(false);
   };
 
-  const deleteTestCase = (testCaseId: string) => {
-    if (!selectedScenarioId || !selectedRoleId || !window.confirm("Supprimer ce cas de test ?")) return;
-    setScenarios(scenarios.map(scenario => 
-        scenario.id === selectedScenarioId ? {
-            ...scenario,
-            roles: scenario.roles.map(role => 
-                role.id === selectedRoleId ? {
-                    ...role,
-                    testCases: role.testCases.filter(tc => tc.id !== testCaseId)
-                } : role
-            )
-        } : scenario
-    ));
+  const deleteTestCase = async (testCaseId: string) => {
+    if (!selectedScenarioId || !selectedRoleId || !scenarios || !window.confirm("Supprimer ce cas de test ?")) return;
+
+    const currentScenario = scenarios.find(s => s.id === selectedScenarioId);
+    if (!currentScenario) return;
+
+    const updatedRoles = currentScenario.roles.map(role => 
+        role.id === selectedRoleId ? {
+            ...role,
+            testCases: role.testCases.filter(tc => tc.id !== testCaseId)
+        } : role
+    );
+    await updateScenarioInFirestore({ ...currentScenario, roles: updatedRoles });
   };
 
-  const setTestStatus = (testCaseId: string, status: TestCaseStatus) => {
-     if (!selectedScenarioId || !selectedRoleId) return;
-     setScenarios(scenarios.map(scenario => 
-        scenario.id === selectedScenarioId ? {
-            ...scenario,
-            roles: scenario.roles.map(role => 
-                role.id === selectedRoleId ? {
-                    ...role,
-                    testCases: role.testCases.map(tc => tc.id === testCaseId ? {...tc, status} : tc)
-                } : role
-            )
-        } : scenario
-    ));
+  const setTestStatus = async (testCaseId: string, status: TestCaseStatus) => {
+     if (!selectedScenarioId || !selectedRoleId || !scenarios) return;
+
+     const currentScenario = scenarios.find(s => s.id === selectedScenarioId);
+     if (!currentScenario) return;
+
+     const updatedRoles = currentScenario.roles.map(role => 
+          role.id === selectedRoleId ? {
+              ...role,
+              testCases: role.testCases.map(tc => tc.id === testCaseId ? {...tc, status} : tc)
+          } : role
+      );
+      await updateScenarioInFirestore({ ...currentScenario, roles: updatedRoles });
   };
   
    const handleMediaUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -287,7 +255,7 @@ export default function BetaTestPage() {
   };
 
 
-  const selectedScenario = scenarios.find(s => s.id === selectedScenarioId);
+  const selectedScenario = scenarios?.find(s => s.id === selectedScenarioId);
   const selectedRole = selectedScenario?.roles.find(r => r.id === selectedRoleId);
 
   return (
@@ -309,7 +277,7 @@ export default function BetaTestPage() {
             <CardTitle className='text-base'>Fonctionnalités</CardTitle>
           </CardHeader>
           <CardContent className="p-1 flex-1 overflow-y-auto">
-            {scenarios.map(scenario => (
+            {isLoading ? <Skeleton className="h-full w-full" /> : scenarios?.map(scenario => (
               <div key={scenario.id} data-active={selectedScenarioId === scenario.id} onClick={() => { setSelectedScenarioId(scenario.id); setSelectedRoleId(scenario.roles[0]?.id || null); }} className="group flex items-center justify-between rounded-md text-sm p-2 hover:bg-muted cursor-pointer" >
                 <div className="flex items-center gap-2 truncate">
                   <Folder className="h-4 w-4 text-primary" />

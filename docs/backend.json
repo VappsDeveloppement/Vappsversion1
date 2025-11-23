@@ -879,6 +879,14 @@
         }
       },
       {
+        "path": "/beta_scenarios/{scenarioId}",
+        "definition": {
+            "entityName": "BetaScenario",
+            "schema": { "$ref": "#/entities/BetaScenario" },
+            "description": "Stores beta testing scenarios created by admins."
+        }
+      },
+      {
         "path": "/beta_tests_results/{resultId}",
         "definition": {
             "entityName": "BetaTestResult",

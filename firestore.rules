@@ -72,7 +72,9 @@ service cloud.firestore {
 
     match /beta_tests_results/{resultId} {
       allow create: if true; // Public testers can submit results
-      allow read: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+      allow list: if true; // Allow public list for stats
+      allow get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
+      allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin';
     }
   }
 }

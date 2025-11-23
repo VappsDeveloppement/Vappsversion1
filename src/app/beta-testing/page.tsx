@@ -63,22 +63,9 @@ export default function PublicBetaTestingPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  const [scenarios, setScenarios] = useState<Scenario[]>([]);
-  const [isLoadingScenarios, setIsLoadingScenarios] = useState(true);
-
-  React.useEffect(() => {
-    try {
-      const savedScenarios = localStorage.getItem('beta-test-scenarios');
-      if (savedScenarios) {
-        setScenarios(JSON.parse(savedScenarios));
-      }
-    } catch (error) {
-      console.error("Could not load scenarios from localStorage", error);
-    } finally {
-      setIsLoadingScenarios(false);
-    }
-  }, []);
-
+  const scenariosQuery = useMemoFirebase(() => query(collection(firestore, 'beta_scenarios')), [firestore]);
+  const { data: scenarios, isLoading: isLoadingScenarios } = useCollection<Scenario>(scenariosQuery);
+  
   const form = useForm<TesterInfo>({
     resolver: zodResolver(testerInfoSchema),
     defaultValues: { firstName: '', lastName: '', email: '' },

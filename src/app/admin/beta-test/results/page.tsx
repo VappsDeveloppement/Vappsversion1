@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
-import { useCollection, useMemoFirebase, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc } from 'firebase/firestore';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, doc, deleteDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -63,16 +63,14 @@ export default function BetaTestResultsPage() {
     const [resultToDelete, setResultToDelete] = useState<BetaTestResult | null>(null);
     const [scenarios, setScenarios] = useState<Scenario[]>([]);
 
+    const scenariosQuery = useMemoFirebase(() => query(collection(firestore, 'beta_scenarios')), [firestore]);
+    const { data: scenariosData, isLoading: areScenariosLoading } = useCollection<Scenario>(scenariosQuery);
+    
     useEffect(() => {
-        try {
-            const savedScenarios = localStorage.getItem('beta-test-scenarios');
-            if (savedScenarios) {
-                setScenarios(JSON.parse(savedScenarios));
-            }
-        } catch (error) {
-            console.error("Could not load scenarios from localStorage", error);
+        if (scenariosData) {
+            setScenarios(scenariosData);
         }
-    }, []);
+    }, [scenariosData]);
 
     const testCaseMap = useMemo(() => {
         const map = new Map<string, { title: string; roleName: string; scenarioName: string }>();
@@ -92,7 +90,7 @@ export default function BetaTestResultsPage() {
 
 
     const resultsQuery = useMemoFirebase(() => query(collection(firestore, 'beta_tests_results')), [firestore]);
-    const { data: results, isLoading } = useCollection<BetaTestResult>(resultsQuery);
+    const { data: results, isLoading: areResultsLoading } = useCollection<BetaTestResult>(resultsQuery);
 
     const stats = useMemo(() => {
         if (!results || results.length === 0) {
@@ -122,7 +120,7 @@ export default function BetaTestResultsPage() {
     const handleDeleteConfirm = async () => {
         if (!resultToDelete) return;
         try {
-            await deleteDocumentNonBlocking(doc(firestore, 'beta_tests_results', resultToDelete.id));
+            await deleteDoc(doc(firestore, 'beta_tests_results', resultToDelete.id));
             toast({ title: 'Succès', description: 'Le résultat du test a été supprimé.' });
         } catch (error) {
             toast({ title: 'Erreur', description: 'Impossible de supprimer le résultat du test.', variant: 'destructive' });
@@ -130,6 +128,8 @@ export default function BetaTestResultsPage() {
             setResultToDelete(null);
         }
     };
+    
+    const isLoading = areResultsLoading || areScenariosLoading;
 
     return (
         <div className="space-y-8">
