@@ -75,6 +75,7 @@ export default function CounselorPublicProfilePage() {
 
   const { data: counselors, isLoading, error } = useCollection<CounselorProfile>(counselorQuery);
 
+  // The document ID is the counselor's UID, which is needed for the contact form.
   const counselor = counselors?.[0];
 
   if (isLoading) {
