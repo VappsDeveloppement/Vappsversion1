@@ -213,7 +213,7 @@ export default function BetaTestPage() {
         </div>
         <Button onClick={() => addScenario()}>
           <PlusCircle className="mr-2 h-4 w-4" />
-          Nouveau Scénario
+          Nouvelle Fonctionnalité
         </Button>
       </div>
 
@@ -239,7 +239,7 @@ export default function BetaTestPage() {
 
             <Card className="md:col-span-9 lg:col-span-10 flex flex-col">
                  <CardHeader className='p-3 border-b'>
-                    <CardTitle className='text-base'>{selectedScenario?.name || "Sélectionnez un scénario"}</CardTitle>
+                    <CardTitle className='text-base'>{selectedScenario?.name || "Sélectionnez une fonctionnalité"}</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0 flex-1 grid grid-cols-12 overflow-hidden">
                     <div className="col-span-12 lg:col-span-3 border-r h-full overflow-y-auto">
@@ -358,4 +358,3 @@ export default function BetaTestPage() {
     </div>
   );
 }
-
