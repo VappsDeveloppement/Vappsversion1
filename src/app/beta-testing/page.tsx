@@ -38,7 +38,7 @@ interface TestCase {
   status: TestCaseStatus;
 }
 interface Role { id: string; name: string; testCases: TestCase[] }
-interface Scenario { id: string; name: string; roles: Role[]; testUrl?: string; }
+interface Scenario { id: string; name: string; roles: Role[]; }
 
 const testerInfoSchema = z.object({
   firstName: z.string().min(1, 'Le prénom est requis.'),

@@ -742,6 +742,17 @@
         },
         "required": ["id", "title", "contractType", "location"]
     },
+    "BetaScenario": {
+      "title": "Beta Scenario",
+      "type": "object",
+      "description": "A scenario for beta testing.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "roles": { "type": "array" }
+      },
+      "required": ["id", "name", "roles"]
+    },
     "BetaTestResult": {
       "title": "Beta Test Result",
       "type": "object",

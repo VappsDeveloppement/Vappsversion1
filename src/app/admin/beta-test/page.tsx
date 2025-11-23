@@ -48,7 +48,6 @@ interface Scenario {
   id: string;
   name: string;
   roles: Role[];
-  testUrl?: string;
 }
 
 const testCaseSchema = z.object({
@@ -61,7 +60,6 @@ const testCaseSchema = z.object({
 
 const scenarioSchema = z.object({
   name: z.string().min(1, 'Le nom de la fonctionnalité est requis.'),
-  testUrl: z.string().url("Veuillez entrer une URL valide.").optional().or(z.literal('')),
 });
 
 const roleSchema = z.object({
@@ -117,7 +115,7 @@ export default function BetaTestPage() {
 
   const scenarioForm = useForm<z.infer<typeof scenarioSchema>>({
     resolver: zodResolver(scenarioSchema),
-    defaultValues: { name: '', testUrl: '' },
+    defaultValues: { name: '' },
   });
 
   const roleForm = useForm<z.infer<typeof roleSchema>>({
@@ -154,9 +152,9 @@ export default function BetaTestPage() {
    useEffect(() => {
     if (isScenarioDialogOpen) {
       if (editingScenario) {
-        scenarioForm.reset({ name: editingScenario.name, testUrl: editingScenario.testUrl || '' });
+        scenarioForm.reset({ name: editingScenario.name });
       } else {
-        scenarioForm.reset({ name: '', testUrl: '' });
+        scenarioForm.reset({ name: '' });
       }
     }
   }, [editingScenario, isScenarioDialogOpen, scenarioForm]);
@@ -166,12 +164,11 @@ export default function BetaTestPage() {
     if (editingScenario) {
         const scenarioRef = doc(firestore, 'beta_scenarios', editingScenario.id);
         await setDoc(scenarioRef, data, { merge: true });
-        toast({ title: "Fonctionnalité modifiée", description: "Le lien de test a été mis à jour."});
+        toast({ title: "Fonctionnalité modifiée", description: "Le nom de la fonctionnalité a été mis à jour."});
     } else {
         const newScenario: Omit<Scenario, 'id'> = {
           name: data.name,
           roles: [],
-          testUrl: data.testUrl,
         };
         await addDocumentNonBlocking(collection(firestore, 'beta_scenarios'), newScenario);
     }
@@ -490,7 +487,7 @@ export default function BetaTestPage() {
           <DialogHeader>
             <DialogTitle>{editingScenario ? 'Modifier la' : 'Nouvelle'} Fonctionnalité</DialogTitle>
              <DialogDescription>
-              Entrez le nom de la fonctionnalité et optionnellement l'URL de test.
+              Entrez le nom de la fonctionnalité à tester.
             </DialogDescription>
           </DialogHeader>
           <Form {...scenarioForm}>
@@ -500,15 +497,6 @@ export default function BetaTestPage() {
                   <FormLabel>Nom de la fonctionnalité</FormLabel>
                   <FormControl>
                     <Input {...field} placeholder="Ex: Gestion de profil" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}/>
-               <FormField control={scenarioForm.control} name="testUrl" render={({ field }) => (
-                <FormItem>
-                  <FormLabel>URL de test (Optionnel)</FormLabel>
-                  <FormControl>
-                    <Input {...field} placeholder="https://test.monapp.com" />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
