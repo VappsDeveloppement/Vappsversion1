@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -29,6 +28,7 @@ import { Label } from '../ui/label';
 import { useAgency } from '@/context/agency-provider';
 import type { SubscriptionPlan, WhiteLabelStat } from '@/app/admin/settings/personalization/page';
 import Link from 'next/link';
+import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
 
 
 type Contract = {
@@ -127,11 +127,23 @@ function PlanSelectorCard() {
                 dateJoined: new Date().toISOString(),
             }, { merge: true });
 
+            // Send welcome email
+            if (personalization.emailSettings) {
+                await sendEmail({
+                    emailSettings: personalization.emailSettings,
+                    recipientEmail: values.email,
+                    recipientName: `${values.firstName} ${values.lastName}`,
+                    subject: `Bienvenue chez ${personalization.emailSettings.fromName || 'nous'} !`,
+                    textBody: `Bonjour ${values.firstName},\n\nVotre compte de conseiller a été créé avec succès.\n\nVous pouvez maintenant vous connecter à votre espace en utilisant vos identifiants sur la page d'accueil de notre site.\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
+                    htmlBody: `<p>Bonjour ${values.firstName},</p><p>Votre compte de conseiller a été créé avec succès.</p><p>Vous pouvez maintenant vous connecter à votre espace en utilisant vos identifiants sur la page d'accueil de notre site.</p><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
+                });
+            }
+
             toast({
                 title: "Compte créé avec succès !",
-                description: "Vous allez être redirigé pour finaliser votre abonnement.",
+                description: "Un e-mail de bienvenue vous a été envoyé. Vous allez être redirigé pour finaliser votre abonnement.",
             });
-
+            
             if (selectedPlan.paypalSubscriptionId) {
                 const paypalUrl = `https://www.paypal.com/webapps/billing/plans/subscribe?plan_id=${selectedPlan.paypalSubscriptionId}`;
                 window.location.href = paypalUrl;
@@ -410,7 +422,7 @@ export function WhiteLabelSection() {
                                 ) : (
                                     <div className="grid grid-cols-3 gap-4 text-center mb-6">
                                     {wl.stats?.map(stat => {
-                                        const Icon = statIcons[stat.icon];
+                                        const Icon = statIcons[stat.icon as keyof typeof statIcons];
                                         return (
                                                 <div key={stat.id} className="flex flex-col items-center">
                                                     <Icon className="h-8 w-8 text-primary mb-2" />
