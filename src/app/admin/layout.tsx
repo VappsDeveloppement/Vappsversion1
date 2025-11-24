@@ -107,8 +107,11 @@ export default function AdminLayout({
   // Cette vérification finale est une sécurité supplémentaire.
   if (!user || (userData && userData.role !== 'superadmin')) {
      return (
-      <div className="flex h-screen items-center justify-center">
-        <p>Accès non autorisé.</p>
+      <div className="flex h-screen items-center justify-center bg-muted">
+        <div className="flex flex-col items-center gap-4 text-center">
+            <Loader2 className="h-16 w-16 animate-spin text-primary" />
+            <p className="text-muted-foreground">Vérification des autorisations...</p>
+        </div>
       </div>
     );
   }
