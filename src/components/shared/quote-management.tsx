@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -14,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, Send, FileSignature, Check, ChevronsUpDown } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, Send, FileSignature, Check, ChevronsUpDown, FileDown } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -25,7 +26,7 @@ import { cn } from '@/lib/utils';
 import { useAgency } from '@/context/agency-provider';
 import type { Plan } from '@/components/shared/plan-management';
 import type { Contract } from '@/components/shared/contract-management';
-import { sendQuote } from '@/app/actions/quote';
+import { sendQuote, generateQuotePdf } from '@/app/actions/quote';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const quoteItemSchema = z.object({
@@ -86,6 +87,7 @@ type Client = {
     address?: string;
     zipCode?: string;
     city?: string;
+    counselorIds?: string[];
 }
 
 const statusVariant: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -121,6 +123,9 @@ export function QuoteManagement() {
         return query(collection(firestore, `users/${user.uid}/quotes`));
     }, [user, firestore]);
     const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
+    
+    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(userDocRef);
 
     const clientsQuery = useMemoFirebase(() => {
         if(!user) return null;
@@ -139,9 +144,6 @@ export function QuoteManagement() {
         return query(collection(firestore, 'contracts'), where('counselorId', '==', user.uid));
     }, [user, firestore]);
     const { data: contracts, isLoading: areContractsLoading } = useCollection<Contract>(contractsQuery);
-
-    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(userDocRef);
 
     const form = useForm<QuoteFormData>({
         resolver: zodResolver(quoteFormSchema),
@@ -302,6 +304,36 @@ export function QuoteManagement() {
         setIsSubmitting(false);
     }
     
+    const handleExportPdf = async (quote: Quote) => {
+        if (!personalization) {
+            toast({ title: "Erreur de configuration", description: "Les paramètres légaux ne sont pas configurés.", variant: "destructive"});
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const result = await generateQuotePdf({
+                quote,
+                legalInfo: personalization.legalInfo
+            });
+
+            if ('pdf' in result) {
+                const link = document.createElement('a');
+                link.href = `data:application/pdf;base64,${result.pdf}`;
+                link.download = `devis-${quote.quoteNumber}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                toast({ title: 'PDF exporté', description: 'Le téléchargement du devis a commencé.' });
+            } else {
+                 toast({ title: 'Erreur PDF', description: result.error, variant: 'destructive'});
+            }
+        } catch (e) {
+             toast({ title: 'Erreur', description: "Impossible de générer le PDF du devis.", variant: 'destructive'});
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
     const isLoading = areQuotesLoading || isCurrentUserDataLoading;
 
     return (
@@ -341,6 +373,9 @@ export function QuoteManagement() {
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={quote.status !== 'draft'}>
                                                     <Send className="mr-2 h-4 w-4" /> Envoyer
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleExportPdf(quote)}>
+                                                    <FileDown className="mr-2 h-4 w-4" /> Exporter PDF
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleEditQuote(quote)}>
                                                     <Edit className="mr-2 h-4 w-4" /> Modifier
