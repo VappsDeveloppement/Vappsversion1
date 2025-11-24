@@ -158,6 +158,36 @@
       },
       "required": ["id", "name", "email", "subject", "message", "status", "createdAt"]
     },
+    "Quote": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Quote",
+      "type": "object",
+      "description": "Represents a quote for services.",
+      "properties": {
+        "id": { "type": "string" },
+        "quoteNumber": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientInfo": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        },
+        "issueDate": { "type": "string", "format": "date-time" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "subtotal": { "type": "number" },
+        "tax": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["draft", "sent", "accepted", "rejected"] },
+        "notes": { "type": "string" },
+        "contractId": { "type": "string" },
+        "validationCode": { "type": "string" }
+      },
+      "required": ["id", "quoteNumber", "counselorId", "clientId", "issueDate", "total", "status", "items"]
+    },
     "MiniSite": {
         "title": "MiniSite",
         "type": "object",
@@ -899,6 +929,16 @@
           "entityName": "FaqItem",
           "schema": { "$ref": "#/backend/entities/FaqItem" },
           "description": "Stores all FAQ items. Items with scope 'general' are for the whole platform, 'counselor' scope requires a counselorId."
+        }
+      },
+       {
+        "path": "/users/{userId}/quotes/{quoteId}",
+        "definition": {
+          "entityName": "Quote",
+          "schema": {
+            "$ref": "#/backend/entities/Quote"
+          },
+          "description": "Stores quotes for a specific user. Path-based ownership ensures only the user can access their quotes."
         }
       },
       {

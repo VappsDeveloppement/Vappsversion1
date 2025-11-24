@@ -27,7 +27,7 @@ export default function BillingPage() {
           <TabsTrigger value="plans">
             <CreditCard className="mr-2 h-4 w-4" /> Prestations
           </TabsTrigger>
-          <TabsTrigger value="quotes">
+           <TabsTrigger value="quotes">
             <FileSignature className="mr-2 h-4 w-4" /> Devis
           </TabsTrigger>
           <TabsTrigger value="invoices">
@@ -62,7 +62,7 @@ export default function BillingPage() {
           </Card>
         </TabsContent>
         <TabsContent value="quotes">
-          <QuoteManagement />
+            <QuoteManagement />
         </TabsContent>
         <TabsContent value="invoices">
           <InvoiceManagement />

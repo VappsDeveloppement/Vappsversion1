@@ -4,7 +4,7 @@
 import React, { useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useFirestore, useDoc, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection, getDocs, query, where } from 'firebase/firestore';
+import { doc, collection, getDocs, query, where, writeBatch } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -19,26 +19,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useAgency } from '@/context/agency-provider';
 import { sendInvoice } from '@/app/actions/invoice';
 import Link from 'next/link';
-
-type Quote = {
-    id: string;
-    quoteNumber: string;
-    clientInfo: { name: string; id: string; email: string; address?: string; zipCode?: string; city?: string; };
-    counselorId: string;
-    agencyInfo: any;
-    issueDate: string;
-    expiryDate?: string;
-    total: number;
-    subtotal: number;
-    tax: number;
-    status: 'draft' | 'sent' | 'accepted' | 'rejected';
-    items: any[];
-    notes?: string;
-    signature?: string;
-    signedDate?: string;
-    contractContent?: string;
-    contractTitle?: string;
-}
+import type { Quote } from '@/components/shared/quote-management';
 
 const statusVariant: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
     draft: 'secondary',
@@ -66,16 +47,9 @@ export default function PublicQuotePage() {
     const [signatureName, setSignatureName] = useState('');
     const [isSubmitting, setIsSubmitting] = useState<'accept' | 'reject' | false>(false);
 
-    // This is a temporary fix for the quote validation page.
-    // In a real application, you would not expose all quotes publicly.
-    // Instead, you'd use a Cloud Function to verify the validation code
-    // and return the specific quote.
     const quoteRef = useMemoFirebase(() => {
         if (!quoteId) return null;
-        // This path is wrong for the new structure, but we'll leave it for now
-        // to get the validation page working. It needs a proper backend solution.
-        const potentialPath = `quotes/${quoteId}`;
-        return doc(firestore, potentialPath);
+        return doc(firestore, 'quotes', quoteId as string);
     }, [firestore, quoteId]);
     
     const { data: quote, isLoading: isQuoteLoading, error } = useDoc<Quote>(quoteRef);
@@ -85,10 +59,8 @@ export default function PublicQuotePage() {
         
         setIsSubmitting(status);
         
-        // This is not secure, as anyone could update the quote.
-        // In a real app, this should be a call to a Cloud Function
-        // that validates the user's right to perform this action.
-        const quoteToUpdateRef = doc(firestore, `users/${quote.counselorId}/quotes`, quote.id);
+        const privateQuoteRef = doc(firestore, `users/${quote.counselorId}/quotes`, quote.id);
+        const publicQuoteRef = doc(firestore, 'quotes', quote.id);
         
         const updateData: any = { status };
         if (status === 'accepted') {
@@ -97,7 +69,11 @@ export default function PublicQuotePage() {
         }
 
         try {
-            await setDocumentNonBlocking(quoteToUpdateRef, updateData, { merge: true });
+            const batch = writeBatch(firestore);
+            batch.update(privateQuoteRef, updateData);
+            batch.update(publicQuoteRef, updateData);
+            await batch.commit();
+
             toast({
                 title: `Devis ${status === 'accepted' ? 'accepté' : 'refusé'}`,
                 description: "Le statut du devis a été mis à jour.",
@@ -389,5 +365,3 @@ export default function PublicQuotePage() {
         </div>
     );
 }
-
-    
