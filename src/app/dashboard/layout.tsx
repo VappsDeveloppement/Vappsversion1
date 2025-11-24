@@ -181,6 +181,16 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
+               {(isConseiller || isSuperAdmin) && (
+                 <SidebarMenuItem>
+                    <Link href="/dashboard/billing">
+                    <SidebarMenuButton isActive={pathname.startsWith("/dashboard/billing")}>
+                        <CreditCard />
+                        <span>Facturation</span>
+                    </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
+               )}
               {isConseiller && (
                   <>
                     <SidebarMenuItem>
