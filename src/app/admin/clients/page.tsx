@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, deleteDocumentNonBlocking } from '@/firebase';
+import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, doc, setDoc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -79,13 +79,17 @@ export default function ClientManagementPage() {
     // Fetch the current user's data to check their role
     const currentUserDocRef = useMemoFirebase(() => currentUser ? doc(firestore, 'users', currentUser.uid) : null, [currentUser, firestore]);
     const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(currentUserDocRef);
+    
+    // We get the role, but we need to wait for loading to finish before using it.
     const isSuperAdmin = currentUserData?.role === 'superadmin';
+    const canFetchAllUsers = !isCurrentUserDataLoading && isSuperAdmin;
 
     const usersQuery = useMemoFirebase(() => {
-        // IMPORTANT: Only fetch all users if the current user is a superadmin
-        if (!isSuperAdmin) return null;
+        // IMPORTANT: Only fetch all users if the current user's role has been confirmed as superadmin
+        if (!canFetchAllUsers) return null;
         return query(collection(firestore, 'users'));
-    }, [firestore, isSuperAdmin]);
+    }, [firestore, canFetchAllUsers]);
+
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
     const filteredUsers = useMemo(() => {
@@ -353,5 +357,3 @@ export default function ClientManagementPage() {
         </div>
     );
 }
-
-    
