@@ -45,6 +45,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
+  { href: "/dashboard/events", label: "Mes évènements", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
 ];
 
