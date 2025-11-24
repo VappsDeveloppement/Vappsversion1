@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -72,16 +71,44 @@ export default function CounselorParametersPage() {
     const form = useForm<ParametersFormData>({
         resolver: zodResolver(parametersSchema),
         defaultValues: {
-            paymentSettings: {},
-            emailSettings: {},
+            paymentSettings: {
+                ribIban: '',
+                ribBic: '',
+                paypalClientId: '',
+                paypalClientSecret: '',
+                paypalMeLink: '',
+            },
+            emailSettings: {
+                smtpHost: '',
+                smtpPort: 587,
+                smtpUser: '',
+                smtpPass: '',
+                smtpSecure: true,
+                fromEmail: '',
+                fromName: '',
+            },
         },
     });
 
     useEffect(() => {
         if (userData) {
             form.reset({
-                paymentSettings: userData.paymentSettings || {},
-                emailSettings: userData.emailSettings || {},
+                paymentSettings: {
+                    ribIban: userData.paymentSettings?.ribIban || '',
+                    ribBic: userData.paymentSettings?.ribBic || '',
+                    paypalClientId: userData.paymentSettings?.paypalClientId || '',
+                    paypalClientSecret: userData.paymentSettings?.paypalClientSecret || '',
+                    paypalMeLink: userData.paymentSettings?.paypalMeLink || '',
+                },
+                emailSettings: {
+                    smtpHost: userData.emailSettings?.smtpHost || '',
+                    smtpPort: userData.emailSettings?.smtpPort || 587,
+                    smtpUser: userData.emailSettings?.smtpUser || '',
+                    smtpPass: userData.emailSettings?.smtpPass || '',
+                    smtpSecure: userData.emailSettings?.smtpSecure === undefined ? true : userData.emailSettings.smtpSecure,
+                    fromEmail: userData.emailSettings?.fromEmail || '',
+                    fromName: userData.emailSettings?.fromName || '',
+                },
             });
         }
     }, [userData, form]);
@@ -304,5 +331,7 @@ export default function CounselorParametersPage() {
         </div>
     );
 }
+
+    
 
     
