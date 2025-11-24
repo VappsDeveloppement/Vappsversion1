@@ -21,7 +21,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useAgency } from "@/context/agency-provider";
-import { setDocumentNonBlocking, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { setDocumentNonBlocking, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useUser } from "@/firebase";
 import { doc, collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -36,6 +36,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetClose, SheetContent, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import type { Plan } from "@/components/shared/plan-management";
+
 
 // Helper function to convert hex to HSL
 const hexToHsl = (hex: string): string => {
@@ -556,6 +558,7 @@ const defaultPersonalization = {
         title: "Nos Formules",
         description: "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.",
         plans: [],
+        planIds: [],
     },
     trainingCatalogSection: {
         enabled: false,
@@ -625,11 +628,20 @@ const PayPalConnectionTest = () => {
     );
 }
 
+const personalizationSchema = z.object({
+    pricingSection: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        planIds: z.array(z.string()).optional(),
+    }).optional(),
+});
+
 
 export default function PersonalizationPage() {
   const { toast } = useToast();
   const { agency, personalization, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
+  const { user, isUserLoading } = useUser();
 
   const [settings, setSettings] = useState(personalization || defaultPersonalization);
   const [logoPreview, setLogoPreview] = React.useState(personalization?.logoDataUrl || "/vapps.png");
@@ -645,6 +657,19 @@ export default function PersonalizationPage() {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+    const superAdminPlansQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        // This assumes the current user is the super-admin for this page.
+        // A more robust solution might check the user's role from userData.
+        return query(collection(firestore, 'plans'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+
+    const { data: superAdminPlans, isLoading: arePlansLoading } = useCollection<Plan>(superAdminPlansQuery);
+
+    const form = useForm<z.infer<typeof personalizationSchema>>({
+        resolver: zodResolver(personalizationSchema),
+    });
+
   useEffect(() => {
     if (personalization) {
       setSettings(prev => ({
@@ -710,6 +735,11 @@ export default function PersonalizationPage() {
             ...(personalization.trainingCatalogSection || {}),
         }
       }));
+
+       form.reset({
+            pricingSection: personalization.pricingSection || defaultPersonalization.pricingSection
+       });
+
       if (personalization.logoDataUrl) {
           setLogoPreview(personalization.logoDataUrl);
       } else {
@@ -741,7 +771,7 @@ export default function PersonalizationPage() {
         setWhiteLabelImagePreview(null);
       }
     }
-  }, [personalization]);
+  }, [personalization, form]);
 
   const handleFieldChange = (field: string, value: any) => {
     setSettings(prev => ({ ...prev, [field]: value }));
@@ -978,12 +1008,12 @@ export default function PersonalizationPage() {
     }))
   }
   
-  const handlePricingSectionChange = (field: string, value: any) => {
+  const handlePricingSectionChange = (data: z.infer<typeof personalizationSchema>['pricingSection']) => {
     setSettings(prev => ({
         ...prev,
         pricingSection: {
             ...prev.pricingSection,
-            [field]: value
+            ...data
         }
     }))
   };
@@ -1023,8 +1053,19 @@ export default function PersonalizationPage() {
       toast({ title: "Erreur", description: "Agence non trouvée.", variant: "destructive" });
       return;
     }
+
+    const pricingData = form.getValues('pricingSection');
+
+    const finalSettings = {
+        ...settings,
+        pricingSection: {
+            ...settings.pricingSection,
+            ...pricingData
+        }
+    };
+    
     const agencyRef = doc(firestore, 'agencies', agency.id);
-    setDocumentNonBlocking(agencyRef, { personalization: settings }, { merge: true });
+    setDocumentNonBlocking(agencyRef, { personalization: finalSettings }, { merge: true });
     toast({ title: "Paramètres enregistrés", description: "Vos paramètres ont été sauvegardés." });
   };
   
@@ -2106,20 +2147,54 @@ export default function PersonalizationPage() {
                                         </div>
                                     </div>
                                 ) : section.id === 'pricing' ? (
-                                    <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="pricing-title">Titre</Label>
-                                            <Input id="pricing-title" value={settings.pricingSection?.title} onChange={e => handlePricingSectionChange('title', e.target.value)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="pricing-description">Description</Label>
-                                            <Textarea id="pricing-description" value={settings.pricingSection?.description} onChange={e => handlePricingSectionChange('description', e.target.value)} />
-                                        </div>
-                                        <SubscriptionPlanManager 
-                                            plans={settings.pricingSection?.plans || []}
-                                            onSave={(updatedPlans) => handlePricingSectionChange('plans', updatedPlans)}
-                                        />
-                                    </div>
+                                    <Form {...form}>
+                                        <form onChange={() => handlePricingSectionChange(form.getValues().pricingSection)} className="space-y-6">
+                                            <FormField control={form.control} name="pricingSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="pricingSection.description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="pricingSection.planIds" render={() => (
+                                                <FormItem>
+                                                    <div className="mb-4">
+                                                        <FormLabel className="text-base">Prestations à afficher</FormLabel>
+                                                        <FormDescription>Cochez les prestations de votre catalogue à afficher sur la page d'accueil.</FormDescription>
+                                                    </div>
+                                                    {arePlansLoading ? <Skeleton className="h-24 w-full" /> : superAdminPlans && superAdminPlans.length > 0 ? (
+                                                        superAdminPlans.map((plan) => (
+                                                            <FormField
+                                                                key={plan.id}
+                                                                control={form.control}
+                                                                name="pricingSection.planIds"
+                                                                render={({ field }) => {
+                                                                    return (
+                                                                        <FormItem key={plan.id} className="flex flex-row items-start space-x-3 space-y-0 p-3 border rounded-md">
+                                                                            <FormControl>
+                                                                                <Checkbox
+                                                                                    checked={field.value?.includes(plan.id)}
+                                                                                    onCheckedChange={(checked) => {
+                                                                                        return checked
+                                                                                            ? field.onChange([...(field.value || []), plan.id])
+                                                                                            : field.onChange(field.value?.filter((value) => value !== plan.id));
+                                                                                    }}
+                                                                                />
+                                                                            </FormControl>
+                                                                            <FormLabel className="font-normal w-full">
+                                                                                <div className="flex justify-between items-center">
+                                                                                    <span>{plan.name}</span>
+                                                                                    <span className="text-sm font-bold text-primary">{plan.price}€ {plan.period}</span>
+                                                                                </div>
+                                                                            </FormLabel>
+                                                                        </FormItem>
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground">Aucune prestation trouvée. Créez-en dans l'onglet "Facturation".</p>
+                                                    )}
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}/>
+                                        </form>
+                                    </Form>
                                 ) : section.id === 'whiteLabel' ? (
                                     <div className="space-y-8">
                                         <div className="text-center">

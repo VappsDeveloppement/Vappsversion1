@@ -7,16 +7,28 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAgency } from "@/context/agency-provider";
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, documentId } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
 import type { SubscriptionPlan } from "@/app/admin/settings/personalization/page";
 import { Skeleton } from "../ui/skeleton";
 import Link from 'next/link';
 
 export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
+    const firestore = useFirestore();
     
-    const plans = personalization?.pricingSection?.plans || [];
+    const planIds = personalization?.pricingSection?.planIds || [];
+
+    const plansQuery = useMemoFirebase(() => {
+        if (planIds.length === 0) return null;
+        const plansCollectionRef = collection(firestore, 'plans');
+        return query(plansCollectionRef, where(documentId(), 'in', planIds));
+    }, [firestore, planIds]);
+
+    const { data: plans, isLoading: arePlansLoading } = useCollection<SubscriptionPlan>(plansQuery);
     
-    const isLoading = isAgencyLoading;
+    const isLoading = isAgencyLoading || arePlansLoading;
     const primaryColor = personalization?.primaryColor || '#10B981';
     
     if (isLoading) {
@@ -52,7 +64,7 @@ export function PricingSection() {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
-                    {plans.filter(p => p.isPublic).map((tier) => (
+                    {plans.map((tier) => (
                         <Card key={tier.id} className={cn("flex flex-col h-full shadow-lg", tier.isFeatured && "border-2 relative")} style={tier.isFeatured ? {borderColor: primaryColor} : {}}>
                             {tier.isFeatured && (
                                 <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
