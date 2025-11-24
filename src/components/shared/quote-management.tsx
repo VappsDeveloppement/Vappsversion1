@@ -29,9 +29,6 @@ import type { Plan } from '@/components/shared/plan-management';
 import type { Contract } from '@/components/shared/contract-management';
 import { sendQuote } from '@/app/actions/quote';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-
 
 const quoteItemSchema = z.object({
     id: z.string(),
@@ -75,7 +72,7 @@ export type Quote = {
     status: 'draft' | 'sent' | 'accepted' | 'rejected';
     notes?: string;
     contractId?: string;
-    contractTitle?: string;
+    contractTitle?: string | null;
     agencyInfo?: any;
     validationCode: string;
     contractContent?: string;
@@ -112,6 +109,10 @@ const generateValidationCode = () => {
 };
 
 const generatePdfClientSide = async (quote: Quote, legalInfo: any) => {
+    // Dynamically import jspdf and autotable to avoid server-side issues
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
     const doc = new jsPDF();
     const text = (value: string | null | undefined, fallback = '') => value || fallback;
     const isVatSubject = legalInfo?.isVatSubject ?? false;
@@ -274,6 +275,7 @@ export function QuoteManagement() {
 
     const clientsQuery = useMemoFirebase(() => {
         if(!user) return null;
+        // Superadmin and conseillers can only create quotes for their own clients
         return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
     }, [user, firestore]);
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
@@ -371,6 +373,7 @@ export function QuoteManagement() {
             phone: currentUserData.phone,
             siret: currentUserData.siret,
             isVatSubject: currentUserData.isVatSubject,
+            vatRate: currentUserData.vatRate,
             vatNumber: currentUserData.vatNumber
         };
 
@@ -396,7 +399,7 @@ export function QuoteManagement() {
             status: editingQuote?.status || 'draft',
             notes: data.notes,
             contractId: data.contractId,
-            contractTitle: contract?.title,
+            contractTitle: contract?.title || null,
             agencyInfo: agencyInfo,
             validationCode: editingQuote?.validationCode || generateValidationCode(),
             contractContent: contract?.content,
@@ -668,3 +671,5 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
+
+    
