@@ -51,10 +51,11 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Quotes are now in a subcollection, so they are covered by the /users/{userId}/{document=**} rule.
-    // We only need a public read rule for the validation page.
+    // Public validation page needs read. Delete should be restricted.
     match /quotes/{quoteId} {
         allow get: if true;
+        allow delete: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || resource.data.counselorId == request.auth.uid);
+        allow update: if true; // Allow client to accept/reject
     }
     
     match /invoices/{invoiceId} {
