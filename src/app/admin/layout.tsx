@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Newspaper,
   Loader2,
+  Settings,
 } from "lucide-react";
 import {
   SidebarProvider,
