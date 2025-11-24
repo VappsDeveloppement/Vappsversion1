@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose, SheetDescription } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -63,7 +63,7 @@ export type Quote = {
     counselorId: string;
     clientInfo: z.infer<typeof clientInfoSchema>;
     issueDate: string;
-    expiryDate?: string;
+    expiryDate?: string | null;
     items: z.infer<typeof quoteItemSchema>[];
     subtotal: number;
     tax: number;
@@ -75,6 +75,8 @@ export type Quote = {
     agencyInfo?: any;
     validationCode: string;
     contractContent?: string;
+    signedDate?: string;
+    signature?: string;
 };
 
 type Client = {
@@ -361,8 +363,9 @@ export function QuoteManagement() {
                     <SheetContent className="sm:max-w-4xl w-full flex flex-col">
                         <SheetHeader>
                             <SheetTitle>{editingQuote ? 'Modifier le' : 'Nouveau'} devis</SheetTitle>
+                            <SheetDescription>Créez un nouveau devis pour un de vos clients.</SheetDescription>
                         </SheetHeader>
-                         <Form {...form}>
+                        <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
                                 <ScrollArea className="flex-1 pr-6 -mr-6">
                                     <div className="space-y-8 py-4">
@@ -495,5 +498,3 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
-
-    
