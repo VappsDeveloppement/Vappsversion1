@@ -200,7 +200,8 @@ export async function sendInvoice(data: z.infer<typeof sendInvoiceSchema>): Prom
             doc.text("Paiement par PayPal :", 15, finalY);
             doc.setFontSize(9);
             doc.setTextColor(100);
-            doc.text(paymentSettings.paypalMeLink, 15, finalY + 5);
+            doc.text(`Rendez-vous sur le lien suivant et pensez à indiquer le numéro de facture (${invoice.invoiceNumber}) :`, 15, finalY + 5, { maxWidth: 180 });
+            doc.text(paymentSettings.paypalMeLink, 15, finalY + 15);
         }
 
 
@@ -223,28 +224,13 @@ export async function sendInvoice(data: z.infer<typeof sendInvoiceSchema>): Prom
             auth: { user: emailSettings.smtpUser, pass: emailSettings.smtpPass },
         });
 
-        const paypalButtonHtml = paymentSettings.paypalClientId ? `
-            <div id="paypal-button-container" style="max-width:250px; margin-top:20px;"></div>
-            <script src="https://www.paypal.com/sdk/js?client-id=${paymentSettings.paypalClientId}&currency=EUR"><\/script>
-            <script>
-              paypal.Buttons({
-                createOrder: function(data, actions) {
-                  return actions.order.create({
-                    purchase_units: [{
-                      description: 'Facture ${invoice.invoiceNumber}',
-                      amount: {
-                        value: '${invoice.total.toFixed(2)}'
-                      }
-                    }]
-                  });
-                },
-                onApprove: function(data, actions) {
-                  return actions.order.capture().then(function(details) {
-                    alert('Transaction complétée par ' + details.payer.name.given_name + '!');
-                  });
-                }
-              }).render('#paypal-button-container');
-            <\/script>
+        const paypalButtonHtml = paymentSettings.paypalMeLink ? `
+            <p>
+                Vous pouvez également régler par PayPal via ce lien : 
+                <a href="${paymentSettings.paypalMeLink}">${paymentSettings.paypalMeLink}</a>. 
+                <br>
+                <strong>Important :</strong> Veuillez indiquer le numéro de facture <strong>${invoice.invoiceNumber}</strong> dans la note de votre paiement.
+            </p>
         ` : '';
         
         await transporter.sendMail({
@@ -255,7 +241,7 @@ export async function sendInvoice(data: z.infer<typeof sendInvoiceSchema>): Prom
             html: `
                 <p>Bonjour ${invoice.clientInfo.name},</p>
                 <p>Suite à votre acceptation du devis n°${invoice.quoteNumber}, veuillez trouver ci-joint la facture correspondante n° ${invoice.invoiceNumber} au format PDF.</p>
-                ${paypalButtonHtml ? `<p>Vous pouvez régler cette facture directement en ligne via PayPal :</p>${paypalButtonHtml}`: ''}
+                ${paypalButtonHtml}
                 <p>Nous restons à votre disposition pour toute question.</p>
                 <p>Cordialement,<br/>${emailSettings.fromName}</p>
             `,

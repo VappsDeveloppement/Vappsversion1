@@ -48,6 +48,7 @@ const parametersSchema = z.object({
 type ParametersFormData = z.infer<typeof parametersSchema>;
 
 type UserProfile = {
+    role: 'conseiller' | 'superadmin' | 'membre';
     paymentSettings?: ParametersFormData['paymentSettings'];
     emailSettings?: ParametersFormData['emailSettings'];
 };
@@ -151,6 +152,27 @@ export default function CounselorParametersPage() {
                 </Card>
             </div>
         );
+    }
+
+    if (userData?.role !== 'conseiller' && userData?.role !== 'superadmin') {
+     return (
+        <div className="space-y-8">
+            <div>
+                <h1 className="text-3xl font-bold font-headline">Mes Paramètres</h1>
+                <p className="text-muted-foreground">
+                    Gérez vos propres paramètres de paiement et d'envoi d'e-mails.
+                </p>
+            </div>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Fonctionnalité non disponible</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">La gestion des paramètres est réservée aux conseillers et super administrateurs.</p>
+                </CardContent>
+            </Card>
+        </div>
+     )
     }
     
     return (
