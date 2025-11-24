@@ -79,10 +79,11 @@ const generateQuotePdfSchema = z.object({
 
 async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infer<typeof legalInfoSchema>): Promise<Buffer> {
     const doc = new jsPDF();
-    const isVatSubject = legalInfo?.isVatSubject ?? false;
-
+    
     // Helper to ensure we never pass null/undefined to doc.text
     const text = (value: string | null | undefined, fallback = '') => value || fallback;
+
+    const isVatSubject = legalInfo?.isVatSubject ?? false;
 
     // Header
     doc.setFontSize(20);
@@ -132,7 +133,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         startY: 80,
         head: [['Description', 'Qté', 'P.U. HT', 'Total HT']],
         body: quote.items.map(item => [
-            item.description,
+            text(item.description),
             item.quantity,
             `${item.unitPrice.toFixed(2)} €`,
             `${(item.quantity * item.unitPrice).toFixed(2)} €`
@@ -148,14 +149,14 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         }
     });
     
-    const finalY = (doc as any).lastAutoTable.finalY;
+    let finalY = (doc as any).lastAutoTable.finalY;
 
     // Totals
     const totals = [
         ['Sous-total HT', `${quote.subtotal.toFixed(2)} €`],
     ];
     if (isVatSubject) {
-        totals.push([`TVA (${quote.tax}%)`, `${(quote.subtotal * (quote.tax / 100)).toFixed(2)} €`]);
+        totals.push([`TVA (${quote.tax}%)`, `${(quote.subtotal * quote.tax / 100).toFixed(2)} €`]);
     }
     totals.push([`Total ${isVatSubject ? 'TTC' : ''}`, `${quote.total.toFixed(2)} €`]);
 
@@ -173,17 +174,19 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         }
     });
 
+    finalY = (doc as any).lastAutoTable.finalY;
+    
     // Notes
-    let currentY = (doc as any).lastAutoTable.finalY + 15;
     if (quote.notes) {
+        finalY += 15;
         doc.setFontSize(9);
         doc.setTextColor(150);
-        doc.text('Notes', 15, currentY);
-        currentY += 5;
+        doc.text('Notes', 15, finalY);
+        finalY += 5;
         doc.setFontSize(10);
         doc.setTextColor(100);
         const notesLines = doc.splitTextToSize(text(quote.notes), 180);
-        doc.text(notesLines, 15, currentY);
+        doc.text(notesLines, 15, finalY);
     }
     
     // Contract
@@ -203,7 +206,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         const document = dom.window.document;
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = text(quote.contractContent);
-        const textContent = tempDiv.textContent || "";
+        const textContent = text(tempDiv.textContent);
         
         const lines = doc.splitTextToSize(textContent, 180);
         doc.text(lines, 15, y);
