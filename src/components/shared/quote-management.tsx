@@ -370,8 +370,8 @@ export function QuoteManagement() {
             email: currentUserData.contactEmail || currentUserData.email || '',
             phone: currentUserData.phone || '',
             siret: currentUserData.siret || '',
-            isVatSubject: isVatSubject,
-            vatRate: taxRate,
+            isVatSubject: currentUserData.isVatSubject ?? false,
+            vatRate: currentUserData.vatRate ?? 0,
             vatNumber: currentUserData.vatNumber || '',
         };
 
@@ -543,7 +543,12 @@ export function QuoteManagement() {
                                 <ScrollArea className="flex-1 pr-6 -mr-6">
                                     <div className="space-y-8 py-4">
                                         {/* Client Info */}
-                                        <ClientSelector clients={clients || []} onClientSelect={(client) => form.setValue('clientInfo', client)} isLoading={areClientsLoading}/>
+                                        <ClientSelector 
+                                            clients={clients || []} 
+                                            onClientSelect={(client) => form.setValue('clientInfo', client)} 
+                                            isLoading={areClientsLoading}
+                                            defaultValue={editingQuote?.clientInfo}
+                                        />
                                         
                                         {/* Items */}
                                         <div>
@@ -589,20 +594,35 @@ export function QuoteManagement() {
     );
 }
 
-function ClientSelector({ clients, onClientSelect, isLoading }: { clients: Client[], onClientSelect: (client: Client) => void, isLoading: boolean }) {
-    const [open, setOpen] = useState(false)
-    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+type ClientSelectorProps = {
+    clients: Client[];
+    onClientSelect: (client: z.infer<typeof clientInfoSchema>) => void;
+    isLoading: boolean;
+    defaultValue?: z.infer<typeof clientInfoSchema>;
+};
+
+function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: ClientSelectorProps) {
+    const [open, setOpen] = useState(false);
+    const [selectedClient, setSelectedClient] = useState<z.infer<typeof clientInfoSchema> | null>(defaultValue || null);
+
+    useEffect(() => {
+        if (defaultValue && !selectedClient) {
+            setSelectedClient(defaultValue);
+        }
+    }, [defaultValue, selectedClient]);
+
 
     const handleSelect = (client: Client) => {
-        setSelectedClient(client);
-        onClientSelect({
+        const clientInfo = {
             id: client.id,
             name: `${client.firstName} ${client.lastName}`,
             email: client.email,
             address: client.address,
             zipCode: client.zipCode,
             city: client.city,
-        });
+        };
+        setSelectedClient(clientInfo);
+        onClientSelect(clientInfo);
         setOpen(false);
     }
     
@@ -613,7 +633,7 @@ function ClientSelector({ clients, onClientSelect, isLoading }: { clients: Clien
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
-                        {selectedClient ? `${selectedClient.firstName} ${selectedClient.lastName}` : "Sélectionner un client..."}
+                        {selectedClient?.name ? selectedClient.name : "Sélectionner un client..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
