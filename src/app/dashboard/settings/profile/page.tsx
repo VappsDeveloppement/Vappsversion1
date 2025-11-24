@@ -20,6 +20,7 @@ import { Loader2, Upload, Trash2, Link as LinkIcon, Info } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
+import { Switch } from '@/components/ui/switch';
 
 const profileSchema = z.object({
   firstName: z.string().min(1, "Le prénom est requis."),
@@ -36,6 +37,8 @@ const profileSchema = z.object({
   city: z.string().optional(),
   commercialName: z.string().optional(),
   siret: z.string().optional(),
+  isVatSubject: z.boolean().optional(),
+  vatNumber: z.string().optional(),
   dashboardTheme: z.object({
     primaryColor: z.string().optional(),
     secondaryColor: z.string().optional(),
@@ -60,6 +63,8 @@ type UserProfile = {
   city?: string;
   commercialName?: string;
   siret?: string;
+  isVatSubject?: boolean;
+  vatNumber?: string;
   dashboardTheme?: {
     primaryColor?: string;
     secondaryColor?: string;
@@ -108,6 +113,8 @@ export default function ProfilePage() {
       city: '',
       commercialName: '',
       siret: '',
+      isVatSubject: false,
+      vatNumber: '',
       dashboardTheme: {
         primaryColor: '#10B981',
         secondaryColor: '#059669',
@@ -131,6 +138,8 @@ export default function ProfilePage() {
         city: userData.city || '',
         commercialName: userData.commercialName || '',
         siret: userData.siret || '',
+        isVatSubject: userData.isVatSubject || false,
+        vatNumber: userData.vatNumber || '',
         dashboardTheme: {
           primaryColor: userData.dashboardTheme?.primaryColor || '#10B981',
           secondaryColor: userData.dashboardTheme?.secondaryColor || '#059669',
@@ -180,11 +189,13 @@ export default function ProfilePage() {
         photoUrl: data.photoUrl,
         phone: data.phone,
         city: data.city,
+        isVatSubject: data.isVatSubject,
+        vatNumber: data.vatNumber,
         miniSite: {
             ...userData?.miniSite,
             publicProfileName: publicProfileName,
         },
-        dashboardTheme: data.dashboardTheme, // Pass the theme colors
+        dashboardTheme: data.dashboardTheme,
       };
       await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
     }
@@ -233,6 +244,8 @@ export default function ProfilePage() {
   }
 
   const isConseiller = userData?.role === 'conseiller';
+  const watchIsVatSubject = form.watch('isVatSubject');
+
 
   return (
     <div className="space-y-8">
@@ -458,6 +471,47 @@ export default function ProfilePage() {
                         )}
                       />
                   </div>
+
+                   {isConseiller && (
+                      <div className="border-t pt-6 space-y-4">
+                           <h4 className="text-lg font-medium">Paramètres de TVA</h4>
+                            <FormField
+                                control={form.control}
+                                name="isVatSubject"
+                                render={({ field }) => (
+                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                        <div className="space-y-0.5">
+                                            <FormLabel>Assujetti à la TVA</FormLabel>
+                                            <p className="text-sm text-muted-foreground">
+                                                Activez si vous facturez la TVA à vos clients.
+                                            </p>
+                                        </div>
+                                        <FormControl>
+                                            <Switch
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange}
+                                            />
+                                        </FormControl>
+                                    </FormItem>
+                                )}
+                            />
+                            {watchIsVatSubject && (
+                                <FormField
+                                    control={form.control}
+                                    name="vatNumber"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Numéro de TVA Intracommunautaire</FormLabel>
+                                            <FormControl>
+                                                <Input {...field} placeholder="FRXX123456789" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            )}
+                      </div>
+                   )}
               </div>
             </CardContent>
           </Card>

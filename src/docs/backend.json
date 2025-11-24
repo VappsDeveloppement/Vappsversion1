@@ -29,9 +29,10 @@
           "enum": ["superadmin", "conseiller", "membre", "moderateur"],
           "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'moderateur' has moderation rights."
         },
-        "counselorId": {
-            "type": "string",
-            "description": "The ID of the user's assigned counselor. This is the key for data segregation."
+        "counselorIds": {
+            "type": "array",
+            "description": "A list of counselor IDs this user is a client of. Enables many-to-many relationships.",
+            "items": { "type": "string" }
         },
         "dateJoined": {
           "type": "string",
@@ -61,6 +62,14 @@
         "siret": {
             "type": "string",
             "description": "The user's SIRET number for their business."
+        },
+        "isVatSubject": {
+          "type": "boolean",
+          "description": "Indicates if the user (conseiller) is subject to VAT."
+        },
+        "vatNumber": {
+            "type": "string",
+            "description": "The user's VAT number, if applicable."
         },
         "socialSecurityNumber": {
           "type": "string",
@@ -368,6 +377,14 @@
                             "$ref": "#/entities/JobOffer"
                         }
                     }
+                }
+            },
+            "blogSection": {
+                "type": "object",
+                "properties": {
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" }
                 }
             },
             "trainingCatalogSection": {
@@ -886,7 +903,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorId is used for data segregation."
+          "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorIds is used for data segregation."
         }
       },
       {

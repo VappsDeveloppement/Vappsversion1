@@ -1,3 +1,4 @@
+
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -29,6 +30,8 @@ import { sendQuote } from '@/app/actions/quote';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { JSDOM } from 'jsdom';
+
 
 const quoteItemSchema = z.object({
     id: z.string(),
@@ -117,13 +120,13 @@ const generatePdfClientSide = async (quote: Quote, legalInfo: any) => {
     doc.setFontSize(20);
     doc.setTextColor(40);
     doc.setFont('helvetica', 'bold');
-    doc.text(text(legalInfo?.companyName, 'VApps'), 15, 20);
+    doc.text(text(legalInfo?.commercialName) || text(legalInfo?.companyName), 15, 20);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text(text(legalInfo?.addressStreet), 15, 26);
-    doc.text(`${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`, 15, 31);
+    doc.text(text(legalInfo?.address) || text(legalInfo?.addressStreet), 15, 26);
+    doc.text(`${text(legalInfo?.zipCode) || text(legalInfo?.addressZip)} ${text(legalInfo?.city) || text(legalInfo?.addressCity)}`, 15, 31);
     doc.text(text(legalInfo?.email), 15, 36);
 
     doc.setFontSize(28);
@@ -238,7 +241,7 @@ const generatePdfClientSide = async (quote: Quote, legalInfo: any) => {
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        const footerText = `${text(legalInfo?.companyName)} - ${text(legalInfo?.addressStreet)}, ${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`;
+        const footerText = `${text(legalInfo?.commercialName) || text(legalInfo?.companyName)} - ${text(legalInfo?.address) || text(legalInfo?.addressStreet)}, ${text(legalInfo?.zipCode) || text(legalInfo?.addressZip)} ${text(legalInfo?.city) || text(legalInfo?.addressCity)}`;
         const footerText2 = `SIRET: ${text(legalInfo?.siret)} - ${isVatSubject ? `TVA: ${text(legalInfo?.vatNumber)}` : 'TVA non applicable, art. 293 B du CGI'}`;
         doc.setFontSize(8);
         doc.setTextColor(150);
@@ -346,26 +349,29 @@ export function QuoteManagement() {
     };
 
     const onSubmit = async (data: QuoteFormData) => {
-        if (!user || !personalization) return;
+        if (!user || !currentUserData) return;
         setIsSubmitting(true);
         
         let subtotal = 0;
         data.items.forEach(item => {
             subtotal += item.quantity * item.unitPrice;
         });
-        const taxRate = personalization.legalInfo.isVatSubject ? parseFloat(personalization.legalInfo.vatRate) || 0 : 0;
+        
+        const isVatSubject = currentUserData.isVatSubject || false;
+        const taxRate = isVatSubject ? 20 : 0; // Defaulting to 20% if subject, can be customized later
         const tax = subtotal * (taxRate / 100);
         const total = subtotal + tax;
 
-        const agencyInfo = currentUserData?.role === 'superadmin' ? personalization.legalInfo : {
-            companyName: `${currentUserData?.firstName} ${currentUserData?.lastName}`,
-            addressStreet: currentUserData?.address,
-            addressZip: currentUserData?.zipCode,
-            addressCity: currentUserData?.city,
-            email: currentUserData?.email,
-            phone: currentUserData?.phone,
-            siret: currentUserData?.siret,
-            isVatSubject: false
+        const agencyInfo = {
+            companyName: currentUserData.commercialName || `${currentUserData.firstName} ${currentUserData.lastName}`,
+            addressStreet: currentUserData.address,
+            addressZip: currentUserData.zipCode,
+            addressCity: currentUserData.city,
+            email: currentUserData.email,
+            phone: currentUserData.phone,
+            siret: currentUserData.siret,
+            isVatSubject: currentUserData.isVatSubject,
+            vatNumber: currentUserData.vatNumber
         };
 
         const contract = contracts?.find(c => c.id === data.contractId);
@@ -418,16 +424,17 @@ export function QuoteManagement() {
     };
     
     const handleSendQuote = async (quote: Quote) => {
-        if (!personalization) {
-            toast({ title: "Erreur de configuration", description: "Les paramètres d'envoi d'e-mail ne sont pas configurés.", variant: "destructive"});
+        const emailSettings = currentUserData?.emailSettings || personalization?.emailSettings;
+        if (!emailSettings?.fromEmail) {
+            toast({ title: "Erreur de configuration", description: "Vos paramètres d'envoi d'e-mail ne sont pas configurés.", variant: "destructive"});
             return;
         }
         setIsSubmitting(true);
         try {
             const result = await sendQuote({
                 quote,
-                emailSettings: personalization.emailSettings,
-                legalInfo: personalization.legalInfo
+                emailSettings: emailSettings,
+                legalInfo: quote.agencyInfo
             });
             if (result.success) {
                 const quoteRef = doc(firestore, `users/${user!.uid}/quotes`, quote.id);
@@ -447,13 +454,13 @@ export function QuoteManagement() {
     }
     
     const handleExportPdf = async (quote: Quote) => {
-        if (!personalization) {
-            toast({ title: "Erreur de configuration", description: "Les paramètres légaux ne sont pas configurés.", variant: "destructive"});
+        if (!currentUserData) {
+            toast({ title: "Erreur de configuration", description: "Les informations de l'utilisateur n'ont pas pu être chargées.", variant: "destructive"});
             return;
         }
         setIsSubmitting(true);
         try {
-            await generatePdfClientSide(quote, personalization.legalInfo);
+            await generatePdfClientSide(quote, quote.agencyInfo);
             toast({ title: 'PDF exporté', description: 'Le téléchargement du devis a commencé.' });
         } catch (e) {
             console.error(e)
