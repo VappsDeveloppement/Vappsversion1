@@ -28,7 +28,7 @@ export default function ClientsPage() {
 
     const clientsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, 'users'), where('counselorId', '==', user.uid));
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
     }, [user, firestore]);
 
     const { data: allClients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
