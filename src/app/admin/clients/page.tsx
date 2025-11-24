@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -76,8 +75,17 @@ export default function ClientManagementPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const { toast } = useToast();
+    
+    // Fetch the current user's data to check their role
+    const currentUserDocRef = useMemoFirebase(() => currentUser ? doc(firestore, 'users', currentUser.uid) : null, [currentUser, firestore]);
+    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(currentUserDocRef);
+    const isSuperAdmin = currentUserData?.role === 'superadmin';
 
-    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
+    const usersQuery = useMemoFirebase(() => {
+        // IMPORTANT: Only fetch all users if the current user is a superadmin
+        if (!isSuperAdmin) return null;
+        return query(collection(firestore, 'users'));
+    }, [firestore, isSuperAdmin]);
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
     const filteredUsers = useMemo(() => {
@@ -220,7 +228,7 @@ export default function ClientManagementPage() {
         }
     };
     
-    const isLoading = areUsersLoading || isUserLoading;
+    const isLoading = areUsersLoading || isUserLoading || isCurrentUserDataLoading;
 
     return (
         <div className="space-y-8">
@@ -345,3 +353,5 @@ export default function ClientManagementPage() {
         </div>
     );
 }
+
+    
