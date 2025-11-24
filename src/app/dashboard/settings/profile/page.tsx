@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -33,6 +32,7 @@ const profileSchema = z.object({
   publicBio: z.string().optional(),
   photoUrl: z.string().optional().nullable(),
   phone: z.string().optional(),
+  contactEmail: z.string().email({ message: "Veuillez entrer une adresse e-mail valide." }).optional().or(z.literal('')),
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
@@ -60,6 +60,7 @@ type UserProfile = {
   publicBio?: string;
   photoUrl?: string;
   phone?: string;
+  contactEmail?: string;
   address?: string;
   zipCode?: string;
   city?: string;
@@ -111,6 +112,7 @@ export default function ProfilePage() {
       publicBio: '',
       photoUrl: '',
       phone: '',
+      contactEmail: '',
       address: '',
       zipCode: '',
       city: '',
@@ -137,6 +139,7 @@ export default function ProfilePage() {
         publicBio: userData.publicBio || '',
         photoUrl: userData.photoUrl || '',
         phone: userData.phone || '',
+        contactEmail: userData.contactEmail || userData.email || '',
         address: userData.address || '',
         zipCode: userData.zipCode || '',
         city: userData.city || '',
@@ -416,19 +419,34 @@ export default function ProfilePage() {
                             )}
                         />
                     </div>
-                    <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Téléphone</FormLabel>
-                        <FormControl>
-                          <Input type="tel" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Téléphone</FormLabel>
+                                <FormControl>
+                                <Input type="tel" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name="contactEmail"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Email de Contact Professionnel</FormLabel>
+                                <FormControl>
+                                <Input type="email" placeholder="contact@votre-activite.com" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                     </div>
                   <FormField
                     control={form.control}
                     name="address"

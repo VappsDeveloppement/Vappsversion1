@@ -15,6 +15,7 @@ const emailSettingsSchema = z.object({
   smtpSecure: z.boolean(),
   fromEmail: z.string().email("L'email de l'expéditeur est requis.").min(1),
   fromName: z.string().min(1, "Le nom de l'expéditeur est requis."),
+  contactEmail: z.string().email("L'email de contact est requis.").min(1),
 });
 
 const legalInfoSchema = z.object({
@@ -249,8 +250,8 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
 
     const { quote, emailSettings, legalInfo } = validation.data;
     
-    if (!emailSettings.fromEmail || !emailSettings.fromName) {
-        return { success: false, error: "Le nom et l'e-mail de l'expéditeur sont requis. Veuillez les configurer." };
+    if (!emailSettings.fromEmail || !emailSettings.fromName || !emailSettings.contactEmail) {
+        return { success: false, error: "Le nom, l'e-mail de l'expéditeur et l'e-mail de contact sont requis. Veuillez les configurer." };
     }
 
     try {
@@ -266,21 +267,21 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             },
         });
         
-        const validationUrl = `${process.env.NEXT_PUBLIC_BASE_URL}/quote/${quote.id}`;
+        const textBody = `Bonjour ${quote.clientInfo.name},\n\nVeuillez trouver ci-joint votre devis n° ${quote.quoteNumber}.\n\nPour accepter ce devis, veuillez le signer et nous le renvoyer en réponse à ce mail, ou directement à l'adresse suivante : ${emailSettings.contactEmail}.\n\nCordialement,\n${emailSettings.fromName}`;
+        const htmlBody = `
+            <p>Bonjour ${quote.clientInfo.name},</p>
+            <p>Veuillez trouver ci-joint votre devis n° ${quote.quoteNumber} au format PDF.</p>
+            <p>Pour accepter ce devis, veuillez le signer et nous le renvoyer en réponse à ce mail, ou directement à l'adresse suivante : <strong><a href="mailto:${emailSettings.contactEmail}">${emailSettings.contactEmail}</a></strong>.</p>
+            <p>Nous restons à votre disposition pour toute question.</p>
+            <p>Cordialement,<br/>${emailSettings.fromName}</p>
+        `;
 
         await transporter.sendMail({
             from: `"${emailSettings.fromName}" <${emailSettings.fromEmail}>`,
             to: quote.clientInfo.email,
             subject: `Votre devis n° ${quote.quoteNumber} de la part de ${emailSettings.fromName}`,
-            text: `Bonjour ${quote.clientInfo.name},\n\nVeuillez trouver ci-joint votre devis n° ${quote.quoteNumber}.\n\nPour valider ce devis, veuillez vous rendre à l'adresse suivante : ${validationUrl}\n\nCordialement,\n${emailSettings.fromName}`,
-            html: `
-                <p>Bonjour ${quote.clientInfo.name},</p>
-                <p>Veuillez trouver ci-joint votre devis n° ${quote.quoteNumber} au format PDF.</p>
-                <p>Pour consulter et valider ce devis directement en ligne, veuillez cliquer sur le lien ci-dessous :</p>
-                <p><a href="${validationUrl}" style="padding: 10px 15px; background-color: #007bff; color: white; text-decoration: none; border-radius: 5px;">Consulter mon devis</a></p>
-                <p>Si le bouton ne fonctionne pas, copiez et collez ce lien dans votre navigateur : ${validationUrl}</p>
-                <p>Cordialement,<br/>${emailSettings.fromName}</p>
-            `,
+            text: textBody,
+            html: htmlBody,
             attachments: [
                 {
                     filename: `devis-${quote.quoteNumber}.pdf`,
