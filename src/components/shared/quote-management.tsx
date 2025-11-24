@@ -427,16 +427,23 @@ export function QuoteManagement() {
     };
     
     const handleSendQuote = async (quote: Quote) => {
-        const emailSettings = currentUserData?.emailSettings;
-        if (!emailSettings?.fromEmail || !emailSettings?.fromName || !emailSettings?.contactEmail) {
+        // Prioritize user's SMTP settings, fallback to agency's
+        const emailSettings = currentUserData?.emailSettings?.fromEmail
+          ? currentUserData.emailSettings
+          : personalization?.emailSettings;
+          
+        const contactEmail = currentUserData?.contactEmail || currentUserData?.email;
+
+        if (!emailSettings?.fromEmail || !emailSettings?.fromName || !contactEmail) {
             toast({ title: "Erreur de configuration", description: "Vos nom, e-mail d'expéditeur et e-mail de contact sont requis. Veuillez les renseigner dans vos paramètres.", variant: "destructive"});
             return;
         }
+
         setIsSubmitting(true);
         try {
             const result = await sendQuote({
                 quote,
-                emailSettings: emailSettings,
+                emailSettings: { ...emailSettings, contactEmail },
                 legalInfo: quote.agencyInfo
             });
             if (result.success) {
@@ -692,4 +699,4 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
     )
 }
 
-  
+    
