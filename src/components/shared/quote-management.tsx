@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -15,7 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, Send, FileSignature, Check, ChevronsUpDown, FileDown } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, Send, FileSignature, Check, ChevronsUpDown, FileDown, CheckCircle } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -27,7 +26,10 @@ import { useAgency } from '@/context/agency-provider';
 import type { Plan } from '@/components/shared/plan-management';
 import type { Contract } from '@/components/shared/contract-management';
 import { sendQuote } from '@/app/actions/quote';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { generateAndSendInvoice } from '@/lib/invoice-helpers';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '../ui/alert-dialog';
+
 
 const quoteItemSchema = z.object({
     id: z.string(),
@@ -262,6 +264,7 @@ export function QuoteManagement() {
     const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [quoteToValidate, setQuoteToValidate] = useState<Quote | null>(null);
 
     const quotesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -428,13 +431,13 @@ export function QuoteManagement() {
     
     const handleSendQuote = async (quote: Quote) => {
         // Prioritize user's SMTP settings, fallback to agency's
-        const emailSettings = currentUserData?.emailSettings?.fromEmail
+        const emailSettingsToUse = (currentUserData?.emailSettings && currentUserData.emailSettings.fromEmail)
           ? currentUserData.emailSettings
           : personalization?.emailSettings;
           
         const contactEmail = currentUserData?.contactEmail || currentUserData?.email;
 
-        if (!emailSettings?.fromEmail || !emailSettings?.fromName || !contactEmail) {
+        if (!emailSettingsToUse?.fromEmail || !emailSettingsToUse?.fromName || !contactEmail) {
             toast({ title: "Erreur de configuration", description: "Vos nom, e-mail d'expéditeur et e-mail de contact sont requis. Veuillez les renseigner dans vos paramètres.", variant: "destructive"});
             return;
         }
@@ -443,7 +446,7 @@ export function QuoteManagement() {
         try {
             const result = await sendQuote({
                 quote,
-                emailSettings: { ...emailSettings, contactEmail },
+                emailSettings: { ...emailSettingsToUse, contactEmail },
                 legalInfo: quote.agencyInfo
             });
             if (result.success) {
@@ -462,6 +465,43 @@ export function QuoteManagement() {
         }
         setIsSubmitting(false);
     }
+
+    const handleValidateQuote = async () => {
+        if (!quoteToValidate || !user || !personalization || !currentUserData) return;
+        setIsSubmitting(true);
+        
+        const privateQuoteRef = doc(firestore, `users/${user.uid}/quotes`, quoteToValidate.id);
+        const publicQuoteRef = doc(firestore, 'quotes', quoteToValidate.id);
+        
+        try {
+            const batch = writeBatch(firestore);
+            batch.update(privateQuoteRef, { status: 'accepted', signature: 'Validé par le conseiller', signedDate: new Date().toISOString() });
+            batch.update(publicQuoteRef, { status: 'accepted', signature: 'Validé par le conseiller', signedDate: new Date().toISOString() });
+            await batch.commit();
+            
+            toast({ title: "Devis validé" });
+
+            const emailSettingsToUse = (currentUserData?.emailSettings && currentUserData.emailSettings.fromEmail)
+                ? currentUserData.emailSettings
+                : personalization.emailSettings;
+
+            await generateAndSendInvoice({
+                quote: { ...quoteToValidate, status: 'accepted' },
+                counselorId: user.uid,
+                firestore: firestore,
+                emailSettings: emailSettingsToUse,
+                legalInfo: currentUserData,
+                paymentSettings: currentUserData.paymentSettings || personalization.paymentSettings,
+            });
+
+        } catch (e) {
+            console.error(e);
+            toast({ title: "Erreur", description: "Impossible de valider le devis ou de générer la facture.", variant: 'destructive'});
+        } finally {
+            setIsSubmitting(false);
+            setQuoteToValidate(null);
+        }
+    };
     
     const handleExportPdf = async (quote: Quote) => {
         if (!currentUserData) {
@@ -483,121 +523,146 @@ export function QuoteManagement() {
     const isLoading = areQuotesLoading || isCurrentUserDataLoading;
 
     return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle>Devis</CardTitle>
-                        <CardDescription>Créez, envoyez et suivez vos devis.</CardDescription>
+        <>
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <CardTitle>Devis</CardTitle>
+                            <CardDescription>Créez, envoyez et suivez vos devis.</CardDescription>
+                        </div>
+                        <Button onClick={handleNewQuote}><PlusCircle className="mr-2 h-4 w-4" />Nouveau Devis</Button>
                     </div>
-                    <Button onClick={handleNewQuote}><PlusCircle className="mr-2 h-4 w-4" />Nouveau Devis</Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Numéro</TableHead>
-                            <TableHead>Client</TableHead>
-                            <TableHead>Total</TableHead>
-                            <TableHead>Statut</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? [...Array(3)].map((_, i) => <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>)
-                        : quotes && quotes.length > 0 ? (
-                            quotes.map(quote => (
-                                <TableRow key={quote.id}>
-                                    <TableCell>{quote.quoteNumber}</TableCell>
-                                    <TableCell>{quote.clientInfo.name}</TableCell>
-                                    <TableCell>{quote.total.toFixed(2)}€</TableCell>
-                                    <TableCell><Badge variant={statusVariant[quote.status]}>{statusText[quote.status]}</Badge></TableCell>
-                                    <TableCell className="text-right">
-                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={['accepted', 'rejected'].includes(quote.status) || isSubmitting}>
-                                                    <Send className="mr-2 h-4 w-4" /> Renvoyer
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleExportPdf(quote)} disabled={isSubmitting}>
-                                                    <FileDown className="mr-2 h-4 w-4" /> Exporter PDF
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleEditQuote(quote)} disabled={quote.status !== 'draft'}>
-                                                    <Edit className="mr-2 h-4 w-4" /> Modifier
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteQuote(quote)}>
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun devis pour le moment.</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-4xl w-full flex flex-col">
-                        <SheetHeader>
-                            <SheetTitle>{editingQuote ? 'Modifier le' : 'Nouveau'} devis</SheetTitle>
-                            <SheetDescription>Créez un nouveau devis pour un de vos clients.</SheetDescription>
-                        </SheetHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
-                                <ScrollArea className="flex-1 pr-6 -mr-6">
-                                    <div className="space-y-8 py-4">
-                                        {/* Client Info */}
-                                        <ClientSelector 
-                                            clients={clients || []} 
-                                            onClientSelect={(client) => form.setValue('clientInfo', client)} 
-                                            isLoading={areClientsLoading}
-                                            defaultValue={editingQuote?.clientInfo}
-                                        />
-                                        
-                                        {/* Items */}
-                                        <div>
-                                            <h3 className="text-lg font-medium mb-4">Prestations</h3>
-                                            <div className="space-y-4">
-                                                {fields.map((field, index) => (
-                                                    <div key={field.id} className="flex gap-4 items-end p-4 border rounded-md">
-                                                        <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                        <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => ( <FormItem className="w-20"><FormLabel>Qté</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => ( <FormItem className="w-28"><FormLabel>P.U.</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                    </div>
-                                                ))}
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Numéro</TableHead>
+                                <TableHead>Client</TableHead>
+                                <TableHead>Total</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? [...Array(3)].map((_, i) => <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>)
+                            : quotes && quotes.length > 0 ? (
+                                quotes.map(quote => (
+                                    <TableRow key={quote.id}>
+                                        <TableCell>{quote.quoteNumber}</TableCell>
+                                        <TableCell>{quote.clientInfo.name}</TableCell>
+                                        <TableCell>{quote.total.toFixed(2)}€</TableCell>
+                                        <TableCell><Badge variant={statusVariant[quote.status]}>{statusText[quote.status]}</Badge></TableCell>
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    {quote.status === 'sent' && (
+                                                        <DropdownMenuItem onClick={() => setQuoteToValidate(quote)}>
+                                                            <CheckCircle className="mr-2 h-4 w-4" /> Valider manuellement
+                                                        </DropdownMenuItem>
+                                                    )}
+                                                    <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={['accepted', 'rejected'].includes(quote.status) || isSubmitting}>
+                                                        <Send className="mr-2 h-4 w-4" /> Renvoyer par e-mail
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleExportPdf(quote)} disabled={isSubmitting}>
+                                                        <FileDown className="mr-2 h-4 w-4" /> Exporter PDF
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleEditQuote(quote)} disabled={quote.status !== 'draft'}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Modifier
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteQuote(quote)}>
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun devis pour le moment.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                    <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                        <SheetContent className="sm:max-w-4xl w-full flex flex-col">
+                            <SheetHeader>
+                                <SheetTitle>{editingQuote ? 'Modifier le' : 'Nouveau'} devis</SheetTitle>
+                                <SheetDescription>Créez un nouveau devis pour un de vos clients.</SheetDescription>
+                            </SheetHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
+                                    <ScrollArea className="flex-1 pr-6 -mr-6">
+                                        <div className="space-y-8 py-4">
+                                            {/* Client Info */}
+                                            <ClientSelector 
+                                                clients={clients || []} 
+                                                onClientSelect={(client) => form.setValue('clientInfo', client)} 
+                                                isLoading={areClientsLoading}
+                                                defaultValue={editingQuote?.clientInfo}
+                                            />
+                                            
+                                            {/* Items */}
+                                            <div>
+                                                <h3 className="text-lg font-medium mb-4">Prestations</h3>
+                                                <div className="space-y-4">
+                                                    {fields.map((field, index) => (
+                                                        <div key={field.id} className="flex gap-4 items-end p-4 border rounded-md">
+                                                            <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                            <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => ( <FormItem className="w-20"><FormLabel>Qté</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                            <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => ( <FormItem className="w-28"><FormLabel>P.U.</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <PlanSelector plans={plans || []} onSelectPlan={(plan) => append({id: plan.id, description: plan.name, quantity: 1, unitPrice: plan.price, total: plan.price})} isLoading={arePlansLoading} />
                                             </div>
-                                            <PlanSelector plans={plans || []} onSelectPlan={(plan) => append({id: plan.id, description: plan.name, quantity: 1, unitPrice: plan.price, total: plan.price})} isLoading={arePlansLoading} />
+                                            
+                                            {/* Contract & Notes */}
+                                            <div className="grid grid-cols-2 gap-6">
+                                                <FormField control={form.control} name="contractId" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Contrat (Optionnel)</FormLabel>
+                                                        <Select onValueChange={field.onChange} value={field.value}>
+                                                            <FormControl><SelectTrigger disabled={areContractsLoading}><SelectValue placeholder="Associer un contrat" /></SelectTrigger></FormControl>
+                                                            <SelectContent>{contracts?.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
+                                                        </Select>
+                                                    </FormItem>
+                                                )}/>
+                                            </div>
+                                            <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl></FormItem> )}/>
                                         </div>
-                                        
-                                        {/* Contract & Notes */}
-                                        <div className="grid grid-cols-2 gap-6">
-                                            <FormField control={form.control} name="contractId" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Contrat (Optionnel)</FormLabel>
-                                                    <Select onValueChange={field.onChange} value={field.value}>
-                                                        <FormControl><SelectTrigger disabled={areContractsLoading}><SelectValue placeholder="Associer un contrat" /></SelectTrigger></FormControl>
-                                                        <SelectContent>{contracts?.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
-                                                    </Select>
-                                                </FormItem>
-                                            )}/>
-                                        </div>
-                                        <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl></FormItem> )}/>
-                                    </div>
-                                </ScrollArea>
-                                <SheetFooter className="pt-6 border-t mt-auto">
-                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                    <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Sauvegarder</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
-                    </SheetContent>
-                </Sheet>
-            </CardContent>
-        </Card>
+                                    </ScrollArea>
+                                    <SheetFooter className="pt-6 border-t mt-auto">
+                                        <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Sauvegarder</Button>
+                                    </SheetFooter>
+                                </form>
+                            </Form>
+                        </SheetContent>
+                    </Sheet>
+                </CardContent>
+            </Card>
+            <AlertDialog open={!!quoteToValidate} onOpenChange={(open) => !open && setQuoteToValidate(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Confirmer la validation du devis ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                           Cette action marquera le devis comme "Accepté", générera la facture correspondante et l'enverra automatiquement au client. Cette action est irréversible.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleValidateQuote} disabled={isSubmitting}>
+                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            Confirmer et envoyer la facture
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
     );
 }
 
@@ -698,5 +763,3 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
-
-    

@@ -17,9 +17,10 @@ import { Logo } from '@/components/shared/logo';
 import { CheckCircle, XCircle, AlertTriangle, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useAgency } from '@/context/agency-provider';
-import { sendInvoice } from '@/app/actions/invoice';
 import Link from 'next/link';
 import type { Quote } from '@/components/shared/quote-management';
+import { generateAndSendInvoice } from '@/lib/invoice-helpers';
+
 
 const statusVariant: Record<Quote['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
     draft: 'secondary',
@@ -53,6 +54,12 @@ export default function PublicQuotePage() {
     }, [firestore, quoteId]);
     
     const { data: quote, isLoading: isQuoteLoading, error } = useDoc<Quote>(quoteRef);
+    
+    const counselorRef = useMemoFirebase(() => {
+        if (!quote) return null;
+        return doc(firestore, 'users', quote.counselorId);
+    }, [firestore, quote]);
+    const { data: counselorData } = useDoc(counselorRef);
 
     const handleStatusUpdate = async (status: 'accepted' | 'rejected') => {
         if (!quote || !quoteRef) return;
@@ -79,7 +86,20 @@ export default function PublicQuotePage() {
                 description: "Le statut du devis a été mis à jour.",
             });
             if (status === 'accepted') {
-                await generateAndSendInvoice();
+                if (counselorData && personalization) {
+                     const emailSettingsToUse = (counselorData?.emailSettings && counselorData.emailSettings.fromEmail)
+                        ? counselorData.emailSettings
+                        : personalization.emailSettings;
+                    
+                    await generateAndSendInvoice({
+                        quote: {...quote, ...updateData },
+                        counselorId: quote.counselorId,
+                        firestore,
+                        emailSettings: emailSettingsToUse,
+                        legalInfo: counselorData,
+                        paymentSettings: counselorData.paymentSettings || personalization.paymentSettings
+                    });
+                }
             }
         } catch (e) {
             toast({
@@ -89,62 +109,6 @@ export default function PublicQuotePage() {
             });
         } finally {
             setIsSubmitting(false);
-        }
-    };
-
-     const generateAndSendInvoice = async () => {
-        if (!quote || !personalization) {
-            toast({ title: "Erreur", description: "Données de devis ou de personnalisation manquantes.", variant: "destructive" });
-            return;
-        }
-
-        const invoicesCollectionRef = collection(firestore, `users/${quote.counselorId}/invoices`);
-        const q = query(invoicesCollectionRef);
-        const querySnapshot = await getDocs(q);
-        
-        const now = new Date();
-        const year = now.getFullYear();
-        const month = (now.getMonth() + 1).toString().padStart(2, '0');
-        const prefix = `FACT-${year}-${month}-`;
-        const monthInvoices = querySnapshot.docs.filter(doc => doc.data().invoiceNumber.startsWith(prefix));
-        const nextId = (monthInvoices.length + 1).toString().padStart(4, '0');
-        const invoiceNumber = `${prefix}${nextId}`;
-
-        const issueDate = new Date();
-        const dueDate = new Date();
-        dueDate.setDate(issueDate.getDate() + 30); // Due in 30 days
-
-        const invoiceData: any = {
-            invoiceNumber,
-            quoteNumber: quote.quoteNumber,
-            counselorId: quote.counselorId,
-            clientId: quote.clientInfo.id,
-            clientInfo: quote.clientInfo,
-            issueDate: issueDate.toISOString(),
-            dueDate: dueDate.toISOString(),
-            items: quote.items,
-            subtotal: quote.subtotal,
-            tax: quote.tax,
-            total: quote.total,
-            status: 'pending',
-        };
-        
-        const newInvoiceRef = doc(invoicesCollectionRef);
-        invoiceData.id = newInvoiceRef.id;
-        
-        await setDocumentNonBlocking(newInvoiceRef, invoiceData, {});
-        
-        const sendResult = await sendInvoice({
-            invoice: invoiceData,
-            emailSettings: personalization.emailSettings,
-            legalInfo: personalization.legalInfo,
-            paymentSettings: personalization.paymentSettings,
-        });
-
-        if (sendResult.success) {
-            toast({ title: "Facture envoyée", description: `La facture ${invoiceNumber} a été envoyée au client.` });
-        } else {
-            toast({ title: "Erreur d'envoi de la facture", description: sendResult.error, variant: "destructive" });
         }
     };
     

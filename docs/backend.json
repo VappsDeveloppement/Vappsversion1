@@ -206,6 +206,35 @@
       },
       "required": ["id", "quoteNumber", "counselorId", "clientId", "issueDate", "total", "status", "items"]
     },
+    "Invoice": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Invoice",
+      "type": "object",
+      "description": "Represents a billing invoice for services rendered.",
+      "properties": {
+        "id": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientInfo": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" }
+          }
+        },
+        "issueDate": { "type": "string", "format": "date-time" },
+        "dueDate": { "type": "string", "format": "date-time" },
+        "items": { "type": "array", "items": { "type": "object" } },
+        "subtotal": { "type": "number" },
+        "tax": { "type": "number" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending_payment", "paid", "late", "cancelled"] },
+        "notes": { "type": "string" },
+        "quoteNumber": { "type": "string" }
+      },
+      "required": ["id", "invoiceNumber", "counselorId", "clientId", "issueDate", "dueDate", "total", "status", "items"]
+    },
     "MiniSite": {
         "title": "MiniSite",
         "type": "object",
@@ -965,6 +994,16 @@
             "$ref": "#/backend/entities/Quote"
           },
           "description": "Stores quotes for a specific user. Path-based ownership ensures only the user can access their quotes."
+        }
+      },
+      {
+        "path": "/users/{userId}/invoices/{invoiceId}",
+        "definition": {
+          "entityName": "Invoice",
+          "schema": {
+            "$ref": "#/backend/entities/Invoice"
+          },
+          "description": "Stores invoices for a specific user. Path-based ownership ensures only the user can access their invoices."
         }
       },
       {
