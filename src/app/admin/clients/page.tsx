@@ -10,7 +10,7 @@ import { collection, query, doc, setDoc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { Loader2, Edit, Trash2, MoreHorizontal, Info, PlusCircle, Eye, EyeOff } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -88,7 +88,7 @@ export default function ClientManagementPage() {
         if (canFetchAllUsers) {
             return query(collection(firestore, 'users'));
         }
-        return null;
+        return null; // Return null if not authorized or still loading, preventing the query from running.
     }, [firestore, canFetchAllUsers]);
 
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
@@ -234,7 +234,7 @@ export default function ClientManagementPage() {
     };
     
     // Overall loading state now correctly considers all required async operations
-    const isLoading = isUserLoading || isCurrentUserDataLoading || (canFetchAllUsers && areUsersLoading);
+    const isLoading = isUserLoading || isCurrentUserDataLoading || areUsersLoading;
 
     return (
         <div className="space-y-8">
