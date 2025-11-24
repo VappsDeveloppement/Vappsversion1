@@ -111,5 +111,20 @@ service cloud.firestore {
                          (resource.data.authorId == request.auth.uid && request.resource.data.status != 'published'));
         allow delete: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || resource.data.authorId == request.auth.uid);
     }
+    
+    match /events/{eventId} {
+      allow get: if resource.data.isPublic == true || 
+                    (request.auth != null && request.auth.uid == resource.data.counselorId);
+      allow list: if request.query.where.isPublic == true ||
+                     (request.auth != null && request.query.where.counselorId == request.auth.uid);
+      allow create, update, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      
+      match /registrations/{registrationId} {
+        allow read: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+        allow list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+        allow create: if request.auth != null && request.auth.uid == request.resource.data.userId;
+        allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
+      }
+    }
   }
 }

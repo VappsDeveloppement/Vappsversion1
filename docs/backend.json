@@ -916,6 +916,37 @@
         "publishedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "title", "content", "categoryId", "authorId", "authorName", "status", "createdAt"]
+    },
+    "Event": {
+      "title": "Event",
+      "type": "object",
+      "description": "Represents an event created by a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "location": { "type": "string" },
+        "meetLink": { "type": "string", "format": "uri" },
+        "counselorId": { "type": "string" },
+        "isPublic": { "type": "boolean", "default": false },
+        "imageUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["title", "date", "counselorId"]
+    },
+    "EventRegistration": {
+      "title": "Event Registration",
+      "type": "object",
+      "description": "Represents a user's registration for an event.",
+      "properties": {
+        "id": { "type": "string" },
+        "eventId": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "userEmail": { "type": "string", "format": "email" },
+        "registeredAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["eventId", "userId", "registeredAt"]
     }
   },
   "auth": {
@@ -1086,6 +1117,22 @@
           "entityName": "BlogArticle",
           "schema": { "$ref": "#/entities/BlogArticle" },
           "description": "Stores blog articles written by counselors."
+        }
+      },
+      {
+        "path": "/events/{eventId}",
+        "definition": {
+          "entityName": "Event",
+          "schema": { "$ref": "#/entities/Event" },
+          "description": "Stores event information created by counselors or admins."
+        }
+      },
+      {
+        "path": "/events/{eventId}/registrations/{registrationId}",
+        "definition": {
+          "entityName": "EventRegistration",
+          "schema": { "$ref": "#/entities/EventRegistration" },
+          "description": "Stores user registrations for a specific event."
         }
       }
     ],
