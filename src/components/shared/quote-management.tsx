@@ -27,6 +27,7 @@ import { useAgency } from '@/context/agency-provider';
 import type { Plan } from '@/components/shared/plan-management';
 import type { Contract } from '@/components/shared/contract-management';
 import { sendQuote } from '@/app/actions/quote';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 const quoteItemSchema = z.object({
     id: z.string(),
@@ -476,4 +477,3 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
-
