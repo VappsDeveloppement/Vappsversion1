@@ -45,6 +45,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
   { href: "/admin/blog", label: "Gestion du Blog", icon: <Newspaper /> },
+  { href: "/admin/clients", label: "Gestion Clients", icon: <Users /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
   { href: "/admin/beta-test", label: "Recette de test", icon: <FlaskConical /> },
   { href: "/admin/beta-test/results", label: "Résultats Tests", icon: <ClipboardList /> },
@@ -52,7 +53,6 @@ const adminMenuItems = [
 ];
 
 const settingsMenuItems = [
-    { href: "/admin/settings/users", label: "Utilisateurs", icon: <Users /> },
     { href: "/admin/settings/personalization", label: "Personnalisation", icon: <Palette /> },
     { href: "/admin/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
 ]
@@ -134,8 +134,8 @@ export default function AdminLayout({
                <Accordion type="single" collapsible defaultValue={activeSettingsPath ? "settings-menu" : undefined} className="w-full">
                     <AccordionItem value="settings-menu" className="border-none">
                         <AccordionTrigger className="w-full flex items-center gap-2 overflow-hidden rounded-md p-2 text-left text-sm outline-none ring-sidebar-ring transition-[width,height,padding] text-black hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 active:bg-sidebar-accent active:text-sidebar-accent-foreground disabled:pointer-events-none disabled:opacity-50" data-active={activeSettingsPath}>
-                            <Users className="h-4 w-4 shrink-0"/>
-                            <span className="truncate flex-1">Administration</span>
+                            <Settings className="h-4 w-4 shrink-0"/>
+                            <span className="truncate flex-1">Paramètres</span>
                         </AccordionTrigger>
                         <AccordionContent className="p-0 pl-6 space-y-1">
                             {settingsMenuItems.map(item => (
