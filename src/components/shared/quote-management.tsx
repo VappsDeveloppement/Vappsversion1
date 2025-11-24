@@ -1,5 +1,4 @@
 
-
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -359,22 +358,22 @@ export function QuoteManagement() {
             subtotal += item.quantity * item.unitPrice;
         });
         
-        const isVatSubject = currentUserData.isVatSubject || false;
+        const isVatSubject = currentUserData.isVatSubject ?? false;
         const taxRate = isVatSubject ? (currentUserData.vatRate ?? 20) : 0;
         const tax = subtotal * (taxRate / 100);
         const total = subtotal + tax;
 
         const agencyInfo = {
             companyName: currentUserData.commercialName || `${currentUserData.firstName} ${currentUserData.lastName}`,
-            addressStreet: currentUserData.address,
-            addressZip: currentUserData.zipCode,
-            addressCity: currentUserData.city,
-            email: currentUserData.email,
-            phone: currentUserData.phone,
-            siret: currentUserData.siret,
-            isVatSubject: currentUserData.isVatSubject,
-            vatRate: currentUserData.vatRate,
-            vatNumber: currentUserData.vatNumber
+            addressStreet: currentUserData.address || '',
+            addressZip: currentUserData.zipCode || '',
+            addressCity: currentUserData.city || '',
+            email: currentUserData.email || '',
+            phone: currentUserData.phone || '',
+            siret: currentUserData.siret || '',
+            isVatSubject: isVatSubject,
+            vatRate: taxRate,
+            vatNumber: currentUserData.vatNumber || '',
         };
 
         const contract = contracts?.find(c => c.id === data.contractId);
@@ -402,7 +401,7 @@ export function QuoteManagement() {
             contractTitle: contract?.title || null,
             agencyInfo: agencyInfo,
             validationCode: editingQuote?.validationCode || generateValidationCode(),
-            contractContent: contract?.content,
+            contractContent: contract?.content || '',
         };
 
         try {
@@ -671,5 +670,7 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
+
+    
 
     
