@@ -430,7 +430,6 @@ export function QuoteManagement() {
     };
     
     const handleSendQuote = async (quote: Quote) => {
-        // Prioritize user's SMTP settings, fallback to agency's
         const emailSettingsToUse = (currentUserData?.emailSettings && currentUserData.emailSettings.fromEmail)
           ? currentUserData.emailSettings
           : personalization?.emailSettings;
@@ -678,10 +677,10 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: Cl
     const [selectedClient, setSelectedClient] = useState<z.infer<typeof clientInfoSchema> | null>(defaultValue || null);
 
     useEffect(() => {
-        if (defaultValue && !selectedClient) {
+        if (defaultValue) {
             setSelectedClient(defaultValue);
         }
-    }, [defaultValue, selectedClient]);
+    }, [defaultValue]);
 
 
     const handleSelect = (client: Client) => {
