@@ -19,12 +19,19 @@ service cloud.firestore {
     // A superadmin can read/write any user's data.
     // A counselor can read data of their assigned users.
     match /users/{userId} {
-      allow read: if request.auth != null && (
+      allow get: if request.auth != null && (
         request.auth.uid == userId 
         || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
-        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && resource.data.counselorId == request.auth.uid)
+        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && request.auth.uid in resource.data.counselorIds)
       );
-      allow write: if request.auth != null && (request.auth.uid == userId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      
+      allow list: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller');
+
+      allow write: if request.auth != null && (
+          request.auth.uid == userId 
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller'
+      );
       
       // This rule allows users to access their own subcollections (quotes, invoices, etc.)
       match /{document=**} {
@@ -51,10 +58,12 @@ service cloud.firestore {
       allow read, write: if request.auth != null;
     }
 
-    // Quotes are now in a subcollection, so they are covered by the /users/{userId}/{document=**} rule.
-    // We only need a public read rule for the validation page.
+    // Public validation page needs read. Delete should be restricted.
     match /quotes/{quoteId} {
         allow get: if true;
+        allow write: if request.auth != null && request.resource.data.counselorId == request.auth.uid;
+        allow delete: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || resource.data.counselorId == request.auth.uid);
+        allow update: if true; // Allow client to accept/reject
     }
     
     match /invoices/{invoiceId} {
@@ -96,7 +105,7 @@ service cloud.firestore {
     match /articles/{articleId} {
         allow read: if resource.data.status == 'published' || 
                        (request.auth != null && (resource.data.authorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
-        allow create: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller';
+        allow create: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
         allow update: if request.auth != null && 
                          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
                          (resource.data.authorId == request.auth.uid && request.resource.data.status != 'published'));
@@ -104,4 +113,3 @@ service cloud.firestore {
     }
   }
 }
-
