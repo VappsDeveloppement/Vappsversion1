@@ -198,7 +198,7 @@ export default function DashboardLayout({
                     </Link>
                 </SidebarMenuItem>
                )}
-              {isConseiller && (
+              {(isConseiller || isSuperAdmin) && (
                   <>
                     <SidebarMenuItem>
                         <Link href="/dashboard/clients">
