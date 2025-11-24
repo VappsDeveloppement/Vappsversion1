@@ -113,10 +113,8 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
-      allow get: if resource.data.isPublic == true || 
-                    (request.auth != null && request.auth.uid == resource.data.counselorId);
-      allow list: if request.query.where.isPublic == true ||
-                     (request.auth != null && request.query.where.counselorId == request.auth.uid);
+      // Allow read if the event is public, or if the user is the creator.
+      allow read: if resource.data.isPublic == true || (request.auth != null && request.auth.uid == resource.data.counselorId);
       allow create, update, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
       match /registrations/{registrationId} {
