@@ -27,9 +27,11 @@ const legalInfoSchema = z.object({
     siret: z.string().optional(),
     isVatSubject: z.boolean().optional(),
     vatNumber: z.string().optional(),
+    vatRate: z.number().optional(),
 }).passthrough();
 
 const quoteItemSchema = z.object({
+    id: z.string(),
     description: z.string(),
     quantity: z.number(),
     unitPrice: z.number(),
@@ -37,7 +39,7 @@ const quoteItemSchema = z.object({
 });
 
 const clientInfoSchema = z.object({
-    id: z.string(),
+    id: z.string().optional(),
     name: z.string(),
     email: z.string(),
     address: z.string().optional(),
@@ -48,7 +50,7 @@ const clientInfoSchema = z.object({
 const quoteSchema = z.object({
     id: z.string(),
     quoteNumber: z.string(),
-    validationCode: z.string(),
+    validationCode: z.string().optional(),
     clientInfo: clientInfoSchema,
     issueDate: z.string(),
     expiryDate: z.string().optional(),
@@ -61,6 +63,7 @@ const quoteSchema = z.object({
     contractId: z.string().optional(),
     contractContent: z.string().optional(),
     contractTitle: z.string().optional(),
+    agencyInfo: legalInfoSchema.optional(),
 });
 
 const sendQuoteSchema = z.object({
@@ -75,19 +78,26 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     const text = (value: string | null | undefined, fallback = '') => value || fallback;
 
     const isVatSubject = legalInfo?.isVatSubject ?? false;
+    const commercialName = legalInfo?.commercialName || legalInfo?.companyName || '';
+    const address = legalInfo?.address || legalInfo?.addressStreet || '';
+    const zipCode = legalInfo?.zipCode || legalInfo?.addressZip || '';
+    const city = legalInfo?.city || legalInfo?.addressCity || '';
+    const email = legalInfo?.email || '';
+    const siret = legalInfo?.siret || '';
+    const vatNumber = legalInfo?.vatNumber || '';
 
     // Header
     doc.setFontSize(20);
     doc.setTextColor(40);
     doc.setFont('helvetica', 'bold');
-    doc.text(text(legalInfo?.companyName, 'VApps'), 15, 20);
+    doc.text(text(commercialName), 15, 20);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text(text(legalInfo?.addressStreet), 15, 26);
-    doc.text(`${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`, 15, 31);
-    doc.text(text(legalInfo?.email), 15, 36);
+    doc.text(text(address), 15, 26);
+    doc.text(`${text(zipCode)} ${text(city)}`, 15, 31);
+    doc.text(text(email), 15, 36);
 
     doc.setFontSize(28);
     doc.setTextColor(150);
@@ -106,7 +116,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     doc.line(15, 48, 200, 48);
     doc.setFontSize(9);
     doc.setTextColor(150);
-    doc.text('FACTURÉ À', 15, 55);
+    doc.text('CLIENT', 15, 55);
     doc.setFontSize(12);
     doc.setTextColor(40);
     doc.text(text(quote.clientInfo.name), 15, 62);
@@ -206,8 +216,8 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        const footerText = `${text(legalInfo?.companyName)} - ${text(legalInfo?.addressStreet)}, ${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`;
-        const footerText2 = `SIRET: ${text(legalInfo?.siret)} - ${isVatSubject ? `TVA: ${text(legalInfo?.vatNumber)}` : 'TVA non applicable, art. 293 B du CGI'}`;
+        const footerText = `${text(commercialName)} - ${text(address)}, ${text(zipCode)} ${text(city)}`;
+        const footerText2 = `SIRET: ${text(siret)} - ${isVatSubject ? `TVA: ${text(vatNumber)}` : 'TVA non applicable, art. 293 B du CGI'}`;
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(footerText, 105, 285, { align: 'center' });
@@ -226,10 +236,16 @@ type SendQuoteResponse = {
 export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<SendQuoteResponse> {
     const validation = sendQuoteSchema.safeParse(data);
     if (!validation.success) {
-        return { success: false, error: validation.error.errors.map(e => e.message).join(', ') };
+        const errorMessages = validation.error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+        console.error("Validation failed:", errorMessages);
+        return { success: false, error: `Données du devis invalides: ${errorMessages}` };
     }
 
     const { quote, emailSettings, legalInfo } = validation.data;
+    
+    if (!emailSettings.fromEmail || !emailSettings.fromName) {
+        return { success: false, error: "Le nom et l'e-mail de l'expéditeur sont requis. Veuillez les configurer." };
+    }
 
     try {
         const pdfBuffer = await generatePdf(quote, legalInfo);
@@ -274,5 +290,3 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }
-
-    
