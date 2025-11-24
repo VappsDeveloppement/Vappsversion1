@@ -358,16 +358,16 @@ export function QuoteManagement() {
         });
         
         const isVatSubject = currentUserData.isVatSubject ?? false;
-        const taxRate = isVatSubject ? (currentUserData.vatRate ?? 20) : 0;
+        const taxRate = isVatSubject ? (currentUserData.vatRate ?? 0) : 0;
         const tax = subtotal * (taxRate / 100);
         const total = subtotal + tax;
 
         const agencyInfo = {
             companyName: currentUserData.commercialName || `${currentUserData.firstName} ${currentUserData.lastName}`,
-            addressStreet: currentUserData.address || '',
-            addressZip: currentUserData.zipCode || '',
-            addressCity: currentUserData.city || '',
-            email: currentUserData.email || '',
+            address: currentUserData.address || '',
+            zipCode: currentUserData.zipCode || '',
+            city: currentUserData.city || '',
+            email: currentUserData.contactEmail || currentUserData.email || '',
             phone: currentUserData.phone || '',
             siret: currentUserData.siret || '',
             isVatSubject: isVatSubject,
@@ -427,9 +427,9 @@ export function QuoteManagement() {
     };
     
     const handleSendQuote = async (quote: Quote) => {
-        const emailSettings = currentUserData?.emailSettings || personalization?.emailSettings;
-        if (!emailSettings?.fromEmail || !emailSettings?.fromName) {
-            toast({ title: "Erreur de configuration", description: "Vos nom et e-mail d'expéditeur ne sont pas configurés. Veuillez les renseigner dans vos paramètres.", variant: "destructive"});
+        const emailSettings = currentUserData?.emailSettings;
+        if (!emailSettings?.fromEmail || !emailSettings?.fromName || !emailSettings?.contactEmail) {
+            toast({ title: "Erreur de configuration", description: "Vos nom, e-mail d'expéditeur et e-mail de contact sont requis. Veuillez les renseigner dans vos paramètres.", variant: "destructive"});
             return;
         }
         setIsSubmitting(true);
@@ -510,13 +510,13 @@ export function QuoteManagement() {
                                          <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={quote.status !== 'draft' || isSubmitting}>
-                                                    <Send className="mr-2 h-4 w-4" /> Envoyer
+                                                <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={['accepted', 'rejected'].includes(quote.status) || isSubmitting}>
+                                                    <Send className="mr-2 h-4 w-4" /> Renvoyer
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleExportPdf(quote)} disabled={isSubmitting}>
                                                     <FileDown className="mr-2 h-4 w-4" /> Exporter PDF
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleEditQuote(quote)}>
+                                                <DropdownMenuItem onClick={() => handleEditQuote(quote)} disabled={quote.status !== 'draft'}>
                                                     <Edit className="mr-2 h-4 w-4" /> Modifier
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteQuote(quote)}>
@@ -672,8 +672,4 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
     )
 }
 
-    
-
-    
-
-    
+  
