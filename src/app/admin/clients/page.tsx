@@ -226,7 +226,7 @@ export default function ClientManagementPage() {
         <div className="space-y-8">
             <div className="flex justify-between items-start">
                 <div>
-                    <h1 className="text-3xl font-bold font-headline">Gestion des Clients et Utilisateurs</h1>
+                    <h1 className="text-3xl font-bold font-headline">Gestion des utilisateurs</h1>
                     <p className="text-muted-foreground">Liste de tous les utilisateurs de la plateforme.</p>
                 </div>
                  <Button onClick={() => { setEditingUser(null); setIsDialogOpen(true); }}>

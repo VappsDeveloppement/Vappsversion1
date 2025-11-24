@@ -46,7 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
   { href: "/admin/blog", label: "Gestion du Blog", icon: <Newspaper /> },
-  { href: "/admin/clients", label: "Gestion Clients", icon: <Users /> },
+  { href: "/admin/clients", label: "Gestion des utilisateurs", icon: <Users /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
   { href: "/admin/beta-test", label: "Recette de test", icon: <FlaskConical /> },
   { href: "/admin/beta-test/results", label: "Résultats Tests", icon: <ClipboardList /> },
