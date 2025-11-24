@@ -1,4 +1,5 @@
 
+
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -30,7 +31,6 @@ import { sendQuote } from '@/app/actions/quote';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { JSDOM } from 'jsdom';
 
 
 const quoteItemSchema = z.object({
@@ -358,7 +358,7 @@ export function QuoteManagement() {
         });
         
         const isVatSubject = currentUserData.isVatSubject || false;
-        const taxRate = isVatSubject ? 20 : 0; // Defaulting to 20% if subject, can be customized later
+        const taxRate = isVatSubject ? (currentUserData.vatRate ?? 20) : 0;
         const tax = subtotal * (taxRate / 100);
         const total = subtotal + tax;
 

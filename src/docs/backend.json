@@ -67,6 +67,10 @@
           "type": "boolean",
           "description": "Indicates if the user (conseiller) is subject to VAT."
         },
+        "vatRate": {
+          "type": "number",
+          "description": "The VAT rate applicable to the user, if subject."
+        },
         "vatNumber": {
             "type": "string",
             "description": "The user's VAT number, if applicable."

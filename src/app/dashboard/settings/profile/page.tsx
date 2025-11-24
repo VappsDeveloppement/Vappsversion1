@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
@@ -38,6 +39,7 @@ const profileSchema = z.object({
   commercialName: z.string().optional(),
   siret: z.string().optional(),
   isVatSubject: z.boolean().optional(),
+  vatRate: z.coerce.number().optional(),
   vatNumber: z.string().optional(),
   dashboardTheme: z.object({
     primaryColor: z.string().optional(),
@@ -64,6 +66,7 @@ type UserProfile = {
   commercialName?: string;
   siret?: string;
   isVatSubject?: boolean;
+  vatRate?: number;
   vatNumber?: string;
   dashboardTheme?: {
     primaryColor?: string;
@@ -114,6 +117,7 @@ export default function ProfilePage() {
       commercialName: '',
       siret: '',
       isVatSubject: false,
+      vatRate: 20,
       vatNumber: '',
       dashboardTheme: {
         primaryColor: '#10B981',
@@ -139,6 +143,7 @@ export default function ProfilePage() {
         commercialName: userData.commercialName || '',
         siret: userData.siret || '',
         isVatSubject: userData.isVatSubject || false,
+        vatRate: userData.vatRate === undefined ? 20 : userData.vatRate,
         vatNumber: userData.vatNumber || '',
         dashboardTheme: {
           primaryColor: userData.dashboardTheme?.primaryColor || '#10B981',
@@ -190,6 +195,7 @@ export default function ProfilePage() {
         phone: data.phone,
         city: data.city,
         isVatSubject: data.isVatSubject,
+        vatRate: data.vatRate,
         vatNumber: data.vatNumber,
         miniSite: {
             ...userData?.miniSite,
@@ -335,51 +341,51 @@ export default function ProfilePage() {
                </div>
 
                 {isConseiller && (
-                    <>
-                    <FormField
-                        control={form.control}
-                        name="publicProfileName"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Nom du profil public (pour l'URL)</FormLabel>
-                            <FormControl>
-                            <Input placeholder="ex: jean-dupont" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="publicTitle"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Titre Professionnel (public)</FormLabel>
-                            <FormControl>
-                            <Input placeholder="Ex: Conseiller en évolution professionnelle" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="publicBio"
-                        render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Biographie Publique</FormLabel>
-                            <FormControl>
-                            <Textarea
-                                placeholder="Parlez de votre parcours, de votre approche..."
-                                rows={8}
-                                {...field}
-                            />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                    </>
+                    <div className="border-t pt-6 space-y-6">
+                        <FormField
+                            control={form.control}
+                            name="publicProfileName"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Nom du profil public (pour l'URL)</FormLabel>
+                                <FormControl>
+                                <Input placeholder="ex: jean-dupont" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="publicTitle"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Titre Professionnel (public)</FormLabel>
+                                <FormControl>
+                                <Input placeholder="Ex: Conseiller en évolution professionnelle" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="publicBio"
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Biographie Publique</FormLabel>
+                                <FormControl>
+                                <Textarea
+                                    placeholder="Parlez de votre parcours, de votre approche..."
+                                    rows={8}
+                                    {...field}
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
                 )}
                 <div className="border-t pt-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -489,19 +495,34 @@ export default function ProfilePage() {
                                 )}
                             />
                             {watchIsVatSubject && (
-                                <FormField
-                                    control={form.control}
-                                    name="vatNumber"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Numéro de TVA Intracommunautaire</FormLabel>
-                                            <FormControl>
-                                                <Input {...field} placeholder="FRXX123456789" />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                />
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <FormField
+                                        control={form.control}
+                                        name="vatRate"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Taux de TVA (%)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" placeholder="20" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="vatNumber"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Numéro de TVA Intracommunautaire</FormLabel>
+                                                <FormControl>
+                                                    <Input {...field} placeholder="FRXX123456789" />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
                             )}
                       </div>
                    )}
