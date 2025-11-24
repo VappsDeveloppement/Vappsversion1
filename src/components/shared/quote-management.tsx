@@ -258,27 +258,30 @@ export function QuoteManagement() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingQuote, setEditingQuote] = useState<Quote | null>(null);
-    const [searchTerm, setSearchTerm] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [quoteToValidate, setQuoteToValidate] = useState<Quote | null>(null);
 
+    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(userDocRef);
+    
     const quotesQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, `users/${user.uid}/quotes`));
     }, [user, firestore]);
     const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
-    
-    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(userDocRef);
 
     const clientsQuery = useMemoFirebase(() => {
         if(!user) return null;
-        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
-    }, [user, firestore]);
+        const baseQuery = collection(firestore, 'users');
+        if (currentUserData?.role === 'superadmin') {
+            return baseQuery;
+        }
+        return query(baseQuery, where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore, currentUserData]);
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
 
     const plansQuery = useMemoFirebase(() => {
@@ -461,8 +464,9 @@ export function QuoteManagement() {
             }
         } catch (e) {
             toast({ title: 'Erreur', description: "Impossible d'envoyer le devis.", variant: 'destructive'});
+        } finally {
+            setIsSubmitting(false);
         }
-        setIsSubmitting(false);
     }
 
     const handleValidateQuote = async () => {
@@ -557,13 +561,14 @@ export function QuoteManagement() {
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
-                                                    {quote.status === 'sent' && (
+                                                    {(quote.status === 'sent' || (quote.status === 'draft' && currentUserData?.role === 'superadmin')) && (
                                                         <DropdownMenuItem onClick={() => setQuoteToValidate(quote)}>
                                                             <CheckCircle className="mr-2 h-4 w-4" /> Valider manuellement
                                                         </DropdownMenuItem>
                                                     )}
                                                     <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={['accepted', 'rejected'].includes(quote.status) || isSubmitting}>
-                                                        <Send className="mr-2 h-4 w-4" /> Renvoyer par e-mail
+                                                        <Send className="mr-2 h-4 w-4" /> 
+                                                        {quote.status === 'sent' ? 'Renvoyer par e-mail' : 'Envoyer par e-mail'}
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleExportPdf(quote)} disabled={isSubmitting}>
                                                         <FileDown className="mr-2 h-4 w-4" /> Exporter PDF
@@ -677,10 +682,10 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: Cl
     const [selectedClient, setSelectedClient] = useState<z.infer<typeof clientInfoSchema> | null>(defaultValue || null);
 
     useEffect(() => {
-        if (defaultValue) {
+        if (defaultValue?.name && !selectedClient?.name) {
             setSelectedClient(defaultValue);
         }
-    }, [defaultValue]);
+    }, [defaultValue, selectedClient]);
 
 
     const handleSelect = (client: Client) => {
