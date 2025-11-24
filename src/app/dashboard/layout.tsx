@@ -225,7 +225,7 @@ export default function DashboardLayout({
                             <span className="truncate flex-1">Mon Profil</span>
                         </AccordionTrigger>
                         <AccordionContent className="p-0 pl-6 space-y-1">
-                            {isConseiller ? (
+                            {(isConseiller || isSuperAdmin) ? (
                                 profileMenuItems.map(item => (
                                    <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
                                      {React.cloneElement(item.icon, { className: "h-4 w-4"})}

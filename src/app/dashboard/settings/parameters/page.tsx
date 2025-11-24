@@ -227,16 +227,16 @@ export default function CounselorParametersPage() {
                                     <section>
                                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">Virement Bancaire (RIB)</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <FormField control={form.control} name="paymentSettings.ribIban" render={({ field }) => (<FormItem><FormLabel>IBAN</FormLabel><FormControl><Input placeholder="FR76..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="paymentSettings.ribBic" render={({ field }) => (<FormItem><FormLabel>BIC / SWIFT</FormLabel><FormControl><Input placeholder="AGRIFRPP888" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentSettings.ribIban" render={({ field }) => (<FormItem><FormLabel>IBAN</FormLabel><FormControl><Input placeholder="FR76..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentSettings.ribBic" render={({ field }) => (<FormItem><FormLabel>BIC / SWIFT</FormLabel><FormControl><Input placeholder="AGRIFRPP888" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     </section>
                                     <section>
                                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">PayPal</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <FormField control={form.control} name="paymentSettings.paypalClientId" render={({ field }) => (<FormItem><FormLabel>Client ID PayPal</FormLabel><FormControl><Input placeholder="Votre Client ID" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="paymentSettings.paypalClientSecret" render={({ field }) => (<FormItem><FormLabel>Client Secret PayPal</FormLabel><FormControl><Input type="password" placeholder="Votre Client Secret" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="paymentSettings.paypalMeLink" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Lien PayPal.Me</FormLabel><FormControl><Input placeholder="https://paypal.me/votrecompte" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentSettings.paypalClientId" render={({ field }) => (<FormItem><FormLabel>Client ID PayPal</FormLabel><FormControl><Input placeholder="Votre Client ID" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentSettings.paypalClientSecret" render={({ field }) => (<FormItem><FormLabel>Client Secret PayPal</FormLabel><FormControl><Input type="password" placeholder="Votre Client Secret" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="paymentSettings.paypalMeLink" render={({ field }) => (<FormItem className="md:col-span-2"><FormLabel>Lien PayPal.Me</FormLabel><FormControl><Input placeholder="https://paypal.me/votrecompte" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     </section>
                                 </CardContent>
@@ -252,8 +252,8 @@ export default function CounselorParametersPage() {
                                      <section>
                                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">Expéditeur</h3>
                                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                            <FormField control={form.control} name="emailSettings.fromName" render={({ field }) => (<FormItem><FormLabel>Nom de l'expéditeur</FormLabel><FormControl><Input placeholder="Jean Dupont" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="emailSettings.fromEmail" render={({ field }) => (<FormItem><FormLabel>E-mail de l'expéditeur</FormLabel><FormControl><Input type="email" placeholder="contact@mondomaine.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="emailSettings.fromName" render={({ field }) => (<FormItem><FormLabel>Nom de l'expéditeur</FormLabel><FormControl><Input placeholder="Jean Dupont" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="emailSettings.fromEmail" render={({ field }) => (<FormItem><FormLabel>E-mail de l'expéditeur</FormLabel><FormControl><Input type="email" placeholder="contact@mondomaine.com" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     </section>
                                     <section>
@@ -261,18 +261,18 @@ export default function CounselorParametersPage() {
                                         <div className="space-y-4">
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                                                 <div className="space-y-2 md:col-span-2">
-                                                    <FormField control={form.control} name="emailSettings.smtpHost" render={({ field }) => (<FormItem><FormLabel>Hôte SMTP</FormLabel><FormControl><Input placeholder="smtp.fournisseur.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name="emailSettings.smtpHost" render={({ field }) => (<FormItem><FormLabel>Hôte SMTP</FormLabel><FormControl><Input placeholder="smtp.fournisseur.com" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                                 </div>
                                                 <div className="space-y-2">
-                                                     <FormField control={form.control} name="emailSettings.smtpPort" render={({ field }) => (<FormItem><FormLabel>Port SMTP</FormLabel><FormControl><Input type="number" placeholder="587" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} /></FormControl><FormMessage /></FormItem>)} />
+                                                     <FormField control={form.control} name="emailSettings.smtpPort" render={({ field }) => (<FormItem><FormLabel>Port SMTP</FormLabel><FormControl><Input type="number" placeholder="587" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10))} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                                 </div>
                                             </div>
-                                            <FormField control={form.control} name="emailSettings.smtpUser" render={({ field }) => (<FormItem><FormLabel>Nom d'utilisateur SMTP</FormLabel><FormControl><Input placeholder="Votre nom d'utilisateur" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="emailSettings.smtpUser" render={({ field }) => (<FormItem><FormLabel>Nom d'utilisateur SMTP</FormLabel><FormControl><Input placeholder="Votre nom d'utilisateur" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                             <FormField control={form.control} name="emailSettings.smtpPass" render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Mot de passe SMTP</FormLabel>
                                                     <div className="relative">
-                                                        <FormControl><Input type={showSmtpPass ? "text" : "password"} placeholder="••••••••••••" {...field} /></FormControl>
+                                                        <FormControl><Input type={showSmtpPass ? "text" : "password"} placeholder="••••••••••••" {...field} value={field.value || ''} /></FormControl>
                                                         <Button type="button" variant="ghost" size="icon" className="absolute top-0 right-0 h-full px-3" onClick={() => setShowSmtpPass(!showSmtpPass)}>
                                                             {showSmtpPass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                         </Button>
@@ -331,7 +331,3 @@ export default function CounselorParametersPage() {
         </div>
     );
 }
-
-    
-
-    
