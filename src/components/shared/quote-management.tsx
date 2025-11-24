@@ -74,6 +74,7 @@ export type Quote = {
     contractTitle?: string;
     agencyInfo?: any;
     validationCode: string;
+    contractContent?: string;
 };
 
 type Client = {
@@ -184,7 +185,8 @@ export function QuoteManagement() {
     };
     
     const handleDeleteQuote = (quote: Quote) => {
-        const quoteRef = doc(firestore, `users/${user!.uid}/quotes`, quote.id);
+        if (!user) return;
+        const quoteRef = doc(firestore, `users/${user.uid}/quotes`, quote.id);
         const publicQuoteRef = doc(firestore, 'quotes', quote.id);
         
         const batch = writeBatch(firestore);
@@ -199,7 +201,7 @@ export function QuoteManagement() {
     };
 
     const onSubmit = async (data: QuoteFormData) => {
-        if (!user) return;
+        if (!user || !personalization) return;
         setIsSubmitting(true);
         
         let subtotal = 0;
@@ -271,6 +273,10 @@ export function QuoteManagement() {
     };
     
     const handleSendQuote = async (quote: Quote) => {
+        if (!personalization) {
+            toast({ title: "Erreur de configuration", description: "Les paramètres d'envoi d'e-mail ne sont pas configurés.", variant: "destructive"});
+            return;
+        }
         setIsSubmitting(true);
         try {
             const result = await sendQuote({
@@ -280,7 +286,11 @@ export function QuoteManagement() {
             });
             if (result.success) {
                 const quoteRef = doc(firestore, `users/${user!.uid}/quotes`, quote.id);
-                await setDocumentNonBlocking(quoteRef, { status: 'sent'}, { merge: true });
+                const publicQuoteRef = doc(firestore, 'quotes', quote.id);
+                const batch = writeBatch(firestore);
+                batch.update(quoteRef, { status: 'sent' });
+                batch.update(publicQuoteRef, { status: 'sent' });
+                await batch.commit();
                 toast({ title: 'Devis envoyé', description: 'Le devis a été envoyé au client.' });
             } else {
                 toast({ title: 'Erreur', description: result.error, variant: 'destructive'});
@@ -348,53 +358,54 @@ export function QuoteManagement() {
                     </TableBody>
                 </Table>
                  <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-4xl w-full">
+                    <SheetContent className="sm:max-w-4xl w-full flex flex-col">
                         <SheetHeader>
                             <SheetTitle>{editingQuote ? 'Modifier le' : 'Nouveau'} devis</SheetTitle>
                         </SheetHeader>
-                        <ScrollArea className="h-[calc(100vh-8rem)]">
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 py-4 pr-6">
-                                   {/* Client Info */}
-                                   <ClientSelector clients={clients || []} onClientSelect={(client) => form.setValue('clientInfo', client)} isLoading={areClientsLoading}/>
-                                   
-                                   {/* Items */}
-                                    <div>
-                                        <h3 className="text-lg font-medium mb-4">Prestations</h3>
-                                        <div className="space-y-4">
-                                            {fields.map((field, index) => (
-                                                <div key={field.id} className="flex gap-4 items-end p-4 border rounded-md">
-                                                    <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                    <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => ( <FormItem className="w-20"><FormLabel>Qté</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                    <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => ( <FormItem className="w-28"><FormLabel>P.U.</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                                </div>
-                                            ))}
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
+                                <ScrollArea className="flex-1 pr-6 -mr-6">
+                                    <div className="space-y-8 py-4">
+                                        {/* Client Info */}
+                                        <ClientSelector clients={clients || []} onClientSelect={(client) => form.setValue('clientInfo', client)} isLoading={areClientsLoading}/>
+                                        
+                                        {/* Items */}
+                                        <div>
+                                            <h3 className="text-lg font-medium mb-4">Prestations</h3>
+                                            <div className="space-y-4">
+                                                {fields.map((field, index) => (
+                                                    <div key={field.id} className="flex gap-4 items-end p-4 border rounded-md">
+                                                        <FormField control={form.control} name={`items.${index}.description`} render={({ field }) => ( <FormItem className="flex-1"><FormLabel>Description</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                        <FormField control={form.control} name={`items.${index}.quantity`} render={({ field }) => ( <FormItem className="w-20"><FormLabel>Qté</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                        <FormField control={form.control} name={`items.${index}.unitPrice`} render={({ field }) => ( <FormItem className="w-28"><FormLabel>P.U.</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <PlanSelector plans={plans || []} onSelectPlan={(plan) => append({id: plan.id, description: plan.name, quantity: 1, unitPrice: plan.price, total: plan.price})} isLoading={arePlansLoading} />
                                         </div>
-                                        <PlanSelector plans={plans || []} onSelectPlan={(plan) => append({id: plan.id, description: plan.name, quantity: 1, unitPrice: plan.price, total: plan.price})} isLoading={arePlansLoading} />
+                                        
+                                        {/* Contract & Notes */}
+                                        <div className="grid grid-cols-2 gap-6">
+                                            <FormField control={form.control} name="contractId" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Contrat (Optionnel)</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl><SelectTrigger disabled={areContractsLoading}><SelectValue placeholder="Associer un contrat" /></SelectTrigger></FormControl>
+                                                        <SelectContent>{contracts?.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
+                                                    </Select>
+                                                </FormItem>
+                                            )}/>
+                                        </div>
+                                        <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl></FormItem> )}/>
                                     </div>
-                                    
-                                    {/* Contract & Notes */}
-                                    <div className="grid grid-cols-2 gap-6">
-                                        <FormField control={form.control} name="contractId" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Contrat (Optionnel)</FormLabel>
-                                                <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl><SelectTrigger disabled={areContractsLoading}><SelectValue placeholder="Associer un contrat" /></SelectTrigger></FormControl>
-                                                    <SelectContent>{contracts?.map(c => <SelectItem key={c.id} value={c.id}>{c.title}</SelectItem>)}</SelectContent>
-                                                </Select>
-                                            </FormItem>
-                                        )}/>
-                                    </div>
-                                    <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl></FormItem> )}/>
-                                    
-                                    <SheetFooter className="pt-6">
-                                        <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Sauvegarder</Button>
-                                    </SheetFooter>
-                                </form>
-                            </Form>
-                        </ScrollArea>
+                                </ScrollArea>
+                                <SheetFooter className="pt-6 border-t mt-auto">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
                     </SheetContent>
                 </Sheet>
             </CardContent>
@@ -408,7 +419,14 @@ function ClientSelector({ clients, onClientSelect, isLoading }: { clients: Clien
 
     const handleSelect = (client: Client) => {
         setSelectedClient(client);
-        onClientSelect(client);
+        onClientSelect({
+            id: client.id,
+            name: `${client.firstName} ${client.lastName}`,
+            email: client.email,
+            address: client.address,
+            zipCode: client.zipCode,
+            city: client.city,
+        });
         setOpen(false);
     }
     
@@ -423,7 +441,7 @@ function ClientSelector({ clients, onClientSelect, isLoading }: { clients: Clien
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
-                <PopoverContent className="w-full p-0">
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                     <Command>
                         <CommandInput placeholder="Rechercher un client..." />
                         <CommandList>
