@@ -28,7 +28,7 @@ const legalInfoSchema = z.object({
     siret: z.string().optional(),
     isVatSubject: z.boolean().optional(),
     vatNumber: z.string().optional(),
-    vatRate: z.number().optional(),
+    vatRate: z.coerce.number().optional(),
 }).passthrough();
 
 const quoteItemSchema = z.object({
