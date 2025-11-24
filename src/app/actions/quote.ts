@@ -71,11 +71,6 @@ const sendQuoteSchema = z.object({
     legalInfo: legalInfoSchema,
 });
 
-const generateQuotePdfSchema = z.object({
-    quote: quoteSchema,
-    legalInfo: legalInfoSchema,
-});
-
 
 async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infer<typeof legalInfoSchema>): Promise<Buffer> {
     const doc = new jsPDF();
@@ -122,7 +117,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     doc.setFontSize(10);
     doc.setTextColor(100);
     doc.text(text(quote.clientInfo.email), 15, 67);
-    if (quote.clientInfo.address || quote.clientInfo.zipCode || quote.clientInfo.city) {
+    if (text(quote.clientInfo.address) || text(quote.clientInfo.zipCode) || text(quote.clientInfo.city)) {
       doc.text(text(quote.clientInfo.address), 15, 72);
       doc.text(`${text(quote.clientInfo.zipCode)} ${text(quote.clientInfo.city)}`, 15, 77);
     }
@@ -206,7 +201,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         const document = dom.window.document;
         const tempDiv = document.createElement('div');
         tempDiv.innerHTML = text(quote.contractContent);
-        const textContent = text(tempDiv.textContent);
+        const textContent = tempDiv.textContent || '';
         
         const lines = doc.splitTextToSize(textContent, 180);
         doc.text(lines, 15, y);
@@ -225,20 +220,6 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     }
 
     return Buffer.from(doc.output('arraybuffer'));
-}
-
-export async function generateQuotePdf(data: z.infer<typeof generateQuotePdfSchema>): Promise<{pdf: string} | {error: string}> {
-    const validation = generateQuotePdfSchema.safeParse(data);
-    if (!validation.success) {
-        return { error: validation.error.errors.map(e => e.message).join(', ') };
-    }
-    try {
-        const pdfBuffer = await generatePdf(data.quote, data.legalInfo);
-        return { pdf: pdfBuffer.toString('base64') };
-    } catch (error: any) {
-        console.error("Error generating PDF:", error);
-        return { error: error.message || "Une erreur inconnue est survenue lors de la génération du PDF." };
-    }
 }
 
 
@@ -300,7 +281,3 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }
-
-    
-
-    

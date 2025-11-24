@@ -1,4 +1,3 @@
-
 'use client';
 import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -26,8 +25,10 @@ import { cn } from '@/lib/utils';
 import { useAgency } from '@/context/agency-provider';
 import type { Plan } from '@/components/shared/plan-management';
 import type { Contract } from '@/components/shared/contract-management';
-import { sendQuote, generateQuotePdf } from '@/app/actions/quote';
+import { sendQuote } from '@/app/actions/quote';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 const quoteItemSchema = z.object({
     id: z.string(),
@@ -106,6 +107,147 @@ const statusText: Record<Quote['status'], string> = {
 const generateValidationCode = () => {
   return Math.random().toString(36).substring(2, 8).toUpperCase();
 };
+
+const generatePdfClientSide = async (quote: Quote, legalInfo: any) => {
+    const doc = new jsPDF();
+    const text = (value: string | null | undefined, fallback = '') => value || fallback;
+    const isVatSubject = legalInfo?.isVatSubject ?? false;
+
+    // Header
+    doc.setFontSize(20);
+    doc.setTextColor(40);
+    doc.setFont('helvetica', 'bold');
+    doc.text(text(legalInfo?.companyName, 'VApps'), 15, 20);
+
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(100);
+    doc.text(text(legalInfo?.addressStreet), 15, 26);
+    doc.text(`${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`, 15, 31);
+    doc.text(text(legalInfo?.email), 15, 36);
+
+    doc.setFontSize(28);
+    doc.setTextColor(150);
+    doc.text('DEVIS', 200, 20, { align: 'right' });
+
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(`N°: ${text(quote.quoteNumber)}`, 200, 30, { align: 'right' });
+    doc.text(`Date: ${new Date(quote.issueDate).toLocaleDateString('fr-FR')}`, 200, 35, { align: 'right' });
+    if (quote.expiryDate) {
+        doc.text(`Valide jusqu'au: ${new Date(quote.expiryDate).toLocaleDateString('fr-FR')}`, 200, 40, { align: 'right' });
+    }
+
+    // Client info
+    doc.setDrawColor(230);
+    doc.line(15, 48, 200, 48);
+    doc.setFontSize(9);
+    doc.setTextColor(150);
+    doc.text('CLIENT', 15, 55);
+    doc.setFontSize(12);
+    doc.setTextColor(40);
+    doc.text(text(quote.clientInfo.name), 15, 62);
+    doc.setFontSize(10);
+    doc.setTextColor(100);
+    doc.text(text(quote.clientInfo.email), 15, 67);
+    if (text(quote.clientInfo.address) || text(quote.clientInfo.zipCode) || text(quote.clientInfo.city)) {
+      doc.text(text(quote.clientInfo.address), 15, 72);
+      doc.text(`${text(quote.clientInfo.zipCode)} ${text(quote.clientInfo.city)}`, 15, 77);
+    }
+
+    // Table
+    autoTable(doc, {
+        startY: 80,
+        head: [['Description', 'Qté', 'P.U. HT', 'Total HT']],
+        body: quote.items.map(item => [
+            text(item.description),
+            item.quantity,
+            `${item.unitPrice.toFixed(2)} €`,
+            `${(item.quantity * item.unitPrice).toFixed(2)} €`
+        ]),
+        theme: 'grid',
+        headStyles: { fillColor: [248, 250, 252], textColor: 100, fontStyle: 'bold' },
+        styles: { cellPadding: 3, fontSize: 10 },
+        columnStyles: {
+            0: { cellWidth: 95 },
+            1: { cellWidth: 20, halign: 'center' },
+            2: { cellWidth: 30, halign: 'right' },
+            3: { cellWidth: 30, halign: 'right' },
+        }
+    });
+    
+    let finalY = (doc as any).lastAutoTable.finalY;
+
+    // Totals
+    const totals = [['Sous-total HT', `${quote.subtotal.toFixed(2)} €`]];
+    if (isVatSubject) {
+        totals.push([`TVA (${quote.tax}%)`, `${(quote.subtotal * quote.tax / 100).toFixed(2)} €`]);
+    }
+    totals.push([`Total ${isVatSubject ? 'TTC' : ''}`, `${quote.total.toFixed(2)} €`]);
+
+    autoTable(doc, {
+        startY: finalY + 10,
+        body: totals,
+        theme: 'plain',
+        styles: { fontSize: 10 },
+        columnStyles: { 0: { halign: 'right', fontStyle: 'bold' }, 1: { halign: 'right', cellWidth: 40 } },
+        didParseCell: (data) => {
+            if (data.row.index === totals.length - 1) {
+                data.cell.styles.fontStyle = 'bold';
+                data.cell.styles.fontSize = 12;
+            }
+        }
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY;
+    
+    // Notes
+    if (quote.notes) {
+        finalY += 15;
+        doc.setFontSize(9);
+        doc.setTextColor(150);
+        doc.text('Notes', 15, finalY);
+        finalY += 5;
+        doc.setFontSize(10);
+        doc.setTextColor(100);
+        const notesLines = doc.splitTextToSize(text(quote.notes), 180);
+        doc.text(notesLines, 15, finalY);
+    }
+    
+    // Contract
+    if (quote.contractContent) {
+        doc.addPage();
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(text(quote.contractTitle, "Contrat"), 15, 20);
+
+        let y = 35;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(40);
+        
+        const tempDiv = document.createElement('div');
+        tempDiv.innerHTML = text(quote.contractContent);
+        const textContent = tempDiv.textContent || '';
+        
+        const lines = doc.splitTextToSize(textContent, 180);
+        doc.text(lines, 15, y);
+    }
+
+    // Footer for all pages
+    const pageCount = (doc as any).internal.getNumberOfPages();
+    for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        const footerText = `${text(legalInfo?.companyName)} - ${text(legalInfo?.addressStreet)}, ${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`;
+        const footerText2 = `SIRET: ${text(legalInfo?.siret)} - ${isVatSubject ? `TVA: ${text(legalInfo?.vatNumber)}` : 'TVA non applicable, art. 293 B du CGI'}`;
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(footerText, 105, 285, { align: 'center' });
+        doc.text(footerText2, 105, 290, { align: 'center' });
+    }
+
+    doc.save(`devis-${quote.quoteNumber}.pdf`);
+}
 
 export function QuoteManagement() {
     const { user, isUserLoading } = useUser();
@@ -311,24 +453,11 @@ export function QuoteManagement() {
         }
         setIsSubmitting(true);
         try {
-            const result = await generateQuotePdf({
-                quote,
-                legalInfo: personalization.legalInfo
-            });
-
-            if ('pdf' in result) {
-                const link = document.createElement('a');
-                link.href = `data:application/pdf;base64,${result.pdf}`;
-                link.download = `devis-${quote.quoteNumber}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                toast({ title: 'PDF exporté', description: 'Le téléchargement du devis a commencé.' });
-            } else {
-                 toast({ title: 'Erreur PDF', description: result.error, variant: 'destructive'});
-            }
+            await generatePdfClientSide(quote, personalization.legalInfo);
+            toast({ title: 'PDF exporté', description: 'Le téléchargement du devis a commencé.' });
         } catch (e) {
-             toast({ title: 'Erreur', description: "Impossible de générer le PDF du devis.", variant: 'destructive'});
+            console.error(e)
+            toast({ title: 'Erreur', description: "Impossible de générer le PDF du devis.", variant: 'destructive'});
         } finally {
             setIsSubmitting(false);
         }
