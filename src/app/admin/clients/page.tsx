@@ -80,14 +80,15 @@ export default function ClientManagementPage() {
     const currentUserDocRef = useMemoFirebase(() => currentUser ? doc(firestore, 'users', currentUser.uid) : null, [currentUser, firestore]);
     const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(currentUserDocRef);
     
-    // We get the role, but we need to wait for loading to finish before using it.
-    const isSuperAdmin = currentUserData?.role === 'superadmin';
-    const canFetchAllUsers = !isCurrentUserDataLoading && isSuperAdmin;
+    // This is the critical change: `canFetchAllUsers` is only true when we are NOT loading AND the role is confirmed.
+    const canFetchAllUsers = !isUserLoading && !isCurrentUserDataLoading && currentUserData?.role === 'superadmin';
 
     const usersQuery = useMemoFirebase(() => {
-        // IMPORTANT: Only fetch all users if the current user's role has been confirmed as superadmin
-        if (!canFetchAllUsers) return null;
-        return query(collection(firestore, 'users'));
+        // We ensure we only proceed if `canFetchAllUsers` is definitively true.
+        if (canFetchAllUsers) {
+            return query(collection(firestore, 'users'));
+        }
+        return null;
     }, [firestore, canFetchAllUsers]);
 
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
@@ -232,7 +233,8 @@ export default function ClientManagementPage() {
         }
     };
     
-    const isLoading = areUsersLoading || isUserLoading || isCurrentUserDataLoading;
+    // Overall loading state now correctly considers all required async operations
+    const isLoading = isUserLoading || isCurrentUserDataLoading || (canFetchAllUsers && areUsersLoading);
 
     return (
         <div className="space-y-8">
@@ -357,3 +359,5 @@ export default function ClientManagementPage() {
         </div>
     );
 }
+
+    
