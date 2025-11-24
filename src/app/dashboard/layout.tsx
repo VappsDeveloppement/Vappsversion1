@@ -113,10 +113,13 @@ export default function DashboardLayout({
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/application');
+    // Wait until both user and user data are loaded
+    if (!isUserLoading && !isUserDataLoading) {
+      if (!user) {
+        router.push('/application');
+      }
     }
-  }, [isUserLoading, user, router]);
+  }, [isUserLoading, isUserDataLoading, user, router]);
 
   const isSuperAdmin = userData?.role === 'superadmin';
   const isConseiller = userData?.role === 'conseiller';
@@ -157,8 +160,12 @@ export default function DashboardLayout({
     );
   }
 
-  if (!user) {
-    return null; // or a redirect component
+  if (!user || !userData) {
+     return (
+      <div className="flex h-screen items-center justify-center">
+        <p>Chargement ou accès refusé.</p>
+      </div>
+    );
   }
 
 
@@ -218,12 +225,19 @@ export default function DashboardLayout({
                             <span className="truncate flex-1">Mon Profil</span>
                         </AccordionTrigger>
                         <AccordionContent className="p-0 pl-6 space-y-1">
-                            {profileMenuItems.map(item => (
-                               <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
-                                 {React.cloneElement(item.icon, { className: "h-4 w-4"})}
-                                 <span>{item.label}</span>
-                               </Link>
-                            ))}
+                            {isConseiller ? (
+                                profileMenuItems.map(item => (
+                                   <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
+                                     {React.cloneElement(item.icon, { className: "h-4 w-4"})}
+                                     <span>{item.label}</span>
+                                   </Link>
+                                ))
+                            ) : (
+                                <Link href="/dashboard/settings/profile" className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith("/dashboard/settings/profile")}>
+                                     <FileText className="h-4 w-4" />
+                                     <span>Mes infos & coordonnées</span>
+                                </Link>
+                            )}
                         </AccordionContent>
                     </AccordionItem>
                 </Accordion>

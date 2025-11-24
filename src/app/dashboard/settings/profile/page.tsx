@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Loader2, Upload, Trash2, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Upload, Trash2, Link as LinkIcon, Info } from 'lucide-react';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import Link from 'next/link';
@@ -232,6 +232,8 @@ export default function ProfilePage() {
     );
   }
 
+  const isConseiller = userData?.role === 'conseiller';
+
   return (
     <div className="space-y-8">
       <div>
@@ -246,11 +248,13 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle>Informations Personnelles & Publiques</CardTitle>
               <CardDescription>
-                Ces informations sont utilisées pour votre compte et, si vous êtes conseiller, pour votre page publique.
+                {isConseiller
+                  ? "Ces informations sont utilisées pour votre compte et pour votre page publique."
+                  : "Ces informations sont utilisées pour votre compte."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                {userData?.role === 'conseiller' && form.getValues('publicProfileName') && (
+              {isConseiller && form.getValues('publicProfileName') && (
                     <Alert>
                         <LinkIcon className="h-4 w-4" />
                         <AlertTitle>Votre page publique</AlertTitle>
@@ -316,7 +320,7 @@ export default function ProfilePage() {
                   </div>
                </div>
 
-                {userData?.role === 'conseiller' && (
+                {isConseiller ? (
                     <>
                     <FormField
                         control={form.control}
@@ -362,6 +366,14 @@ export default function ProfilePage() {
                         )}
                     />
                     </>
+                ) : (
+                  <Alert>
+                    <Info className="h-4 w-4" />
+                    <AlertTitle>Profil Public</AlertTitle>
+                    <AlertDescription>
+                      Les options de profil public (URL, titre, bio) sont réservées aux conseillers.
+                    </AlertDescription>
+                  </Alert>
                 )}
                 <div className="border-t pt-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -450,7 +462,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-            {userData?.role === 'conseiller' && (
+            {isConseiller && (
             <Card>
                 <CardHeader>
                 <CardTitle>Personnalisation du Tableau de Bord</CardTitle>
@@ -524,5 +536,3 @@ export default function ProfilePage() {
     </div>
   );
 }
-
-    
