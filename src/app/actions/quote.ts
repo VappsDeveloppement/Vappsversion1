@@ -53,7 +53,7 @@ const quoteSchema = z.object({
     validationCode: z.string().optional(),
     clientInfo: clientInfoSchema,
     issueDate: z.string(),
-    expiryDate: z.string().optional(),
+    expiryDate: z.string().nullable().optional(),
     total: z.number(),
     subtotal: z.number(),
     tax: z.number(),
@@ -62,7 +62,7 @@ const quoteSchema = z.object({
     notes: z.string().optional(),
     contractId: z.string().optional(),
     contractContent: z.string().optional(),
-    contractTitle: z.string().optional(),
+    contractTitle: z.string().nullable().optional(),
     agencyInfo: legalInfoSchema.optional(),
 });
 
@@ -75,29 +75,35 @@ const sendQuoteSchema = z.object({
 async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infer<typeof legalInfoSchema>): Promise<Buffer> {
     const doc = new jsPDF();
     
-    const text = (value: string | null | undefined, fallback = '') => value || fallback;
+    const text = (value: string | number | null | undefined, fallback = '') => {
+        if (value === null || value === undefined) {
+            return fallback;
+        }
+        return String(value);
+    };
+
 
     const isVatSubject = legalInfo?.isVatSubject ?? false;
-    const commercialName = legalInfo?.commercialName || legalInfo?.companyName || '';
-    const address = legalInfo?.address || legalInfo?.addressStreet || '';
-    const zipCode = legalInfo?.zipCode || legalInfo?.addressZip || '';
-    const city = legalInfo?.city || legalInfo?.addressCity || '';
-    const email = legalInfo?.email || '';
-    const siret = legalInfo?.siret || '';
-    const vatNumber = legalInfo?.vatNumber || '';
+    const commercialName = text(legalInfo?.commercialName) || text(legalInfo?.companyName);
+    const address = text(legalInfo?.address) || text(legalInfo?.addressStreet);
+    const zipCode = text(legalInfo?.zipCode) || text(legalInfo?.addressZip);
+    const city = text(legalInfo?.city) || text(legalInfo?.addressCity);
+    const email = text(legalInfo?.email);
+    const siret = text(legalInfo?.siret);
+    const vatNumber = text(legalInfo?.vatNumber);
 
     // Header
     doc.setFontSize(20);
     doc.setTextColor(40);
     doc.setFont('helvetica', 'bold');
-    doc.text(text(commercialName), 15, 20);
+    doc.text(commercialName, 15, 20);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text(text(address), 15, 26);
-    doc.text(`${text(zipCode)} ${text(city)}`, 15, 31);
-    doc.text(text(email), 15, 36);
+    doc.text(address, 15, 26);
+    doc.text(`${zipCode} ${city}`, 15, 31);
+    doc.text(email, 15, 36);
 
     doc.setFontSize(28);
     doc.setTextColor(150);
@@ -216,8 +222,8 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        const footerText = `${text(commercialName)} - ${text(address)}, ${text(zipCode)} ${text(city)}`;
-        const footerText2 = `SIRET: ${text(siret)} - ${isVatSubject ? `TVA: ${text(vatNumber)}` : 'TVA non applicable, art. 293 B du CGI'}`;
+        const footerText = `${commercialName} - ${address}, ${zipCode} ${city}`;
+        const footerText2 = `SIRET: ${siret} - ${isVatSubject ? `TVA: ${vatNumber}` : 'TVA non applicable, art. 293 B du CGI'}`;
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(footerText, 105, 285, { align: 'center' });
