@@ -7,16 +7,14 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { JSDOM } from 'jsdom';
 
-// No longer using Firebase Admin SDK on the server for this action
-
 const emailSettingsSchema = z.object({
-  smtpHost: z.string().min(1),
-  smtpPort: z.number().min(1),
-  smtpUser: z.string().min(1),
-  smtpPass: z.string().min(1),
+  smtpHost: z.string().min(1, "L'hôte SMTP est requis."),
+  smtpPort: z.number().min(1, "Le port SMTP est requis."),
+  smtpUser: z.string().min(1, "L'utilisateur SMTP est requis."),
+  smtpPass: z.string().min(1, "Le mot de passe SMTP est requis."),
   smtpSecure: z.boolean(),
-  fromEmail: z.string().email(),
-  fromName: z.string().min(1),
+  fromEmail: z.string().email("L'email de l'expéditeur est requis.").min(1),
+  fromName: z.string().min(1, "Le nom de l'expéditeur est requis."),
 });
 
 const legalInfoSchema = z.object({
@@ -71,11 +69,9 @@ const sendQuoteSchema = z.object({
     legalInfo: legalInfoSchema,
 });
 
-
 async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infer<typeof legalInfoSchema>): Promise<Buffer> {
     const doc = new jsPDF();
     
-    // Helper to ensure we never pass null/undefined to doc.text
     const text = (value: string | null | undefined, fallback = '') => value || fallback;
 
     const isVatSubject = legalInfo?.isVatSubject ?? false;
@@ -196,7 +192,6 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(40);
         
-        // Basic HTML to text conversion
         const dom = new JSDOM();
         const document = dom.window.document;
         const tempDiv = document.createElement('div');
@@ -239,7 +234,6 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
     try {
         const pdfBuffer = await generatePdf(quote, legalInfo);
         
-        // 2. Send email
         const transporter = nodemailer.createTransport({
             host: emailSettings.smtpHost,
             port: emailSettings.smtpPort,
@@ -274,10 +268,11 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
             ],
         });
 
-        // The responsibility of updating the quote status is now on the client side
         return { success: true };
     } catch (error: any) {
         console.error("Error sending quote email:", error);
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }
+
+    

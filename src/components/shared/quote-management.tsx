@@ -274,7 +274,6 @@ export function QuoteManagement() {
 
     const clientsQuery = useMemoFirebase(() => {
         if(!user) return null;
-        // Superadmin and conseillers can only create quotes for their own clients
         return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
     }, [user, firestore]);
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
@@ -394,7 +393,9 @@ export function QuoteManagement() {
             issueDate: data.issueDate.toISOString(),
             expiryDate: data.expiryDate ? data.expiryDate.toISOString() : null,
             items: data.items,
-            subtotal, tax: taxRate, total,
+            subtotal,
+            tax: taxRate,
+            total,
             status: editingQuote?.status || 'draft',
             notes: data.notes,
             contractId: data.contractId,
@@ -427,8 +428,8 @@ export function QuoteManagement() {
     
     const handleSendQuote = async (quote: Quote) => {
         const emailSettings = currentUserData?.emailSettings || personalization?.emailSettings;
-        if (!emailSettings?.fromEmail) {
-            toast({ title: "Erreur de configuration", description: "Vos paramètres d'envoi d'e-mail ne sont pas configurés.", variant: "destructive"});
+        if (!emailSettings?.fromEmail || !emailSettings?.fromName) {
+            toast({ title: "Erreur de configuration", description: "Vos nom et e-mail d'expéditeur ne sont pas configurés. Veuillez les renseigner dans vos paramètres.", variant: "destructive"});
             return;
         }
         setIsSubmitting(true);
@@ -509,10 +510,10 @@ export function QuoteManagement() {
                                          <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={quote.status !== 'draft'}>
+                                                <DropdownMenuItem onClick={() => handleSendQuote(quote)} disabled={quote.status !== 'draft' || isSubmitting}>
                                                     <Send className="mr-2 h-4 w-4" /> Envoyer
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleExportPdf(quote)}>
+                                                <DropdownMenuItem onClick={() => handleExportPdf(quote)} disabled={isSubmitting}>
                                                     <FileDown className="mr-2 h-4 w-4" /> Exporter PDF
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => handleEditQuote(quote)}>
@@ -670,6 +671,8 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
+
+    
 
     
 
