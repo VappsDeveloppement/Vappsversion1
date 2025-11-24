@@ -234,12 +234,12 @@ export function QuoteManagement() {
             quoteNumber = `${prefix}${(querySnapshot.size + 1).toString().padStart(4, '0')}`;
         }
         
-        const quoteData: Omit<Quote, 'id'> = {
+        const quoteData = {
             quoteNumber,
             counselorId: user.uid,
             clientInfo: data.clientInfo,
             issueDate: data.issueDate.toISOString(),
-            expiryDate: data.expiryDate?.toISOString(),
+            expiryDate: data.expiryDate ? data.expiryDate.toISOString() : null,
             items: data.items,
             subtotal, tax: taxRate, total,
             status: editingQuote?.status || 'draft',
@@ -362,7 +362,7 @@ export function QuoteManagement() {
                         <SheetHeader>
                             <SheetTitle>{editingQuote ? 'Modifier le' : 'Nouveau'} devis</SheetTitle>
                         </SheetHeader>
-                        <Form {...form}>
+                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col h-full overflow-hidden">
                                 <ScrollArea className="flex-1 pr-6 -mr-6">
                                     <div className="space-y-8 py-4">
@@ -495,3 +495,5 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
+
+    
