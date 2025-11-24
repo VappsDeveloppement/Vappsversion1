@@ -46,7 +46,7 @@ const hexToHsl = (hex: string): string => {
 export async function generateMetadata(): Promise<Metadata> {
   // For now, we return static metadata, but we can fetch dynamic data here
   return {
-    title: 'VApps Success Hub',
+    title: 'VApps',
     description: 'Unlock your full potential with VApps professional and personal development coaching.',
   };
 }
