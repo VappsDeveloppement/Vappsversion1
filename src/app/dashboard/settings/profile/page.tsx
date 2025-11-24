@@ -243,7 +243,8 @@ export default function ProfilePage() {
     );
   }
 
-  const canEditPublicProfile = userData?.role === 'conseiller' || userData?.role === 'superadmin';
+  const isConseiller = userData?.role === 'conseiller';
+  const isSuperAdmin = userData?.role === 'superadmin';
   const watchIsVatSubject = form.watch('isVatSubject');
 
 
@@ -261,13 +262,13 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle>Informations Personnelles & Publiques</CardTitle>
               <CardDescription>
-                {canEditPublicProfile
-                  ? "Ces informations sont utilisées pour votre compte et peuvent être affichées publiquement si vous êtes conseiller."
+                {isConseiller
+                  ? "Ces informations sont utilisées pour votre compte et peuvent être affichées publiquement sur votre mini-site."
                   : "Ces informations sont utilisées pour votre compte."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {userData?.role === 'conseiller' && form.getValues('publicProfileName') && (
+              {isConseiller && form.getValues('publicProfileName') && (
                     <Alert>
                         <LinkIcon className="h-4 w-4" />
                         <AlertTitle>Votre page publique</AlertTitle>
@@ -333,23 +334,21 @@ export default function ProfilePage() {
                   </div>
                </div>
 
-                {canEditPublicProfile ? (
+                {isConseiller && (
                     <>
-                    {userData?.role === 'conseiller' && (
-                        <FormField
-                            control={form.control}
-                            name="publicProfileName"
-                            render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Nom du profil public (pour l'URL)</FormLabel>
-                                <FormControl>
-                                <Input placeholder="ex: jean-dupont" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                            </FormItem>
-                            )}
-                        />
-                    )}
+                    <FormField
+                        control={form.control}
+                        name="publicProfileName"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nom du profil public (pour l'URL)</FormLabel>
+                            <FormControl>
+                            <Input placeholder="ex: jean-dupont" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
                     <FormField
                         control={form.control}
                         name="publicTitle"
@@ -381,14 +380,6 @@ export default function ProfilePage() {
                         )}
                     />
                     </>
-                ) : (
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertTitle>Profil Public</AlertTitle>
-                    <AlertDescription>
-                      Les options de profil public (URL, titre, bio) sont réservées aux conseillers.
-                    </AlertDescription>
-                  </Alert>
                 )}
                 <div className="border-t pt-6 space-y-6">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -474,7 +465,7 @@ export default function ProfilePage() {
                       />
                   </div>
 
-                   {canEditPublicProfile && (
+                   {(isConseiller || isSuperAdmin) && (
                       <div className="border-t pt-6 space-y-4">
                            <h4 className="text-lg font-medium">Paramètres de TVA</h4>
                             <FormField
@@ -518,7 +509,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-            {userData?.role === 'conseiller' && (
+            {isConseiller && (
             <Card>
                 <CardHeader>
                 <CardTitle>Personnalisation du Tableau de Bord</CardTitle>
