@@ -215,7 +215,6 @@ export function PlanManagement() {
                                                 </SelectTrigger>
                                             </FormControl>
                                             <SelectContent>
-                                                <SelectItem value="">Aucun contrat</SelectItem>
                                                 {contracts?.map((contract) => (
                                                     <SelectItem key={contract.id} value={contract.id}>{contract.title}</SelectItem>
                                                 ))}
