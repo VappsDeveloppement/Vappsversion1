@@ -19,27 +19,34 @@ export default function BillingPage() {
         </p>
       </div>
 
-      <Tabs defaultValue="quotes" className="w-full">
+      <Tabs defaultValue="contracts" className="w-full">
         <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger value="contracts">
+            <FileText className="mr-2 h-4 w-4" /> Contrats
+          </TabsTrigger>
+          <TabsTrigger value="plans">
+            <CreditCard className="mr-2 h-4 w-4" /> Prestations
+          </TabsTrigger>
           <TabsTrigger value="quotes">
             <FileSignature className="mr-2 h-4 w-4" /> Devis
           </TabsTrigger>
           <TabsTrigger value="invoices">
             <Receipt className="mr-2 h-4 w-4" /> Factures
           </TabsTrigger>
-          <TabsTrigger value="plans">
-            <CreditCard className="mr-2 h-4 w-4" /> Prestations
-          </TabsTrigger>
-          <TabsTrigger value="contracts">
-            <FileText className="mr-2 h-4 w-4" /> Contrats
-          </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="quotes">
-          <QuoteManagement />
-        </TabsContent>
-        <TabsContent value="invoices">
-          <InvoiceManagement />
+        <TabsContent value="contracts">
+          <Card>
+            <CardHeader>
+              <CardTitle>Modèles de Contrats</CardTitle>
+              <CardDescription>
+                Créez et gérez les modèles de contrats que vous associerez à vos prestations.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ContractManagement />
+            </CardContent>
+          </Card>
         </TabsContent>
         <TabsContent value="plans">
           <Card>
@@ -54,18 +61,11 @@ export default function BillingPage() {
             </CardContent>
           </Card>
         </TabsContent>
-        <TabsContent value="contracts">
-          <Card>
-            <CardHeader>
-              <CardTitle>Modèles de Contrats</CardTitle>
-              <CardDescription>
-                Créez et gérez les modèles de contrats que vous associerez à vos prestations.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <ContractManagement />
-            </CardContent>
-          </Card>
+        <TabsContent value="quotes">
+          <QuoteManagement />
+        </TabsContent>
+        <TabsContent value="invoices">
+          <InvoiceManagement />
         </TabsContent>
       </Tabs>
     </div>
