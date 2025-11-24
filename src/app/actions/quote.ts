@@ -1,5 +1,4 @@
 
-
 'use server';
 
 import { z } from 'zod';
@@ -82,18 +81,21 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     const doc = new jsPDF();
     const isVatSubject = legalInfo?.isVatSubject ?? false;
 
+    // Helper to ensure we never pass null/undefined to doc.text
+    const text = (value: string | null | undefined, fallback = '') => value || fallback;
+
     // Header
     doc.setFontSize(20);
     doc.setTextColor(40);
     doc.setFont('helvetica', 'bold');
-    doc.text(legalInfo?.companyName || 'VApps', 15, 20);
+    doc.text(text(legalInfo?.companyName, 'VApps'), 15, 20);
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
-    doc.text(legalInfo?.addressStreet || '', 15, 26);
-    doc.text(`${legalInfo?.addressZip || ''} ${legalInfo?.addressCity || ''}`, 15, 31);
-    doc.text(legalInfo?.email || '', 15, 36);
+    doc.text(text(legalInfo?.addressStreet), 15, 26);
+    doc.text(`${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`, 15, 31);
+    doc.text(text(legalInfo?.email), 15, 36);
 
     doc.setFontSize(28);
     doc.setTextColor(150);
@@ -115,13 +117,13 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     doc.text('FACTURÉ À', 15, 55);
     doc.setFontSize(12);
     doc.setTextColor(40);
-    doc.text(quote.clientInfo.name, 15, 62);
+    doc.text(text(quote.clientInfo.name), 15, 62);
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(quote.clientInfo.email, 15, 67);
-    if (quote.clientInfo.address && quote.clientInfo.zipCode && quote.clientInfo.city) {
-      doc.text(`${quote.clientInfo.address}`, 15, 72);
-      doc.text(`${quote.clientInfo.zipCode} ${quote.clientInfo.city}`, 15, 77);
+    doc.text(text(quote.clientInfo.email), 15, 67);
+    if (quote.clientInfo.address || quote.clientInfo.zipCode || quote.clientInfo.city) {
+      doc.text(text(quote.clientInfo.address), 15, 72);
+      doc.text(`${text(quote.clientInfo.zipCode)} ${text(quote.clientInfo.city)}`, 15, 77);
     }
 
 
@@ -189,7 +191,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         doc.addPage();
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text(quote.contractTitle || "Contrat", 15, 20);
+        doc.text(text(quote.contractTitle, "Contrat"), 15, 20);
 
         let y = 35;
         doc.setFontSize(10);
@@ -200,7 +202,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         const dom = new JSDOM();
         const document = dom.window.document;
         const tempDiv = document.createElement('div');
-        tempDiv.innerHTML = quote.contractContent;
+        tempDiv.innerHTML = text(quote.contractContent);
         const textContent = tempDiv.textContent || "";
         
         const lines = doc.splitTextToSize(textContent, 180);
@@ -211,8 +213,8 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
     const pageCount = (doc as any).internal.getNumberOfPages();
     for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
-        const footerText = `${legalInfo?.companyName || ''} - ${legalInfo?.addressStreet || ''}, ${legalInfo?.addressZip || ''} ${legalInfo?.addressCity || ''}`;
-        const footerText2 = `SIRET: ${legalInfo?.siret || ''} - ${isVatSubject ? `TVA: ${legalInfo?.vatNumber || ''}` : 'TVA non applicable, art. 293 B du CGI'}`;
+        const footerText = `${text(legalInfo?.companyName)} - ${text(legalInfo?.addressStreet)}, ${text(legalInfo?.addressZip)} ${text(legalInfo?.addressCity)}`;
+        const footerText2 = `SIRET: ${text(legalInfo?.siret)} - ${isVatSubject ? `TVA: ${text(legalInfo?.vatNumber)}` : 'TVA non applicable, art. 293 B du CGI'}`;
         doc.setFontSize(8);
         doc.setTextColor(150);
         doc.text(footerText, 105, 285, { align: 'center' });
@@ -295,3 +297,5 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }
+
+    
