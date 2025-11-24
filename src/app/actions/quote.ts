@@ -103,7 +103,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
 
     doc.setFontSize(10);
     doc.setTextColor(100);
-    doc.text(`N°: ${quote.quoteNumber}`, 200, 30, { align: 'right' });
+    doc.text(`N°: ${text(quote.quoteNumber)}`, 200, 30, { align: 'right' });
     doc.text(`Date: ${new Date(quote.issueDate).toLocaleDateString('fr-FR')}`, 200, 35, { align: 'right' });
     if (quote.expiryDate) {
         doc.text(`Valide jusqu'au: ${new Date(quote.expiryDate).toLocaleDateString('fr-FR')}`, 200, 40, { align: 'right' });
@@ -182,7 +182,7 @@ async function generatePdf(quote: z.infer<typeof quoteSchema>, legalInfo: z.infe
         currentY += 5;
         doc.setFontSize(10);
         doc.setTextColor(100);
-        const notesLines = doc.splitTextToSize(quote.notes, 180);
+        const notesLines = doc.splitTextToSize(text(quote.notes), 180);
         doc.text(notesLines, 15, currentY);
     }
     
@@ -297,5 +297,7 @@ export async function sendQuote(data: z.infer<typeof sendQuoteSchema>): Promise<
         return { success: false, error: error.message || "Une erreur inconnue est survenue lors de l'envoi du devis." };
     }
 }
+
+    
 
     
