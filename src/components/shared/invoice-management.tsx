@@ -15,7 +15,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, Send, ChevronsUpDown, Check } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, MoreHorizontal, Send, ChevronsUpDown, Check, CheckCircle } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -265,6 +265,17 @@ export function InvoiceManagement() {
         setIsSubmitting(false);
     }
     
+    const handleUpdateStatus = async (invoiceId: string, status: Invoice['status']) => {
+        if (!user) return;
+        const invoiceRef = doc(firestore, `users/${user.uid}/invoices`, invoiceId);
+        try {
+            await setDocumentNonBlocking(invoiceRef, { status }, { merge: true });
+            toast({ title: 'Statut mis à jour', description: `La facture est maintenant marquée comme "${statusText[status]}".` });
+        } catch (e) {
+            toast({ title: "Erreur", description: "Impossible de mettre à jour le statut.", variant: "destructive" });
+        }
+    };
+    
     const isLoading = areInvoicesLoading || isCurrentUserDataLoading;
 
     return (
@@ -305,8 +316,11 @@ export function InvoiceManagement() {
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(invoice.id, 'paid')} disabled={invoice.status === 'paid'}>
+                                                        <CheckCircle className="mr-2 h-4 w-4" /> Marquer comme payée
+                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleSendInvoice(invoice)} disabled={isSubmitting}>
-                                                        <Send className="mr-2 h-4 w-4" /> Envoyer par e-mail
+                                                        <Send className="mr-2 h-4 w-4" /> (Ré)envoyer par e-mail
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onClick={() => handleEditInvoice(invoice)}>
@@ -473,3 +487,5 @@ function PlanSelector({ plans, onSelectPlan, isLoading }: { plans: Plan[], onSel
         </Popover>
     )
 }
+
+    
