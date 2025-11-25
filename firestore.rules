@@ -113,7 +113,12 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
-      allow read: if resource.data.isPublic == true || 
+      allow get: if resource.data.isPublic == true || 
+                     (request.auth != null && (
+                       request.auth.uid == resource.data.counselorId || 
+                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
+                     ));
+      allow list: if request.query.where.isPublic == true ||
                      (request.auth != null && (
                        request.auth.uid == resource.data.counselorId || 
                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
@@ -122,7 +127,7 @@ service cloud.firestore {
       
       match /registrations/{registrationId} {
         // Allow public read if the parent event is public.
-        allow get, list: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
+        allow list: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
         
         // Allow counselor/admin to read registrations even if event is not public.
         allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
