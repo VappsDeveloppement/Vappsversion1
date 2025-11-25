@@ -302,7 +302,10 @@ export default function EventsPage() {
                 <p className="text-sm text-muted-foreground line-clamp-3">{event.description}</p>
               </CardContent>
               <CardFooter className="flex justify-between items-center">
-                <RegistrationsSheet eventId={event.id} maxAttendees={event.maxAttendees} />
+                <div className="flex gap-2">
+                  <RegistrationsSheet eventId={event.id} maxAttendees={event.maxAttendees} />
+                  <Button variant="destructive" size="sm">LIVE</Button>
+                </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent>
