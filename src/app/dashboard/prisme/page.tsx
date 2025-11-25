@@ -8,7 +8,7 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -605,7 +605,7 @@ export default function PrismePage() {
             <Tabs defaultValue="cartomancie">
                 <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="cartomancie">Cartomancie</TabsTrigger>
-                    <TabsTrigger value="autres">Autres Outils</TabsTrigger>
+                    <TabsTrigger value="clairvoyance-pendule">Clairvoyance/Pendule</TabsTrigger>
                 </TabsList>
                 <TabsContent value="cartomancie">
                     <div className="space-y-8">
@@ -613,27 +613,16 @@ export default function PrismePage() {
                         <DeckManager />
                     </div>
                 </TabsContent>
-                <TabsContent value="autres">
+                <TabsContent value="clairvoyance-pendule">
                      <div className="space-y-8">
                         <Card>
                             <CardHeader>
-                                <CardTitle>Clairvoyance</CardTitle>
-                                <CardDescription>Gestion des modèles pour les ressentis et les visions.</CardDescription>
+                                <CardTitle>Clairvoyance & Pendule</CardTitle>
+                                <CardDescription>Gestion des modèles pour les ressentis, les visions et le pendule.</CardDescription>
                             </CardHeader>
                             <CardContent>
                                 <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                    <p className="text-muted-foreground">La gestion des modèles de clairvoyance est en cours de construction.</p>
-                                </div>
-                            </CardContent>
-                        </Card>
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Pendule</CardTitle>
-                                <CardDescription>Gestion des planches et des modèles pour le pendule.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                    <p className="text-muted-foreground">La gestion des modèles pour le pendule est en cours de construction.</p>
+                                    <p className="text-muted-foreground">La gestion des modèles de clairvoyance et de pendule est en cours de construction.</p>
                                 </div>
                             </CardContent>
                         </Card>
