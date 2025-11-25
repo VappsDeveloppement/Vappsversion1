@@ -67,16 +67,20 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
         setFoundConsultation(null);
 
         try {
+            const eventsCollectionRef = collection(firestore, 'events');
+            
             const eventQuery = query(
-                collection(firestore, 'events'),
+                eventsCollectionRef, 
                 where('isPublic', '==', true)
             );
+
             const eventSnap = await getDocs(eventQuery);
             
             const inputDateString = new Date(data.liveDate.replace(/-/g, '/')).toISOString().split('T')[0];
 
             const eventsOnDate = eventSnap.docs.filter(doc => {
                  const eventDate = new Date(doc.data().date);
+                 // Normalize to prevent timezone issues
                  const eventDateString = new Date(eventDate.getTime() - (eventDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
                  return eventDateString === inputDateString;
             });
@@ -118,21 +122,21 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
     };
     
      const handleFollowUpSubmit = async (data: ContactFormData) => {
-        if (!wantsContact || !foundConsultation) return;
+        if (!foundConsultation) return;
         setIsLoading(true);
 
         const requestData = {
             ...searchForm.getValues(),
             ...data,
             counselorId,
-            wantsContact,
+            wantsContact: wantsContact || false, // Ensure boolean value
             status: 'new',
             createdAt: new Date().toISOString(),
         };
 
         try {
             await addDoc(collection(firestore, 'live_follow_up_requests'), requestData);
-            toast({ title: "Demande envoyée !", description: "Le conseiller a bien reçu votre demande et vous recontactera bientôt." });
+            toast({ title: "Demande envoyée !", description: wantsContact ? "Le conseiller a bien reçu votre demande et vous recontactera bientôt." : "Votre consultation a été enregistrée. Aucune demande de contact n'a été envoyée." });
             setIsDialogOpen(false);
             resetState();
         } catch (error) {
@@ -208,7 +212,7 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
                            </div>
                            <DialogFooter>
                                <Button variant="outline" onClick={() => setFoundConsultation(null)}>Retour</Button>
-                                <Button type="submit" disabled={isLoading || !wantsContact} className="w-full sm:w-auto">
+                                <Button type="submit" disabled={isLoading} className="w-full sm:w-auto">
                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                    Confirmer la demande
                                </Button>
