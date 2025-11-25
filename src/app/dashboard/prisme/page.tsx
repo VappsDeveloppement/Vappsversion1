@@ -603,10 +603,9 @@ export default function PrismePage() {
             </div>
 
             <Tabs defaultValue="cartomancie">
-                <TabsList className="grid w-full grid-cols-3">
+                <TabsList className="grid w-full grid-cols-2">
                     <TabsTrigger value="cartomancie">Cartomancie</TabsTrigger>
-                    <TabsTrigger value="clairvoyance">Clairvoyance</TabsTrigger>
-                    <TabsTrigger value="pendule">Pendule</TabsTrigger>
+                    <TabsTrigger value="autres">Autres Outils</TabsTrigger>
                 </TabsList>
                 <TabsContent value="cartomancie">
                     <div className="space-y-8">
@@ -614,31 +613,31 @@ export default function PrismePage() {
                         <DeckManager />
                     </div>
                 </TabsContent>
-                <TabsContent value="clairvoyance">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Clairvoyance</CardTitle>
-                            <CardDescription>Gestion des modèles pour les ressentis et les visions.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                             <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                <p className="text-muted-foreground">La gestion des modèles de clairvoyance est en cours de construction.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-                <TabsContent value="pendule">
-                     <Card>
-                        <CardHeader>
-                            <CardTitle>Pendule</CardTitle>
-                            <CardDescription>Gestion des planches et des modèles pour le pendule.</CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                             <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                <p className="text-muted-foreground">La gestion des modèles pour le pendule est en cours de construction.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                <TabsContent value="autres">
+                     <div className="space-y-8">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Clairvoyance</CardTitle>
+                                <CardDescription>Gestion des modèles pour les ressentis et les visions.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                                    <p className="text-muted-foreground">La gestion des modèles de clairvoyance est en cours de construction.</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Pendule</CardTitle>
+                                <CardDescription>Gestion des planches et des modèles pour le pendule.</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
+                                    <p className="text-muted-foreground">La gestion des modèles pour le pendule est en cours de construction.</p>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>
