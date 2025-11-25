@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -33,11 +34,13 @@ const planFormSchema = z.object({
     features: z.array(z.object({ text: z.string() })).optional(),
     isFeatured: z.boolean().default(false),
     isPublic: z.boolean().default(true),
+    hasPrismeAccess: z.boolean().default(false),
     imageUrl: z.string().nullable().optional(),
     cta: z.string().optional(),
     contractId: z.string().optional(),
     paypalSubscriptionId: z.string().optional(),
 });
+
 
 type PlanFormData = z.infer<typeof planFormSchema>;
 
@@ -51,6 +54,7 @@ export type Plan = {
     features: string[];
     isFeatured: boolean;
     isPublic: boolean;
+    hasPrismeAccess: boolean;
     imageUrl?: string;
     cta?: string;
     contractId?: string;
@@ -108,7 +112,7 @@ export function PlanManagement() {
                  form.reset({
                     id: `plan-${Date.now()}`,
                     name: '', description: '', price: 0, period: '/prestation',
-                    features: [{ text: '' }], isFeatured: false, isPublic: false,
+                    features: [{ text: '' }], isFeatured: false, isPublic: false, hasPrismeAccess: false,
                     imageUrl: null, contractId: '', cta: 'Souscrire'
                 });
                 setImagePreview(null);
@@ -145,6 +149,7 @@ export function PlanManagement() {
             features: data.features?.map(f => f.text).filter(Boolean) || [],
             isFeatured: data.isFeatured,
             isPublic: data.isPublic,
+            hasPrismeAccess: data.hasPrismeAccess,
             imageUrl: imagePreview || '',
             cta: data.cta || 'Choisir',
             contractId: data.contractId || '',
@@ -222,6 +227,26 @@ export function PlanManagement() {
                                             </Select>
                                             <FormMessage />
                                         </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="hasPrismeAccess"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                <div className="space-y-1 leading-none">
+                                                    <FormLabel>Accès à Prisme</FormLabel>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Ce plan donne-t-il accès à l'outil Prisme ?
+                                                    </p>
+                                                </div>
+                                                <FormControl>
+                                                    <Switch
+                                                        checked={field.value}
+                                                        onCheckedChange={field.onChange}
+                                                    />
+                                                </FormControl>
+                                            </FormItem>
                                         )}
                                     />
                                     <SheetFooter className="pt-6">

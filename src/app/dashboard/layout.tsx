@@ -41,6 +41,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useFirestore, useAuth } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import type { SubscriptionPlan } from "@/app/admin/settings/personalization/page";
 
 
 const mainMenuItems = [
@@ -114,6 +115,13 @@ export default function DashboardLayout({
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
+  const planDocRef = useMemoFirebase(() => {
+    if (!userData?.planId) return null;
+    return doc(firestore, 'plans', userData.planId);
+  }, [firestore, userData]);
+
+  const { data: userPlan, isLoading: isPlanLoading } = useDoc<SubscriptionPlan>(planDocRef);
+
   useEffect(() => {
     // Wait until both user and user data are loaded
     if (!isUserLoading && !isUserDataLoading) {
@@ -152,7 +160,7 @@ export default function DashboardLayout({
     return {};
   }, [userData, isConseiller]);
 
-  const isLoading = isUserLoading || isUserDataLoading || !isMounted;
+  const isLoading = isUserLoading || isUserDataLoading || isPlanLoading || !isMounted;
 
   if (isLoading) {
     return (
@@ -170,6 +178,7 @@ export default function DashboardLayout({
     );
   }
 
+  const showPrisme = isSuperAdmin || (isConseiller && userPlan?.hasPrismeAccess);
 
   return (
     <SidebarProvider>
@@ -200,14 +209,16 @@ export default function DashboardLayout({
                         </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
-                     <SidebarMenuItem>
-                        <Link href="/dashboard/prisme">
-                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/prisme")}>
-                            <Pyramid />
-                            <span>Prisme</span>
-                        </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
+                    {showPrisme && (
+                        <SidebarMenuItem>
+                            <Link href="/dashboard/prisme">
+                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/prisme")}>
+                                <Pyramid />
+                                <span>Prisme</span>
+                            </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )}
                  </>
                )}
               {(isConseiller || isSuperAdmin) && (
