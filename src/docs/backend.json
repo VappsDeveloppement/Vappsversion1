@@ -1017,6 +1017,31 @@
         "imageUrl": { "type": "string", "format": "uri" }
       },
       "required": ["name"]
+    },
+    "ClairvoyanceModel": {
+      "title": "Clairvoyance Model",
+      "type": "object",
+      "description": "A template for clairvoyance or pendulum readings.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Planche Pendule Oui/Non'" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "characteristics": {
+          "type": "array",
+          "description": "Predefined text snippets for responses.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" }
+            },
+            "required": ["id", "text"]
+          }
+        }
+      },
+      "required": ["counselorId", "name"]
     }
   },
   "auth": {
@@ -1229,6 +1254,14 @@
           "entityName": "Card",
           "schema": { "$ref": "#/entities/Card" },
           "description": "Stores individual cards within a specific deck."
+        }
+      },
+      {
+        "path": "/clairvoyanceModels/{modelId}",
+        "definition": {
+          "entityName": "ClairvoyanceModel",
+          "schema": { "$ref": "#/entities/ClairvoyanceModel" },
+          "description": "Stores models for clairvoyance and pendulum readings."
         }
       }
     ],

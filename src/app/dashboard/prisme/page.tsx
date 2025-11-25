@@ -77,7 +77,12 @@ const clairvoyanceModelSchema = z.object({
   name: z.string().min(1, "Le nom du modèle est requis."),
   description: z.string().optional(),
   imageUrl: z.string().nullable().optional(),
+  characteristics: z.array(z.object({
+    id: z.string(),
+    text: z.string().min(1, "Le texte de la caractéristique est requis."),
+  })).optional(),
 });
+
 
 type ClairvoyanceModelFormData = z.infer<typeof clairvoyanceModelSchema>;
 
@@ -87,6 +92,7 @@ type ClairvoyanceModel = {
   name: string;
   description?: string;
   imageUrl?: string | null;
+  characteristics?: { id: string; text: string }[];
 };
 
 
@@ -627,10 +633,24 @@ function ClairvoyanceManager() {
     const form = useForm<ClairvoyanceModelFormData>({
         resolver: zodResolver(clairvoyanceModelSchema),
     });
+    
+     const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "characteristics",
+    });
 
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingModel || { name: '', description: '', imageUrl: null });
+            if (editingModel) {
+                 form.reset({
+                    name: editingModel.name,
+                    description: editingModel.description,
+                    imageUrl: editingModel.imageUrl,
+                    characteristics: editingModel.characteristics || [],
+                });
+            } else {
+                form.reset({ name: '', description: '', imageUrl: null, characteristics: [] });
+            }
             setImagePreview(editingModel?.imageUrl || null);
         }
     }, [isSheetOpen, editingModel, form]);
@@ -704,29 +724,43 @@ function ClairvoyanceManager() {
                     </TableBody>
                 </Table>
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-lg w-full">
+                    <SheetContent className="sm:max-w-2xl w-full">
                         <SheetHeader><SheetTitle>{editingModel ? 'Modifier le' : 'Nouveau'} modèle</SheetTitle></SheetHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du modèle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <div>
-                                    <Label>Image (planche, etc.)</Label>
-                                    <div className="mt-2 flex items-center gap-4">
-                                        {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={160} height={90} className="rounded-md object-cover"/> : <div className="w-40 h-[90px] bg-muted rounded-md" />}
-                                        <div className="space-y-2">
-                                            <input type="file" id="model-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
-                                            <Button type="button" variant="outline" onClick={() => document.getElementById('model-image-upload')?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Uploader</Button>
-                                            {imagePreview && <Button type="button" variant="destructive" size="sm" onClick={() => {setImagePreview(null); form.setValue('imageUrl', null)}}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
+                        <ScrollArea className="h-[calc(100vh-8rem)]">
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
+                                    <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du modèle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <div>
+                                        <Label>Image (planche, etc.)</Label>
+                                        <div className="mt-2 flex items-center gap-4">
+                                            {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={160} height={90} className="rounded-md object-cover"/> : <div className="w-40 h-[90px] bg-muted rounded-md" />}
+                                            <div className="space-y-2">
+                                                <input type="file" id="model-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
+                                                <Button type="button" variant="outline" onClick={() => document.getElementById('model-image-upload')?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                {imagePreview && <Button type="button" variant="destructive" size="sm" onClick={() => {setImagePreview(null); form.setValue('imageUrl', null)}}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <SheetFooter className="pt-6">
-                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                    <Button type="submit">Sauvegarder</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
+                                    <div>
+                                        <Label>Caractéristiques / Réponses prédéfinies</Label>
+                                        <div className="space-y-2 mt-2">
+                                            {fields.map((field, index) => (
+                                                <div key={field.id} className="flex items-center gap-2">
+                                                    <FormField control={form.control} name={`characteristics.${index}.text`} render={({ field }) => ( <FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                         <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `char-${Date.now()}`, text: "" })} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter</Button>
+                                    </div>
+                                    <SheetFooter className="pt-6">
+                                        <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                        <Button type="submit">Sauvegarder</Button>
+                                    </SheetFooter>
+                                </form>
+                            </Form>
+                        </ScrollArea>
                     </SheetContent>
                 </Sheet>
                 <AlertDialog open={!!modelToDelete} onOpenChange={(open) => !open && setModelToDelete(null)}>
