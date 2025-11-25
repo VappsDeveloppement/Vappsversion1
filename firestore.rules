@@ -118,17 +118,15 @@ service cloud.firestore {
                        request.auth.uid == resource.data.counselorId || 
                        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
                      ));
-      allow list: if true; // Allow public listing, security enforced by 'get' rule on individual documents
+      allow list: if request.query.where.isPublic == true ||
+                     (request.auth != null && request.auth.uid == request.query.where.counselorId) ||
+                     (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+                     
       allow create, update, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
       match /registrations/{registrationId} {
-        // Allow counselor/admin to read registrations
         allow get, list: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true || (request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
-        
-        // Allow anyone to register for a public event, or authenticated users to register for any event they have access to.
         allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true || (request.auth != null && request.auth.uid == request.resource.data.userId);
-        
-        // Allow a user to delete their own registration, or the event owner to delete any registration.
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
       }
     }
