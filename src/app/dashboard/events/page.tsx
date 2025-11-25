@@ -316,7 +316,7 @@ export default function EventsPage() {
                   <RegistrationsSheet eventId={event.id} maxAttendees={event.maxAttendees} />
                   {showPrismeButton && (
                      <Button asChild variant="destructive">
-                        <Link href="/dashboard/prisme">LIVE</Link>
+                        <Link href={`/dashboard/prisme/${event.id}`}>LIVE</Link>
                      </Button>
                   )}
                 </div>
