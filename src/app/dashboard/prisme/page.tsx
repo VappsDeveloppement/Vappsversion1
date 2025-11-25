@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -7,7 +8,7 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Loader2 } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -19,6 +20,8 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import Image from 'next/image';
 
 const positionSchema = z.object({
   positionNumber: z.coerce.number().min(1, "La position doit être au moins 1."),
@@ -122,7 +125,7 @@ function CartomancieManager() {
       <CardHeader>
         <div className="flex justify-between items-start">
             <div>
-                <CardTitle>Cartomancie</CardTitle>
+                <CardTitle>Modèles de tirage</CardTitle>
                 <CardDescription>Gestion des modèles de tirages de cartes (tarots, oracles, etc.).</CardDescription>
             </div>
             <Button onClick={handleNewModel}>
@@ -209,6 +212,275 @@ function CartomancieManager() {
   );
 }
 
+const cardSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Le nom de la carte est requis."),
+  description: z.string().optional(),
+  imageUrl: z.string().nullable().optional(),
+});
+const deckSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Le nom du jeu est requis."),
+  description: z.string().optional(),
+});
+type CardFormData = z.infer<typeof cardSchema>;
+type DeckFormData = z.infer<typeof deckSchema>;
+
+type CardDeck = {
+  id: string;
+  counselorId: string;
+  name: string;
+  description?: string;
+}
+type CardData = {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string | null;
+}
+
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+
+function DeckManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const [isDeckSheetOpen, setIsDeckSheetOpen] = useState(false);
+    const [editingDeck, setEditingDeck] = useState<CardDeck | null>(null);
+    const [deckToDelete, setDeckToDelete] = useState<CardDeck | null>(null);
+
+    const [isCardSheetOpen, setIsCardSheetOpen] = useState(false);
+    const [editingCard, setEditingCard] = useState<CardData | null>(null);
+    const [selectedDeck, setSelectedDeck] = useState<CardDeck | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    const decksQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'cardDecks'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: decks, isLoading: areDecksLoading } = useCollection<CardDeck>(decksQuery);
+
+    const cardsQuery = useMemoFirebase(() => {
+        if (!selectedDeck) return null;
+        return collection(firestore, `cardDecks/${selectedDeck.id}/cards`);
+    }, [selectedDeck, firestore]);
+    const { data: cards, isLoading: areCardsLoading } = useCollection<CardData>(cardsQuery);
+    
+    const deckForm = useForm<DeckFormData>({ resolver: zodResolver(deckSchema) });
+    const cardForm = useForm<CardFormData>({ resolver: zodResolver(cardSchema) });
+
+    // Deck Management
+    useEffect(() => {
+        if (isDeckSheetOpen) {
+            deckForm.reset(editingDeck || { name: '', description: '' });
+        }
+    }, [isDeckSheetOpen, editingDeck, deckForm]);
+
+    const handleNewDeck = () => { setEditingDeck(null); setIsDeckSheetOpen(true); };
+    const handleEditDeck = (deck: CardDeck) => { setEditingDeck(deck); setIsDeckSheetOpen(true); };
+    const handleManageCards = (deck: CardDeck) => { setSelectedDeck(deck); };
+
+    const onDeckSubmit = async (data: DeckFormData) => {
+        if (!user) return;
+        const deckData = { counselorId: user.uid, ...data };
+        if (editingDeck) {
+            await setDocumentNonBlocking(doc(firestore, 'cardDecks', editingDeck.id), deckData, { merge: true });
+            toast({ title: "Jeu mis à jour" });
+        } else {
+            await addDocumentNonBlocking(collection(firestore, 'cardDecks'), deckData);
+            toast({ title: "Jeu créé" });
+        }
+        setIsDeckSheetOpen(false);
+    };
+    
+    const onDeleteDeck = async () => {
+        if (!deckToDelete) return;
+        // Also delete subcollection, though this should be a cloud function in production
+        const cardsSnapshot = await getDocs(collection(firestore, `cardDecks/${deckToDelete.id}/cards`));
+        cardsSnapshot.forEach(cardDoc => deleteDocumentNonBlocking(cardDoc.ref));
+        await deleteDocumentNonBlocking(doc(firestore, 'cardDecks', deckToDelete.id));
+        toast({ title: "Jeu supprimé" });
+        setDeckToDelete(null);
+        if(selectedDeck?.id === deckToDelete.id) setSelectedDeck(null);
+    };
+
+    // Card Management
+    useEffect(() => {
+        if (isCardSheetOpen) {
+            cardForm.reset(editingCard || { name: '', description: '', imageUrl: null });
+            setImagePreview(editingCard?.imageUrl || null);
+        }
+    }, [isCardSheetOpen, editingCard, cardForm]);
+    
+    const handleNewCard = () => { setEditingCard(null); setIsCardSheetOpen(true); };
+    const handleEditCard = (card: CardData) => { setEditingCard(card); setIsCardSheetOpen(true); };
+    
+    const onDeleteCard = (cardId: string) => {
+        if (!selectedDeck) return;
+        deleteDocumentNonBlocking(doc(firestore, `cardDecks/${selectedDeck.id}/cards`, cardId));
+        toast({ title: "Carte supprimée" });
+    };
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            setImagePreview(base64);
+            cardForm.setValue('imageUrl', base64);
+        }
+    };
+    
+    const onCardSubmit = async (data: CardFormData) => {
+        if (!selectedDeck) return;
+        const cardData = { ...data, imageUrl: imagePreview };
+        if (editingCard) {
+            await setDocumentNonBlocking(doc(firestore, `cardDecks/${selectedDeck.id}/cards`, editingCard.id), cardData, { merge: true });
+            toast({ title: "Carte mise à jour" });
+        } else {
+            await addDocumentNonBlocking(collection(firestore, `cardDecks/${selectedDeck.id}/cards`), cardData);
+            toast({ title: "Carte ajoutée" });
+        }
+        setIsCardSheetOpen(false);
+    };
+
+    if (selectedDeck) {
+      return (
+        <Card>
+          <CardHeader>
+            <div className='flex justify-between items-start'>
+                <div>
+                    <Button variant="ghost" onClick={() => setSelectedDeck(null)} className="mb-2 pl-0 h-auto">
+                        &larr; Retour à la liste des jeux
+                    </Button>
+                    <CardTitle>{selectedDeck.name}</CardTitle>
+                    <CardDescription>Gérez les cartes de ce jeu.</CardDescription>
+                </div>
+                <Button onClick={handleNewCard}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter une carte</Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <Table>
+                <TableHeader><TableRow><TableHead>Carte</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                <TableBody>
+                    {areCardsLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-8 w-full" /></TableCell></TableRow> 
+                    : cards && cards.length > 0 ? cards.map(card => (
+                        <TableRow key={card.id}>
+                            <TableCell className="flex items-center gap-4">
+                                {card.imageUrl ? <Image src={card.imageUrl} alt={card.name} width={40} height={60} className="rounded-md object-cover" /> : <div className="w-10 h-[60px] bg-muted rounded-md flex items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground"/></div>}
+                                <span className="font-medium">{card.name}</span>
+                            </TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" onClick={() => handleEditCard(card)}><Edit className="h-4 w-4" /></Button>
+                                <Button variant="ghost" size="icon" onClick={() => onDeleteCard(card.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                            </TableCell>
+                        </TableRow>
+                    )) : <TableRow><TableCell colSpan={2} className="h-24 text-center">Aucune carte dans ce jeu.</TableCell></TableRow>}
+                </TableBody>
+            </Table>
+
+            <Sheet open={isCardSheetOpen} onOpenChange={setIsCardSheetOpen}>
+                <SheetContent className="sm:max-w-xl w-full">
+                  <SheetHeader>
+                      <SheetTitle>{editingCard ? 'Modifier la' : 'Nouvelle'} carte</SheetTitle>
+                  </SheetHeader>
+                   <ScrollArea className="h-[calc(100vh-8rem)]">
+                      <Form {...cardForm}>
+                          <form onSubmit={cardForm.handleSubmit(onCardSubmit)} className="space-y-6 py-4 pr-6">
+                              <FormField control={cardForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la carte</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                              <FormField control={cardForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description / Mots-clés</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                               <div>
+                                  <Label>Image</Label>
+                                  <div className="mt-2 flex items-center gap-4">
+                                      {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={80} height={120} className="rounded-md object-cover"/> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
+                                      <div className="space-y-2">
+                                          <input type="file" id="card-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
+                                          <Button type="button" variant="outline" onClick={() => document.getElementById('card-image-upload')?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Uploader</Button>
+                                          {imagePreview && <Button type="button" variant="destructive" size="sm" onClick={() => {setImagePreview(null); cardForm.setValue('imageUrl', null)}}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
+                                      </div>
+                                  </div>
+                              </div>
+                              <SheetFooter className="pt-6">
+                                  <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                  <Button type="submit">Sauvegarder</Button>
+                              </SheetFooter>
+                          </form>
+                      </Form>
+                   </ScrollArea>
+                </SheetContent>
+            </Sheet>
+          </CardContent>
+        </Card>
+      )
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                 <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Jeux de Cartes</CardTitle>
+                        <CardDescription>Créez et gérez vos différents jeux de tarot, oracles, etc.</CardDescription>
+                    </div>
+                    <Button onClick={handleNewDeck}><PlusCircle className="mr-2 h-4 w-4" /> Nouveau Jeu</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Nom du jeu</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {areDecksLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                        : decks && decks.length > 0 ? decks.map(deck => (
+                            <TableRow key={deck.id}>
+                                <TableCell className="font-medium">{deck.name}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="outline" size="sm" onClick={() => handleManageCards(deck)}>Gérer les cartes</Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleEditDeck(deck)}><Edit className="h-4 w-4" /></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => setDeckToDelete(deck)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                </TableCell>
+                            </TableRow>
+                        )) : <TableRow><TableCell colSpan={2} className="h-24 text-center">Aucun jeu de cartes créé.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                <Sheet open={isDeckSheetOpen} onOpenChange={setIsDeckSheetOpen}>
+                    <SheetContent className="sm:max-w-lg w-full">
+                        <SheetHeader><SheetTitle>{editingDeck ? 'Modifier le' : 'Nouveau'} jeu de cartes</SheetTitle></SheetHeader>
+                        <Form {...deckForm}>
+                            <form onSubmit={deckForm.handleSubmit(onDeckSubmit)} className="space-y-6 py-4">
+                                <FormField control={deckForm.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du jeu</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={deckForm.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+                 <AlertDialog open={!!deckToDelete} onOpenChange={(open) => !open && setDeckToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer le jeu "{deckToDelete?.name}" ?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                                Cette action est irréversible et supprimera également toutes les cartes associées à ce jeu.
+                            </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={onDeleteDeck} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+        </Card>
+    )
+}
 
 export default function PrismePage() {
     return (
@@ -227,7 +499,10 @@ export default function PrismePage() {
                     <TabsTrigger value="pendule">Pendule</TabsTrigger>
                 </TabsList>
                 <TabsContent value="cartomancie">
-                    <CartomancieManager />
+                    <div className="space-y-8">
+                        <CartomancieManager />
+                        <DeckManager />
+                    </div>
                 </TabsContent>
                 <TabsContent value="clairvoyance">
                      <Card>

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -992,6 +993,30 @@
         }
       },
       "required": ["counselorId", "name", "positions"]
+    },
+    "CardDeck": {
+      "title": "Card Deck",
+      "type": "object",
+      "description": "A collection of cartomancy cards, like a tarot or oracle deck.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Tarot de Marseille'" },
+        "description": { "type": "string" }
+      },
+      "required": ["counselorId", "name"]
+    },
+    "Card": {
+      "title": "Card",
+      "type": "object",
+      "description": "A single card within a deck.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Le Bateleur'" },
+        "description": { "type": "string", "description": "The meaning or interpretation of the card." },
+        "imageUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["name"]
     }
   },
   "auth": {
@@ -1185,9 +1210,25 @@
         "definition": {
           "entityName": "TirageModel",
           "schema": {
-            "$ref": "#/backend/entities/TirageModel"
+            "$ref": "#/entities/TirageModel"
           },
           "description": "Stores cartomancy spread models created by counselors."
+        }
+      },
+      {
+        "path": "/cardDecks/{deckId}",
+        "definition": {
+          "entityName": "CardDeck",
+          "schema": { "$ref": "#/entities/CardDeck" },
+          "description": "Stores card decks (tarot, oracle, etc.) created by counselors."
+        }
+      },
+      {
+        "path": "/cardDecks/{deckId}/cards/{cardId}",
+        "definition": {
+          "entityName": "Card",
+          "schema": { "$ref": "#/entities/Card" },
+          "description": "Stores individual cards within a specific deck."
         }
       }
     ],
