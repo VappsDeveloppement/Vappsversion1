@@ -1,16 +1,27 @@
 
-
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, CheckCircle } from 'lucide-react';
 import type { InterestItem } from '@/app/dashboard/settings/mini-site/page';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { Skeleton } from '../ui/skeleton';
+
+type Event = {
+    id: string;
+    title: string;
+    date: string;
+    isPublic: boolean;
+};
 
 type CounselorProfile = {
+    id: string;
     miniSite?: {
         activitiesSection?: {
             enabled?: boolean;
@@ -21,7 +32,6 @@ type CounselorProfile = {
             videoUrl?: string;
             interestsTitle?: string;
             interests?: InterestItem[];
-            events?: { id: string; title: string; date: string }[];
             eventsButtonText?: string;
             eventsButtonLink?: string;
         }
@@ -32,6 +42,7 @@ type CounselorProfile = {
 };
 
 export function CounselorActivitiesSection({ counselor }: { counselor: CounselorProfile }) {
+    const firestore = useFirestore();
     const activitiesConfig = counselor.miniSite?.activitiesSection || {};
     const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
@@ -44,10 +55,21 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
         videoUrl,
         interestsTitle,
         interests,
-        events,
         eventsButtonText,
         eventsButtonLink
     } = activitiesConfig;
+
+    const eventsQuery = useMemoFirebase(() => {
+        if (!counselor.id) return null;
+        return query(
+            collection(firestore, 'events'),
+            where('counselorId', '==', counselor.id),
+            where('isPublic', '==', true)
+        );
+    }, [firestore, counselor.id]);
+
+    const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
+
 
     if (!enabled) {
         return null;
@@ -114,10 +136,15 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
                                     <h3 className="font-bold text-xl">Prochains Événements</h3>
                                 </div>
                                 <div className="space-y-4 flex-1">
-                                    {(events && events.length > 0) ? events.map((event) => (
+                                    {areEventsLoading ? (
+                                        <div className="space-y-3">
+                                            <Skeleton className="h-6 w-full" />
+                                            <Skeleton className="h-6 w-3/4" />
+                                        </div>
+                                    ) : (events && events.length > 0) ? events.map((event) => (
                                         <div key={event.id} className="flex justify-between items-center text-sm">
                                             <p className="font-medium">{event.title}</p>
-                                            <p style={{ color: primaryColor }} className="font-semibold shrink-0 ml-4">{event.date}</p>
+                                            <p style={{ color: primaryColor }} className="font-semibold shrink-0 ml-4">{new Date(event.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}</p>
                                         </div>
                                     )) : (
                                         <p className='text-muted-foreground text-sm'>Aucun événement à venir.</p>
