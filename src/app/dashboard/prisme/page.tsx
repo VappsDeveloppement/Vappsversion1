@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -24,6 +23,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 const positionSchema = z.object({
   positionNumber: z.coerce.number().min(1, "La position doit être au moins 1."),
@@ -615,6 +616,99 @@ function DeckManager() {
     )
 }
 
+function ClairvoyanceSimulator({ models }: { models: ClairvoyanceModel[] }) {
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+    const [clientName, setClientName] = useState('');
+    const [clientDob, setClientDob] = useState('');
+    const [question, setQuestion] = useState('');
+    const [notes, setNotes] = useState('');
+    const [selectedCharacteristics, setSelectedCharacteristics] = useState<Record<string, boolean>>({});
+
+    const selectedModel = models.find(m => m.id === selectedModelId);
+
+    const handleModelChange = (modelId: string) => {
+        setSelectedModelId(modelId);
+        setSelectedCharacteristics({});
+    }
+
+    const handleCheckboxChange = (characteristicId: string) => {
+        setSelectedCharacteristics(prev => ({
+            ...prev,
+            [characteristicId]: !prev[characteristicId],
+        }));
+    };
+    
+    return (
+        <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetTrigger asChild>
+                <Button variant="outline"><Wand2 className="mr-2 h-4 w-4" /> Lancer une séance de test</Button>
+            </SheetTrigger>
+            <SheetContent className="sm:max-w-3xl w-full">
+                <SheetHeader>
+                    <SheetTitle>Simulateur de Séance</SheetTitle>
+                    <SheetDescription>Testez vos modèles de clairvoyance/pendule.</SheetDescription>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-8rem)]">
+                    <div className="space-y-6 py-4 pr-6">
+                        <div className="space-y-2">
+                            <Label>Modèle de séance</Label>
+                            <Select onValueChange={handleModelChange}><SelectTrigger><SelectValue placeholder="Choisir un modèle..." /></SelectTrigger><SelectContent>{models.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select>
+                        </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label>Nom</Label>
+                                <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nom du consultant" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Date de naissance</Label>
+                                <Input type="date" value={clientDob} onChange={e => setClientDob(e.target.value)} />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Question posée</Label>
+                            <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Quelle est la question ?" />
+                        </div>
+                        
+                        {selectedModel && (
+                            <div className="space-y-6 pt-6 border-t">
+                                {selectedModel.imageUrl && (
+                                    <div className="relative w-full aspect-square max-w-sm mx-auto">
+                                        <Image src={selectedModel.imageUrl} alt={selectedModel.name} fill className="object-contain" />
+                                    </div>
+                                )}
+                                {selectedModel.characteristics && selectedModel.characteristics.length > 0 && (
+                                    <div className="space-y-3">
+                                        <h4 className="font-medium">Caractéristiques / Réponses</h4>
+                                        <div className="space-y-2">
+                                            {selectedModel.characteristics.map(char => (
+                                                <div key={char.id} className="flex items-center space-x-2">
+                                                    <Checkbox
+                                                        id={char.id}
+                                                        checked={!!selectedCharacteristics[char.id]}
+                                                        onCheckedChange={() => handleCheckboxChange(char.id)}
+                                                    />
+                                                    <label htmlFor={char.id} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                                                        {char.text}
+                                                    </label>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <Label>Notes libres</Label>
+                                    <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={8} placeholder="Inscrivez ici vos ressentis, réponses du pendule, etc." />
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+            </SheetContent>
+        </Sheet>
+    );
+}
+
 function ClairvoyanceManager() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -696,10 +790,13 @@ function ClairvoyanceManager() {
                         <CardTitle>Modèles de Clairvoyance/Pendule</CardTitle>
                         <CardDescription>Gérez vos planches de pendule et autres modèles de support.</CardDescription>
                     </div>
-                    <Button onClick={handleNewModel}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Nouveau Modèle
-                    </Button>
+                    <div className="flex gap-2">
+                        <ClairvoyanceSimulator models={models || []} />
+                        <Button onClick={handleNewModel}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Nouveau Modèle
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
             <CardContent>
