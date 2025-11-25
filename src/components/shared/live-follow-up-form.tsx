@@ -58,30 +58,31 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
         setFoundConsultation(null);
 
         try {
-            // 1. Find the event based on date and counselorId
             const eventQuery = query(
                 collection(firestore, 'events'),
                 where('counselorId', '==', counselorId),
-                where('isPublic', '==', true),
+                where('isPublic', '==', true)
             );
             const eventSnap = await getDocs(eventQuery);
-            const eventsOnDate = eventSnap.docs.filter(doc => 
-                new Date(doc.data().date).toISOString().split('T')[0] === new Date(data.liveDate).toISOString().split('T')[0]
-            );
-
+            
+            // Correct date comparison
+            const inputDate = new Date(data.liveDate).toISOString().split('T')[0];
+            const eventsOnDate = eventSnap.docs.filter(doc => {
+                const eventDate = new Date(doc.data().date).toISOString().split('T')[0];
+                return eventDate === inputDate;
+            });
+            
             if (eventsOnDate.length === 0) {
                 setFoundConsultation('not-found');
                 setIsLoading(false);
                 return;
             }
             
-            // For simplicity, we take the first event of the day. A more complex app might need to distinguish.
             const eventId = eventsOnDate[0].id;
 
-            // 2. Find the consultation in the subcollection
             const consultationQuery = query(
                 collection(firestore, `events/${eventId}/consultations`),
-                where('participantName', '==', data.name),
+                where('participantName', '==', data.name.trim()),
                 where('participantDob', '==', data.dob)
             );
             const consultationSnap = await getDocs(consultationQuery);
@@ -173,11 +174,13 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
                             </AlertDescription>
                         </Alert>
                         
-                        <div className="space-y-4">
-                            <p className='font-medium'>Vos informations de contact :</p>
-                             <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="votre.email@example.com" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                             <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone (optionnel)</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                        </div>
+                        <Form {...form}>
+                            <div className="space-y-4">
+                                <p className='font-medium'>Vos informations de contact :</p>
+                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="votre.email@example.com" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone (optionnel)</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                            </div>
+                        </Form>
 
                         <div className="flex items-center space-x-2">
                            <Checkbox id="wants-contact" checked={wantsContact} onCheckedChange={(checked) => setWantsContact(checked as boolean)} />
