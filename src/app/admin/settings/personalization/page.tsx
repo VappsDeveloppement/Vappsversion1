@@ -692,6 +692,10 @@ export default function PersonalizationPage() {
 
     const form = useForm<z.infer<typeof personalizationSchema>>({
         resolver: zodResolver(personalizationSchema),
+         defaultValues: {
+            pricingSection: personalization?.pricingSection || defaultPersonalization.pricingSection,
+            otherActivitiesSection: personalization?.otherActivitiesSection || defaultPersonalization.otherActivitiesSection,
+        }
     });
 
   useEffect(() => {
@@ -769,6 +773,7 @@ export default function PersonalizationPage() {
             otherActivitiesSection: {
                 ...defaultPersonalization.otherActivitiesSection,
                 ...(personalization.otherActivitiesSection || {}),
+                activities: personalization.otherActivitiesSection?.activities || defaultPersonalization.otherActivitiesSection.activities,
             },
        });
 
