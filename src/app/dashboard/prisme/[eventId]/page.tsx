@@ -1,9 +1,9 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { useDoc, useMemoFirebase, useCollection, useUser } from '@/firebase';
+import { useDoc, useMemoFirebase, useCollection, useUser, setDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,10 +14,18 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+type PrismeConfig = {
+    sessionType?: 'cartomancie' | 'clairvoyance';
+    tirageModelId?: string;
+    deckId?: string;
+    clairvoyanceModelId?: string;
+}
+
 type Event = {
     id: string;
     title: string;
     date: string;
+    prismeConfig?: PrismeConfig;
 };
 
 // Types from prisme/page.tsx
@@ -50,11 +58,23 @@ export default function PrismeLiveSessionPage() {
     }, [firestore, eventId]);
     const { data: event, isLoading: isEventLoading } = useDoc<Event>(eventRef);
 
-    // Session configuration state
+    // Session configuration state, initialized from the event doc if available
     const [sessionType, setSessionType] = useState<'cartomancie' | 'clairvoyance'>('cartomancie');
     const [selectedTirageModelId, setSelectedTirageModelId] = useState<string | null>(null);
     const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
     const [selectedClairvoyanceModelId, setSelectedClairvoyanceModelId] = useState<string | null>(null);
+
+     // Effect to update local state when event data (including prismeConfig) is loaded
+    useEffect(() => {
+        if (event?.prismeConfig) {
+            const config = event.prismeConfig;
+            setSessionType(config.sessionType || 'cartomancie');
+            setSelectedTirageModelId(config.tirageModelId || null);
+            setSelectedDeckId(config.deckId || null);
+            setSelectedClairvoyanceModelId(config.clairvoyanceModelId || null);
+        }
+    }, [event]);
+
 
     // Data for selectors
     const tirageModelsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'tirageModels'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
@@ -66,6 +86,34 @@ export default function PrismeLiveSessionPage() {
     const clairvoyanceModelsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'clairvoyanceModels'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
     const { data: clairvoyanceModels, isLoading: areClairvoyanceModelsLoading } = useCollection<ClairvoyanceModel>(clairvoyanceModelsQuery);
 
+    // Function to save configuration to Firestore
+    const updatePrismeConfig = (newConfig: Partial<PrismeConfig>) => {
+        if (!eventRef) return;
+        setDocumentNonBlocking(eventRef, {
+            prismeConfig: newConfig
+        }, { merge: true });
+    };
+
+    // Handlers to update state and save to Firestore
+    const handleSessionTypeChange = (type: 'cartomancie' | 'clairvoyance') => {
+        setSessionType(type);
+        updatePrismeConfig({ ...event?.prismeConfig, sessionType: type });
+    };
+    
+    const handleTirageModelChange = (modelId: string) => {
+        setSelectedTirageModelId(modelId);
+        updatePrismeConfig({ ...event?.prismeConfig, tirageModelId: modelId });
+    };
+
+    const handleDeckChange = (deckId: string) => {
+        setSelectedDeckId(deckId);
+        updatePrismeConfig({ ...event?.prismeConfig, deckId: deckId });
+    };
+    
+    const handleClairvoyanceModelChange = (modelId: string) => {
+        setSelectedClairvoyanceModelId(modelId);
+        updatePrismeConfig({ ...event?.prismeConfig, clairvoyanceModelId: modelId });
+    };
 
     const isLoading = isEventLoading || areTirageModelsLoading || areDecksLoading || areClairvoyanceModelsLoading;
 
@@ -108,11 +156,11 @@ export default function PrismeLiveSessionPage() {
                 <CardHeader>
                     <CardTitle>Configuration de la session</CardTitle>
                     <CardDescription>
-                        Choisissez le type de séance et le modèle à utiliser.
+                        Choisissez le type de séance et le modèle à utiliser. Vos choix sont sauvegardés automatiquement.
                     </CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <Tabs value={sessionType} onValueChange={(value) => setSessionType(value as any)} className="w-full">
+                    <Tabs value={sessionType} onValueChange={(value) => handleSessionTypeChange(value as any)} className="w-full">
                         <TabsList className="grid w-full grid-cols-2">
                             <TabsTrigger value="cartomancie">Cartomancie</TabsTrigger>
                             <TabsTrigger value="clairvoyance">Clairvoyance/Pendule</TabsTrigger>
@@ -122,14 +170,14 @@ export default function PrismeLiveSessionPage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label>Modèle de Tirage</Label>
-                                        <Select onValueChange={setSelectedTirageModelId} disabled={areTirageModelsLoading}>
+                                        <Select onValueChange={handleTirageModelChange} value={selectedTirageModelId || ''} disabled={areTirageModelsLoading}>
                                             <SelectTrigger><SelectValue placeholder="Choisir un modèle..." /></SelectTrigger>
                                             <SelectContent>{tirageModels?.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
                                         </Select>
                                     </div>
                                     <div className="space-y-2">
                                         <Label>Jeu de Cartes</Label>
-                                         <Select onValueChange={setSelectedDeckId} disabled={areDecksLoading}>
+                                         <Select onValueChange={handleDeckChange} value={selectedDeckId || ''} disabled={areDecksLoading}>
                                             <SelectTrigger><SelectValue placeholder="Choisir un jeu..." /></SelectTrigger>
                                             <SelectContent>{decks?.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent>
                                         </Select>
@@ -141,7 +189,7 @@ export default function PrismeLiveSessionPage() {
                              <div className="space-y-4">
                                 <div className="space-y-2">
                                     <Label>Modèle de Clairvoyance/Pendule</Label>
-                                    <Select onValueChange={setSelectedClairvoyanceModelId} disabled={areClairvoyanceModelsLoading}>
+                                    <Select onValueChange={handleClairvoyanceModelChange} value={selectedClairvoyanceModelId || ''} disabled={areClairvoyanceModelsLoading}>
                                         <SelectTrigger><SelectValue placeholder="Choisir un modèle..." /></SelectTrigger>
                                         <SelectContent>{clairvoyanceModels?.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
                                     </Select>
@@ -167,3 +215,4 @@ export default function PrismeLiveSessionPage() {
     );
 }
 
+    

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -951,7 +952,17 @@
         "isPublic": { "type": "boolean", "default": false },
         "imageUrl": { "type": "string", "format": "uri" },
         "maxAttendees": { "type": "number" },
-        "registrationsCount": { "type": "number" }
+        "registrationsCount": { "type": "number" },
+        "prismeConfig": {
+            "type": "object",
+            "description": "Configuration for the Prisme live session.",
+            "properties": {
+                "sessionType": { "type": "string", "enum": ["cartomancie", "clairvoyance"] },
+                "tirageModelId": { "type": "string" },
+                "deckId": { "type": "string" },
+                "clairvoyanceModelId": { "type": "string" }
+            }
+        }
       },
       "required": ["title", "date", "counselorId"]
     },
@@ -1026,7 +1037,19 @@
         "counselorId": { "type": "string" },
         "name": { "type": "string", "description": "e.g., 'Planche Pendule Oui/Non'" },
         "description": { "type": "string" },
-        "imageUrl": { "type": "string", "format": "uri" }
+        "imageUrl": { "type": "string", "format": "uri" },
+        "characteristics": {
+          "type": "array",
+          "description": "Predefined text snippets for responses.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "text": { "type": "string" }
+            },
+            "required": ["id", "text"]
+          }
+        }
       },
       "required": ["counselorId", "name"]
     }
@@ -1255,3 +1278,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    
