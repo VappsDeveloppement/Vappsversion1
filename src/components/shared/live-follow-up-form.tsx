@@ -58,14 +58,14 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
         setFoundConsultation(null);
 
         try {
+            // 1. Fetch all public events.
             const eventQuery = query(
                 collection(firestore, 'events'),
-                where('counselorId', '==', counselorId),
                 where('isPublic', '==', true)
             );
             const eventSnap = await getDocs(eventQuery);
             
-            // Correct date comparison
+            // 2. Filter events by the selected date on the client side.
             const inputDate = new Date(data.liveDate).toISOString().split('T')[0];
             const eventsOnDate = eventSnap.docs.filter(doc => {
                 const eventDate = new Date(doc.data().date).toISOString().split('T')[0];
@@ -78,19 +78,27 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
                 return;
             }
             
-            const eventId = eventsOnDate[0].id;
+            // 3. Search for the consultation in all matching events.
+            let consultationFound = null;
+            for (const eventDoc of eventsOnDate) {
+                const eventId = eventDoc.id;
+                const consultationQuery = query(
+                    collection(firestore, `events/${eventId}/consultations`),
+                    where('participantName', '==', data.name.trim()),
+                    where('participantDob', '==', data.dob)
+                );
+                const consultationSnap = await getDocs(consultationQuery);
 
-            const consultationQuery = query(
-                collection(firestore, `events/${eventId}/consultations`),
-                where('participantName', '==', data.name.trim()),
-                where('participantDob', '==', data.dob)
-            );
-            const consultationSnap = await getDocs(consultationQuery);
+                if (!consultationSnap.empty) {
+                    consultationFound = consultationSnap.docs[0].data();
+                    break; // Exit loop once found
+                }
+            }
 
-            if (consultationSnap.empty) {
-                setFoundConsultation('not-found');
+            if (consultationFound) {
+                 setFoundConsultation(consultationFound);
             } else {
-                setFoundConsultation(consultationSnap.docs[0].data());
+                setFoundConsultation('not-found');
             }
 
         } catch (error) {
