@@ -532,7 +532,9 @@
                                 "imageUrl": { "type": "string", "format": "uri" }
                             }
                         }
-                    }
+                    },
+                    "eventsButtonText": { "type": "string" },
+                    "eventsButtonLink": { "type": "string" }
                 }
             },
             "betaTesting": {
@@ -952,7 +954,17 @@
         "isPublic": { "type": "boolean", "default": false },
         "imageUrl": { "type": "string", "format": "uri" },
         "maxAttendees": { "type": "number" },
-        "registrationsCount": { "type": "number" }
+        "registrationsCount": { "type": "number" },
+        "prismeConfig": {
+            "type": "object",
+            "description": "Configuration for the Prisme live session.",
+            "properties": {
+                "sessionType": { "type": "string", "enum": ["cartomancie", "clairvoyance"] },
+                "tirageModelId": { "type": "string" },
+                "deckId": { "type": "string" },
+                "clairvoyanceModelId": { "type": "string" }
+            }
+        }
       },
       "required": ["title", "date", "counselorId"]
     },
@@ -1042,6 +1054,50 @@
         }
       },
       "required": ["counselorId", "name"]
+    },
+    "Consultation": {
+      "title": "Consultation",
+      "type": "object",
+      "description": "Represents a single consultation (question + result) within a live Prisme session.",
+      "properties": {
+        "id": { "type": "string" },
+        "participantName": { "type": "string" },
+        "participantDob": { "type": "string", "format": "date" },
+        "question": { "type": "string" },
+        "result": {
+          "type": "object",
+          "properties": {
+            "drawnCards": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "selectedCharacteristics": {
+              "type": "array",
+              "items": { "type": "object" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "participantName", "question", "createdAt"]
+    },
+    "LiveFollowUpRequest": {
+        "title": "Live Follow-Up Request",
+        "type": "object",
+        "description": "A request from a participant for a follow-up after a live session.",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "dob": { "type": "string", "format": "date" },
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" },
+            "liveDate": { "type": "string", "format": "date" },
+            "wantsContact": { "type": "boolean" },
+            "status": { "type": "string", "enum": ["new", "processed"], "default": "new" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "counselorId": { "type": "string", "description": "ID of the counselor who hosted the live." }
+        },
+        "required": ["id", "name", "email", "liveDate", "wantsContact", "status", "createdAt", "counselorId"]
     }
   },
   "auth": {
@@ -1102,6 +1158,14 @@
           "entityName": "SupportRequest",
           "schema": { "$ref": "#/backend/entities/SupportRequest" },
           "description": "Stores technical support requests for platform administrators."
+        }
+      },
+      {
+        "path": "/live_follow_up_requests/{requestId}",
+        "definition": {
+            "entityName": "LiveFollowUpRequest",
+            "schema": { "$ref": "#/entities/LiveFollowUpRequest" },
+            "description": "Stores follow-up requests from participants after a live Prisme session."
         }
       },
       {
@@ -1228,6 +1292,14 @@
           "entityName": "EventRegistration",
           "schema": { "$ref": "#/entities/EventRegistration" },
           "description": "Stores user registrations for a specific event."
+        }
+      },
+       {
+        "path": "/events/{eventId}/consultations/{consultationId}",
+        "definition": {
+          "entityName": "Consultation",
+          "schema": { "$ref": "#/entities/Consultation" },
+          "description": "Stores individual consultations for a Prisme live session."
         }
       },
       {
