@@ -8,11 +8,14 @@ import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, PlusCircle } from 'lucide-react';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 type PrismeConfig = {
     sessionType?: 'cartomancie' | 'clairvoyance';
@@ -63,6 +66,7 @@ export default function PrismeLiveSessionPage() {
     const [selectedTirageModelId, setSelectedTirageModelId] = useState<string | null>(null);
     const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
     const [selectedClairvoyanceModelId, setSelectedClairvoyanceModelId] = useState<string | null>(null);
+    const [showQuestionForm, setShowQuestionForm] = useState(false);
 
      // Effect to update local state when event data (including prismeConfig) is loaded
     useEffect(() => {
@@ -98,15 +102,13 @@ export default function PrismeLiveSessionPage() {
     const handleSessionTypeChange = (type: 'cartomancie' | 'clairvoyance') => {
         setSessionType(type);
         if (type === 'cartomancie') {
-            // When switching to cartomancie, clear clairvoyance settings
             updatePrismeConfig({ 
                 sessionType: type,
-                clairvoyanceModelId: '', // Clear the other type's settings
+                clairvoyanceModelId: '',
                 tirageModelId: selectedTirageModelId || '',
                 deckId: selectedDeckId || '',
             });
         } else {
-            // When switching to clairvoyance, clear cartomancie settings
              updatePrismeConfig({ 
                 sessionType: type,
                 tirageModelId: '', 
@@ -218,13 +220,44 @@ export default function PrismeLiveSessionPage() {
 
              <Card>
                 <CardHeader>
-                    <CardTitle>Questions des participants</CardTitle>
-                    <CardDescription>
-                        Ajoutez et gérez les questions des participants pendant l'événement.
-                    </CardDescription>
+                    <div className="flex justify-between items-center">
+                        <div>
+                            <CardTitle>Questions des participants</CardTitle>
+                            <CardDescription>
+                                Ajoutez et gérez les questions des participants pendant l'événement.
+                            </CardDescription>
+                        </div>
+                        <Button onClick={() => setShowQuestionForm(prev => !prev)}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            {showQuestionForm ? 'Fermer' : 'Ajouter une question'}
+                        </Button>
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">La liste des questions et les outils de tirage apparaîtront ici.</p>
+                    {showQuestionForm && (
+                        <div className="p-4 border rounded-lg bg-muted/50 mb-6 space-y-4">
+                            <h4 className="font-semibold">Nouvelle question</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="participant-name">Nom du participant</Label>
+                                    <Input id="participant-name" placeholder="Ex: Jean Dupont" />
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="participant-dob">Date de naissance</Label>
+                                    <Input id="participant-dob" type="date" />
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="participant-question">Question</Label>
+                                <Textarea id="participant-question" placeholder="Quelle est la question du participant ?" />
+                            </div>
+                            <div className="flex justify-end gap-2">
+                                <Button variant="ghost" onClick={() => setShowQuestionForm(false)}>Annuler</Button>
+                                <Button>Enregistrer la question</Button>
+                            </div>
+                        </div>
+                    )}
+                    <p className="text-muted-foreground text-center py-8">Aucune question pour le moment.</p>
                 </CardContent>
             </Card>
         </div>
