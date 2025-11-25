@@ -42,20 +42,31 @@ export async function findConsultation({ liveDate, name, dob }: { liveDate: stri
         // Search for the consultation within those events
         for (const eventDoc of eventSnap.docs) {
             const eventId = eventDoc.id;
+            // Query only by name, as date formats can be inconsistent.
             const consultationQuery = query(
                 collection(firestore, `events/${eventId}/consultations`),
-                where('participantName', '==', name.trim()),
-                where('participantDob', '==', dob)
+                where('participantName', '==', name.trim())
             );
+
             const consultationSnap = await getDocs(consultationQuery);
+
             if (!consultationSnap.empty) {
-                const consultationDoc = consultationSnap.docs[0];
-                const data = consultationDoc.data() as FirebaseConsultation;
-                return {
-                    ...data,
-                    id: consultationDoc.id,
-                    createdAt: data.createdAt.toDate().toISOString(),
-                };
+                 // Now, filter in code by date of birth for accuracy
+                 for (const consultationDoc of consultationSnap.docs) {
+                    const data = consultationDoc.data() as FirebaseConsultation;
+                    
+                    // Normalize both dates to YYYY-MM-DD format for reliable comparison
+                    const dobFromDb = data.participantDob ? new Date(data.participantDob).toISOString().split('T')[0] : null;
+                    const dobFromInput = new Date(dob).toISOString().split('T')[0];
+
+                    if (dobFromDb === dobFromInput) {
+                        return {
+                            ...data,
+                            id: consultationDoc.id,
+                            createdAt: data.createdAt.toDate().toISOString(),
+                        };
+                    }
+                 }
             }
         }
 
