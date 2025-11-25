@@ -87,7 +87,7 @@ export default function PrismeLiveSessionPage() {
     const { data: clairvoyanceModels, isLoading: areClairvoyanceModelsLoading } = useCollection<ClairvoyanceModel>(clairvoyanceModelsQuery);
 
     // Function to save configuration to Firestore
-    const updatePrismeConfig = (newConfig: Partial<PrismeConfig>) => {
+    const updatePrismeConfig = (newConfig: PrismeConfig) => {
         if (!eventRef) return;
         setDocumentNonBlocking(eventRef, {
             prismeConfig: newConfig
@@ -97,22 +97,38 @@ export default function PrismeLiveSessionPage() {
     // Handlers to update state and save to Firestore
     const handleSessionTypeChange = (type: 'cartomancie' | 'clairvoyance') => {
         setSessionType(type);
-        updatePrismeConfig({ ...event?.prismeConfig, sessionType: type });
+        if (type === 'cartomancie') {
+            // When switching to cartomancie, clear clairvoyance settings
+            updatePrismeConfig({ 
+                sessionType: type,
+                clairvoyanceModelId: '', // Clear the other type's settings
+                tirageModelId: selectedTirageModelId || '',
+                deckId: selectedDeckId || '',
+            });
+        } else {
+            // When switching to clairvoyance, clear cartomancie settings
+             updatePrismeConfig({ 
+                sessionType: type,
+                tirageModelId: '', 
+                deckId: '',
+                clairvoyanceModelId: selectedClairvoyanceModelId || '',
+            });
+        }
     };
     
     const handleTirageModelChange = (modelId: string) => {
         setSelectedTirageModelId(modelId);
-        updatePrismeConfig({ ...event?.prismeConfig, tirageModelId: modelId });
+        updatePrismeConfig({ ...event?.prismeConfig, sessionType: 'cartomancie', tirageModelId: modelId });
     };
 
     const handleDeckChange = (deckId: string) => {
         setSelectedDeckId(deckId);
-        updatePrismeConfig({ ...event?.prismeConfig, deckId: deckId });
+        updatePrismeConfig({ ...event?.prismeConfig, sessionType: 'cartomancie', deckId: deckId });
     };
     
     const handleClairvoyanceModelChange = (modelId: string) => {
         setSelectedClairvoyanceModelId(modelId);
-        updatePrismeConfig({ ...event?.prismeConfig, clairvoyanceModelId: modelId });
+        updatePrismeConfig({ ...event?.prismeConfig, sessionType: 'clairvoyance', clairvoyanceModelId: modelId });
     };
 
     const isLoading = isEventLoading || areTirageModelsLoading || areDecksLoading || areClairvoyanceModelsLoading;
@@ -214,5 +230,3 @@ export default function PrismeLiveSessionPage() {
         </div>
     );
 }
-
-    
