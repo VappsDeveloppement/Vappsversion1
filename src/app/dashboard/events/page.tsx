@@ -36,6 +36,7 @@ type Event = {
   isPublic: boolean;
   imageUrl?: string | null;
   maxAttendees?: number;
+  registrationsCount?: number;
 };
 
 type Registration = {
@@ -201,13 +202,16 @@ export default function EventsPage() {
     
     const creatorId = userData?.role === 'superadmin' ? (agency?.id || user.uid) : user.uid;
 
-    const eventData = {
+    const eventData: Partial<Event> = {
       ...data,
       counselorId: creatorId,
       imageUrl: imagePreview,
-      isPublic: data.isPublic, // Ensure isPublic is correctly passed
     };
     
+    if (!editingEvent) {
+        eventData.registrationsCount = 0; // Initialize counter for new events
+    }
+
     try {
       if (editingEvent) {
         const eventRef = doc(firestore, 'events', editingEvent.id);
@@ -332,3 +336,5 @@ export default function EventsPage() {
     </div>
   );
 }
+
+    

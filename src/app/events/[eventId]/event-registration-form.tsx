@@ -2,8 +2,8 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { useUser, useCollection, addDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useUser, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, doc, runTransaction, serverTimestamp, increment } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -21,11 +21,7 @@ type Event = {
   id: string;
   title: string;
   maxAttendees?: number;
-};
-
-type Registration = {
-  id: string;
-  userId: string;
+  registrationsCount?: number;
 };
 
 const registrationSchema = z.object({
@@ -40,15 +36,17 @@ export function EventRegistrationForm({ event }: { event: Event }) {
   const { user } = useUser();
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isRegistered, setIsRegistered] = useState(false);
 
-  const registrationsQuery = useMemoFirebase(() => collection(firestore, `events/${event.id}/registrations`), [firestore, event.id]);
-  const { data: registrations, isLoading: areRegistrationsLoading } = useCollection<Registration>(registrationsQuery);
+  // We read the event doc in real-time to get the latest registrationsCount
+  const eventRef = useMemoFirebase(() => doc(firestore, `events/${event.id}`), [firestore, event.id]);
+  const { data: realTimeEvent, isLoading: isEventLoading } = useDoc<Event>(eventRef);
 
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
     defaultValues: {
-        name: user?.displayName || '',
-        email: user?.email || '',
+        name: '',
+        email: '',
     }
   });
 
@@ -60,32 +58,50 @@ export function EventRegistrationForm({ event }: { event: Event }) {
         });
     }
   }, [user, form]);
-
-  const userIsRegistered = useMemo(() => {
-    if (!user || !registrations) return false;
-    return registrations.some(reg => reg.userId === user.uid);
-  }, [user, registrations]);
-
+  
   const onSubmit = async (data: RegistrationFormData) => {
-    if (!user) return;
     setIsSubmitting(true);
     try {
-        await addDocumentNonBlocking(collection(firestore, `events/${event.id}/registrations`), {
-            eventId: event.id,
-            userId: user.uid,
-            userName: data.name,
-            userEmail: data.email,
-            registeredAt: new Date().toISOString(),
+        await runTransaction(firestore, async (transaction) => {
+            const eventDoc = await transaction.get(eventRef);
+            if (!eventDoc.exists()) {
+                throw "Event does not exist!";
+            }
+
+            const currentCount = eventDoc.data().registrationsCount || 0;
+            const maxAttendees = eventDoc.data().maxAttendees;
+
+            if (maxAttendees && currentCount >= maxAttendees) {
+                throw "Event is full!";
+            }
+
+            const registrationRef = doc(collection(firestore, `events/${event.id}/registrations`));
+            transaction.set(registrationRef, {
+                eventId: event.id,
+                userId: user?.uid || null,
+                userName: data.name,
+                userEmail: data.email,
+                registeredAt: new Date().toISOString(),
+            });
+
+            transaction.update(eventRef, { registrationsCount: increment(1) });
         });
+        
         toast({ title: "Inscription réussie !", description: `Vous êtes bien inscrit(e) à l'événement "${event.title}".` });
-    } catch (err) {
-        toast({ title: "Erreur", description: "Une erreur est survenue lors de l'inscription.", variant: "destructive"});
+        setIsRegistered(true);
+    } catch (err: any) {
+        let description = "Une erreur est survenue lors de l'inscription.";
+        if (err === "Event is full!") {
+            description = "Désolé, cet événement est maintenant complet.";
+        }
+        toast({ title: "Erreur", description, variant: "destructive"});
     } finally {
         setIsSubmitting(false);
     }
   };
 
-  const spotsLeft = event.maxAttendees ? event.maxAttendees - (registrations?.length || 0) : Infinity;
+  const currentRegistrations = realTimeEvent?.registrationsCount ?? event.registrationsCount ?? 0;
+  const spotsLeft = event.maxAttendees ? event.maxAttendees - currentRegistrations : Infinity;
   const isFull = spotsLeft <= 0;
 
   return (
@@ -94,7 +110,7 @@ export function EventRegistrationForm({ event }: { event: Event }) {
         <CardTitle className="flex items-center gap-2"><Users className="h-6 w-6"/> Inscription</CardTitle>
       </CardHeader>
       <CardContent>
-        {areRegistrationsLoading ? <Skeleton className="h-20 w-full" /> : (
+        {isEventLoading ? <Skeleton className="h-20 w-full" /> : (
             <>
                 {event.maxAttendees ? (
                     <p className="text-sm mb-4">
@@ -104,7 +120,7 @@ export function EventRegistrationForm({ event }: { event: Event }) {
                     <p className="text-sm mb-4 font-medium text-green-600">Places illimitées</p>
                 )}
 
-                {userIsRegistered ? (
+                {isRegistered ? (
                      <div className="flex items-center gap-2 p-4 bg-green-50 text-green-700 rounded-md border border-green-200">
                         <CheckCircle className="h-5 w-5" />
                         <span className="font-semibold">Vous êtes inscrit !</span>
@@ -114,7 +130,7 @@ export function EventRegistrationForm({ event }: { event: Event }) {
                         <AlertCircle className="h-5 w-5" />
                         <span className="font-semibold">Cet événement est complet.</span>
                     </div>
-                ) : user ? (
+                ) : (
                      <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                              <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom complet</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -125,11 +141,6 @@ export function EventRegistrationForm({ event }: { event: Event }) {
                             </Button>
                         </form>
                      </Form>
-                ) : (
-                    <div className="text-center p-4 border-dashed border-2 rounded-md">
-                        <p className="text-sm text-muted-foreground mb-4">Vous devez être connecté pour vous inscrire.</p>
-                        <Button asChild><Link href="/application">Se connecter</Link></Button>
-                    </div>
                 )}
             </>
         )}
@@ -137,3 +148,5 @@ export function EventRegistrationForm({ event }: { event: Event }) {
     </Card>
   );
 }
+
+    
