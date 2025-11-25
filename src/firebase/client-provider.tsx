@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { type ReactNode } from 'react';
@@ -9,10 +10,11 @@ interface FirebaseClientProviderProps {
 }
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  const firebaseServices = React.useMemo(() => {
-    // Initialize Firebase on the client side, once per component mount.
-    return initializeFirebase();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  // Use React.use to handle the promise returned by initializeFirebase on the client.
+  // This is the correct way to handle async initialization in a client component context.
+  const firebaseServices = React.use(
+    Promise.resolve(initializeFirebase())
+  );
 
   return (
     <FirebaseProvider

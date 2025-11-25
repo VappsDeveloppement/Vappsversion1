@@ -21,7 +21,6 @@ import { findConsultation } from '@/app/actions/live';
 const searchSchema = z.object({
   liveDate: z.string().min(1, "La date du live est requise."),
   name: z.string().min(1, "Votre nom est requis."),
-  dob: z.string().min(1, "Votre date de naissance est requise."),
 });
 
 const contactSchema = z.object({
@@ -47,7 +46,7 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
 
     const searchForm = useForm<SearchFormData>({
         resolver: zodResolver(searchSchema),
-        defaultValues: { liveDate: '', name: '', dob: '' },
+        defaultValues: { liveDate: '', name: '' },
     });
 
     const contactForm = useForm<ContactFormData>({
@@ -121,7 +120,6 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
                         <form onSubmit={searchForm.handleSubmit(handleSearch)} className="space-y-4 pt-4">
                             <FormField control={searchForm.control} name="liveDate" render={({ field }) => ( <FormItem><FormLabel>Date du live</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                             <FormField control={searchForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Votre nom (utilisé durant le live)</FormLabel><FormControl><Input placeholder="Ex: Jean" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={searchForm.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Votre date de naissance</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                             <DialogFooter>
                                 <Button type="submit" disabled={isLoading} className="w-full">
                                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
