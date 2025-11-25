@@ -133,9 +133,14 @@ export default function EventsPage() {
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
   const eventsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !userData) return null;
+
+    if (userData.role === 'superadmin' && agency) {
+        return query(collection(firestore, 'events'), where('counselorId', 'in', [user.uid, agency.id]));
+    }
+    
     return query(collection(firestore, 'events'), where('counselorId', '==', user.uid));
-  }, [user, firestore]);
+  }, [user, userData, firestore, agency]);
   const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
   const form = useForm<EventFormData>({
@@ -189,14 +194,7 @@ export default function EventsPage() {
     if (!user) return;
     setIsSubmitting(true);
     
-    // If superadmin, link event to agency ID, otherwise to user ID
-    const creatorId = userData?.role === 'superadmin' ? agency?.id : user.uid;
-
-    if (!creatorId) {
-        toast({ title: "Erreur", description: "Impossible de déterminer le créateur de l'événement.", variant: 'destructive'});
-        setIsSubmitting(false);
-        return;
-    }
+    const creatorId = userData?.role === 'superadmin' ? (agency?.id || user.uid) : user.uid;
 
     const eventData = {
       ...data,
