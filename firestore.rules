@@ -143,5 +143,11 @@ service cloud.firestore {
         allow read, list, create, update, delete: if request.auth != null && (get(/databases/$(database)/documents/cardDecks/$(deckId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       }
     }
+    
+    match /clairvoyanceModels/{modelId} {
+      allow read: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow update, delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
   }
 }
