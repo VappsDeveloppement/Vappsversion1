@@ -532,7 +532,9 @@
                                 "imageUrl": { "type": "string", "format": "uri" }
                             }
                         }
-                    }
+                    },
+                    "eventsButtonText": { "type": "string" },
+                    "eventsButtonLink": { "type": "string" }
                 }
             },
             "betaTesting": {
@@ -1078,6 +1080,24 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "participantName", "question", "createdAt"]
+    },
+    "LiveFollowUpRequest": {
+        "title": "Live Follow-Up Request",
+        "type": "object",
+        "description": "A request from a participant for a follow-up after a live session.",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "dob": { "type": "string", "format": "date" },
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" },
+            "liveDate": { "type": "string", "format": "date" },
+            "wantsContact": { "type": "boolean" },
+            "status": { "type": "string", "enum": ["new", "processed"], "default": "new" },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "counselorId": { "type": "string", "description": "ID of the counselor who hosted the live." }
+        },
+        "required": ["id", "name", "email", "liveDate", "wantsContact", "status", "createdAt", "counselorId"]
     }
   },
   "auth": {
@@ -1138,6 +1158,14 @@
           "entityName": "SupportRequest",
           "schema": { "$ref": "#/backend/entities/SupportRequest" },
           "description": "Stores technical support requests for platform administrators."
+        }
+      },
+      {
+        "path": "/live_follow_up_requests/{requestId}",
+        "definition": {
+            "entityName": "LiveFollowUpRequest",
+            "schema": { "$ref": "#/entities/LiveFollowUpRequest" },
+            "description": "Stores follow-up requests from participants after a live Prisme session."
         }
       },
       {

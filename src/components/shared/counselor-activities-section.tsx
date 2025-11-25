@@ -12,6 +12,7 @@ import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '../ui/skeleton';
+import { LiveFollowUpForm } from './live-follow-up-form';
 
 type Event = {
     id: string;
@@ -56,7 +57,6 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
         interestsTitle,
         interests,
         eventsButtonText,
-        eventsButtonLink
     } = activitiesConfig;
 
     const eventsQuery = useMemoFirebase(() => {
@@ -152,11 +152,11 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
                                         <p className='text-muted-foreground text-sm'>Aucun événement à venir.</p>
                                     )}
                                 </div>
-                                {eventsButtonText && eventsButtonLink && (
-                                    <Button asChild className="w-full mt-6" style={{ backgroundColor: primaryColor }}>
-                                        <Link href={eventsButtonLink}>{eventsButtonText}</Link>
+                                <LiveFollowUpForm counselorId={counselor.id}>
+                                    <Button className="w-full mt-6" style={{ backgroundColor: primaryColor }}>
+                                        {eventsButtonText || "J'ai participé à un live"}
                                     </Button>
-                                )}
+                                </LiveFollowUpForm>
                             </CardContent>
                         </Card>
                     </div>

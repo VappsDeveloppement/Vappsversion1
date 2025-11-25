@@ -16,6 +16,7 @@ import { collection, query, where, doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
 import type { OtherActivityItem } from "@/app/admin/settings/personalization/page";
+import { LiveFollowUpForm } from "./live-follow-up-form";
 
 
 type Event = {
@@ -52,7 +53,6 @@ export function OtherActivitiesSection() {
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
     const { title, description, activities } = otherActivitiesSettings || {};
     const eventsButtonText = otherActivitiesSettings?.eventsButtonText || "J'ai participé à un live";
-    const eventsButtonLink = otherActivitiesSettings?.eventsButtonLink || "#";
     const primaryColor = personalization?.primaryColor || '#10B981';
 
     const isLoading = isAgencyLoading || areEventsLoading;
@@ -135,9 +135,11 @@ export function OtherActivitiesSection() {
                                     )}
                                 </div>
                                 
-                                <Button asChild className="w-full mt-6" style={{ backgroundColor: primaryColor }}>
-                                    <Link href={eventsButtonLink}>{eventsButtonText}</Link>
-                                </Button>
+                                <LiveFollowUpForm counselorId={agency?.id || 'vapps-agency'}>
+                                  <Button className="w-full mt-6" style={{ backgroundColor: primaryColor }}>
+                                    {eventsButtonText}
+                                  </Button>
+                                </LiveFollowUpForm>
                                
                             </CardContent>
                         </Card>
