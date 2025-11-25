@@ -120,8 +120,11 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
+      // Allow reading a public event, or any event if authenticated and linked to it.
       allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
-      allow list: if (request.query.where.size() > 0 && request.query.where[0][0] == 'isPublic' && request.query.where[0][2] == true) || request.auth != null;
+      
+      // Allow LISTING events if the query ONLY asks for public ones, OR if user is authenticated.
+      allow list: if (request.query.get('where') == null || request.query.where.size() == 0 || (request.query.where[0][0] == 'isPublic' && request.query.where[0][2] == true)) || request.auth != null;
                      
       allow create, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
@@ -162,3 +165,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
