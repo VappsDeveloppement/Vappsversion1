@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, runTransaction } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
@@ -24,6 +24,8 @@ import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAgency } from '@/context/agency-provider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+
 
 type Event = {
   id: string;
@@ -44,6 +46,11 @@ type Registration = {
     userName: string;
     userEmail: string;
     registeredAt: string;
+}
+
+type Client = {
+    id: string;
+    email: string;
 }
 
 const eventSchema = z.object({
@@ -69,10 +76,24 @@ const toBase64 = (file: File): Promise<string> =>
 
 function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAttendees?: number }) {
     const firestore = useFirestore();
+    const { user } = useUser();
+
+    // Query for all registrations of a given event
     const registrationsQuery = useMemoFirebase(() => collection(firestore, `events/${eventId}/registrations`), [eventId, firestore]);
-    const { data: registrations, isLoading } = useCollection<Registration>(registrationsQuery);
+    const { data: registrations, isLoading: areRegistrationsLoading } = useCollection<Registration>(registrationsQuery);
+
+    // Query for the current user's clients to check against registrations
+    const clientsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
     
+    // Create a Set of client emails for efficient lookup
+    const clientEmails = useMemo(() => new Set(clients?.map(c => c.email)), [clients]);
+
     const spotsLeft = maxAttendees ? maxAttendees - (registrations?.length || 0) : 'illimitées';
+    const isLoading = areRegistrationsLoading || areClientsLoading;
 
     return (
         <Sheet>
@@ -82,12 +103,12 @@ function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAtt
                     ({registrations?.length || 0}{maxAttendees ? `/${maxAttendees}` : ''})
                 </Button>
             </SheetTrigger>
-            <SheetContent>
+            <SheetContent className="sm:max-w-lg w-full">
                 <SheetHeader>
                     <SheetTitle>Inscrits à l'événement</SheetTitle>
                     <SheetDescription>
                         {registrations?.length || 0} participant(s) inscrit(s). 
-                        {maxAttendees && ` Places restantes: ${spotsLeft}.`}
+                        {maxAttendees ? ` Places restantes: ${spotsLeft}.` : ''}
                     </SheetDescription>
                 </SheetHeader>
                 <ScrollArea className="h-[calc(100vh-8rem)] pr-4">
@@ -103,7 +124,21 @@ function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAtt
                             <TableBody>
                                 {registrations.map(reg => (
                                     <TableRow key={reg.id}>
-                                        <TableCell>{reg.userName}</TableCell>
+                                        <TableCell className="flex items-center gap-2">
+                                            {reg.userName}
+                                            {clientEmails.has(reg.userEmail) && (
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger>
+                                                            <UserIcon className="h-4 w-4 text-primary" />
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Cet utilisateur est un de vos clients.</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
+                                            )}
+                                        </TableCell>
                                         <TableCell>{reg.userEmail}</TableCell>
                                     </TableRow>
                                 ))}
@@ -117,6 +152,7 @@ function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAtt
         </Sheet>
     );
 }
+
 
 export default function EventsPage() {
   const { user, isUserLoading } = useUser();
@@ -336,5 +372,3 @@ export default function EventsPage() {
     </div>
   );
 }
-
-    
