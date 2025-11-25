@@ -145,7 +145,7 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
                                         <Link key={event.id} href={`/events/${event.id}`} className="block p-2 -m-2 rounded-md hover:bg-muted/50 transition-colors">
                                             <div className="flex justify-between items-center text-sm">
                                                 <p className="font-medium">{event.title}</p>
-                                                <p style={{ color: primaryColor }} className="font-semibold shrink-0 ml-4">{new Date(event.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}</p>
+                                                <p style={{ color: primaryColor }} className="font-semibold shrink-0 ml-4">{new Date(event.date).toLocaleDateString('fr-FR')}</p>
                                             </div>
                                         </Link>
                                     )) : (
