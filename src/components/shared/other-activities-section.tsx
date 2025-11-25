@@ -2,16 +2,20 @@
 'use client';
 
 import Image from "next/image";
-import { Card, CardContent } from "@/components/ui/card";
-import { Calendar } from "lucide-react";
+import Link from "next/link";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useState, useMemo } from "react";
+import { Input } from "../ui/input";
+import { Calendar, Search } from "lucide-react";
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useAgency } from "@/context/agency-provider";
 import { useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
 import type { OtherActivityItem } from "@/app/admin/settings/personalization/page";
-import Link from 'next/link';
 
 
 type Event = {
@@ -22,12 +26,18 @@ type Event = {
 };
 
 export function OtherActivitiesSection() {
-    const { personalization, isLoading: isAgencyLoading } = useAgency();
+    const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
     const eventsQuery = useMemoFirebase(() => {
-        return query(collection(firestore, 'events'), where('isPublic', '==', true));
-    }, [firestore]);
+        if (!agency) return null;
+        // Corrected query: Fetch only public events created by the agency/super-admin.
+        return query(
+            collection(firestore, 'events'), 
+            where('isPublic', '==', true),
+            where('counselorId', '==', agency.id)
+        );
+    }, [firestore, agency]);
 
     const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
