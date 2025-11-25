@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -8,13 +7,13 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2 } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -23,6 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const positionSchema = z.object({
   positionNumber: z.coerce.number().min(1, "La position doit être au moins 1."),
@@ -45,6 +45,138 @@ type TirageModel = {
   positions: { positionNumber: number; meaning: string }[];
 };
 
+const cardSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Le nom de la carte est requis."),
+  description: z.string().optional(),
+  imageUrl: z.string().nullable().optional(),
+});
+const deckSchema = z.object({
+  id: z.string().optional(),
+  name: z.string().min(1, "Le nom du jeu est requis."),
+  description: z.string().optional(),
+});
+type CardFormData = z.infer<typeof cardSchema>;
+type DeckFormData = z.infer<typeof deckSchema>;
+
+type CardDeck = {
+  id: string;
+  counselorId: string;
+  name: string;
+  description?: string;
+}
+type CardData = {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string | null;
+}
+
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+
+function TirageSimulator({ models, decks }: { models: TirageModel[], decks: CardDeck[] }) {
+    const firestore = useFirestore();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
+    const [selectedDeckId, setSelectedDeckId] = useState<string | null>(null);
+    const [clientName, setClientName] = useState('');
+    const [clientDob, setClientDob] = useState('');
+    const [question, setQuestion] = useState('');
+    const [drawnCards, setDrawnCards] = useState<{ card: CardData; position: { positionNumber: number; meaning: string } }[]>([]);
+
+    const selectedModel = models.find(m => m.id === selectedModelId);
+    
+    const cardsQuery = useMemoFirebase(() => {
+        if (!selectedDeckId) return null;
+        return collection(firestore, `cardDecks/${selectedDeckId}/cards`);
+    }, [selectedDeckId, firestore]);
+    const { data: cards, isLoading: areCardsLoading } = useCollection<CardData>(cardsQuery);
+    
+    const handleDraw = () => {
+        if (!selectedModel || !cards || cards.length === 0) return;
+        
+        const numberOfCardsToDraw = selectedModel.positions.length;
+        if (cards.length < numberOfCardsToDraw) {
+            alert("Le jeu de cartes ne contient pas assez de cartes pour ce tirage.");
+            return;
+        }
+
+        const shuffled = [...cards].sort(() => 0.5 - Math.random());
+        const newDrawnCards = selectedModel.positions.map((pos, index) => ({
+            card: shuffled[index],
+            position: pos,
+        }));
+        setDrawnCards(newDrawnCards);
+    };
+
+    return (
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+          <SheetTrigger asChild>
+              <Button variant="outline"><Wand2 className="mr-2 h-4 w-4" /> Lancer un tirage de test</Button>
+          </SheetTrigger>
+          <SheetContent className="sm:max-w-2xl w-full">
+              <SheetHeader>
+                  <SheetTitle>Simulateur de Tirage</SheetTitle>
+                  <SheetDescription>Testez vos modèles et jeux de cartes en conditions réelles.</SheetDescription>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-8rem)]">
+                  <div className="space-y-6 py-4 pr-6">
+                    <div className="space-y-2">
+                        <Label>Modèle de tirage</Label>
+                        <Select onValueChange={setSelectedModelId}><SelectTrigger><SelectValue placeholder="Choisir un modèle..." /></SelectTrigger><SelectContent>{models.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent></Select>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Jeu de cartes</Label>
+                        <Select onValueChange={setSelectedDeckId}><SelectTrigger><SelectValue placeholder="Choisir un jeu..." /></SelectTrigger><SelectContent>{decks.map(d => <SelectItem key={d.id} value={d.id}>{d.name}</SelectItem>)}</SelectContent></Select>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Nom</Label>
+                        <Input value={clientName} onChange={e => setClientName(e.target.value)} placeholder="Nom du consultant" />
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Date de naissance</Label>
+                        <Input type="date" value={clientDob} onChange={e => setClientDob(e.target.value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Question posée</Label>
+                        <Textarea value={question} onChange={e => setQuestion(e.target.value)} placeholder="Quelle est la question ?" />
+                    </div>
+                     <Button onClick={handleDraw} disabled={!selectedModelId || !selectedDeckId || areCardsLoading}>
+                        {areCardsLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Lancer le tirage
+                    </Button>
+                     {drawnCards.length > 0 && (
+                        <div className="mt-6 pt-6 border-t">
+                            <h3 className="text-xl font-semibold mb-4">Résultat du Tirage</h3>
+                             <div className="space-y-6">
+                                {drawnCards.map(({ card, position }, index) => (
+                                    <div key={index} className="flex gap-4 p-4 border rounded-lg">
+                                        <div className="flex-shrink-0">
+                                            {card.imageUrl ? <Image src={card.imageUrl} alt={card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">Position {position.positionNumber}: {position.meaning}</p>
+                                            <h4 className="text-lg font-bold">{card.name}</h4>
+                                            <p className="text-sm">{card.description}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                  </div>
+              </ScrollArea>
+          </SheetContent>
+      </Sheet>
+    )
+}
+
 function CartomancieManager() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -59,6 +191,12 @@ function CartomancieManager() {
   }, [user, firestore]);
 
   const { data: tirageModels, isLoading } = useCollection<TirageModel>(tirageModelsQuery);
+  
+  const decksQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'cardDecks'), where('counselorId', '==', user.uid));
+  }, [user, firestore]);
+  const { data: decks, isLoading: areDecksLoading } = useCollection<CardDeck>(decksQuery);
 
   const form = useForm<TirageModelFormData>({
     resolver: zodResolver(tirageModelSchema),
@@ -129,10 +267,13 @@ function CartomancieManager() {
                 <CardTitle>Modèles de tirage</CardTitle>
                 <CardDescription>Gestion des modèles de tirages de cartes (tarots, oracles, etc.).</CardDescription>
             </div>
-            <Button onClick={handleNewModel}>
-                <PlusCircle className="mr-2 h-4 w-4" />
-                Nouveau Modèle
-            </Button>
+            <div className="flex gap-2">
+                <TirageSimulator models={tirageModels || []} decks={decks || []} />
+                <Button onClick={handleNewModel}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Nouveau Modèle
+                </Button>
+            </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -213,40 +354,7 @@ function CartomancieManager() {
   );
 }
 
-const cardSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, "Le nom de la carte est requis."),
-  description: z.string().optional(),
-  imageUrl: z.string().nullable().optional(),
-});
-const deckSchema = z.object({
-  id: z.string().optional(),
-  name: z.string().min(1, "Le nom du jeu est requis."),
-  description: z.string().optional(),
-});
-type CardFormData = z.infer<typeof cardSchema>;
-type DeckFormData = z.infer<typeof deckSchema>;
 
-type CardDeck = {
-  id: string;
-  counselorId: string;
-  name: string;
-  description?: string;
-}
-type CardData = {
-  id: string;
-  name: string;
-  description?: string;
-  imageUrl?: string | null;
-}
-
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
 
 function DeckManager() {
     const { user } = useUser();
