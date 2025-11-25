@@ -15,6 +15,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import Link from 'next/link';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type Event = {
   id: string;
@@ -136,4 +137,3 @@ export function EventRegistrationForm({ event }: { event: Event }) {
     </Card>
   );
 }
-
