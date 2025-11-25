@@ -1,22 +1,18 @@
 
+
 'use client';
 
 import Image from "next/image";
 import { Card, CardContent } from "@/components/ui/card";
-import { Calendar, Send } from "lucide-react";
+import { Calendar } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAgency } from "@/context/agency-provider";
 import { useCollection, useMemoFirebase } from "@/firebase";
 import { collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
+import type { OtherActivityItem } from "@/app/admin/settings/personalization/page";
 
-type Activity = {
-    id: string;
-    title: string;
-    description: string;
-    imageUrl: string | null;
-};
 
 type Event = {
     id: string;
@@ -73,7 +69,7 @@ export function OtherActivitiesSection() {
                             </p>
                         </div>
                         <div className="space-y-8">
-                            {(activities || []).map((activity: Activity) => (
+                            {(activities || []).map((activity: OtherActivityItem) => (
                                 <Card key={activity.id} className="overflow-hidden group">
                                     <div className="flex flex-col sm:flex-row">
                                         {activity.imageUrl && (
@@ -89,7 +85,7 @@ export function OtherActivitiesSection() {
                                         )}
                                         <CardContent className="p-6 sm:w-2/3 flex flex-col justify-center">
                                             <h3 className="font-bold text-xl mb-2">{activity.title}</h3>
-                                            <p className="text-muted-foreground mb-3">{activity.description}</p>
+                                            <p className="text-muted-foreground whitespace-pre-wrap">{activity.description}</p>
                                         </CardContent>
                                     </div>
                                 </Card>

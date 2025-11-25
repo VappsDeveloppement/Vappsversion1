@@ -543,6 +543,9 @@ const defaultPersonalization = {
         description: "Retrouvez nos derniers articles, conseils et actualités.",
         enabled: true,
     },
+    trainingCatalogSection: {
+        enabled: false,
+    },
     paymentSettings: {
         ribIban: "",
         ribBic: "",
@@ -574,9 +577,6 @@ const defaultPersonalization = {
         plans: [],
         planIds: [],
     },
-    trainingCatalogSection: {
-        enabled: false,
-    }
 };
 
 const PayPalConnectionTest = () => {
@@ -647,6 +647,16 @@ const personalizationSchema = z.object({
         title: z.string().optional(),
         description: z.string().optional(),
         planIds: z.array(z.string()).optional(),
+    }).optional(),
+    otherActivitiesSection: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        activities: z.array(z.object({
+            id: z.string(),
+            title: z.string(),
+            description: z.string(),
+            imageUrl: z.string().nullable(),
+        })).optional(),
     }).optional(),
 });
 
@@ -722,7 +732,7 @@ export default function PersonalizationPage() {
         },
         otherActivitiesSection: {
             ...defaultPersonalization.otherActivitiesSection,
-            ...(personalization.otherActivitiesSection || {})
+            ...(personalization.otherActivitiesSection || {}),
         },
         whiteLabelSection: {
             ...defaultPersonalization.whiteLabelSection,
@@ -731,6 +741,14 @@ export default function PersonalizationPage() {
         blogSection: {
             ...defaultPersonalization.blogSection,
             ...(personalization.blogSection || {}),
+        },
+        pricingSection: {
+            ...defaultPersonalization.pricingSection,
+            ...(personalization.pricingSection || {})
+        },
+        trainingCatalogSection: {
+            ...defaultPersonalization.trainingCatalogSection,
+            ...(personalization.trainingCatalogSection || {}),
         },
         paymentSettings: {
             ...defaultPersonalization.paymentSettings,
@@ -743,19 +761,15 @@ export default function PersonalizationPage() {
         gdprSettings: {
             ...defaultPersonalization.gdprSettings,
             ...(personalization.gdprSettings || {})
-        },
-        pricingSection: {
-            ...defaultPersonalization.pricingSection,
-            ...(personalization.pricingSection || {})
-        },
-        trainingCatalogSection: {
-            ...defaultPersonalization.trainingCatalogSection,
-            ...(personalization.trainingCatalogSection || {}),
         }
       }));
 
        form.reset({
-            pricingSection: personalization.pricingSection || defaultPersonalization.pricingSection
+            pricingSection: personalization.pricingSection || defaultPersonalization.pricingSection,
+            otherActivitiesSection: {
+                ...defaultPersonalization.otherActivitiesSection,
+                ...(personalization.otherActivitiesSection || {}),
+            },
        });
 
       if (personalization.logoDataUrl) {
@@ -979,34 +993,10 @@ export default function PersonalizationPage() {
     handleServicesSectionChange('services', newServices);
   };
   
-  const handleOtherActivitiesSectionChange = (field: string, value: any) => {
-    setSettings(prev => ({
-      ...prev,
-      otherActivitiesSection: {
-        ...(prev.otherActivitiesSection || defaultPersonalization.otherActivitiesSection),
-        [field]: value
-      }
-    }));
-  };
-
-  const handleActivityChange = (index: number, field: keyof OtherActivityItem, value: string | null) => {
-      const newActivities = [...(settings.otherActivitiesSection.activities)];
-      (newActivities[index] as any)[field] = value;
-      handleOtherActivitiesSectionChange('activities', newActivities);
-  };
-
-  const addActivity = () => {
-    const newActivities = [
-        ...(settings.otherActivitiesSection.activities || []),
-        { id: `activity-${Date.now()}`, title: 'Nouvelle activité', description: 'Description de l\'activité.', imageUrl: null },
-    ];
-    handleOtherActivitiesSectionChange('activities', newActivities);
-  };
-
-  const removeActivity = (index: number) => {
-    const newActivities = settings.otherActivitiesSection.activities.filter((_, i) => i !== index);
-    handleOtherActivitiesSectionChange('activities', newActivities);
-  };
+  const { fields: activityFields, append: appendActivity, remove: removeActivity } = useFieldArray({
+    control: form.control,
+    name: "otherActivitiesSection.activities",
+  });
   
   const handleWhiteLabelSectionChange = (field: string, value: any) => {
     setSettings(prev => ({
@@ -1055,16 +1045,6 @@ export default function PersonalizationPage() {
     }))
   }
   
-  const handlePricingSectionChange = (data: z.infer<typeof personalizationSchema>['pricingSection']) => {
-    setSettings(prev => ({
-        ...prev,
-        pricingSection: {
-            ...prev.pricingSection,
-            ...data
-        }
-    }))
-  };
-
   const handlePaymentSettingsChange = (field: string, value: any) => {
     setSettings(prev => ({
         ...prev,
@@ -1101,13 +1081,16 @@ export default function PersonalizationPage() {
       return;
     }
 
-    const pricingData = form.getValues('pricingSection');
-
+    const formData = form.getValues();
     const finalSettings = {
         ...settings,
         pricingSection: {
             ...settings.pricingSection,
-            ...pricingData
+            ...formData.pricingSection,
+        },
+        otherActivitiesSection: {
+            ...settings.otherActivitiesSection,
+            ...formData.otherActivitiesSection,
         }
     };
     
@@ -2195,7 +2178,7 @@ export default function PersonalizationPage() {
                                     </div>
                                 ) : section.id === 'pricing' ? (
                                     <Form {...form}>
-                                        <form onChange={() => handlePricingSectionChange(form.getValues().pricingSection)} className="space-y-6">
+                                        <form onChange={() => form.handleSubmit(() => {})()} className="space-y-6">
                                             <FormField control={form.control} name="pricingSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             <FormField control={form.control} name="pricingSection.description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             <FormField control={form.control} name="pricingSection.planIds" render={() => (
@@ -2328,55 +2311,44 @@ export default function PersonalizationPage() {
                                         </div>
                                     </div>
                                 ) : section.id === 'otherActivities' ? (
-                                    <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="oa-title">Titre</Label>
-                                            <Input id="oa-title" value={settings.otherActivitiesSection?.title} onChange={(e) => handleOtherActivitiesSectionChange('title', e.target.value)} />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="oa-description">Description</Label>
-                                            <Textarea id="oa-description" value={settings.otherActivitiesSection?.description} onChange={(e) => handleOtherActivitiesSectionChange('description', e.target.value)} />
-                                        </div>
+                                   <Form {...form}>
+                                     <form onChange={() => form.handleSubmit(() => {})()} className="space-y-6">
+                                        <FormField control={form.control} name="otherActivitiesSection.title" render={({ field }) => ( <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem> )}/>
+                                        <FormField control={form.control} name="otherActivitiesSection.description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage/></FormItem> )}/>
                                         <div>
                                             <Label>Liste des activités</Label>
                                             <div className="space-y-4 mt-2">
-                                                {(settings.otherActivitiesSection?.activities || []).map((activity, index) => (
-                                                    <div key={activity.id} className="p-4 border rounded-lg space-y-4">
+                                                {activityFields.map((field, index) => (
+                                                    <div key={field.id} className="p-4 border rounded-lg space-y-4">
                                                         <div className="flex justify-between items-center">
                                                             <h4 className="font-medium">Activité {index + 1}</h4>
                                                             <Button type="button" variant="ghost" size="icon" onClick={() => removeActivity(index)}>
                                                                 <Trash2 className="h-4 w-4 text-destructive" />
                                                             </Button>
                                                         </div>
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor={`activity-title-${index}`}>Titre</Label>
-                                                            <Input id={`activity-title-${index}`} value={activity.title} onChange={(e) => handleActivityChange(index, 'title', e.target.value)} />
-                                                        </div>
-                                                        <div className="space-y-2">
-                                                            <Label htmlFor={`activity-desc-${index}`}>Description</Label>
-                                                            <Input id={`activity-desc-${index}`} value={activity.description} onChange={(e) => handleActivityChange(index, 'description', e.target.value)} />
-                                                        </div>
+                                                         <FormField control={form.control} name={`otherActivitiesSection.activities.${index}.title`} render={({ field }) => ( <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                        <FormField control={form.control} name={`otherActivitiesSection.activities.${index}.description`} render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={3}/></FormControl><FormMessage /></FormItem> )}/>
                                                         <div className="mt-4">
                                                             <Label>Image</Label>
                                                             <div className="flex items-center gap-4 mt-2">
                                                                 <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
-                                                                    {activity.imageUrl ? (
-                                                                        <Image src={activity.imageUrl} alt={`Aperçu pour ${activity.title}`} layout="fill" objectFit="cover" />
+                                                                    {form.watch(`otherActivitiesSection.activities.${index}.imageUrl`) ? (
+                                                                        <Image src={form.watch(`otherActivitiesSection.activities.${index}.imageUrl`)!} alt={`Aperçu pour l'activité ${index + 1}`} layout="fill" objectFit="cover" />
                                                                     ) : (
                                                                         <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
                                                                     )}
                                                                 </div>
                                                                 <div className="flex flex-col gap-2">
-                                                                    <Button variant="outline" size="sm" onClick={() => {
+                                                                    <Button type="button" variant="outline" size="sm" onClick={() => {
                                                                         const currentRef = fileInputRef.current;
                                                                         if (currentRef) {
-                                                                            currentRef.onchange = createUploadHandler(base64 => handleActivityChange(index, 'imageUrl', base64));
+                                                                            currentRef.onchange = createUploadHandler(base64 => form.setValue(`otherActivitiesSection.activities.${index}.imageUrl`, base64));
                                                                             currentRef.click();
                                                                         }
                                                                     }}>
                                                                         <Upload className="mr-2 h-4 w-4" /> Uploader
                                                                     </Button>
-                                                                    <Button variant="destructive" size="sm" onClick={() => handleActivityChange(index, 'imageUrl', null)}>
+                                                                    <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue(`otherActivitiesSection.activities.${index}.imageUrl`, null)}>
                                                                         <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                                                     </Button>
                                                                 </div>
@@ -2385,11 +2357,12 @@ export default function PersonalizationPage() {
                                                     </div>
                                                 ))}
                                             </div>
-                                            <Button variant="outline" size="sm" onClick={addActivity} className="mt-4">
+                                            <Button variant="outline" size="sm" onClick={() => appendActivity({ id: `activity-${Date.now()}`, title: 'Nouvelle activité', description: 'Description de l\'activité.', imageUrl: null })} className="mt-4">
                                                 <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une activité
                                             </Button>
                                         </div>
-                                    </div>
+                                    </form>
+                                   </Form>
                                 ) : section.id === 'video' ? (
                                     <div className="space-y-8">
                                       <section>
