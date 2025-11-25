@@ -113,8 +113,8 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
-      allow get: if resource.data.isPublic == true || (request.auth != null && request.auth.uid == resource.data.counselorId);
-      allow list: if request.auth != null || request.query.where('isPublic', '==', true);
+      allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+      allow list: if request.query.get('isPublic') == true || (request.auth != null);
                      
       allow create, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
@@ -125,6 +125,10 @@ service cloud.firestore {
         allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
         allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
+      }
+      
+      match /consultations/{consultationId} {
+        allow read, list, create, update, delete: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       }
     }
     

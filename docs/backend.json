@@ -1052,6 +1052,32 @@
         }
       },
       "required": ["counselorId", "name"]
+    },
+    "Consultation": {
+      "title": "Consultation",
+      "type": "object",
+      "description": "Represents a single consultation (question + result) within a live Prisme session.",
+      "properties": {
+        "id": { "type": "string" },
+        "participantName": { "type": "string" },
+        "participantDob": { "type": "string", "format": "date" },
+        "question": { "type": "string" },
+        "result": {
+          "type": "object",
+          "properties": {
+            "drawnCards": {
+              "type": "array",
+              "items": { "type": "object" }
+            },
+            "selectedCharacteristics": {
+              "type": "array",
+              "items": { "type": "object" }
+            }
+          }
+        },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "participantName", "question", "createdAt"]
     }
   },
   "auth": {
@@ -1240,6 +1266,14 @@
           "description": "Stores user registrations for a specific event."
         }
       },
+       {
+        "path": "/events/{eventId}/consultations/{consultationId}",
+        "definition": {
+          "entityName": "Consultation",
+          "schema": { "$ref": "#/entities/Consultation" },
+          "description": "Stores individual consultations for a Prisme live session."
+        }
+      },
       {
         "path": "/tirageModels/{modelId}",
         "definition": {
@@ -1278,5 +1312,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
-    

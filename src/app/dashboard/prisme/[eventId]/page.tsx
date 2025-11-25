@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import { useParams } from 'next/navigation';
-import { useDoc, useMemoFirebase, useCollection, useUser, setDocumentNonBlocking } from '@/firebase';
+import { useDoc, useMemoFirebase, useCollection, useUser, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { doc, collection, query, where, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -50,7 +50,6 @@ type Event = {
     title: string;
     date: string;
     prismeConfig?: PrismeConfig;
-    consultations?: Consultation[];
 };
 
 type TirageModel = {
@@ -129,6 +128,12 @@ export default function PrismeLiveSessionPage() {
         return doc(firestore, 'events', eventId as string);
     }, [firestore, eventId]);
     const { data: event, isLoading: isEventLoading } = useDoc<Event>(eventRef);
+
+    const consultationsQuery = useMemoFirebase(() => {
+        if (!eventId) return null;
+        return collection(firestore, `events/${eventId}/consultations`);
+    }, [firestore, eventId]);
+    const { data: consultations, isLoading: areConsultationsLoading } = useCollection<Consultation>(consultationsQuery);
 
     // Session configuration state
     const [sessionType, setSessionType] = useState<'cartomancie' | 'clairvoyance'>('cartomancie');
@@ -263,9 +268,9 @@ export default function PrismeLiveSessionPage() {
     };
 
     const handleSaveConsultation = async () => {
-        if (!eventRef) return;
-        const newConsultation: Consultation = {
-            id: `consult-${Date.now()}`,
+        if (!eventId) return;
+
+        const newConsultationData = {
             participantName,
             participantDob,
             question: participantQuestion,
@@ -274,19 +279,19 @@ export default function PrismeLiveSessionPage() {
         };
 
         if (sessionType === 'cartomancie') {
-            newConsultation.result.drawnCards = drawnCards;
+            newConsultationData.result = { drawnCards };
         } else {
-            newConsultation.result.selectedCharacteristics = selectedClairvoyanceModel?.characteristics?.filter(c => selectedCharacteristics[c.id]) || [];
+            const characteristics = selectedClairvoyanceModel?.characteristics?.filter(c => selectedCharacteristics[c.id]) || [];
+            newConsultationData.result = { selectedCharacteristics: characteristics };
         }
-
-        await updateDoc(eventRef, {
-            consultations: arrayUnion(newConsultation)
-        });
+        
+        const consultationsCollectionRef = collection(firestore, `events/${eventId}/consultations`);
+        await addDocumentNonBlocking(consultationsCollectionRef, newConsultationData);
         
         resetQuestionForm();
     };
 
-    const isLoading = isEventLoading || areTirageModelsLoading || areDecksLoading || areClairvoyanceModelsLoading;
+    const isLoading = isEventLoading || areTirageModelsLoading || areDecksLoading || areClairvoyanceModelsLoading || areConsultationsLoading;
 
     if (isLoading && !event) {
         return (
@@ -395,8 +400,8 @@ export default function PrismeLiveSessionPage() {
                     )}
                     
                      <Accordion type="multiple" className="w-full">
-                        {event.consultations && event.consultations.length > 0 ? (
-                            event.consultations.map(c => (
+                        {consultations && consultations.length > 0 ? (
+                            consultations.map(c => (
                                 <AccordionItem key={c.id} value={c.id}>
                                     <AccordionTrigger>
                                         <div className="flex justify-between w-full pr-4">
