@@ -117,11 +117,11 @@ service cloud.firestore {
                      
       allow create, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
-      allow update: if (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) && request.resource.data.registrationsCount == resource.data.registrationsCount + 1 && get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true) ||
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) ||
                        (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
 
       match /registrations/{registrationId} {
-        allow read, list: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true || (request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+        allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
         allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
       }
