@@ -279,7 +279,7 @@ export default function EventsPage() {
                     <FormItem>
                       <FormLabel>Image de l'événement</FormLabel>
                       <div className="flex items-center gap-4">
-                        {imagePreview && <Image src={imagePreview} alt="Aperçu" width={120} height={67} className="rounded-md object-cover border" />}
+                        {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={120} height={67} className="rounded-md object-cover border" /> : <div className="h-[67px] w-[120px] bg-muted rounded-md border" />}
                         <input type="file" id="event-image" className="hidden" accept="image/*" onChange={handleImageUpload} />
                         <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('event-image')?.click()}>Choisir une image</Button>
                       </div>
