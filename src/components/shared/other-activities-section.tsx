@@ -27,36 +27,25 @@ type Event = {
 
 export function OtherActivitiesSection() {
     const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
-    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
-
-    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
-    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
-    
-    const isSuperAdmin = userData?.role === 'superadmin';
 
     const eventsQuery = useMemoFirebase(() => {
         if (!agency) return null;
         
-        // If the current user is the superadmin, fetch their public events.
-        // Otherwise, fetch the agency's public events.
-        const creatorId = isSuperAdmin ? user?.uid : agency.id;
-
-        if (!creatorId) return null;
-
         return query(
             collection(firestore, 'events'), 
             where('isPublic', '==', true),
-            where('counselorId', '==', creatorId)
+            // Always fetch events associated with the agency (super-admin)
+            where('counselorId', '==', agency.id)
         );
-    }, [firestore, agency, user, isSuperAdmin]);
+    }, [firestore, agency]);
 
     const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
     const { title, description, activities } = otherActivitiesSettings || {};
 
-    const isLoading = isAgencyLoading || areEventsLoading || isUserLoading || isUserDataLoading;
+    const isLoading = isAgencyLoading || areEventsLoading;
 
     if (isLoading) {
         return (

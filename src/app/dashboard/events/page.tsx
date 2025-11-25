@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -23,6 +23,7 @@ import { Switch } from '@/components/ui/switch';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { useAgency } from '@/context/agency-provider';
 
 type Event = {
   id: string;
@@ -120,12 +121,16 @@ export default function EventsPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { agency } = useAgency();
   
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingEvent, setEditingEvent] = useState<Event | null>(null);
   const [eventToDelete, setEventToDelete] = useState<Event | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
   const eventsQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -144,9 +149,6 @@ export default function EventsPage() {
           ...editingEvent,
           date: new Date(editingEvent.date).toISOString().slice(0, 16),
           maxAttendees: editingEvent.maxAttendees ?? 0,
-          description: editingEvent.description || '',
-          location: editingEvent.location || '',
-          meetLink: editingEvent.meetLink || '',
         });
         setImagePreview(editingEvent.imageUrl || null);
       } else {
@@ -186,9 +188,19 @@ export default function EventsPage() {
   const onSubmit = async (data: EventFormData) => {
     if (!user) return;
     setIsSubmitting(true);
+    
+    // If superadmin, link event to agency ID, otherwise to user ID
+    const creatorId = userData?.role === 'superadmin' ? agency?.id : user.uid;
+
+    if (!creatorId) {
+        toast({ title: "Erreur", description: "Impossible de déterminer le créateur de l'événement.", variant: 'destructive'});
+        setIsSubmitting(false);
+        return;
+    }
+
     const eventData = {
       ...data,
-      counselorId: user.uid,
+      counselorId: creatorId,
       imageUrl: imagePreview,
     };
     
@@ -217,7 +229,7 @@ export default function EventsPage() {
     }
   };
 
-  const isLoading = isUserLoading || areEventsLoading;
+  const isLoading = isUserLoading || areEventsLoading || isUserDataLoading;
 
   return (
     <div className="space-y-8">
@@ -274,11 +286,11 @@ export default function EventsPage() {
               <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
                 <div className="space-y-6">
                   <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={4} {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date et Heure</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu (si physique)</FormLabel><FormControl><Input placeholder="Ex: 123 Rue de Paris, Paris" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="meetLink" render={({ field }) => (<FormItem><FormLabel>Lien de visioconférence (Google Meet, etc.)</FormLabel><FormControl><Input type="url" placeholder="https://meet.google.com/..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="maxAttendees" render={({ field }) => (<FormItem><FormLabel>Nombre de places maximum</FormLabel><FormControl><Input type="number" min="0" placeholder="0 pour illimité" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu (si physique)</FormLabel><FormControl><Input placeholder="Ex: 123 Rue de Paris, Paris" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="meetLink" render={({ field }) => (<FormItem><FormLabel>Lien de visioconférence (Google Meet, etc.)</FormLabel><FormControl><Input type="url" placeholder="https://meet.google.com/..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="maxAttendees" render={({ field }) => (<FormItem><FormLabel>Nombre de places maximum</FormLabel><FormControl><Input type="number" min="0" placeholder="0 pour illimité" {...field} value={field.value || 0} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="imageUrl" render={() => (
                     <FormItem>
                       <FormLabel>Image de l'événement</FormLabel>
