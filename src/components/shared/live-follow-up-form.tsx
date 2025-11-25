@@ -17,15 +17,19 @@ import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
 
-const followUpSchema = z.object({
+const searchSchema = z.object({
   liveDate: z.string().min(1, "La date du live est requise."),
   name: z.string().min(1, "Votre nom est requis."),
   dob: z.string().min(1, "Votre date de naissance est requise."),
+});
+
+const contactSchema = z.object({
   email: z.string().email("Veuillez entrer un email valide."),
   phone: z.string().optional(),
 });
 
-type FollowUpFormData = z.infer<typeof followUpSchema>;
+type SearchFormData = z.infer<typeof searchSchema>;
+type ContactFormData = z.infer<typeof contactSchema>;
 
 interface LiveFollowUpFormProps {
     children: React.ReactNode;
@@ -40,19 +44,25 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
     const { toast } = useToast();
     const firestore = useFirestore();
 
-    const form = useForm<FollowUpFormData>({
-        resolver: zodResolver(followUpSchema),
-        defaultValues: { liveDate: '', name: '', dob: '', email: '', phone: '' },
+    const searchForm = useForm<SearchFormData>({
+        resolver: zodResolver(searchSchema),
+        defaultValues: { liveDate: '', name: '', dob: '' },
+    });
+
+    const contactForm = useForm<ContactFormData>({
+        resolver: zodResolver(contactSchema),
+        defaultValues: { email: '', phone: '' },
     });
     
     const resetState = () => {
         setIsLoading(false);
         setFoundConsultation(null);
         setWantsContact(false);
-        form.reset();
+        searchForm.reset();
+        contactForm.reset();
     }
 
-    const handleSearch = async (data: FollowUpFormData) => {
+    const handleSearch = async (data: SearchFormData) => {
         setIsLoading(true);
         setFoundConsultation(null);
 
@@ -63,7 +73,6 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
             );
             const eventSnap = await getDocs(eventQuery);
             
-            // Correct way to compare dates without timezone issues
             const inputDateString = new Date(data.liveDate.replace(/-/g, '/')).toISOString().split('T')[0];
 
             const eventsOnDate = eventSnap.docs.filter(doc => {
@@ -108,12 +117,13 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
         }
     };
     
-     const handleFollowUpSubmit = async () => {
+     const handleFollowUpSubmit = async (data: ContactFormData) => {
         if (!wantsContact || !foundConsultation) return;
         setIsLoading(true);
 
         const requestData = {
-            ...form.getValues(),
+            ...searchForm.getValues(),
+            ...data,
             counselorId,
             wantsContact,
             status: 'new',
@@ -147,11 +157,11 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
                     </DialogDescription>
                 </DialogHeader>
                 {!foundConsultation ? (
-                    <Form {...form}>
-                        <form onSubmit={form.handleSubmit(handleSearch)} className="space-y-4 pt-4">
-                            <FormField control={form.control} name="liveDate" render={({ field }) => ( <FormItem><FormLabel>Date du live</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Votre nom (utilisé durant le live)</FormLabel><FormControl><Input placeholder="Ex: Jean" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                            <FormField control={form.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Votre date de naissance</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                    <Form {...searchForm}>
+                        <form onSubmit={searchForm.handleSubmit(handleSearch)} className="space-y-4 pt-4">
+                            <FormField control={searchForm.control} name="liveDate" render={({ field }) => ( <FormItem><FormLabel>Date du live</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={searchForm.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Votre nom (utilisé durant le live)</FormLabel><FormControl><Input placeholder="Ex: Jean" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                            <FormField control={searchForm.control} name="dob" render={({ field }) => ( <FormItem><FormLabel>Votre date de naissance</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem> )}/>
                             <DialogFooter>
                                 <Button type="submit" disabled={isLoading} className="w-full">
                                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Search className="mr-2 h-4 w-4" />}
@@ -181,27 +191,30 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
                             </AlertDescription>
                         </Alert>
                         
-                        <Form {...form}>
-                            <div className="space-y-4">
+                        <Form {...contactForm}>
+                          <form onSubmit={contactForm.handleSubmit(handleFollowUpSubmit)} className="space-y-4">
+                            <div>
                                 <p className='font-medium'>Vos informations de contact :</p>
-                                <FormField control={form.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="votre.email@example.com" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone (optionnel)</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <div className="space-y-4 mt-2">
+                                  <FormField control={contactForm.control} name="email" render={({ field }) => ( <FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="votre.email@example.com" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                  <FormField control={contactForm.control} name="phone" render={({ field }) => ( <FormItem><FormLabel>Téléphone (optionnel)</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                </div>
                             </div>
+                           <div className="flex items-center space-x-2">
+                              <Checkbox id="wants-contact" checked={wantsContact} onCheckedChange={(checked) => setWantsContact(checked as boolean)} />
+                              <Label htmlFor="wants-contact" className="text-sm font-medium leading-none cursor-pointer">
+                                  Je souhaite être recontacté(e) pour un suivi.
+                              </Label>
+                           </div>
+                           <DialogFooter>
+                               <Button variant="outline" onClick={() => setFoundConsultation(null)}>Retour</Button>
+                                <Button type="submit" disabled={isLoading || !wantsContact} className="w-full sm:w-auto">
+                                   {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                   Confirmer la demande
+                               </Button>
+                           </DialogFooter>
+                          </form>
                         </Form>
-
-                        <div className="flex items-center space-x-2">
-                           <Checkbox id="wants-contact" checked={wantsContact} onCheckedChange={(checked) => setWantsContact(checked as boolean)} />
-                           <Label htmlFor="wants-contact" className="text-sm font-medium leading-none cursor-pointer">
-                                Je souhaite être recontacté(e) pour un suivi.
-                           </Label>
-                        </div>
-                        <DialogFooter>
-                            <Button variant="outline" onClick={() => setFoundConsultation(null)}>Retour</Button>
-                             <Button onClick={handleFollowUpSubmit} disabled={isLoading || !wantsContact} className="w-full sm:w-auto">
-                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Confirmer la demande
-                            </Button>
-                        </DialogFooter>
                     </div>
                 )}
             </DialogContent>
