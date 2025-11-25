@@ -336,7 +336,7 @@ export default function MiniSitePage() {
         interestsTitle: "Mes centres d'intérêt",
         interests: [],
         events: [],
-        eventsButtonText: "J'ai participé à un évènement",
+        eventsButtonText: "J'ai participé à un live",
         eventsButtonLink: "#",
       },
       pricingSection: {
@@ -348,7 +348,7 @@ export default function MiniSitePage() {
       jobOffersSection: {
         enabled: false,
         title: 'Nos Offres d\'Emploi',
-        subtitle: 'Rejoignez une équipe dynamique et passionnée.',
+        subtitle: 'Rejoignez mon équipe',
         offers: [],
       },
       trainingCatalogSection: {
@@ -1056,7 +1056,7 @@ export default function MiniSitePage() {
                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un événement
                                     </Button>
                                 </div>
-                                <FormField control={form.control} name="activitiesSection.eventsButtonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="J'ai participé à un évènement" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="activitiesSection.eventsButtonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="J'ai participé à un live" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="activitiesSection.eventsButtonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             </div>
                         </div>
