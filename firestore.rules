@@ -126,5 +126,12 @@ service cloud.firestore {
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
       }
     }
+    
+    match /tirageModels/{modelId} {
+      allow get, write: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow list: if request.auth != null && (request.query.where.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
   }
 }
+
+    
