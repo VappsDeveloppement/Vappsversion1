@@ -1,22 +1,17 @@
 
 'use client';
 
-import Image from "next/image";
-import Link from "next/link";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useState, useMemo, useEffect } from "react";
-import { Input } from "../ui/input";
-import { Calendar, Search } from "lucide-react";
-import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
-import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase";
-import { collection, query, where, doc } from "firebase/firestore";
-import { useFirestore } from "@/firebase/provider";
-import { Skeleton } from "../ui/skeleton";
-import type { OtherActivityItem } from "@/app/admin/settings/personalization/page";
-import { LiveFollowUpForm } from "./live-follow-up-form";
+import React, { useMemo, useState, useEffect } from 'react';
+import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import Link from 'next/link';
+import { Card, CardContent } from '@/components/ui/card';
+import { Calendar, CheckCircle } from 'lucide-react';
+import type { InterestItem } from '@/app/dashboard/settings/mini-site/page';
+import { Skeleton } from '../ui/skeleton';
+import { LiveFollowUpForm } from './live-follow-up-form';
+import { getPublicAgencyEvents } from '@/app/actions/events';
+import { useAgency } from '@/context/agency-provider';
 
 
 type Event = {
@@ -27,28 +22,52 @@ type Event = {
     counselorId: string;
 };
 
+type CounselorProfile = {
+    id: string;
+    miniSite?: {
+        activitiesSection?: {
+            enabled?: boolean;
+            title?: string;
+            text?: string;
+            mediaType?: 'image' | 'video';
+            imageUrl?: string;
+            videoUrl?: string;
+            interestsTitle?: string;
+            interests?: InterestItem[];
+            eventsButtonText?: string;
+            eventsButtonLink?: string;
+        }
+    };
+    dashboardTheme?: {
+        primaryColor?: string;
+    }
+};
+
 export function OtherActivitiesSection() {
     const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
+    const [events, setEvents] = useState<Event[]>([]);
+    const [areEventsLoading, setAreEventsLoading] = useState(true);
 
-    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
-    const { data: userData } = useDoc(userDocRef);
+    useEffect(() => {
+      async function fetchEvents() {
+        if (agency?.id) {
+          try {
+            const fetchedEvents = await getPublicAgencyEvents(agency.id);
+            setEvents(fetchedEvents);
+          } catch (error) {
+            console.error("Failed to fetch public events:", error);
+            // Optionally set an error state here
+          } finally {
+            setAreEventsLoading(false);
+          }
+        } else if (!isAgencyLoading) {
+            // Agency is loaded but there's no ID, so we can stop loading.
+             setAreEventsLoading(false);
+        }
+      }
+      fetchEvents();
+    }, [agency?.id, isAgencyLoading]);
 
-    const eventsQuery = useMemoFirebase(() => {
-        if (isAgencyLoading) return null; // Wait for agency data
-        
-        // This query is for the public home page, so it should always show the main agency's events.
-        const creatorId = agency?.id || 'vapps-agency';
-        
-        return query(
-            collection(firestore, 'events'), 
-            where('isPublic', '==', true),
-            where('counselorId', '==', creatorId)
-        );
-    }, [firestore, agency, isAgencyLoading]);
-
-    const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
     const { title, description, activities } = otherActivitiesSettings || {};
