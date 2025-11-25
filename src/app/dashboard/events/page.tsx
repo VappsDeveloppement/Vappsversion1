@@ -270,7 +270,7 @@ export default function EventsPage() {
               <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
                 <div className="space-y-6">
                   <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} rows={4} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date et Heure</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu (si physique)</FormLabel><FormControl><Input placeholder="Ex: 123 Rue de Paris, Paris" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="meetLink" render={({ field }) => (<FormItem><FormLabel>Lien de visioconférence (Google Meet, etc.)</FormLabel><FormControl><Input type="url" placeholder="https://meet.google.com/..." {...field} /></FormControl><FormMessage /></FormItem>)} />
