@@ -73,6 +73,23 @@ type CardData = {
   imageUrl?: string | null;
 }
 
+const clairvoyanceModelSchema = z.object({
+  name: z.string().min(1, "Le nom du modèle est requis."),
+  description: z.string().optional(),
+  imageUrl: z.string().nullable().optional(),
+});
+
+type ClairvoyanceModelFormData = z.infer<typeof clairvoyanceModelSchema>;
+
+type ClairvoyanceModel = {
+  id: string;
+  counselorId: string;
+  name: string;
+  description?: string;
+  imageUrl?: string | null;
+};
+
+
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -592,6 +609,141 @@ function DeckManager() {
     )
 }
 
+function ClairvoyanceManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingModel, setEditingModel] = useState<ClairvoyanceModel | null>(null);
+    const [modelToDelete, setModelToDelete] = useState<ClairvoyanceModel | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+
+    const modelsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'clairvoyanceModels'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: models, isLoading } = useCollection<ClairvoyanceModel>(modelsQuery);
+
+    const form = useForm<ClairvoyanceModelFormData>({
+        resolver: zodResolver(clairvoyanceModelSchema),
+    });
+
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingModel || { name: '', description: '', imageUrl: null });
+            setImagePreview(editingModel?.imageUrl || null);
+        }
+    }, [isSheetOpen, editingModel, form]);
+
+    const handleNewModel = () => { setEditingModel(null); setIsSheetOpen(true); };
+    const handleEditModel = (model: ClairvoyanceModel) => { setEditingModel(model); setIsSheetOpen(true); };
+    
+    const onDeleteModel = () => {
+        if (!modelToDelete) return;
+        deleteDocumentNonBlocking(doc(firestore, 'clairvoyanceModels', modelToDelete.id));
+        toast({ title: "Modèle supprimé" });
+        setModelToDelete(null);
+    };
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            setImagePreview(base64);
+            form.setValue('imageUrl', base64);
+        }
+    };
+
+    const onSubmit = async (data: ClairvoyanceModelFormData) => {
+        if (!user) return;
+        const modelData: Omit<ClairvoyanceModel, 'id'> = { counselorId: user.uid, ...data, imageUrl: imagePreview };
+
+        if (editingModel) {
+            await setDocumentNonBlocking(doc(firestore, 'clairvoyanceModels', editingModel.id), modelData, { merge: true });
+            toast({ title: "Modèle mis à jour" });
+        } else {
+            await addDocumentNonBlocking(collection(firestore, 'clairvoyanceModels'), modelData);
+            toast({ title: "Modèle créé" });
+        }
+        setIsSheetOpen(false);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Modèles de Clairvoyance/Pendule</CardTitle>
+                        <CardDescription>Gérez vos planches de pendule et autres modèles de support.</CardDescription>
+                    </div>
+                    <Button onClick={handleNewModel}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Nouveau Modèle
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Nom du modèle</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                        : models && models.length > 0 ? (
+                            models.map(model => (
+                                <TableRow key={model.id}>
+                                    <TableCell className="font-medium flex items-center gap-4">
+                                        {model.imageUrl ? <Image src={model.imageUrl} alt={model.name} width={60} height={40} className="rounded-md object-cover" /> : <div className="w-[60px] h-10 bg-muted rounded-md flex items-center justify-center"><ImageIcon className="h-5 w-5 text-muted-foreground"/></div>}
+                                        {model.name}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEditModel(model)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => setModelToDelete(model)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : <TableRow><TableCell colSpan={2} className="h-24 text-center">Aucun modèle créé.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-lg w-full">
+                        <SheetHeader><SheetTitle>{editingModel ? 'Modifier le' : 'Nouveau'} modèle</SheetTitle></SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du modèle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <div>
+                                    <Label>Image (planche, etc.)</Label>
+                                    <div className="mt-2 flex items-center gap-4">
+                                        {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={160} height={90} className="rounded-md object-cover"/> : <div className="w-40 h-[90px] bg-muted rounded-md" />}
+                                        <div className="space-y-2">
+                                            <input type="file" id="model-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
+                                            <Button type="button" variant="outline" onClick={() => document.getElementById('model-image-upload')?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Uploader</Button>
+                                            {imagePreview && <Button type="button" variant="destructive" size="sm" onClick={() => {setImagePreview(null); form.setValue('imageUrl', null)}}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
+                                        </div>
+                                    </div>
+                                </div>
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+                <AlertDialog open={!!modelToDelete} onOpenChange={(open) => !open && setModelToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader><AlertDialogTitle>Supprimer le modèle "{modelToDelete?.name}" ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={onDeleteModel} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+        </Card>
+    );
+}
+
+
 export default function PrismePage() {
     return (
         <div className="space-y-8">
@@ -615,17 +767,7 @@ export default function PrismePage() {
                 </TabsContent>
                 <TabsContent value="clairvoyance-pendule">
                      <div className="space-y-8">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Clairvoyance & Pendule</CardTitle>
-                                <CardDescription>Gestion des modèles pour les ressentis, les visions et le pendule.</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                                    <p className="text-muted-foreground">La gestion des modèles de clairvoyance et de pendule est en cours de construction.</p>
-                                </div>
-                            </CardContent>
-                        </Card>
+                        <ClairvoyanceManager />
                     </div>
                 </TabsContent>
             </Tabs>

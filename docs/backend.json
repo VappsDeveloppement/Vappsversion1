@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -560,6 +559,7 @@
         "features": { "type": "array", "items": { "type": "string" } },
         "isFeatured": { "type": "boolean" },
         "isPublic": { "type": "boolean" },
+        "hasPrismeAccess": { "type": "boolean", "description": "Whether this plan grants access to the Prisme feature." },
         "imageUrl": { "type": "string", "format": "uri" },
         "cta": { "type": "string" },
         "contractId": { "type": "string" },
@@ -968,6 +968,67 @@
         "registeredAt": { "type": "string", "format": "date-time" }
       },
       "required": ["eventId", "userId", "registeredAt"]
+    },
+    "TirageModel": {
+      "title": "Tirage Model",
+      "type": "object",
+      "description": "A template for a cartomancy card spread.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Tirage en Croix'" },
+        "description": { "type": "string" },
+        "positions": {
+          "type": "array",
+          "description": "The positions of the cards in the spread.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "positionNumber": { "type": "number" },
+              "meaning": { "type": "string", "description": "e.g., 'Le Passé', 'L'obstacle'" }
+            },
+            "required": ["positionNumber", "meaning"]
+          }
+        }
+      },
+      "required": ["counselorId", "name", "positions"]
+    },
+    "CardDeck": {
+      "title": "Card Deck",
+      "type": "object",
+      "description": "A collection of cartomancy cards, like a tarot or oracle deck.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Tarot de Marseille'" },
+        "description": { "type": "string" }
+      },
+      "required": ["counselorId", "name"]
+    },
+    "Card": {
+      "title": "Card",
+      "type": "object",
+      "description": "A single card within a deck.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Le Bateleur'" },
+        "description": { "type": "string", "description": "The meaning or interpretation of the card." },
+        "imageUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["name"]
+    },
+    "ClairvoyanceModel": {
+      "title": "Clairvoyance Model",
+      "type": "object",
+      "description": "A template for clairvoyance or pendulum readings.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Planche Pendule Oui/Non'" },
+        "description": { "type": "string" },
+        "imageUrl": { "type": "string", "format": "uri" }
+      },
+      "required": ["counselorId", "name"]
     }
   },
   "auth": {
@@ -1155,10 +1216,42 @@
           "schema": { "$ref": "#/entities/EventRegistration" },
           "description": "Stores user registrations for a specific event."
         }
+      },
+      {
+        "path": "/tirageModels/{modelId}",
+        "definition": {
+          "entityName": "TirageModel",
+          "schema": {
+            "$ref": "#/entities/TirageModel"
+          },
+          "description": "Stores cartomancy spread models created by counselors."
+        }
+      },
+      {
+        "path": "/cardDecks/{deckId}",
+        "definition": {
+          "entityName": "CardDeck",
+          "schema": { "$ref": "#/entities/CardDeck" },
+          "description": "Stores card decks (tarot, oracle, etc.) created by counselors."
+        }
+      },
+      {
+        "path": "/cardDecks/{deckId}/cards/{cardId}",
+        "definition": {
+          "entityName": "Card",
+          "schema": { "$ref": "#/entities/Card" },
+          "description": "Stores individual cards within a specific deck."
+        }
+      },
+      {
+        "path": "/clairvoyanceModels/{modelId}",
+        "definition": {
+          "entityName": "ClairvoyanceModel",
+          "schema": { "$ref": "#/entities/ClairvoyanceModel" },
+          "description": "Stores models for clairvoyance and pendulum readings."
+        }
       }
     ],
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
-    

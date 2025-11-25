@@ -114,9 +114,12 @@ service cloud.firestore {
     
     match /events/{eventId} {
       allow get: if resource.data.isPublic == true || (request.auth != null && request.auth.uid == resource.data.counselorId);
-      allow list: if request.auth != null || request.query.where.isPublic == true;
-      allow create, update, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+                     
+      allow create, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) ||
+                       (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+
       match /registrations/{registrationId} {
         allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
         allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
@@ -132,11 +135,20 @@ service cloud.firestore {
     }
 
     match /cardDecks/{deckId} {
-      allow read, list, create, update, delete: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow read, list: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow update, delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
       match /cards/{cardId} {
         allow read, list, create, update, delete: if request.auth != null && (get(/databases/$(database)/documents/cardDecks/$(deckId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       }
+    }
+    
+    match /clairvoyanceModels/{modelId} {
+      allow get: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow list: if request.auth != null && (request.query.where.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
     }
   }
 }
