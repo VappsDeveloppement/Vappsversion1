@@ -23,9 +23,9 @@ export async function findConsultation({ liveDate, name, dob }: { liveDate: stri
         
         // Find events on the specified date.
         const startOfDay = new Date(liveDate);
-        startOfDay.setHours(0, 0, 0, 0);
+        startOfDay.setUTCHours(0, 0, 0, 0);
         const endOfDay = new Date(liveDate);
-        endOfDay.setHours(23, 59, 59, 999);
+        endOfDay.setUTCHours(23, 59, 59, 999);
 
         const eventQuery = query(
             eventsCollectionRef,
