@@ -77,29 +77,23 @@ const toBase64 = (file: File): Promise<string> =>
 function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAttendees?: number }) {
     const firestore = useFirestore();
     const { user } = useUser();
-    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
-    const { data: currentUserData, isLoading: isUserDocLoading } = useDoc(userDocRef);
 
     const registrationsQuery = useMemoFirebase(() => collection(firestore, `events/${eventId}/registrations`), [eventId, firestore]);
     const { data: registrations, isLoading: areRegistrationsLoading } = useCollection<Registration>(registrationsQuery);
 
     const clientsQuery = useMemoFirebase(() => {
-        if (!user || !currentUserData) return null;
-        const baseQuery = collection(firestore, 'users');
-
-        if (currentUserData.role === 'superadmin') {
-            return query(baseQuery, where('role', '==', 'membre'));
-        }
-
-        return query(baseQuery, where('counselorIds', 'array-contains', user.uid));
-    }, [user, currentUserData, firestore]);
+        if (!user) return null;
+        // This query works for BOTH 'conseiller' and 'superadmin' as they both manage clients
+        // via the counselorIds field.
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore]);
     
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
     
     const clientEmails = useMemo(() => new Set(clients?.map(c => c.email)), [clients]);
 
     const spotsLeft = maxAttendees ? maxAttendees - (registrations?.length || 0) : 'illimitées';
-    const isLoading = areRegistrationsLoading || areClientsLoading || isUserDocLoading;
+    const isLoading = areRegistrationsLoading || areClientsLoading;
 
     return (
         <Sheet>
