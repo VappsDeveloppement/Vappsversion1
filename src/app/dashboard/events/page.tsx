@@ -77,23 +77,29 @@ const toBase64 = (file: File): Promise<string> =>
 function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAttendees?: number }) {
     const firestore = useFirestore();
     const { user } = useUser();
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: currentUserData, isLoading: isUserDocLoading } = useDoc(userDocRef);
 
-    // Query for all registrations of a given event
     const registrationsQuery = useMemoFirebase(() => collection(firestore, `events/${eventId}/registrations`), [eventId, firestore]);
     const { data: registrations, isLoading: areRegistrationsLoading } = useCollection<Registration>(registrationsQuery);
 
-    // Query for the current user's clients to check against registrations
     const clientsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
-    }, [user, firestore]);
+        if (!user || !currentUserData) return null;
+        const baseQuery = collection(firestore, 'users');
+
+        if (currentUserData.role === 'superadmin') {
+            return query(baseQuery, where('role', '==', 'membre'));
+        }
+
+        return query(baseQuery, where('counselorIds', 'array-contains', user.uid));
+    }, [user, currentUserData, firestore]);
+    
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
     
-    // Create a Set of client emails for efficient lookup
     const clientEmails = useMemo(() => new Set(clients?.map(c => c.email)), [clients]);
 
     const spotsLeft = maxAttendees ? maxAttendees - (registrations?.length || 0) : 'illimitées';
-    const isLoading = areRegistrationsLoading || areClientsLoading;
+    const isLoading = areRegistrationsLoading || areClientsLoading || isUserDocLoading;
 
     return (
         <Sheet>
