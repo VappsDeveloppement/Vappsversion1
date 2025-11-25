@@ -11,8 +11,8 @@ import { Input } from "../ui/input";
 import { Calendar, Search } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
+import { useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase";
+import { collection, query, where, doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
 import type { OtherActivityItem } from "@/app/admin/settings/personalization/page";
@@ -27,24 +27,36 @@ type Event = {
 
 export function OtherActivitiesSection() {
     const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
+
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+    
+    const isSuperAdmin = userData?.role === 'superadmin';
 
     const eventsQuery = useMemoFirebase(() => {
         if (!agency) return null;
-        // Corrected query: Fetch only public events created by the agency/super-admin.
+        
+        // If the current user is the superadmin, fetch their public events.
+        // Otherwise, fetch the agency's public events.
+        const creatorId = isSuperAdmin ? user?.uid : agency.id;
+
+        if (!creatorId) return null;
+
         return query(
             collection(firestore, 'events'), 
             where('isPublic', '==', true),
-            where('counselorId', '==', agency.id)
+            where('counselorId', '==', creatorId)
         );
-    }, [firestore, agency]);
+    }, [firestore, agency, user, isSuperAdmin]);
 
     const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
     const { title, description, activities } = otherActivitiesSettings || {};
 
-    const isLoading = isAgencyLoading || areEventsLoading;
+    const isLoading = isAgencyLoading || areEventsLoading || isUserLoading || isUserDataLoading;
 
     if (isLoading) {
         return (
