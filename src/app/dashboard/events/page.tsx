@@ -142,7 +142,11 @@ export default function EventsPage() {
       if (editingEvent) {
         form.reset({
           ...editingEvent,
-          date: new Date(editingEvent.date).toISOString().slice(0, 16)
+          date: new Date(editingEvent.date).toISOString().slice(0, 16),
+          maxAttendees: editingEvent.maxAttendees ?? 0,
+          description: editingEvent.description || '',
+          location: editingEvent.location || '',
+          meetLink: editingEvent.meetLink || '',
         });
         setImagePreview(editingEvent.imageUrl || null);
       } else {
