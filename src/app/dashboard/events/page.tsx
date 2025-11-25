@@ -9,7 +9,7 @@ import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDoc
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -151,8 +151,13 @@ export default function EventsPage() {
     if (isSheetOpen) {
       if (editingEvent) {
         form.reset({
-          ...editingEvent,
+          title: editingEvent.title || '',
+          description: editingEvent.description || '',
           date: new Date(editingEvent.date).toISOString().slice(0, 16),
+          location: editingEvent.location || '',
+          meetLink: editingEvent.meetLink || '',
+          isPublic: editingEvent.isPublic || false,
+          imageUrl: editingEvent.imageUrl || null,
           maxAttendees: editingEvent.maxAttendees ?? 0,
         });
         setImagePreview(editingEvent.imageUrl || null);
@@ -200,6 +205,7 @@ export default function EventsPage() {
       ...data,
       counselorId: creatorId,
       imageUrl: imagePreview,
+      isPublic: data.isPublic, // Ensure isPublic is correctly passed
     };
     
     try {
@@ -288,7 +294,7 @@ export default function EventsPage() {
                   <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date et Heure</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu (si physique)</FormLabel><FormControl><Input placeholder="Ex: 123 Rue de Paris, Paris" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="meetLink" render={({ field }) => (<FormItem><FormLabel>Lien de visioconférence (Google Meet, etc.)</FormLabel><FormControl><Input type="url" placeholder="https://meet.google.com/..." {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="maxAttendees" render={({ field }) => (<FormItem><FormLabel>Nombre de places maximum</FormLabel><FormControl><Input type="number" min="0" placeholder="0 pour illimité" {...field} value={field.value || 0} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="maxAttendees" render={({ field }) => (<FormItem><FormLabel>Nombre de places maximum</FormLabel><FormControl><Input type="number" min="0" placeholder="0 pour illimité" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="imageUrl" render={() => (
                     <FormItem>
                       <FormLabel>Image de l'événement</FormLabel>
