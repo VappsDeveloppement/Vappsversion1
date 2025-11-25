@@ -110,7 +110,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                           lastName: lastName,
                           email: firebaseUser.email,
                           role: isFirstUserEver ? 'superadmin' : 'membre',
-                          counselorId: isFirstUserEver ? firebaseUser.uid : '',
+                          counselorIds: isFirstUserEver ? [firebaseUser.uid] : [],
                           dateJoined: new Date().toISOString(),
                           lastSignInTime: new Date().toISOString(),
                           phone: firebaseUser.phoneNumber || '',
