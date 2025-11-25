@@ -968,6 +968,30 @@
         "registeredAt": { "type": "string", "format": "date-time" }
       },
       "required": ["eventId", "userId", "registeredAt"]
+    },
+    "TirageModel": {
+      "title": "Tirage Model",
+      "type": "object",
+      "description": "A template for a cartomancy card spread.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string", "description": "e.g., 'Tirage en Croix'" },
+        "description": { "type": "string" },
+        "positions": {
+          "type": "array",
+          "description": "The positions of the cards in the spread.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "positionNumber": { "type": "number" },
+              "meaning": { "type": "string", "description": "e.g., 'Le Passé', 'L'obstacle'" }
+            },
+            "required": ["positionNumber", "meaning"]
+          }
+        }
+      },
+      "required": ["counselorId", "name", "positions"]
     }
   },
   "auth": {
@@ -1154,6 +1178,16 @@
           "entityName": "EventRegistration",
           "schema": { "$ref": "#/entities/EventRegistration" },
           "description": "Stores user registrations for a specific event."
+        }
+      },
+      {
+        "path": "/tirageModels/{modelId}",
+        "definition": {
+          "entityName": "TirageModel",
+          "schema": {
+            "$ref": "#/backend/entities/TirageModel"
+          },
+          "description": "Stores cartomancy spread models created by counselors."
         }
       }
     ],
