@@ -122,11 +122,15 @@ service cloud.firestore {
                      (request.auth != null && request.auth.uid == request.query.where.counselorId) ||
                      (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
                      
-      allow create, update, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow create, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
+      // Allow public to increment counter when registering, and counselors/admins to edit everything else
+      allow update: if (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) && request.resource.data.registrationsCount == resource.data.registrationsCount + 1) ||
+                       (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+
       match /registrations/{registrationId} {
         allow get, list: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true || (request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
-        allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true || (request.auth != null && request.auth.uid == request.resource.data.userId);
+        allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
       }
     }
