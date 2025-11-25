@@ -16,6 +16,7 @@ import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
+import { findConsultation } from '@/app/actions/live';
 
 const searchSchema = z.object({
   liveDate: z.string().min(1, "La date du live est requise."),
@@ -66,59 +67,14 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
         setIsLoading(true);
         setFoundConsultation(null);
 
-        try {
-            const eventsCollectionRef = collection(firestore, 'events');
-            
-            const eventQuery = query(
-                eventsCollectionRef, 
-                where('isPublic', '==', true)
-            );
+        const result = await findConsultation(data);
 
-            const eventSnap = await getDocs(eventQuery);
-            
-            const inputDateString = new Date(data.liveDate.replace(/-/g, '/')).toISOString().split('T')[0];
-
-            const eventsOnDate = eventSnap.docs.filter(doc => {
-                 const eventDate = new Date(doc.data().date);
-                 // Normalize to prevent timezone issues
-                 const eventDateString = new Date(eventDate.getTime() - (eventDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
-                 return eventDateString === inputDateString;
-            });
-            
-            if (eventsOnDate.length === 0) {
-                setFoundConsultation('not-found');
-                setIsLoading(false);
-                return;
-            }
-            
-            let consultationFound = null;
-            for (const eventDoc of eventsOnDate) {
-                const eventId = eventDoc.id;
-                const consultationQuery = query(
-                    collection(firestore, `events/${eventId}/consultations`),
-                    where('participantName', '==', data.name.trim()),
-                    where('participantDob', '==', data.dob)
-                );
-                const consultationSnap = await getDocs(consultationQuery);
-
-                if (!consultationSnap.empty) {
-                    consultationFound = consultationSnap.docs[0].data();
-                    break; 
-                }
-            }
-
-            if (consultationFound) {
-                 setFoundConsultation(consultationFound);
-            } else {
-                setFoundConsultation('not-found');
-            }
-
-        } catch (error) {
-            console.error("Error searching consultation:", error);
-            toast({ title: "Erreur", description: "La recherche a échoué.", variant: "destructive" });
-        } finally {
-            setIsLoading(false);
+        if (result) {
+            setFoundConsultation(result);
+        } else {
+            setFoundConsultation('not-found');
         }
+        setIsLoading(false);
     };
     
      const handleFollowUpSubmit = async (data: ContactFormData) => {
