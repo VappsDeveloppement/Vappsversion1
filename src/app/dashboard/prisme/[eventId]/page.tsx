@@ -8,7 +8,7 @@ import { doc, collection, query, where, updateDoc, arrayUnion, arrayRemove } fro
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, PlusCircle, User, Calendar as CalendarIcon, Wand, Save, BookOpen, Trash2, ChevronsUpDown, Check } from 'lucide-react';
+import { ArrowLeft, PlusCircle, User, Calendar as CalendarIcon, Wand, Save, BookOpen, Trash2, ChevronsUpDown, Check, Cake } from 'lucide-react';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
@@ -405,7 +405,16 @@ export default function PrismeLiveSessionPage() {
                                 <AccordionItem key={c.id} value={c.id}>
                                     <AccordionTrigger>
                                         <div className="flex justify-between w-full pr-4">
-                                            <div className="flex items-center gap-2"><User className="h-4 w-4" /> {c.participantName}</div>
+                                            <div className="flex items-center gap-2">
+                                                <User className="h-4 w-4" /> 
+                                                <span>{c.participantName}</span>
+                                                {c.participantDob && (
+                                                    <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                                        <Cake className="h-4 w-4" />
+                                                        {new Date(c.participantDob).toLocaleDateString('fr-FR')}
+                                                    </span>
+                                                )}
+                                            </div>
                                             <div className="text-sm text-muted-foreground flex items-center gap-2"><CalendarIcon className="h-4 w-4" /> {new Date(c.createdAt).toLocaleTimeString('fr-FR')}</div>
                                         </div>
                                     </AccordionTrigger>
@@ -430,3 +439,5 @@ export default function PrismeLiveSessionPage() {
     );
 }
 
+
+    
