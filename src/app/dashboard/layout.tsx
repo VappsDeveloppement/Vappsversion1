@@ -18,6 +18,7 @@ import {
   Loader2,
   Settings,
   Newspaper,
+  Pyramid,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -190,14 +191,24 @@ export default function DashboardLayout({
                 </SidebarMenuItem>
               ))}
                {(isConseiller || isSuperAdmin) && (
-                 <SidebarMenuItem>
-                    <Link href="/dashboard/billing">
-                    <SidebarMenuButton isActive={pathname.startsWith("/dashboard/billing")}>
-                        <CreditCard />
-                        <span>Facturation</span>
-                    </SidebarMenuButton>
-                    </Link>
-                </SidebarMenuItem>
+                 <>
+                    <SidebarMenuItem>
+                        <Link href="/dashboard/billing">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/billing")}>
+                            <CreditCard />
+                            <span>Facturation</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                     <SidebarMenuItem>
+                        <Link href="/dashboard/prisme">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/prisme")}>
+                            <Pyramid />
+                            <span>Prisme</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                 </>
                )}
               {(isConseiller || isSuperAdmin) && (
                   <>
