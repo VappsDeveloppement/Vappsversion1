@@ -142,10 +142,12 @@ export function CounselorActivitiesSection({ counselor }: { counselor: Counselor
                                             <Skeleton className="h-6 w-3/4" />
                                         </div>
                                     ) : (events && events.length > 0) ? events.map((event) => (
-                                        <div key={event.id} className="flex justify-between items-center text-sm">
-                                            <p className="font-medium">{event.title}</p>
-                                            <p style={{ color: primaryColor }} className="font-semibold shrink-0 ml-4">{new Date(event.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}</p>
-                                        </div>
+                                        <Link key={event.id} href={`/events/${event.id}`} className="block p-2 -m-2 rounded-md hover:bg-muted/50 transition-colors">
+                                            <div className="flex justify-between items-center text-sm">
+                                                <p className="font-medium">{event.title}</p>
+                                                <p style={{ color: primaryColor }} className="font-semibold shrink-0 ml-4">{new Date(event.date).toLocaleDateString('fr-FR', { month: 'short', day: 'numeric' })}</p>
+                                            </div>
+                                        </Link>
                                     )) : (
                                         <p className='text-muted-foreground text-sm'>Aucun événement à venir.</p>
                                     )}
