@@ -19,6 +19,7 @@ import {
   Settings,
   Newspaper,
   Pyramid,
+  PhoneForwarded,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -206,6 +207,14 @@ export default function DashboardLayout({
                         <SidebarMenuButton isActive={pathname.startsWith("/dashboard/billing")}>
                             <CreditCard />
                             <span>Facturation</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                     <SidebarMenuItem>
+                        <Link href="/dashboard/reminders">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/reminders")}>
+                            <PhoneForwarded />
+                            <span>Demandes de rappel</span>
                         </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
