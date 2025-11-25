@@ -50,7 +50,9 @@ export function OtherActivitiesSection() {
     const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
-    const { title, description, activities, eventsButtonText, eventsButtonLink } = otherActivitiesSettings || {};
+    const { title, description, activities } = otherActivitiesSettings || {};
+    const eventsButtonText = otherActivitiesSettings?.eventsButtonText || "J'ai participé à un live";
+    const eventsButtonLink = otherActivitiesSettings?.eventsButtonLink || "#";
     const primaryColor = personalization?.primaryColor || '#10B981';
 
     const isLoading = isAgencyLoading || areEventsLoading;
@@ -132,11 +134,11 @@ export function OtherActivitiesSection() {
                                         <p className="text-sm text-muted-foreground text-center py-4">Aucun événement public à venir.</p>
                                     )}
                                 </div>
-                                 {eventsButtonText && eventsButtonLink && (
-                                    <Button asChild className="w-full mt-6" style={{ backgroundColor: primaryColor }}>
-                                        <Link href={eventsButtonLink}>{eventsButtonText}</Link>
-                                    </Button>
-                                )}
+                                
+                                <Button asChild className="w-full mt-6" style={{ backgroundColor: primaryColor }}>
+                                    <Link href={eventsButtonLink}>{eventsButtonText}</Link>
+                                </Button>
+                               
                             </CardContent>
                         </Card>
                     </div>
