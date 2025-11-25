@@ -8,7 +8,7 @@ import { doc, collection, query, where, updateDoc, arrayUnion, arrayRemove } fro
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, PlusCircle, User, Calendar as CalendarIcon, Wand, Save, BookOpen, Trash2 } from 'lucide-react';
+import { ArrowLeft, PlusCircle, User, Calendar as CalendarIcon, Wand, Save, BookOpen, Trash2, ChevronsUpDown, Check } from 'lucide-react';
 import Link from 'next/link';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
@@ -19,6 +19,10 @@ import { Textarea } from '@/components/ui/textarea';
 import Image from 'next/image';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
+
 
 type PrismeConfig = {
     sessionType?: 'cartomancie' | 'clairvoyance';
@@ -74,6 +78,44 @@ type ClairvoyanceModel = {
   characteristics?: { id: string; text: string }[];
 };
 
+// Component for card selection dropdown
+function CardSelector({ cards, position, onCardSelect, selectedValue }: { cards: CardData[], position: DrawnCard['position'], onCardSelect: (card: CardData, positionNumber: number) => void, selectedValue: string | undefined}) {
+    const [open, setOpen] = useState(false);
+
+    return (
+        <Popover open={open} onOpenChange={setOpen}>
+            <PopoverTrigger asChild>
+                <Button variant="outline" role="combobox" className="w-full justify-between">
+                    {selectedValue ? cards.find(c => c.id === selectedValue)?.name : "Choisir une carte..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[300px] p-0">
+                <Command>
+                    <CommandInput placeholder="Rechercher une carte..." />
+                    <CommandList>
+                        <CommandEmpty>Aucune carte trouvée.</CommandEmpty>
+                        <CommandGroup>
+                            {cards.map(card => (
+                                <CommandItem
+                                    key={card.id}
+                                    value={card.name}
+                                    onSelect={() => {
+                                        onCardSelect(card, position.positionNumber);
+                                        setOpen(false);
+                                    }}
+                                >
+                                    <Check className={cn("mr-2 h-4 w-4", selectedValue === card.id ? "opacity-100" : "opacity-0")} />
+                                    {card.name}
+                                </CommandItem>
+                            ))}
+                        </CommandGroup>
+                    </CommandList>
+                </Command>
+            </PopoverContent>
+        </Popover>
+    );
+}
 
 export default function PrismeLiveSessionPage() {
     const params = useParams();
@@ -179,6 +221,29 @@ export default function PrismeLiveSessionPage() {
             position: pos,
         }));
         setDrawnCards(newDrawnCards);
+    };
+
+    const handleManualCardSelect = (selectedCard: CardData, positionNumber: number) => {
+        setDrawnCards(prevDrawn => {
+            const newDrawn = [...prevDrawn];
+            const existingIndex = newDrawn.findIndex(d => d.position.positionNumber === positionNumber);
+            const position = selectedTirageModel?.positions.find(p => p.positionNumber === positionNumber);
+
+            if (!position) return prevDrawn; // Should not happen
+
+            const newDraw: DrawnCard = { card: selectedCard, position };
+
+            if (existingIndex > -1) {
+                newDrawn[existingIndex] = newDraw;
+            } else {
+                newDrawn.push(newDraw);
+            }
+            
+            // Sort by position number to maintain order
+            newDrawn.sort((a, b) => a.position.positionNumber - b.position.positionNumber);
+
+            return newDrawn;
+        });
     };
 
     const handleCheckboxChange = (characteristicId: string) => {
@@ -287,9 +352,33 @@ export default function PrismeLiveSessionPage() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label htmlFor="participant-name">Nom du participant</Label><Input id="participant-name" placeholder="Ex: Jean Dupont" value={participantName} onChange={(e) => setParticipantName(e.target.value)} /></div><div className="space-y-2"><Label htmlFor="participant-dob">Date de naissance</Label><Input id="participant-dob" type="date" value={participantDob} onChange={(e) => setParticipantDob(e.target.value)} /></div></div>
                             <div className="space-y-2"><Label htmlFor="participant-question">Question</Label><Textarea id="participant-question" placeholder="Quelle est la question du participant ?" value={participantQuestion} onChange={(e) => setParticipantQuestion(e.target.value)} /></div>
                             
-                             {sessionType === 'cartomancie' && (
-                                <div className="space-y-4 pt-4 border-t">
-                                    <Button onClick={handleDrawCards} disabled={!selectedTirageModel || !cards || areCardsLoading}><Wand className="mr-2 h-4 w-4" />Lancer le tirage</Button>
+                            {sessionType === 'cartomancie' && (
+                                <div className="space-y-6 pt-4 border-t">
+                                    <div className="space-y-4">
+                                        <h5 className="font-medium">Tirage</h5>
+                                        <div className="flex gap-4 items-center">
+                                            <Button onClick={handleDrawCards} disabled={!selectedTirageModel || !cards || areCardsLoading}><Wand className="mr-2 h-4 w-4" />Tirage aléatoire</Button>
+                                            <span className="text-sm text-muted-foreground">OU</span>
+                                        </div>
+                                         {selectedTirageModel && cards && (
+                                            <div className='space-y-4'>
+                                                <h6 className="font-medium text-sm">Sélection Manuelle</h6>
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                                                    {selectedTirageModel.positions.map(pos => (
+                                                        <div key={pos.positionNumber} className="space-y-1">
+                                                            <Label className="text-xs text-muted-foreground">{pos.positionNumber}. {pos.meaning}</Label>
+                                                            <CardSelector 
+                                                                cards={cards} 
+                                                                position={pos} 
+                                                                onCardSelect={handleManualCardSelect}
+                                                                selectedValue={drawnCards.find(dc => dc.position.positionNumber === pos.positionNumber)?.card.id}
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                         )}
+                                    </div>
                                     {drawnCards.length > 0 && (<div className="space-y-4">{drawnCards.map((item, index) => (<div key={index} className="flex gap-4 p-4 border rounded-lg bg-background"><div className="flex-shrink-0">{item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}</div><div><p className="text-sm text-muted-foreground">{item.position.meaning}</p><h4 className="text-lg font-bold">{item.card.name}</h4><p className="text-sm">{item.card.description}</p></div></div>))}</div>)}
                                 </div>
                             )}
@@ -335,3 +424,4 @@ export default function PrismeLiveSessionPage() {
         </div>
     );
 }
+
