@@ -10,13 +10,12 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Loader2, Check, Search } from 'lucide-react';
+import { Loader2, Check, Search, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { Checkbox } from '../ui/checkbox';
 import { Alert, AlertDescription, AlertTitle } from '../ui/alert';
-import { AlertCircle } from 'lucide-react';
 
 const followUpSchema = z.object({
   liveDate: z.string().min(1, "La date du live est requise."),
@@ -58,18 +57,19 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
         setFoundConsultation(null);
 
         try {
-            // 1. Fetch all public events.
             const eventQuery = query(
                 collection(firestore, 'events'),
                 where('isPublic', '==', true)
             );
             const eventSnap = await getDocs(eventQuery);
             
-            // 2. Filter events by the selected date on the client side.
-            const inputDate = new Date(data.liveDate).toISOString().split('T')[0];
+            // Correct way to compare dates without timezone issues
+            const inputDateString = new Date(data.liveDate.replace(/-/g, '/')).toISOString().split('T')[0];
+
             const eventsOnDate = eventSnap.docs.filter(doc => {
-                const eventDate = new Date(doc.data().date).toISOString().split('T')[0];
-                return eventDate === inputDate;
+                 const eventDate = new Date(doc.data().date);
+                 const eventDateString = new Date(eventDate.getTime() - (eventDate.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+                 return eventDateString === inputDateString;
             });
             
             if (eventsOnDate.length === 0) {
@@ -78,7 +78,6 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
                 return;
             }
             
-            // 3. Search for the consultation in all matching events.
             let consultationFound = null;
             for (const eventDoc of eventsOnDate) {
                 const eventId = eventDoc.id;
@@ -91,7 +90,7 @@ export function LiveFollowUpForm({ children, counselorId }: LiveFollowUpFormProp
 
                 if (!consultationSnap.empty) {
                     consultationFound = consultationSnap.docs[0].data();
-                    break; // Exit loop once found
+                    break; 
                 }
             }
 
