@@ -50,7 +50,8 @@ export function OtherActivitiesSection() {
     const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
-    const { title, description, activities } = otherActivitiesSettings || {};
+    const { title, description, activities, eventsButtonText, eventsButtonLink } = otherActivitiesSettings || {};
+    const primaryColor = personalization?.primaryColor || '#10B981';
 
     const isLoading = isAgencyLoading || areEventsLoading;
 
@@ -131,9 +132,11 @@ export function OtherActivitiesSection() {
                                         <p className="text-sm text-muted-foreground text-center py-4">Aucun événement public à venir.</p>
                                     )}
                                 </div>
-                                 <Button className="w-full mt-6" variant="outline" disabled>
-                                    {/* Placeholder Button */}
-                                </Button>
+                                 {eventsButtonText && eventsButtonLink && (
+                                    <Button asChild className="w-full mt-6" style={{ backgroundColor: primaryColor }}>
+                                        <Link href={eventsButtonLink}>{eventsButtonText}</Link>
+                                    </Button>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
