@@ -6,7 +6,7 @@ import Link from "next/link";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "../ui/input";
 import { Calendar, Search } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -23,22 +23,29 @@ type Event = {
     title: string;
     date: string;
     isPublic: boolean;
+    counselorId: string;
 };
 
 export function OtherActivitiesSection() {
     const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData } = useDoc(userDocRef);
+
     const eventsQuery = useMemoFirebase(() => {
-        if (!agency) return null;
+        if (isAgencyLoading) return null; // Wait for agency data
+        
+        // On the public home page, always show agency's events.
+        const creatorId = agency?.id || 'vapps-agency';
         
         return query(
             collection(firestore, 'events'), 
             where('isPublic', '==', true),
-            // Always fetch events associated with the agency (super-admin)
-            where('counselorId', '==', agency.id)
+            where('counselorId', '==', creatorId)
         );
-    }, [firestore, agency]);
+    }, [firestore, agency, isAgencyLoading]);
 
     const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
@@ -124,7 +131,7 @@ export function OtherActivitiesSection() {
                                         <p className="text-sm text-muted-foreground text-center py-4">Aucun événement public à venir.</p>
                                     )}
                                 </div>
-                                 <Button className="w-full mt-6" variant="outline">
+                                 <Button className="w-full mt-6" variant="outline" disabled>
                                     {/* Placeholder Button */}
                                 </Button>
                             </CardContent>
