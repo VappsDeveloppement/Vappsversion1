@@ -25,6 +25,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAgency } from '@/context/agency-provider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Link from 'next/link';
+import type { SubscriptionPlan } from '@/app/admin/settings/personalization/page';
 
 
 type Event = {
@@ -169,6 +171,12 @@ export default function EventsPage() {
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
+  const planDocRef = useMemoFirebase(() => {
+    if (!userData?.planId) return null;
+    return doc(firestore, 'plans', userData.planId);
+  }, [firestore, userData]);
+  const { data: userPlan, isLoading: isPlanLoading } = useDoc<SubscriptionPlan>(planDocRef);
+
   const eventsQuery = useMemoFirebase(() => {
     if (!user || !userData) return null;
 
@@ -273,7 +281,9 @@ export default function EventsPage() {
     }
   };
 
-  const isLoading = isUserLoading || areEventsLoading || isUserDataLoading;
+  const isLoading = isUserLoading || areEventsLoading || isUserDataLoading || isPlanLoading;
+
+  const showPrismeButton = userData?.role === 'superadmin' || (userData?.role === 'conseiller' && userPlan?.hasPrismeAccess);
 
   return (
     <div className="space-y-8">
@@ -304,7 +314,11 @@ export default function EventsPage() {
               <CardFooter className="flex justify-between items-center">
                 <div className="flex gap-2">
                   <RegistrationsSheet eventId={event.id} maxAttendees={event.maxAttendees} />
-                  <Button variant="destructive" size="sm">LIVE</Button>
+                  {showPrismeButton && (
+                     <Button asChild variant="destructive">
+                        <Link href="/dashboard/prisme">LIVE</Link>
+                     </Button>
+                  )}
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
