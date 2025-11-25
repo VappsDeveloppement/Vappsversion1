@@ -9,12 +9,12 @@ interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
+// Cache the promise outside the component to ensure it's created only once.
+const firebaseServicesPromise = initializeFirebase();
+
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  // Use React.use to handle the promise returned by initializeFirebase on the client.
-  // This is the correct way to handle async initialization in a client component context.
-  const firebaseServices = React.use(
-    Promise.resolve(initializeFirebase())
-  );
+  // React.use can now safely consume the cached promise.
+  const firebaseServices = React.use(firebaseServicesPromise);
 
   return (
     <FirebaseProvider
