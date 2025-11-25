@@ -131,6 +131,13 @@ export type ServiceItem = {
   imageUrl: string | null;
 };
 
+export type OtherActivityItem = {
+    id: string;
+    title: string;
+    description: string;
+    imageUrl: string | null;
+};
+
 const socialIconMap: { [key: string]: React.ComponentType<any> } = {
     Facebook,
     Twitter,
@@ -510,6 +517,13 @@ const defaultPersonalization = {
             { id: `service-${Date.now()}-3`, title: 'Nouvel Accompagnement', description: 'Description du nouvel accompagnement.', imageUrl: null },
         ] as ServiceItem[]
     },
+    otherActivitiesSection: {
+        title: "Nos autres activités",
+        description: "Nous accompagnons également les entreprises dans leur transformation.",
+        activities: [
+            { id: 'activity-1', title: 'Activité 1', description: 'Description de l\'activité 1', imageUrl: null },
+        ] as OtherActivityItem[],
+    },
      whiteLabelSection: {
         title: "Notre Plateforme en Marque Blanche",
         description: "Offrez une expérience de coaching et d'accompagnement de premier ordre, entièrement personnalisée à votre image de marque.",
@@ -705,6 +719,10 @@ export default function PersonalizationPage() {
         servicesSection: {
           ...defaultPersonalization.servicesSection,
           ...(personalization.servicesSection || {})
+        },
+        otherActivitiesSection: {
+            ...defaultPersonalization.otherActivitiesSection,
+            ...(personalization.otherActivitiesSection || {})
         },
         whiteLabelSection: {
             ...defaultPersonalization.whiteLabelSection,
@@ -959,6 +977,35 @@ export default function PersonalizationPage() {
   const removeAccompagnement = (index: number) => {
     const newServices = settings.servicesSection.services.filter((_, i) => i !== index);
     handleServicesSectionChange('services', newServices);
+  };
+  
+  const handleOtherActivitiesSectionChange = (field: string, value: any) => {
+    setSettings(prev => ({
+      ...prev,
+      otherActivitiesSection: {
+        ...(prev.otherActivitiesSection || defaultPersonalization.otherActivitiesSection),
+        [field]: value
+      }
+    }));
+  };
+
+  const handleActivityChange = (index: number, field: keyof OtherActivityItem, value: string | null) => {
+      const newActivities = [...(settings.otherActivitiesSection.activities)];
+      (newActivities[index] as any)[field] = value;
+      handleOtherActivitiesSectionChange('activities', newActivities);
+  };
+
+  const addActivity = () => {
+    const newActivities = [
+        ...(settings.otherActivitiesSection.activities || []),
+        { id: `activity-${Date.now()}`, title: 'Nouvelle activité', description: 'Description de l\'activité.', imageUrl: null },
+    ];
+    handleOtherActivitiesSectionChange('activities', newActivities);
+  };
+
+  const removeActivity = (index: number) => {
+    const newActivities = settings.otherActivitiesSection.activities.filter((_, i) => i !== index);
+    handleOtherActivitiesSectionChange('activities', newActivities);
   };
   
   const handleWhiteLabelSectionChange = (field: string, value: any) => {
@@ -1634,7 +1681,7 @@ export default function PersonalizationPage() {
                  <h3 className="text-lg font-medium mb-4">Organisation des sections</h3>
                  <p className="text-sm text-muted-foreground mb-6">Réorganisez les sections de la page d'accueil. Activez ou désactivez les sections selon vos besoins.</p>
                  
-                 <Accordion type="multiple" defaultValue={['pricing', 'whiteLabel']} className="w-full space-y-2">
+                 <Accordion type="multiple" defaultValue={['otherActivities']} className="w-full space-y-2">
                     {(settings.homePageSections || []).map((section, index) => {
                        return(
                         <AccordionItem value={section.id} key={section.id} className="border rounded-lg bg-background overflow-hidden">
@@ -2278,6 +2325,69 @@ export default function PersonalizationPage() {
                                                     onSave={(updatedPlans) => handleWhiteLabelSectionChange('plans', updatedPlans)}
                                                 />
                                             </div>
+                                        </div>
+                                    </div>
+                                ) : section.id === 'otherActivities' ? (
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="oa-title">Titre</Label>
+                                            <Input id="oa-title" value={settings.otherActivitiesSection?.title} onChange={(e) => handleOtherActivitiesSectionChange('title', e.target.value)} />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="oa-description">Description</Label>
+                                            <Textarea id="oa-description" value={settings.otherActivitiesSection?.description} onChange={(e) => handleOtherActivitiesSectionChange('description', e.target.value)} />
+                                        </div>
+                                        <div>
+                                            <Label>Liste des activités</Label>
+                                            <div className="space-y-4 mt-2">
+                                                {(settings.otherActivitiesSection?.activities || []).map((activity, index) => (
+                                                    <div key={activity.id} className="p-4 border rounded-lg space-y-4">
+                                                        <div className="flex justify-between items-center">
+                                                            <h4 className="font-medium">Activité {index + 1}</h4>
+                                                            <Button type="button" variant="ghost" size="icon" onClick={() => removeActivity(index)}>
+                                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                                            </Button>
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`activity-title-${index}`}>Titre</Label>
+                                                            <Input id={`activity-title-${index}`} value={activity.title} onChange={(e) => handleActivityChange(index, 'title', e.target.value)} />
+                                                        </div>
+                                                        <div className="space-y-2">
+                                                            <Label htmlFor={`activity-desc-${index}`}>Description</Label>
+                                                            <Input id={`activity-desc-${index}`} value={activity.description} onChange={(e) => handleActivityChange(index, 'description', e.target.value)} />
+                                                        </div>
+                                                        <div className="mt-4">
+                                                            <Label>Image</Label>
+                                                            <div className="flex items-center gap-4 mt-2">
+                                                                <div className="w-32 h-20 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                                    {activity.imageUrl ? (
+                                                                        <Image src={activity.imageUrl} alt={`Aperçu pour ${activity.title}`} layout="fill" objectFit="cover" />
+                                                                    ) : (
+                                                                        <span className="text-xs text-muted-foreground p-2 text-center">Aucune image</span>
+                                                                    )}
+                                                                </div>
+                                                                <div className="flex flex-col gap-2">
+                                                                    <Button variant="outline" size="sm" onClick={() => {
+                                                                        const currentRef = fileInputRef.current;
+                                                                        if (currentRef) {
+                                                                            currentRef.onchange = createUploadHandler(base64 => handleActivityChange(index, 'imageUrl', base64));
+                                                                            currentRef.click();
+                                                                        }
+                                                                    }}>
+                                                                        <Upload className="mr-2 h-4 w-4" /> Uploader
+                                                                    </Button>
+                                                                    <Button variant="destructive" size="sm" onClick={() => handleActivityChange(index, 'imageUrl', null)}>
+                                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                                    </Button>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <Button variant="outline" size="sm" onClick={addActivity} className="mt-4">
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une activité
+                                            </Button>
                                         </div>
                                     </div>
                                 ) : section.id === 'video' ? (
