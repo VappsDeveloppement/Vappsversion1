@@ -37,7 +37,7 @@ export function OtherActivitiesSection() {
     const eventsQuery = useMemoFirebase(() => {
         if (isAgencyLoading) return null; // Wait for agency data
         
-        // On the public home page, always show agency's events.
+        // This query is for the public home page, so it should always show the main agency's events.
         const creatorId = agency?.id || 'vapps-agency';
         
         return query(
