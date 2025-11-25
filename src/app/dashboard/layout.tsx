@@ -210,14 +210,6 @@ export default function DashboardLayout({
                         </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
-                     <SidebarMenuItem>
-                        <Link href="/dashboard/reminders">
-                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/reminders")}>
-                            <PhoneForwarded />
-                            <span>Demandes de rappel</span>
-                        </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
                     {showPrisme && (
                         <SidebarMenuItem>
                             <Link href="/dashboard/prisme">
