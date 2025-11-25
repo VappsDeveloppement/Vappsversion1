@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, Edit, Trash2, Loader2, Calendar, MoreHorizontal, User as UserIcon, X, Eye } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Calendar, MoreHorizontal, User as UserIcon, X, Eye, Users } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -34,6 +34,7 @@ type Event = {
   counselorId: string;
   isPublic: boolean;
   imageUrl?: string | null;
+  maxAttendees?: number;
 };
 
 type Registration = {
@@ -51,6 +52,7 @@ const eventSchema = z.object({
   meetLink: z.string().url('Veuillez entrer une URL valide.').optional().or(z.literal('')),
   isPublic: z.boolean().default(false),
   imageUrl: z.string().nullable().optional(),
+  maxAttendees: z.coerce.number().min(0, "Le nombre doit être positif.").optional(),
 });
 
 type EventFormData = z.infer<typeof eventSchema>;
@@ -63,22 +65,28 @@ const toBase64 = (file: File): Promise<string> =>
     reader.onerror = (error) => reject(error);
   });
 
-function RegistrationsSheet({ eventId }: { eventId: string }) {
+function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAttendees?: number }) {
     const firestore = useFirestore();
     const registrationsQuery = useMemoFirebase(() => collection(firestore, `events/${eventId}/registrations`), [eventId, firestore]);
     const { data: registrations, isLoading } = useCollection<Registration>(registrationsQuery);
     
+    const spotsLeft = maxAttendees ? maxAttendees - (registrations?.length || 0) : 'illimitées';
+
     return (
         <Sheet>
             <SheetTrigger asChild>
                 <Button variant="outline" size="sm">
-                    <Eye className="mr-2 h-4 w-4" /> Voir les inscrits
+                    <Users className="mr-2 h-4 w-4" /> 
+                    ({registrations?.length || 0}{maxAttendees ? `/${maxAttendees}` : ''})
                 </Button>
             </SheetTrigger>
             <SheetContent>
                 <SheetHeader>
                     <SheetTitle>Inscrits à l'événement</SheetTitle>
-                    <SheetDescription>Liste des participants inscrits à cet événement.</SheetDescription>
+                    <SheetDescription>
+                        {registrations?.length || 0} participant(s) inscrit(s). 
+                        {maxAttendees && ` Places restantes: ${spotsLeft}.`}
+                    </SheetDescription>
                 </SheetHeader>
                 <ScrollArea className="h-[calc(100vh-8rem)] pr-4">
                     {isLoading ? <Skeleton className="h-24 w-full" />
@@ -146,6 +154,7 @@ export default function EventsPage() {
           meetLink: '',
           isPublic: false,
           imageUrl: null,
+          maxAttendees: 0,
         });
         setImagePreview(null);
       }
@@ -233,7 +242,7 @@ export default function EventsPage() {
                 <p className="text-sm text-muted-foreground line-clamp-3">{event.description}</p>
               </CardContent>
               <CardFooter className="flex justify-between items-center">
-                <RegistrationsSheet eventId={event.id} />
+                <RegistrationsSheet eventId={event.id} maxAttendees={event.maxAttendees} />
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent>
@@ -265,6 +274,7 @@ export default function EventsPage() {
                   <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date et Heure</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu (si physique)</FormLabel><FormControl><Input placeholder="Ex: 123 Rue de Paris, Paris" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="meetLink" render={({ field }) => (<FormItem><FormLabel>Lien de visioconférence (Google Meet, etc.)</FormLabel><FormControl><Input type="url" placeholder="https://meet.google.com/..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="maxAttendees" render={({ field }) => (<FormItem><FormLabel>Nombre de places maximum</FormLabel><FormControl><Input type="number" min="0" placeholder="0 pour illimité" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="imageUrl" render={() => (
                     <FormItem>
                       <FormLabel>Image de l'événement</FormLabel>

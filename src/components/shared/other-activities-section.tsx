@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Image from "next/image";
@@ -12,6 +11,7 @@ import { collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
 import type { OtherActivityItem } from "@/app/admin/settings/personalization/page";
+import Link from 'next/link';
 
 
 type Event = {
@@ -102,10 +102,12 @@ export function OtherActivitiesSection() {
                                 <div className="space-y-3">
                                     {events && events.length > 0 ? (
                                         events.map((event) => (
-                                            <div key={event.id} className="flex justify-between items-center text-sm">
-                                                <p className="font-medium">{event.title}</p>
-                                                <p className="text-primary font-semibold">{new Date(event.date).toLocaleDateString()}</p>
-                                            </div>
+                                            <Link key={event.id} href={`/events/${event.id}`} className="block hover:bg-muted/50 p-2 rounded-md transition-colors">
+                                                <div className="flex justify-between items-center text-sm">
+                                                    <p className="font-medium">{event.title}</p>
+                                                    <p className="text-primary font-semibold">{new Date(event.date).toLocaleDateString()}</p>
+                                                </div>
+                                            </Link>
                                         ))
                                     ) : (
                                         <p className="text-sm text-muted-foreground text-center py-4">Aucun événement public à venir.</p>

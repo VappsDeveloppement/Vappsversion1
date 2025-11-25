@@ -516,6 +516,25 @@
             "homePageSections": { "type": "array", "items": { "type": "object" } },
             "legalInfo": { "type": "object" },
             "whiteLabelSection": { "$ref": "#/entities/WhiteLabelSection" },
+            "otherActivitiesSection": {
+                "type": "object",
+                "properties": {
+                    "title": { "type": "string" },
+                    "description": { "type": "string" },
+                    "activities": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "title": { "type": "string" },
+                                "description": { "type": "string" },
+                                "imageUrl": { "type": "string", "format": "uri" }
+                            }
+                        }
+                    }
+                }
+            },
             "betaTesting": {
                 "type": "object",
                 "properties": {
@@ -930,7 +949,8 @@
         "meetLink": { "type": "string", "format": "uri" },
         "counselorId": { "type": "string" },
         "isPublic": { "type": "boolean", "default": false },
-        "imageUrl": { "type": "string", "format": "uri" }
+        "imageUrl": { "type": "string", "format": "uri" },
+        "maxAttendees": { "type": "number" }
       },
       "required": ["title", "date", "counselorId"]
     },
