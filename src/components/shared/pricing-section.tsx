@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -54,21 +53,25 @@ function ContractModal({ contractId, buttonText, primaryColor }: { contractId: s
 }
 
 export function PricingSection() {
-    const { personalization, isLoading: isAgencyLoading, agency } = useAgency();
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
-    const { user } = useUser(); // Get the current user
+    const { user, isUserLoading } = useUser();
 
     const pricingConfig = personalization?.pricingSection;
     const planIds = pricingConfig?.planIds || [];
     
-    // This is the key change: we now also filter by the super-admin's ID
+    // Corrected Query:
+    // 1. It only runs if we have planIds and a user.
+    // 2. It filters plans to only include those whose IDs are in the selected `planIds` array.
+    // 3. CRUCIALLY, it also filters to only include plans where `counselorId` matches the currently logged-in user's UID.
+    // This ensures that only the Super Admin's plans are shown on the main page.
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (!planIds || planIds.length === 0 || !user) return null;
+        if (!planIds || planIds.length === 0 || !user) {
+            return null;
+        }
         
         const plansCollectionRef = collection(firestore, 'plans');
         
-        // This query ensures we only get plans that are BOTH selected in the settings
-        // AND created by the currently logged-in super admin.
         return query(
             plansCollectionRef, 
             where(documentId(), 'in', planIds),
@@ -83,13 +86,16 @@ export function PricingSection() {
     
     const primaryColor = personalization?.primaryColor || '#10B981';
     
-    const isLoading = isAgencyLoading || arePlansLoading;
+    const isLoading = isAgencyLoading || isUserLoading || arePlansLoading;
     
     const sortedPlans = useMemo(() => {
-        if (!plans || planIds.length === 0) return [];
+        if (!plans || !planIds) return [];
+        // The query already filters by counselorId, so we just sort based on the admin's selection order.
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
-
+    
+    // This component will now only render content if there are plans to show.
+    // If sortedPlans is empty, the appropriate message will be shown below.
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
             <div className="container mx-auto px-4">
