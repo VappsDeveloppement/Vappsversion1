@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -83,11 +84,6 @@ export function PricingSection() {
         if (!plans || planIds.length === 0) return [];
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
-
-
-    if (!pricingConfig?.enabled) {
-        return null;
-    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
