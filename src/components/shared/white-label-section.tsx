@@ -3,7 +3,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
-import { AlertCircle, Check, Loader2, Percent, Star, Users } from "lucide-react";
+import { AlertCircle, Check, Loader2, Percent, Star, Users, Pyramid, Bot, Wand } from "lucide-react";
 import Image from "next/image";
 import { Button } from "../ui/button";
 import { Alert, AlertDescription, AlertTitle } from "../ui/alert";
@@ -226,6 +226,9 @@ function PlanSelectorCard() {
                                     <span className="text-muted-foreground">{feature}</span>
                                 </li>
                             ))}
+                            {selectedPlan.hasPrismeAccess && <li className="flex items-start gap-2 text-sm"><Pyramid className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" /> <span className="text-muted-foreground">Accès à l'outil <strong>Prisme</strong></span></li>}
+                            {selectedPlan.hasVitaeAccess && <li className="flex items-start gap-2 text-sm"><Bot className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" /> <span className="text-muted-foreground">Accès à l'outil <strong>Vitae</strong></span></li>}
+                            {selectedPlan.hasAuraAccess && <li className="flex items-start gap-2 text-sm"><Wand className="h-5 w-5 text-primary mt-0.5 flex-shrink-0" /> <span className="text-muted-foreground">Accès à l'outil <strong>Aura</strong></span></li>}
                         </ul>
                     </>
                 )}
@@ -451,3 +454,4 @@ export function WhiteLabelSection() {
     );
 }
 
+    

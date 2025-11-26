@@ -14,7 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle, Percent, Star, Users, Edit } from "lucide-react";
+import { GitBranch, Briefcase, PlusCircle, Trash2, Upload, Facebook, Twitter, Linkedin, Instagram, Settings, LayoutTemplate, ArrowUp, ArrowDown, ChevronDown, Link as LinkIcon, Eye, EyeOff, Info, Mail, Loader2, FlaskConical, CheckCircle, AlertCircle, Percent, Star, Users, Edit, Pyramid, Bot, Wand } from "lucide-react";
 import Image from "next/image";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -161,6 +161,9 @@ export type SubscriptionPlan = {
   features: string[];
   isFeatured: boolean;
   isPublic: boolean;
+  hasPrismeAccess?: boolean;
+  hasVitaeAccess?: boolean;
+  hasAuraAccess?: boolean;
   imageUrl?: string;
   cta?: string;
   contractId?: string;
@@ -183,6 +186,9 @@ const planFormSchema = z.object({
   features: z.array(z.object({ text: z.string() })).optional(),
   isFeatured: z.boolean().default(false),
   isPublic: z.boolean().default(true),
+  hasPrismeAccess: z.boolean().default(false),
+  hasVitaeAccess: z.boolean().default(false),
+  hasAuraAccess: z.boolean().default(false),
   imageUrl: z.string().nullable().optional(),
   cta: z.string().optional(),
   contractId: z.string().optional(),
@@ -217,6 +223,7 @@ const SubscriptionPlanManager = ({ plans, onSave }: PlanManagerProps) => {
             id: `plan-${Date.now()}`,
             name: '', description: '', price: 0, period: '/mois',
             features: [{ text: '' }], isFeatured: false, isPublic: true,
+            hasPrismeAccess: false, hasVitaeAccess: false, hasAuraAccess: false,
             imageUrl: null,
         });
         setImagePreview(null);
@@ -295,6 +302,12 @@ const SubscriptionPlanManager = ({ plans, onSave }: PlanManagerProps) => {
                                             ))}
                                         </div>
                                         <Button type="button" variant="outline" size="sm" onClick={() => append({ text: "" })} className="mt-2"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter une caractéristique</Button>
+                                    </div>
+                                    <div className="space-y-4 rounded-lg border p-4">
+                                        <h4 className="text-sm font-medium">Accès aux Outils</h4>
+                                        <FormField control={form.control} name="hasPrismeAccess" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between"><div className="space-y-0.5"><FormLabel className="flex items-center gap-2"><Pyramid className="h-4 w-4 text-primary"/> Prisme</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )}/>
+                                        <FormField control={form.control} name="hasVitaeAccess" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between"><div className="space-y-0.5"><FormLabel className="flex items-center gap-2"><Bot className="h-4 w-4 text-primary"/> Vitae</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )}/>
+                                        <FormField control={form.control} name="hasAuraAccess" render={({ field }) => ( <FormItem className="flex flex-row items-center justify-between"><div className="space-y-0.5"><FormLabel className="flex items-center gap-2"><Wand className="h-4 w-4 text-primary"/> Aura</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem> )}/>
                                     </div>
                                      <div>
                                         <Label>Image de la formule (optionnel)</Label>
@@ -2842,3 +2855,5 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
+    
