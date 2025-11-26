@@ -20,7 +20,7 @@ type Contract = {
     id: string;
     title: string;
     content: string;
-}
+};
 
 function ContractModal({ contractId, buttonText, primaryColor }: { contractId: string; buttonText: string, primaryColor: string }) {
     const firestore = useFirestore();
@@ -62,8 +62,6 @@ export function PricingSection() {
     const selectedPlansQuery = useMemoFirebase(() => {
         if (!planIds || planIds.length === 0) return null;
         const plansCollectionRef = collection(firestore, 'plans');
-        // Corrected Query: Filter ONLY by the selected plan IDs. This will fetch the plans regardless
-        // of who created them, which is the correct logic for the main homepage display.
         return query(
             plansCollectionRef, 
             where(documentId(), 'in', planIds)
@@ -84,9 +82,6 @@ export function PricingSection() {
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
 
-    if (!pricingConfig?.enabled) {
-        return null;
-    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
