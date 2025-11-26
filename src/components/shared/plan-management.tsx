@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -24,7 +25,7 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 
 const planFormSchema = z.object({
-    id: z.string(),
+    id: z.string().optional(),
     name: z.string().min(1, "Le nom est requis."),
     description: z.string().optional(),
     price: z.coerce.number().min(0, "Le prix doit être positif."),
@@ -227,6 +228,18 @@ export function PlanManagement() {
                                         </FormItem>
                                         )}
                                     />
+                                    <FormField
+                                        control={form.control}
+                                        name="isPublic"
+                                        render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                                <div className="space-y-1 leading-none">
+                                                    <FormLabel>Prestation Publique</FormLabel>
+                                                </div>
+                                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                            </FormItem>
+                                        )}
+                                    />
                                     
                                     <SheetFooter className="pt-6">
                                         <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
@@ -244,16 +257,18 @@ export function PlanManagement() {
                         <TableRow>
                             <TableHead>Nom</TableHead>
                             <TableHead>Prix</TableHead>
+                            <TableHead>Publique</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {arePlansLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell></TableRow> 
+                        {arePlansLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow> 
                         : plans && plans.length > 0 ? (
                             plans.map(plan => (
                                 <TableRow key={plan.id}>
                                     <TableCell className="font-medium">{plan.name}</TableCell>
                                     <TableCell>{plan.price}€ {plan.period}</TableCell>
+                                     <TableCell>{plan.isPublic ? <CheckCircle className="h-5 w-5 text-green-500" /> : <EyeOff className="h-5 w-5 text-muted-foreground" />}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEditPlan(plan)}><Edit className="h-4 w-4" /></Button>
                                         <Button variant="ghost" size="icon" onClick={() => handleDeletePlan(plan.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
