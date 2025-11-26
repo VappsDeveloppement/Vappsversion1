@@ -120,18 +120,18 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
-      // Simplified read access: Anyone can read public events. Authenticated users can read their own or public events.
       allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+      allow list: if (request.query.keys().hasOnly(['where']) && request.query.where[0][0] == 'isPublic' && request.query.where[0][2] == true) || request.auth != null;
 
-      // Simplified list access: Anyone can list events as long as they only ask for public ones. Authenticated users can list any events.
-      allow list: if (request.query.where.size() > 0 && request.query.where[0][0] == 'isPublic' && request.query.where[0][2] == true) || request.auth != null;
-
-      // Write access remains the same: only the owner or a superadmin.
-      allow create, update, delete: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      
+      allow delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      
+      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) ||
+                       (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
 
       match /registrations/{registrationId} {
         allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
-        // Any visitor can register for a public event.
         allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
       }
@@ -164,3 +164,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
