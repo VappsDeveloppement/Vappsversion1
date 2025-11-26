@@ -21,6 +21,7 @@ import { ScrollArea } from '../ui/scroll-area';
 import { Switch } from '../ui/switch';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Label } from '../ui/label';
 
 const planFormSchema = z.object({
     id: z.string(),
