@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -44,7 +43,6 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useFirestore, useAuth } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import type { SubscriptionPlan } from "@/app/admin/settings/personalization/page";
 import { useAgency } from "@/context/agency-provider";
 
 
