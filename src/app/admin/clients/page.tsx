@@ -5,7 +5,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
-import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, deleteDocumentNonBlocking, useDoc } from '@/firebase';
+import { useCollection, useMemoFirebase, useUser, useDoc, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { collection, query, doc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,7 +22,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import type { SubscriptionPlan as Plan } from '@/app/admin/settings/personalization/page';
 import { useAgency } from '@/context/agency-provider';
 
 type User = {
@@ -212,7 +211,7 @@ export default function ClientManagementPage() {
 
             if (editingUser) {
                 const userDocRef = doc(firestore, 'users', editingUser.id);
-                await setDoc(userDocRef, userDataToSave, { merge: true });
+                setDocumentNonBlocking(userDocRef, userDataToSave, { merge: true });
                 toast({ title: 'Succès', description: "L'utilisateur a été mis à jour." });
             } else {
                  if (!values.password || values.password.length < 6) {
@@ -224,7 +223,7 @@ export default function ClientManagementPage() {
                 const newUser = userCredential.user;
 
                 const userDocRef = doc(firestore, 'users', newUser.uid);
-                await setDoc(userDocRef, {
+                setDocumentNonBlocking(userDocRef, {
                     ...userDataToSave,
                     id: newUser.uid,
                     dateJoined: new Date().toISOString(),
@@ -449,5 +448,3 @@ export default function ClientManagementPage() {
         </div>
     );
 }
-
-    
