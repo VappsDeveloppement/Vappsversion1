@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -60,15 +61,14 @@ export function PricingSection() {
     const planIds = pricingConfig?.planIds || [];
 
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (!planIds || planIds.length === 0) {
-            return null; // Ne pas exécuter de requête si aucun plan n'est sélectionné
-        }
+        if (!planIds || planIds.length === 0) return null;
         
         const plansCollectionRef = collection(firestore, 'plans');
         
         return query(
             plansCollectionRef, 
-            where(documentId(), 'in', planIds)
+            where(documentId(), 'in', planIds),
+            where('isPublic', '==', true) // Only fetch plans marked as public
         );
     }, [firestore, planIds]);
 
@@ -83,7 +83,6 @@ export function PricingSection() {
     
     const sortedPlans = useMemo(() => {
         if (!plans || !planIds) return [];
-        // Affiche uniquement les plans qui sont dans la liste de l'admin et qui sont publics (si nécessaire)
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
 
