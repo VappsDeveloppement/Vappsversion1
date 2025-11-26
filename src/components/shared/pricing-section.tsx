@@ -74,9 +74,8 @@ export function PricingSection() {
     
     const isLoading = isAgencyLoading || arePlansLoading;
 
-    if (!pricingConfig?.enabled) {
-        return null;
-    }
+    // The display logic for the section is handled by the parent component (HomePageSelector)
+    // based on the `homePageSections` array. This component should focus only on rendering its content.
     
     const sortedPlans = useMemo(() => {
         if (!plans || planIds.length === 0) return [];
