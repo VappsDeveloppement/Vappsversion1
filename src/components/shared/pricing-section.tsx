@@ -1,21 +1,20 @@
 
 'use client';
 
-import { Check } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "@/lib/utils";
-import { useAgency } from "@/context/agency-provider";
-import { Skeleton } from "../ui/skeleton";
-import Link from 'next/link';
-import { useCollection, useMemoFirebase } from "@/firebase";
-import { collection, query, where } from "firebase/firestore";
-import { useFirestore } from "@/firebase/provider";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog";
-import { ScrollArea } from "../ui/scroll-area";
-import { useDoc } from "@/firebase/firestore/use-doc";
-import { doc } from "firebase/firestore";
+import React, { useMemo, useState } from 'react';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { collection, query, where, documentId, doc } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { Plan } from '@/components/shared/plan-management';
+import { Skeleton } from '../ui/skeleton';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog';
+import { ScrollArea } from '../ui/scroll-area';
+import { useAgency } from '@/context/agency-provider';
+import Link from 'next/link';
 
 type Contract = {
     id: string;
@@ -58,12 +57,15 @@ export function PricingSection() {
     const firestore = useFirestore();
 
     const pricingConfig = personalization?.pricingSection;
+    const planIds = pricingConfig?.planIds || [];
     
-    // Corrected query: fetch only public plans from the 'plans' collection
-    const publicPlansQuery = useMemoFirebase(() => {
-        return query(collection(firestore, 'plans'), where('isPublic', '==', true));
-    }, [firestore]);
-    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(publicPlansQuery);
+    const selectedPlansQuery = useMemoFirebase(() => {
+        if (planIds.length === 0) return null;
+        const plansCollectionRef = collection(firestore, 'plans');
+        return query(plansCollectionRef, where(documentId(), 'in', planIds));
+    }, [firestore, planIds]);
+
+    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(selectedPlansQuery);
 
     const title = pricingConfig?.title || "Nos Formules";
     const description = pricingConfig?.description || "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.";
@@ -76,6 +78,12 @@ export function PricingSection() {
         return null;
     }
     
+    const sortedPlans = useMemo(() => {
+        if (!plans || planIds.length === 0) return [];
+        // This ensures the order selected in the admin is respected
+        return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
+    }, [plans, planIds]);
+
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
             <div className="container mx-auto px-4">
@@ -88,13 +96,13 @@ export function PricingSection() {
                 
                 {isLoading ? (
                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-                        {[...Array(3)].map((_, i) => (
+                        {[...Array(planIds?.length || 1)].map((_, i) => (
                             <Card key={i} className="flex flex-col h-full"><CardHeader><Skeleton className="h-8 w-3/4" /></CardHeader><CardContent className="flex-1"><Skeleton className="h-24 w-full" /></CardContent><CardFooter><Skeleton className="h-10 w-full" /></CardFooter></Card>
                         ))}
                     </div>
-                ) : plans && plans.length > 0 ? (
+                ) : sortedPlans && sortedPlans.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start max-w-5xl mx-auto">
-                        {plans.map((tier) => (
+                        {sortedPlans.map((tier) => (
                             <Card key={tier.id} className={cn("flex flex-col h-full shadow-lg", tier.isFeatured && "border-2 relative")} style={tier.isFeatured ? {borderColor: primaryColor} : {}}>
                                 {tier.isFeatured && (
                                     <div className="absolute top-0 -translate-y-1/2 w-full flex justify-center">
@@ -135,7 +143,7 @@ export function PricingSection() {
                     </div>
                 ) : (
                     <div className="text-center text-muted-foreground py-12">
-                        <p>Aucune prestation publique n'est disponible pour le moment.</p>
+                        <p>Aucune formule publique n'est disponible pour le moment.</p>
                     </div>
                 )}
             </div>
