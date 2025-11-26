@@ -40,6 +40,7 @@ const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   jobOffers: JobOffersSection,
   parcours: AgencyParcoursSection,
   trainingCatalog: TrainingCatalogSection,
+  cta2: CtaSection, // CtaSection is generic enough for cta2
 };
 
 // Héro AVEC fenêtre de connexion
