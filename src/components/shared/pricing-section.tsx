@@ -16,10 +16,10 @@ export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
     
     // The pricing section for the main homepage should display the public plans defined in the White Label section.
-    const pricingConfig = personalization?.whiteLabelSection;
-    const plans = pricingConfig?.plans?.filter(p => p.isPublic) || [];
-    const title = personalization?.pricingSection?.title || "Nos Formules";
-    const description = personalization?.pricingSection?.description || "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.";
+    const pricingConfig = personalization?.pricingSection;
+    const plans = personalization?.whiteLabelSection?.plans?.filter(p => p.isPublic) || [];
+    const title = pricingConfig?.title || "Nos Formules";
+    const description = pricingConfig?.description || "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.";
     
     const primaryColor = personalization?.primaryColor || '#10B981';
     
@@ -41,7 +41,7 @@ export function PricingSection() {
         )
     }
     
-    if (!personalization?.pricingSection?.enabled || !plans || plans.length === 0) {
+    if (!pricingConfig?.enabled || !plans || plans.length === 0) {
         return null;
     }
 
