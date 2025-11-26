@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Check } from "lucide-react";
@@ -7,31 +6,24 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { useAgency } from "@/context/agency-provider";
-import { useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, documentId } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
-import type { SubscriptionPlan } from "@/app/admin/settings/personalization/page";
 import { Skeleton } from "../ui/skeleton";
 import Link from 'next/link';
 
+// Plans are now taken directly from the personalization context, no need for separate DB queries
+import type { SubscriptionPlan } from "@/app/admin/settings/personalization/page";
+
 export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
-    const firestore = useFirestore();
     
-    const planIds = personalization?.pricingSection?.planIds || [];
-
-    const plansQuery = useMemoFirebase(() => {
-        if (planIds.length === 0) return null;
-        const plansCollectionRef = collection(firestore, 'plans');
-        return query(plansCollectionRef, where(documentId(), 'in', planIds));
-    }, [firestore, planIds]);
-
-    const { data: plans, isLoading: arePlansLoading } = useCollection<SubscriptionPlan>(plansQuery);
+    // The pricing section for the main homepage should display the public plans defined in the White Label section.
+    const pricingConfig = personalization?.whiteLabelSection;
+    const plans = pricingConfig?.plans?.filter(p => p.isPublic) || [];
+    const title = personalization?.pricingSection?.title || "Nos Formules";
+    const description = personalization?.pricingSection?.description || "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins.";
     
-    const isLoading = isAgencyLoading || arePlansLoading;
     const primaryColor = personalization?.primaryColor || '#10B981';
     
-    if (isLoading) {
+    if (isAgencyLoading) {
         return (
              <section className="bg-background text-foreground py-16 sm:py-24">
                 <div className="container mx-auto px-4">
@@ -49,17 +41,17 @@ export function PricingSection() {
         )
     }
     
-    if (!plans || plans.length === 0) {
-        return null; // Don't render the section if there are no public plans
+    if (!personalization?.pricingSection?.enabled || !plans || plans.length === 0) {
+        return null;
     }
 
     return (
-        <section className="bg-background text-foreground py-16 sm:py-24">
+        <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl lg:text-4xl font-bold">{personalization?.pricingSection?.title || "Nos Formules"}</h2>
+                    <h2 className="text-3xl lg:text-4xl font-bold">{title}</h2>
                     <p className="text-lg text-muted-foreground mt-4 max-w-xl mx-auto">
-                        {personalization?.pricingSection?.description || "Choisissez le plan qui correspond le mieux à vos ambitions et à vos besoins."}
+                        {description}
                     </p>
                 </div>
 
