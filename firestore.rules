@@ -120,20 +120,24 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
-      allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+      // READ: Public events are readable by anyone. Private events are readable only by their owner or a superadmin.
+      allow get: if resource.data.isPublic == true || 
+                    (request.auth != null && (
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
+                      request.auth.uid == resource.data.counselorId
+                    ));
       
-      allow list: if (request.query.get('where') == null || request.query.where[0][2] == true && request.query.where[0][0] == 'isPublic')
-                    || (request.auth != null && request.query.where[0][0] == 'counselorId');
+      // LIST: Anyone can list public events. Authenticated users can list events they own. Superadmins can list all events.
+      allow list: if request.query.get("isPublic") == true ||
+                   (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin') ||
+                   (request.auth != null && request.query.get("counselorId") == request.auth.uid);
 
-      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
-      
-      allow delete: if request.auth != null && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' 
-          || request.auth.uid == resource.data.counselorId
-      );
-      
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) ||
-                       (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
+      // WRITE: Only the owner or a superadmin can write.
+      allow write: if request.auth != null && (
+                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
+                      request.auth.uid == resource.data.counselorId ||
+                      (request.resource.data.counselorId == request.auth.uid)
+                    );
 
       match /registrations/{registrationId} {
         allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
@@ -169,5 +173,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
