@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useMemo } from 'react';
-import { useCollection, useDoc, useMemoFirebase, useUser } from '@/firebase';
+import React, { useMemo, useState } from 'react';
+import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
 import { collection, query, where, documentId, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -55,28 +55,22 @@ function ContractModal({ contractId, buttonText, primaryColor }: { contractId: s
 export function PricingSection() {
     const { personalization, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
-    const { user, isUserLoading } = useUser();
 
     const pricingConfig = personalization?.pricingSection;
     const planIds = pricingConfig?.planIds || [];
-    
-    // Corrected Query:
-    // 1. It only runs if we have planIds and a user (the super-admin).
-    // 2. It filters plans to only include those whose IDs are in the selected `planIds` array.
-    // 3. CRUCIALLY, it also filters to only include plans where `counselorId` matches the currently logged-in super-admin's UID.
+
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (!planIds || planIds.length === 0 || !user) {
-            return null;
+        if (!planIds || planIds.length === 0) {
+            return null; // Ne pas exécuter de requête si aucun plan n'est sélectionné
         }
         
         const plansCollectionRef = collection(firestore, 'plans');
         
         return query(
             plansCollectionRef, 
-            where(documentId(), 'in', planIds),
-            where('counselorId', '==', user.uid)
+            where(documentId(), 'in', planIds)
         );
-    }, [firestore, planIds, user]);
+    }, [firestore, planIds]);
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(selectedPlansQuery);
 
@@ -85,10 +79,11 @@ export function PricingSection() {
     
     const primaryColor = personalization?.primaryColor || '#10B981';
     
-    const isLoading = isAgencyLoading || isUserLoading || arePlansLoading;
+    const isLoading = isAgencyLoading || arePlansLoading;
     
     const sortedPlans = useMemo(() => {
         if (!plans || !planIds) return [];
+        // Affiche uniquement les plans qui sont dans la liste de l'admin et qui sont publics (si nécessaire)
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
     
