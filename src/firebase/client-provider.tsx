@@ -1,20 +1,52 @@
 
 'use client';
 
-import React, { type ReactNode } from 'react';
+import React, { type ReactNode, useState, useEffect } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
-import { initializeFirebase } from '@/firebase';
+import { initializeFirebase, getSdks } from '@/firebase';
+import type { FirebaseApp } from 'firebase/app';
+import type { Auth } from 'firebase/auth';
+import type { Firestore } from 'firebase/firestore';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
 }
 
-// Cache the promise outside the component to ensure it's created only once.
-const firebaseServicesPromise = initializeFirebase();
+interface FirebaseServices {
+  firebaseApp: FirebaseApp;
+  auth: Auth;
+  firestore: Firestore;
+}
 
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  // React.use can now safely consume the cached promise.
-  const firebaseServices = React.use(firebaseServicesPromise);
+  const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
+  const [error, setError] = useState<Error | null>(null);
+
+  useEffect(() => {
+    // This function will run only on the client side.
+    const init = async () => {
+      try {
+        const services = await initializeFirebase();
+        setFirebaseServices(services);
+      } catch (e) {
+        console.error("Firebase initialization error:", e);
+        setError(e as Error);
+      }
+    };
+
+    init();
+  }, []); // Empty dependency array ensures this runs only once.
+
+  if (error) {
+    // You can render a more specific error UI here if needed.
+    return <div>Error initializing Firebase. See console for details.</div>;
+  }
+
+  // Render a loading state while Firebase is initializing.
+  if (!firebaseServices) {
+    // You can return a loading spinner or a skeleton screen here.
+    return null; 
+  }
 
   return (
     <FirebaseProvider
@@ -26,3 +58,4 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     </FirebaseProvider>
   );
 }
+
