@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, doc, where } from 'firebase/firestore';
+import { collection, query, doc } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -22,7 +22,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import type { Plan } from '@/components/shared/plan-management';
+import type { SubscriptionPlan as Plan } from '@/app/admin/settings/personalization/page';
+import { useAgency } from '@/context/agency-provider';
 
 type User = {
     id: string;
@@ -87,6 +88,7 @@ export default function ClientManagementPage() {
     const firestore = useFirestore();
     const auth = useAuth();
     const { user: currentUser, isUserLoading } = useUser();
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
     const [searchTerm, setSearchTerm] = useState('');
     const [roleFilter, setRoleFilter] = useState('all');
     const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -110,14 +112,10 @@ export default function ClientManagementPage() {
 
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
-    const plansQuery = useMemoFirebase(() => {
-        if (!currentUser) return null;
-        return query(collection(firestore, 'plans'), where('counselorId', '==', currentUser.uid));
-    }, [currentUser, firestore]);
-    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansQuery);
+    const plans = useMemo(() => personalization?.whiteLabelSection?.plans || [], [personalization]);
     
     const usersWithPlanNames = useMemo(() => {
-        if (!allUsers || !plans) return allUsers;
+        if (!allUsers || !plans) return allUsers || [];
         const planMap = new Map(plans.map(p => [p.id, p.name]));
         return allUsers.map(user => ({
             ...user,
@@ -156,7 +154,7 @@ export default function ClientManagementPage() {
                     address: editingUser.address || '',
                     zipCode: editingUser.zipCode || '',
                     city: editingUser.city || '',
-                    planId: editingUser.planId || '',
+                    planId: editingUser.planId || 'none',
                     subscriptionStatus: editingUser.subscriptionStatus || 'pending_payment',
                 });
             } else {
@@ -170,7 +168,7 @@ export default function ClientManagementPage() {
                     zipCode: '',
                     city: '',
                     password: '',
-                    planId: '',
+                    planId: 'none',
                     subscriptionStatus: 'pending_payment',
                 });
             }
@@ -271,7 +269,7 @@ export default function ClientManagementPage() {
         }
     };
     
-    const isLoading = isUserLoading || isCurrentUserDataLoading || areUsersLoading || arePlansLoading;
+    const isLoading = isUserLoading || isCurrentUserDataLoading || areUsersLoading || isAgencyLoading;
     const watchRole = form.watch('role');
 
     return (
@@ -399,10 +397,10 @@ export default function ClientManagementPage() {
                                             <FormItem>
                                                 <FormLabel>Plan d'abonnement</FormLabel>
                                                  <Select onValueChange={field.onChange} value={field.value || 'none'}>
-                                                    <FormControl><SelectTrigger disabled={arePlansLoading}><SelectValue placeholder="Sélectionner un plan" /></SelectTrigger></FormControl>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un plan" /></SelectTrigger></FormControl>
                                                     <SelectContent>
                                                         <SelectItem value="none">Aucun</SelectItem>
-                                                        {plans?.map(plan => <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>)}
+                                                        {plans.map(plan => <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
                                                 <FormMessage />
