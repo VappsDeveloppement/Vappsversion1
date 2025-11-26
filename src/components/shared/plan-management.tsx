@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect } from 'react';
@@ -22,6 +21,7 @@ import { Switch } from '../ui/switch';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { Label } from '../ui/label';
+import { Textarea } from '../ui/textarea';
 
 const planFormSchema = z.object({
     id: z.string(),
