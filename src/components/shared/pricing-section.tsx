@@ -3,7 +3,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { useCollection, useDoc, useMemoFirebase } from '@/firebase';
+import { useCollection, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, documentId, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -54,22 +54,27 @@ function ContractModal({ contractId, buttonText, primaryColor }: { contractId: s
 }
 
 export function PricingSection() {
-    const { personalization, isLoading: isAgencyLoading } = useAgency();
+    const { personalization, isLoading: isAgencyLoading, agency } = useAgency();
     const firestore = useFirestore();
+    const { user } = useUser(); // Get the current user
 
     const pricingConfig = personalization?.pricingSection;
     const planIds = pricingConfig?.planIds || [];
     
+    // This is the key change: we now also filter by the super-admin's ID
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (!planIds || planIds.length === 0) return null;
+        if (!planIds || planIds.length === 0 || !user) return null;
         
         const plansCollectionRef = collection(firestore, 'plans');
         
+        // This query ensures we only get plans that are BOTH selected in the settings
+        // AND created by the currently logged-in super admin.
         return query(
             plansCollectionRef, 
-            where(documentId(), 'in', planIds)
+            where(documentId(), 'in', planIds),
+            where('counselorId', '==', user.uid)
         );
-    }, [firestore, planIds]);
+    }, [firestore, planIds, user]);
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(selectedPlansQuery);
 
