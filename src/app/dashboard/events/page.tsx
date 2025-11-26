@@ -26,7 +26,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useAgency } from '@/context/agency-provider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
-import type { SubscriptionPlan } from '@/app/admin/settings/personalization/page';
 
 
 type Event = {
@@ -160,7 +159,7 @@ export default function EventsPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { agency } = useAgency();
+  const { agency, personalization } = useAgency();
   
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -171,11 +170,12 @@ export default function EventsPage() {
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
-  const planDocRef = useMemoFirebase(() => {
-    if (!userData?.planId) return null;
-    return doc(firestore, 'plans', userData.planId);
-  }, [firestore, userData]);
-  const { data: userPlan, isLoading: isPlanLoading } = useDoc<SubscriptionPlan>(planDocRef);
+  const userPlan = useMemo(() => {
+    if (!userData?.planId || !personalization?.whiteLabelSection?.plans) {
+      return null;
+    }
+    return personalization.whiteLabelSection.plans.find(p => p.id === userData.planId);
+  }, [userData, personalization]);
 
   const eventsQuery = useMemoFirebase(() => {
     if (!user || !userData) return null;
@@ -281,7 +281,7 @@ export default function EventsPage() {
     }
   };
 
-  const isLoading = isUserLoading || areEventsLoading || isUserDataLoading || isPlanLoading;
+  const isLoading = isUserLoading || areEventsLoading || isUserDataLoading;
 
   const showPrismeButton = userData?.role === 'superadmin' || (userData?.role === 'conseiller' && userPlan?.hasPrismeAccess);
 
