@@ -22,7 +22,7 @@ service cloud.firestore {
       allow get: if request.auth != null && (
         request.auth.uid == userId 
         || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
-        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && request.auth.uid in resource.data.counselorIds)
+        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && userId in get(/databases/$(database)/documents/users/$(request.auth.uid)).data.clientIds)
       );
       // Allow superadmin and conseillers to list all users.
       allow list: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller');
@@ -121,9 +121,14 @@ service cloud.firestore {
     
     match /events/{eventId} {
       allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
-      allow list: if (request.query.keys().hasOnly(['where']) && request.query.where[0][0] == 'isPublic' && request.query.where[0][2] == true) || request.auth != null;
-
-      allow create, delete: if request.auth != null && (request.auth.uid == request.resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      
+      allow list: if (request.query.get('where') != null && request.query.where[0][0] == 'isPublic' && request.query.where[0][2] == true)
+                    || (request.auth != null && request.query.get('where') != null && request.query.where[0][0] == 'counselorId' && request.query.where[0][2] == request.auth.uid)
+                    || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+                      
+      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+      
+      allow delete: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || request.auth.uid == resource.data.counselorId);
       
       allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) ||
                        (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
@@ -162,5 +167,3 @@ service cloud.firestore {
     }
   }
 }
-
-    

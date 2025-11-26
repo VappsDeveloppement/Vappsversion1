@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -10,8 +10,10 @@ import { Calendar, CheckCircle } from 'lucide-react';
 import type { InterestItem } from '@/app/dashboard/settings/mini-site/page';
 import { Skeleton } from '../ui/skeleton';
 import { LiveFollowUpForm } from './live-follow-up-form';
-import { getPublicAgencyEvents } from '@/app/actions/events';
 import { useAgency } from '@/context/agency-provider';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
 
 
 type Event = {
@@ -22,54 +24,31 @@ type Event = {
     counselorId: string;
 };
 
-type CounselorProfile = {
+type OtherActivityItem = {
     id: string;
-    miniSite?: {
-        activitiesSection?: {
-            enabled?: boolean;
-            title?: string;
-            text?: string;
-            mediaType?: 'image' | 'video';
-            imageUrl?: string;
-            videoUrl?: string;
-            interestsTitle?: string;
-            interests?: InterestItem[];
-            eventsButtonText?: string;
-            eventsButtonLink?: string;
-        }
-    };
-    dashboardTheme?: {
-        primaryColor?: string;
-    }
+    title: string;
+    description: string;
+    imageUrl: string | null;
 };
+
 
 export function OtherActivitiesSection() {
     const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
-    const [events, setEvents] = useState<Event[]>([]);
-    const [areEventsLoading, setAreEventsLoading] = useState(true);
-
-    useEffect(() => {
-      async function fetchEvents() {
-        if (agency?.id) {
-          try {
-            const fetchedEvents = await getPublicAgencyEvents(agency.id);
-            setEvents(fetchedEvents);
-          } catch (error) {
-            console.error("Failed to fetch public events:", error);
-            // Optionally set an error state here
-          } finally {
-            setAreEventsLoading(false);
-          }
-        } else if (!isAgencyLoading) {
-            // Agency is loaded but there's no ID, so we can stop loading.
-             setAreEventsLoading(false);
-        }
-      }
-      fetchEvents();
-    }, [agency?.id, isAgencyLoading]);
-
+    const firestore = useFirestore();
 
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
+    
+    const eventsQuery = useMemoFirebase(() => {
+        if (!agency?.id) return null;
+        return query(
+            collection(firestore, 'events'),
+            where('isPublic', '==', true),
+            where('counselorId', '==', agency.id)
+        );
+    }, [firestore, agency?.id]);
+
+    const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
+
     const { title, description, activities } = otherActivitiesSettings || {};
     const eventsButtonText = otherActivitiesSettings?.eventsButtonText || "J'ai participé à un live";
     const primaryColor = personalization?.primaryColor || '#10B981';
@@ -95,6 +74,10 @@ export function OtherActivitiesSection() {
                 </div>
             </section>
         )
+    }
+    
+    if (!otherActivitiesSettings || !otherActivitiesSettings.enabled) {
+        return null;
     }
 
     return (
