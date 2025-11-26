@@ -60,13 +60,19 @@ export function PricingSection() {
     const planIds = pricingConfig?.planIds || [];
     
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (!planIds || planIds.length === 0) return null;
+        if (!planIds || planIds.length === 0 || !agency?.id) return null;
+        
         const plansCollectionRef = collection(firestore, 'plans');
+        
+        // This is the crucial part:
+        // 1. Only fetch plans whose IDs are in the selected list (planIds)
+        // 2. AND only if they were created by the agency/super-admin.
         return query(
             plansCollectionRef, 
-            where(documentId(), 'in', planIds)
+            where(documentId(), 'in', planIds),
+            where('counselorId', '==', agency.id) 
         );
-    }, [firestore, planIds]);
+    }, [firestore, planIds, agency?.id]);
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(selectedPlansQuery);
 
