@@ -53,26 +53,22 @@ function ContractModal({ contractId, buttonText, primaryColor }: { contractId: s
 }
 
 export function PricingSection() {
-    const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
     const pricingConfig = personalization?.pricingSection;
     const planIds = pricingConfig?.planIds || [];
     
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (!planIds || planIds.length === 0 || !agency?.id) return null;
+        if (!planIds || planIds.length === 0) return null;
         
         const plansCollectionRef = collection(firestore, 'plans');
         
-        // This is the crucial part:
-        // 1. Only fetch plans whose IDs are in the selected list (planIds)
-        // 2. AND only if they were created by the agency/super-admin.
         return query(
             plansCollectionRef, 
-            where(documentId(), 'in', planIds),
-            where('counselorId', '==', agency.id) 
+            where(documentId(), 'in', planIds)
         );
-    }, [firestore, planIds, agency?.id]);
+    }, [firestore, planIds]);
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(selectedPlansQuery);
 
@@ -88,6 +84,10 @@ export function PricingSection() {
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
 
+
+    if (!pricingConfig?.enabled) {
+        return null;
+    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
