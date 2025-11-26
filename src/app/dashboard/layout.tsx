@@ -20,6 +20,8 @@ import {
   Newspaper,
   Pyramid,
   PhoneForwarded,
+  Bot,
+  Wand,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -43,6 +45,7 @@ import { useFirestore, useAuth } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import type { SubscriptionPlan } from "@/app/admin/settings/personalization/page";
+import { useAgency } from "@/context/agency-provider";
 
 
 const mainMenuItems = [
@@ -108,6 +111,7 @@ export default function DashboardLayout({
   const firestore = useFirestore();
   const auth = useAuth();
   const router = useRouter();
+  const { personalization, isLoading: isAgencyLoading } = useAgency();
 
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -116,12 +120,13 @@ export default function DashboardLayout({
 
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
-  const planDocRef = useMemoFirebase(() => {
-    if (!userData?.planId) return null;
-    return doc(firestore, 'plans', userData.planId);
-  }, [firestore, userData]);
+  const userPlan = useMemo(() => {
+    if (!userData?.planId || !personalization?.whiteLabelSection?.plans) {
+      return null;
+    }
+    return personalization.whiteLabelSection.plans.find(p => p.id === userData.planId);
+  }, [userData, personalization]);
 
-  const { data: userPlan, isLoading: isPlanLoading } = useDoc<SubscriptionPlan>(planDocRef);
 
   useEffect(() => {
     // Wait until both user and user data are loaded
@@ -161,7 +166,7 @@ export default function DashboardLayout({
     return {};
   }, [userData, isConseiller]);
 
-  const isLoading = isUserLoading || isUserDataLoading || isPlanLoading || !isMounted;
+  const isLoading = isUserLoading || isUserDataLoading || isAgencyLoading || !isMounted;
 
   if (isLoading) {
     return (
@@ -180,6 +185,9 @@ export default function DashboardLayout({
   }
 
   const showPrisme = isSuperAdmin || (isConseiller && userPlan?.hasPrismeAccess);
+  const showVitae = isSuperAdmin || (isConseiller && userPlan?.hasVitaeAccess);
+  const showAura = isSuperAdmin || (isConseiller && userPlan?.hasAuraAccess);
+
 
   return (
     <SidebarProvider>
