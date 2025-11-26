@@ -22,6 +22,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
+import type { Plan } from '@/components/shared/plan-management';
 
 type User = {
     id: string;
@@ -34,6 +35,8 @@ type User = {
     address?: string;
     zipCode?: string;
     city?: string;
+    planId?: string;
+    subscriptionStatus?: 'pending_payment' | 'active' | 'cancelled' | 'trial';
 };
 
 const userFormSchema = z.object({
@@ -46,6 +49,8 @@ const userFormSchema = z.object({
   city: z.string().optional(),
   role: z.enum(['superadmin', 'conseiller', 'membre'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
+  planId: z.string().optional(),
+  subscriptionStatus: z.enum(['pending_payment', 'active', 'cancelled', 'trial']).optional(),
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -63,6 +68,21 @@ const roleText: Record<User['role'], string> = {
     membre: 'Membre',
 };
 
+const statusVariant: Record<NonNullable<User['subscriptionStatus']>, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+  pending_payment: 'outline',
+  active: 'default',
+  cancelled: 'destructive',
+  trial: 'secondary'
+};
+
+const statusText: Record<NonNullable<User['subscriptionStatus']>, string> = {
+    pending_payment: 'En attente',
+    active: 'Actif',
+    cancelled: 'Annulé',
+    trial: "D'essai"
+};
+
+
 export default function ClientManagementPage() {
     const firestore = useFirestore();
     const auth = useAuth();
@@ -76,26 +96,39 @@ export default function ClientManagementPage() {
     const [showPassword, setShowPassword] = useState(false);
     const { toast } = useToast();
     
-    // Fetch the current user's data to check their role
     const currentUserDocRef = useMemoFirebase(() => currentUser ? doc(firestore, 'users', currentUser.uid) : null, [currentUser, firestore]);
     const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(currentUserDocRef);
     
-    // This is the critical change: `canFetchAllUsers` is only true when we are NOT loading AND the role is confirmed.
     const canFetchAllUsers = !isUserLoading && !isCurrentUserDataLoading && currentUserData?.role === 'superadmin';
 
     const usersQuery = useMemoFirebase(() => {
-        // We ensure we only proceed if `canFetchAllUsers` is definitively true.
         if (canFetchAllUsers) {
             return query(collection(firestore, 'users'));
         }
-        return null; // Return null if not authorized or still loading, preventing the query from running.
+        return null;
     }, [firestore, canFetchAllUsers]);
 
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
+    const plansQuery = useMemoFirebase(() => {
+        if (!currentUser) return null;
+        return query(collection(firestore, 'plans'), where('counselorId', '==', currentUser.uid));
+    }, [currentUser, firestore]);
+    const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(plansQuery);
+    
+    const usersWithPlanNames = useMemo(() => {
+        if (!allUsers || !plans) return allUsers;
+        const planMap = new Map(plans.map(p => [p.id, p.name]));
+        return allUsers.map(user => ({
+            ...user,
+            planName: user.planId ? planMap.get(user.planId) : 'Aucun',
+        }));
+    }, [allUsers, plans]);
+
+
     const filteredUsers = useMemo(() => {
-        if (!allUsers) return [];
-        let users = allUsers;
+        if (!usersWithPlanNames) return [];
+        let users = usersWithPlanNames;
         if (roleFilter !== 'all') {
             users = users.filter(user => user.role === roleFilter);
         }
@@ -108,7 +141,7 @@ export default function ClientManagementPage() {
             );
         }
         return users;
-    }, [allUsers, searchTerm, roleFilter]);
+    }, [usersWithPlanNames, searchTerm, roleFilter]);
     
     const form = useForm<UserFormData>({
         resolver: zodResolver(userFormSchema),
@@ -123,6 +156,8 @@ export default function ClientManagementPage() {
                     address: editingUser.address || '',
                     zipCode: editingUser.zipCode || '',
                     city: editingUser.city || '',
+                    planId: editingUser.planId || '',
+                    subscriptionStatus: editingUser.subscriptionStatus || 'pending_payment',
                 });
             } else {
                  form.reset({
@@ -134,7 +169,9 @@ export default function ClientManagementPage() {
                     address: '',
                     zipCode: '',
                     city: '',
-                    password: ''
+                    password: '',
+                    planId: '',
+                    subscriptionStatus: 'pending_payment',
                 });
             }
         }
@@ -156,19 +193,28 @@ export default function ClientManagementPage() {
     const onSubmit = async (values: UserFormData) => {
         setIsSubmitting(true);
         try {
+             const userDataToSave: any = {
+                firstName: values.firstName,
+                lastName: values.lastName,
+                email: values.email,
+                role: values.role,
+                phone: values.phone,
+                address: values.address,
+                zipCode: values.zipCode,
+                city: values.city,
+            };
+
+            if (values.role === 'conseiller') {
+                userDataToSave.planId = values.planId;
+                userDataToSave.subscriptionStatus = values.subscriptionStatus;
+            } else {
+                 userDataToSave.planId = null;
+                 userDataToSave.subscriptionStatus = null;
+            }
+
             if (editingUser) {
-                // Modification d'un utilisateur existant
                 const userDocRef = doc(firestore, 'users', editingUser.id);
-                await setDoc(userDocRef, {
-                    firstName: values.firstName,
-                    lastName: values.lastName,
-                    email: values.email, // L'email ne peut pas être modifié ici pour un utilisateur existant
-                    role: values.role,
-                    phone: values.phone,
-                    address: values.address,
-                    zipCode: values.zipCode,
-                    city: values.city,
-                }, { merge: true });
+                await setDoc(userDocRef, userDataToSave, { merge: true });
                 toast({ title: 'Succès', description: "L'utilisateur a été mis à jour." });
             } else {
                  if (!values.password || values.password.length < 6) {
@@ -176,21 +222,13 @@ export default function ClientManagementPage() {
                     setIsSubmitting(false);
                     return;
                 }
-                // Création d'un nouvel utilisateur
                 const userCredential = await createUserWithEmailAndPassword(auth, values.email, values.password);
                 const newUser = userCredential.user;
 
                 const userDocRef = doc(firestore, 'users', newUser.uid);
                 await setDoc(userDocRef, {
+                    ...userDataToSave,
                     id: newUser.uid,
-                    firstName: values.firstName,
-                    lastName: values.lastName,
-                    email: values.email,
-                    role: values.role,
-                    phone: values.phone,
-                    address: values.address,
-                    zipCode: values.zipCode,
-                    city: values.city,
                     dateJoined: new Date().toISOString(),
                 });
                 toast({ title: 'Succès', description: 'L\'utilisateur a été créé.' });
@@ -233,8 +271,8 @@ export default function ClientManagementPage() {
         }
     };
     
-    // Overall loading state now correctly considers all required async operations
-    const isLoading = isUserLoading || isCurrentUserDataLoading || areUsersLoading;
+    const isLoading = isUserLoading || isCurrentUserDataLoading || areUsersLoading || arePlansLoading;
+    const watchRole = form.watch('role');
 
     return (
         <div className="space-y-8">
@@ -260,18 +298,35 @@ export default function ClientManagementPage() {
                 </CardHeader>
                 <CardContent>
                     <Table>
-                        <TableHeader><TableRow><TableHead>Utilisateur</TableHead><TableHead>Email</TableHead><TableHead>Rôle</TableHead><TableHead>Date d'inscription</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Utilisateur</TableHead>
+                                <TableHead>Email</TableHead>
+                                <TableHead>Rôle</TableHead>
+                                <TableHead>Abonnement</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
                         <TableBody>
                             {isLoading ? (
                                 [...Array(5)].map((_, i) => (
                                     <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
                                 ))
-                            ) : filteredUsers.length > 0 ? ( filteredUsers.map((user) => (
+                            ) : filteredUsers.length > 0 ? ( filteredUsers.map((user: any) => (
                                <TableRow key={user.id}>
                                    <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
                                    <TableCell>{user.email}</TableCell>
                                    <TableCell><Badge variant={roleVariant[user.role] || 'secondary'}>{roleText[user.role] || user.role}</Badge></TableCell>
-                                   <TableCell>{user.dateJoined ? new Date(user.dateJoined).toLocaleDateString() : 'N/A'}</TableCell>
+                                   <TableCell>
+                                        {user.role === 'conseiller' ? (
+                                            user.planName && user.subscriptionStatus ? (
+                                                <div className="flex items-center gap-2">
+                                                    <span>{user.planName}</span>
+                                                    <Badge variant={statusVariant[user.subscriptionStatus]}>{statusText[user.subscriptionStatus]}</Badge>
+                                                </div>
+                                            ) : 'Aucun'
+                                        ) : '-'}
+                                   </TableCell>
                                    <TableCell className="text-right">
                                        <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -334,6 +389,43 @@ export default function ClientManagementPage() {
                                     <FormMessage />
                                 </FormItem>
                             )}/>
+                            {watchRole === 'conseiller' && (
+                                <Card className="p-4 bg-muted/50">
+                                    <CardHeader className="p-2">
+                                        <CardTitle className="text-base">Abonnement du Conseiller</CardTitle>
+                                    </CardHeader>
+                                    <CardContent className="p-2 space-y-4">
+                                        <FormField control={form.control} name="planId" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Plan d'abonnement</FormLabel>
+                                                 <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl><SelectTrigger disabled={arePlansLoading}><SelectValue placeholder="Sélectionner un plan" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="">Aucun</SelectItem>
+                                                        {plans?.map(plan => <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>)}
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                        <FormField control={form.control} name="subscriptionStatus" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Statut de l'abonnement</FormLabel>
+                                                 <Select onValueChange={field.onChange} value={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un statut" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="pending_payment">En attente de paiement</SelectItem>
+                                                        <SelectItem value="active">Actif</SelectItem>
+                                                        <SelectItem value="cancelled">Annulé</SelectItem>
+                                                        <SelectItem value="trial">Essai</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}/>
+                                    </CardContent>
+                                </Card>
+                            )}
                             <DialogFooter>
                                 <Button type="button" variant="outline" onClick={() => handleOpenDialog(false)}>Annuler</Button>
                                 <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} {editingUser ? 'Sauvegarder' : 'Créer'}</Button>
@@ -360,4 +452,3 @@ export default function ClientManagementPage() {
     );
 }
 
-    
