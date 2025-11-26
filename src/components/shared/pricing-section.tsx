@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useCollection, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, documentId, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -61,10 +61,9 @@ export function PricingSection() {
     const planIds = pricingConfig?.planIds || [];
     
     // Corrected Query:
-    // 1. It only runs if we have planIds and a user.
+    // 1. It only runs if we have planIds and a user (the super-admin).
     // 2. It filters plans to only include those whose IDs are in the selected `planIds` array.
-    // 3. CRUCIALLY, it also filters to only include plans where `counselorId` matches the currently logged-in user's UID.
-    // This ensures that only the Super Admin's plans are shown on the main page.
+    // 3. CRUCIALLY, it also filters to only include plans where `counselorId` matches the currently logged-in super-admin's UID.
     const selectedPlansQuery = useMemoFirebase(() => {
         if (!planIds || planIds.length === 0 || !user) {
             return null;
@@ -90,12 +89,13 @@ export function PricingSection() {
     
     const sortedPlans = useMemo(() => {
         if (!plans || !planIds) return [];
-        // The query already filters by counselorId, so we just sort based on the admin's selection order.
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
     
-    // This component will now only render content if there are plans to show.
-    // If sortedPlans is empty, the appropriate message will be shown below.
+    if (!pricingConfig?.enabled) {
+        return null;
+    }
+
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
             <div className="container mx-auto px-4">
