@@ -76,10 +76,6 @@ export function OtherActivitiesSection() {
             </section>
         )
     }
-    
-    if (!otherActivitiesSettings || !otherActivitiesSettings.enabled) {
-        return null;
-    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
