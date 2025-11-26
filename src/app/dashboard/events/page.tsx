@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, Edit, Trash2, Loader2, Calendar, MoreHorizontal, User as UserIcon, X, Eye, Users } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Calendar, MoreHorizontal, User as UserIcon, X, Eye, Users, Pyramid } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -84,8 +84,6 @@ function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAtt
 
     const clientsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        // This query works for BOTH 'conseiller' and 'superadmin' as they both manage clients
-        // via the counselorIds field.
         return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
     }, [user, firestore]);
     
@@ -314,9 +312,11 @@ export default function EventsPage() {
               <CardFooter className="flex justify-between items-center">
                 <div className="flex gap-2">
                   <RegistrationsSheet eventId={event.id} maxAttendees={event.maxAttendees} />
-                  {showPrismeButton && (
+                   {showPrismeButton && (
                      <Button asChild variant="destructive">
-                        <Link href={`/dashboard/prisme/${event.id}`}>LIVE</Link>
+                        <Link href={`/dashboard/prisme/${event.id}`}>
+                            <Pyramid className="mr-2 h-4 w-4" /> LIVE
+                        </Link>
                      </Button>
                   )}
                 </div>
