@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -53,17 +54,22 @@ function ContractModal({ contractId, buttonText, primaryColor }: { contractId: s
 }
 
 export function PricingSection() {
-    const { personalization, isLoading: isAgencyLoading } = useAgency();
+    const { personalization, agency, isLoading: isAgencyLoading } = useAgency();
     const firestore = useFirestore();
 
     const pricingConfig = personalization?.pricingSection;
     const planIds = pricingConfig?.planIds || [];
     
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (planIds.length === 0) return null;
+        if (!planIds || planIds.length === 0 || !agency?.id) return null;
         const plansCollectionRef = collection(firestore, 'plans');
-        return query(plansCollectionRef, where(documentId(), 'in', planIds));
-    }, [firestore, planIds]);
+        // This is the key change: we filter for plans created by the super-admin/agency AND selected in the UI.
+        return query(
+            plansCollectionRef, 
+            where(documentId(), 'in', planIds),
+            where('counselorId', '==', agency.id)
+        );
+    }, [firestore, planIds, agency?.id]);
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(selectedPlansQuery);
 
