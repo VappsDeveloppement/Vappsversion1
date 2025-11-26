@@ -86,10 +86,6 @@ export function PricingSection() {
         // Affiche uniquement les plans qui sont dans la liste de l'admin et qui sont publics (si nécessaire)
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
-    
-    if (!pricingConfig?.enabled) {
-        return null;
-    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
