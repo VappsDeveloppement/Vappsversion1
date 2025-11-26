@@ -122,10 +122,8 @@ service cloud.firestore {
     match /events/{eventId} {
       allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
       
-      allow list: if (request.query.get('where') == null || request.query.where.isPublic == true)
-                    && (request.auth != null 
-                        || (request.query.get('where') != null && request.query.where.isPublic == true));
-
+      allow list: if (request.query.get('where') == null || request.query.where[0][2] == true && request.query.where[0][0] == 'isPublic')
+                    || (request.auth != null && request.query.where[0][0] == 'counselorId');
 
       allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
@@ -171,3 +169,5 @@ service cloud.firestore {
     }
   }
 }
+
+    
