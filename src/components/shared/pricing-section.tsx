@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
@@ -61,15 +60,15 @@ export function PricingSection() {
     const planIds = pricingConfig?.planIds || [];
     
     const selectedPlansQuery = useMemoFirebase(() => {
-        if (!planIds || planIds.length === 0 || !agency?.id) return null;
+        if (!planIds || planIds.length === 0) return null;
         const plansCollectionRef = collection(firestore, 'plans');
-        // This is the key change: we filter for plans created by the super-admin/agency AND selected in the UI.
+        // Corrected Query: Filter ONLY by the selected plan IDs. This will fetch the plans regardless
+        // of who created them, which is the correct logic for the main homepage display.
         return query(
             plansCollectionRef, 
-            where(documentId(), 'in', planIds),
-            where('counselorId', '==', agency.id)
+            where(documentId(), 'in', planIds)
         );
-    }, [firestore, planIds, agency?.id]);
+    }, [firestore, planIds]);
 
     const { data: plans, isLoading: arePlansLoading } = useCollection<Plan>(selectedPlansQuery);
 
@@ -79,15 +78,15 @@ export function PricingSection() {
     const primaryColor = personalization?.primaryColor || '#10B981';
     
     const isLoading = isAgencyLoading || arePlansLoading;
-
-    // The display logic for the section is handled by the parent component (HomePageSelector)
-    // based on the `homePageSections` array. This component should focus only on rendering its content.
     
     const sortedPlans = useMemo(() => {
         if (!plans || planIds.length === 0) return [];
-        // This ensures the order selected in the admin is respected
         return plans.sort((a, b) => planIds.indexOf(a.id) - planIds.indexOf(b.id));
     }, [plans, planIds]);
+
+    if (!pricingConfig?.enabled) {
+        return null;
+    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24" id="pricing">
