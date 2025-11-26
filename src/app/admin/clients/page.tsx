@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { useCollection, useMemoFirebase, setDocumentNonBlocking, useUser, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, doc, setDoc, where } from 'firebase/firestore';
+import { collection, query, doc, where } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -205,7 +205,7 @@ export default function ClientManagementPage() {
             };
 
             if (values.role === 'conseiller') {
-                userDataToSave.planId = values.planId;
+                userDataToSave.planId = values.planId === 'none' ? null : values.planId;
                 userDataToSave.subscriptionStatus = values.subscriptionStatus;
             } else {
                  userDataToSave.planId = null;
@@ -231,7 +231,7 @@ export default function ClientManagementPage() {
                     id: newUser.uid,
                     dateJoined: new Date().toISOString(),
                 });
-                toast({ title: 'Succès', description: 'L\'utilisateur a été créé.' });
+                toast({ title: 'Succès', description: "L'utilisateur a été créé." });
             }
             setIsDialogOpen(false);
             setEditingUser(null);
@@ -398,10 +398,10 @@ export default function ClientManagementPage() {
                                         <FormField control={form.control} name="planId" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Plan d'abonnement</FormLabel>
-                                                 <Select onValueChange={field.onChange} value={field.value}>
+                                                 <Select onValueChange={field.onChange} value={field.value || 'none'}>
                                                     <FormControl><SelectTrigger disabled={arePlansLoading}><SelectValue placeholder="Sélectionner un plan" /></SelectTrigger></FormControl>
                                                     <SelectContent>
-                                                        <SelectItem value="">Aucun</SelectItem>
+                                                        <SelectItem value="none">Aucun</SelectItem>
                                                         {plans?.map(plan => <SelectItem key={plan.id} value={plan.id}>{plan.name}</SelectItem>)}
                                                     </SelectContent>
                                                 </Select>
@@ -452,3 +452,4 @@ export default function ClientManagementPage() {
     );
 }
 
+    
