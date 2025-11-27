@@ -563,6 +563,8 @@
         "isFeatured": { "type": "boolean" },
         "isPublic": { "type": "boolean" },
         "hasPrismeAccess": { "type": "boolean", "description": "Whether this plan grants access to the Prisme feature." },
+        "hasVitaeAccess": { "type": "boolean", "description": "Whether this plan grants access to the Vitae feature." },
+        "hasAuraAccess": { "type": "boolean", "description": "Whether this plan grants access to the Aura feature." },
         "imageUrl": { "type": "string", "format": "uri" },
         "cta": { "type": "string" },
         "contractId": { "type": "string" },
@@ -1098,6 +1100,104 @@
             "counselorId": { "type": "string", "description": "ID of the counselor who hosted the live." }
         },
         "required": ["id", "name", "email", "liveDate", "wantsContact", "status", "createdAt", "counselorId"]
+    },
+    "Training": {
+      "title": "Training",
+      "type": "object",
+      "description": "Represents a single training in the catalog.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["internal", "external"] },
+        "externalUrl": { "type": "string", "format": "uri" },
+        "authorId": { "type": "string" },
+        "duration": { "type": "number", "description": "Estimated duration in hours." }
+      },
+      "required": ["id", "title", "type", "authorId"]
+    },
+    "TrainingModule": {
+      "title": "Training Module",
+      "type": "object",
+      "description": "A content module within an internal training.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "content": { "type": "string", "format": "html" },
+        "videoUrl": { "type": "string", "format": "uri" },
+        "pdfUrl": { "type": "string", "format": "uri" },
+        "counselorId": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "counselorId"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "type": "object",
+      "description": "A quiz to test knowledge, can be part of a training or standalone.",
+      "properties": {
+        "id": { "type": "string" },
+        "moduleId": { "type": "string" },
+        "title": { "type": "string" },
+        "successPercentage": { "type": "number" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "questionText": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "correctAnswerIndex": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["id", "moduleId", "title", "questions"]
+    },
+    "LearningPath": {
+      "title": "Learning Path",
+      "type": "object",
+      "description": "A structured sequence of trainings and quizzes.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "authorId": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["training", "quiz"] },
+              "itemId": { "type": "string", "description": "ID of the Training or Quiz." },
+              "order": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["id", "title", "authorId", "steps"]
+    },
+    "PathEnrollment": {
+      "title": "Path Enrollment",
+      "type": "object",
+      "description": "Tracks a user's enrollment and progress in a learning path.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "pathId": { "type": "string" },
+        "enrolledAt": { "type": "string", "format": "date-time" },
+        "progress": {
+          "type": "object",
+          "description": "Key-value pair where key is step itemId and value is completion status.",
+          "additionalProperties": { "type": "string", "enum": ["completed", "in_progress"] }
+        },
+        "quizScores": {
+          "type": "object",
+          "description": "Key-value pair where key is quiz ID and value is the score.",
+          "additionalProperties": { "type": "number" }
+        }
+      },
+      "required": ["id", "userId", "pathId", "enrolledAt"]
     }
   },
   "auth": {
@@ -1334,6 +1434,14 @@
           "entityName": "ClairvoyanceModel",
           "schema": { "$ref": "#/entities/ClairvoyanceModel" },
           "description": "Stores models for clairvoyance and pendulum readings."
+        }
+      },
+      {
+        "path": "/training_modules/{moduleId}",
+        "definition": {
+          "entityName": "TrainingModule",
+          "schema": { "$ref": "#/entities/TrainingModule" },
+          "description": "Stores individual training modules."
         }
       }
     ],

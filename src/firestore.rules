@@ -22,7 +22,7 @@ service cloud.firestore {
       allow get: if request.auth != null && (
         request.auth.uid == userId 
         || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'
-        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && request.auth.uid in resource.data.counselorIds)
+        || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && userId in resource.data.counselorIds)
       );
       // Allow superadmin and conseillers to list all users.
       allow list: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller');
@@ -168,7 +168,9 @@ service cloud.firestore {
       allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       allow update, delete: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
     }
+
+    match /training_modules/{moduleId} {
+      allow read, list, create, update, delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
   }
 }
-
-    
