@@ -1100,6 +1100,100 @@
             "counselorId": { "type": "string", "description": "ID of the counselor who hosted the live." }
         },
         "required": ["id", "name", "email", "liveDate", "wantsContact", "status", "createdAt", "counselorId"]
+    },
+    "Training": {
+      "title": "Training",
+      "type": "object",
+      "description": "Represents a single training in the catalog.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "type": { "type": "string", "enum": ["internal", "external"] },
+        "externalUrl": { "type": "string", "format": "uri" },
+        "authorId": { "type": "string" },
+        "duration": { "type": "number", "description": "Estimated duration in hours." }
+      },
+      "required": ["id", "title", "type", "authorId"]
+    },
+    "TrainingModule": {
+      "title": "Training Module",
+      "type": "object",
+      "description": "A content module within an internal training.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string", "format": "html" },
+        "videoUrl": { "type": "string", "format": "uri" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "title", "content"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "type": "object",
+      "description": "A quiz to test knowledge, can be part of a training or standalone.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "questions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "questionText": { "type": "string" },
+              "options": { "type": "array", "items": { "type": "string" } },
+              "correctAnswerIndex": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["id", "title", "questions"]
+    },
+    "LearningPath": {
+      "title": "Learning Path",
+      "type": "object",
+      "description": "A structured sequence of trainings and quizzes.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "authorId": { "type": "string" },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "type": { "type": "string", "enum": ["training", "quiz"] },
+              "itemId": { "type": "string", "description": "ID of the Training or Quiz." },
+              "order": { "type": "number" }
+            }
+          }
+        }
+      },
+      "required": ["id", "title", "authorId", "steps"]
+    },
+    "PathEnrollment": {
+      "title": "Path Enrollment",
+      "type": "object",
+      "description": "Tracks a user's enrollment and progress in a learning path.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "pathId": { "type": "string" },
+        "enrolledAt": { "type": "string", "format": "date-time" },
+        "progress": {
+          "type": "object",
+          "description": "Key-value pair where key is step itemId and value is completion status.",
+          "additionalProperties": { "type": "string", "enum": ["completed", "in_progress"] }
+        },
+        "quizScores": {
+          "type": "object",
+          "description": "Key-value pair where key is quiz ID and value is the score.",
+          "additionalProperties": { "type": "number" }
+        }
+      },
+      "required": ["id", "userId", "pathId", "enrolledAt"]
     }
   },
   "auth": {
@@ -1342,5 +1436,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
-    

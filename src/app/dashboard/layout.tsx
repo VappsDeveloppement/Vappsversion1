@@ -21,6 +21,7 @@ import {
   PhoneForwarded,
   Bot,
   Wand,
+  BookOpen,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -213,6 +214,14 @@ export default function DashboardLayout({
                         <SidebarMenuButton isActive={pathname.startsWith("/dashboard/billing")}>
                             <CreditCard />
                             <span>Facturation</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <Link href="/dashboard/e-learning">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/e-learning")}>
+                            <BookOpen />
+                            <span>E-Learning</span>
                         </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
