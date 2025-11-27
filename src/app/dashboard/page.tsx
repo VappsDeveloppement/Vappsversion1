@@ -123,7 +123,7 @@ function FollowUpRequestsSection() {
                 // User does not exist, create new user
                 const newUserRef = doc(collection(firestore, 'users'));
                 const [firstName, ...lastNameParts] = request.name.split(' ');
-                await addDocumentNonBlocking(newUserRef, {
+                await setDocumentNonBlocking(newUserRef, {
                     id: newUserRef.id,
                     firstName: firstName || 'Nouveau',
                     lastName: lastNameParts.join(' ') || 'Client',
@@ -306,4 +306,3 @@ export default function DashboardPage() {
         </div>
     );
 }
- 
