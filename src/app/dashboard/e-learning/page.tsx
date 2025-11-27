@@ -20,8 +20,8 @@ export default function ElearningPage() {
                     <TabsTrigger value="catalog">
                         <BookCopy className="mr-2 h-4 w-4" /> Catalogue de Formations
                     </TabsTrigger>
-                    <TabsTrigger value="paths">
-                        <Presentation className="mr-2 h-4 w-4" /> Parcours de Formation
+                    <TabsTrigger value="modules">
+                        <ScrollText className="mr-2 h-4 w-4" /> Modules & Évaluations
                     </TabsTrigger>
                      <TabsTrigger value="members">
                         <Users className="mr-2 h-4 w-4" /> Gestion des Membres
@@ -33,32 +33,35 @@ export default function ElearningPage() {
                         <CardHeader>
                             <CardTitle>Catalogue de Formations</CardTitle>
                             <CardDescription>
-                                Créez et gérez vos formations internes ou des liens vers des formations externes.
+                                Créez la structure globale de vos formations. Celles-ci pourront être affichées sur votre page d'accueil.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96">
-                                <ScrollText className="h-16 w-16 text-muted-foreground mb-4" />
-                                <h3 className="text-xl font-semibold">Gestion des Formations et Modules</h3>
-                                <p className="text-muted-foreground mt-2 max-w-2xl">Cette section vous permettra de créer des modules de formation (texte, vidéo, etc.) et de les organiser dans un catalogue complet.</p>
+                                <BookCopy className="h-16 w-16 text-muted-foreground mb-4" />
+                                <h3 className="text-xl font-semibold">Gestion des Formations</h3>
+                                <p className="text-muted-foreground mt-2 max-w-2xl">Cette section vous permettra de créer vos formations (internes ou externes) et de les organiser dans un catalogue complet.</p>
                             </div>
                         </CardContent>
                     </Card>
                 </TabsContent>
 
-                <TabsContent value="paths">
+                <TabsContent value="modules">
                      <Card>
                         <CardHeader>
-                            <CardTitle>Parcours de Formation</CardTitle>
+                            <CardTitle>Modules de Formation et Évaluations</CardTitle>
                             <CardDescription>
-                                Assemblez des formations et des tests pour créer des parcours d'apprentissage structurés.
+                                Créez le contenu pédagogique (modules de texte, vidéo) et les quiz de validation des connaissances.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96">
-                                <Presentation className="h-16 w-16 text-muted-foreground mb-4" />
-                                <h3 className="text-xl font-semibold">Création de Parcours Personnalisés</h3>
-                                <p className="text-muted-foreground mt-2 max-w-2xl">Ici, vous pourrez combiner vos modules de formation et tests pour construire des parcours logiques et suivre la progression des participants.</p>
+                                <div className="flex gap-8">
+                                    <ScrollText className="h-16 w-16 text-muted-foreground mb-4" />
+                                    <CheckSquare className="h-16 w-16 text-muted-foreground mb-4" />
+                                </div>
+                                <h3 className="text-xl font-semibold">Création de Contenu Pédagogique</h3>
+                                <p className="text-muted-foreground mt-2 max-w-2xl">Ici, vous pourrez construire les briques de vos formations : les modules de contenu et les évaluations pour valider les acquis.</p>
                             </div>
                         </CardContent>
                     </Card>
@@ -69,7 +72,7 @@ export default function ElearningPage() {
                         <CardHeader>
                             <CardTitle>Gestion des Membres</CardTitle>
                             <CardDescription>
-                                Inscrivez vos clients à des parcours de formation et suivez leur assiduité.
+                                Inscrivez vos clients à des formations ou parcours et suivez leur progression.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
