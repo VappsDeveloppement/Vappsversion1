@@ -11,11 +11,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2 } from 'lucide-react';
+import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2, Search } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Input } from '@/components/ui/input';
 
 type FollowUpRequest = {
     id: string;
@@ -46,6 +47,7 @@ function FollowUpRequestsSection() {
 
     const [requestToDelete, setRequestToDelete] = useState<FollowUpRequest | null>(null);
     const [isConverting, setIsConverting] = useState<string | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
     const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
@@ -70,13 +72,24 @@ function FollowUpRequestsSection() {
 
     const { data: allRequests, isLoading: areRequestsLoading } = useCollection<FollowUpRequest>(followUpRequestsQuery);
 
+    const filteredRequests = useMemo(() => {
+        if (!allRequests) return [];
+        if (!searchTerm) return allRequests;
+
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return allRequests.filter(req => 
+            req.name.toLowerCase().includes(lowercasedTerm) ||
+            req.email.toLowerCase().includes(lowercasedTerm)
+        );
+    }, [allRequests, searchTerm]);
+
     const newRequests = useMemo(() => {
-        return allRequests?.filter(req => req.status === 'new').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
-    }, [allRequests]);
+        return filteredRequests?.filter(req => req.status === 'new').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
+    }, [filteredRequests]);
     
     const processedRequests = useMemo(() => {
-        return allRequests?.filter(req => req.status === 'processed').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
-    }, [allRequests]);
+        return filteredRequests?.filter(req => req.status === 'processed').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
+    }, [filteredRequests]);
     
     const handleMarkAsProcessed = async (requestId: string) => {
         const requestRef = doc(firestore, 'live_follow_up_requests', requestId);
@@ -162,7 +175,7 @@ function FollowUpRequestsSection() {
             return (
                 <TableRow>
                     <TableCell colSpan={5} className="h-24 text-center">
-                        Aucune demande dans cette catégorie.
+                        {searchTerm ? "Aucun résultat pour votre recherche." : "Aucune demande dans cette catégorie."}
                     </TableCell>
                 </TableRow>
             );
@@ -217,7 +230,7 @@ function FollowUpRequestsSection() {
             <Card>
                 <Tabs defaultValue="new">
                     <CardHeader>
-                        <div className='flex justify-between items-start'>
+                        <div className='flex flex-col md:flex-row justify-between md:items-start gap-4'>
                             <div>
                                 <CardTitle>Demandes de Rappel</CardTitle>
                                 <CardDescription>Demandes de suivi des participants après un événement live.</CardDescription>
@@ -226,6 +239,15 @@ function FollowUpRequestsSection() {
                                 <TabsTrigger value="new">Nouvelles</TabsTrigger>
                                 <TabsTrigger value="processed">Traitées</TabsTrigger>
                             </TabsList>
+                        </div>
+                        <div className="relative pt-4">
+                            <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                placeholder="Rechercher par nom ou email..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pl-9"
+                            />
                         </div>
                     </CardHeader>
                     <CardContent>
