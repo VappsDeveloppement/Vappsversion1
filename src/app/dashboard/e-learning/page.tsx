@@ -23,6 +23,7 @@ import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 // Schemas
 const questionSchema = z.object({
@@ -308,3 +309,5 @@ export default function ElearningPage() {
         </div>
     );
 }
+
+    
