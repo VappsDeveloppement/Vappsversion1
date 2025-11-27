@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import React, { useMemo, useState } from 'react';
 import { useAgency } from '@/context/agency-provider';
 import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -15,7 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 type FollowUpRequest = {
@@ -307,3 +306,4 @@ export default function DashboardPage() {
         </div>
     );
 }
+ 
