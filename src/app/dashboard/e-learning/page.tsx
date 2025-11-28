@@ -116,7 +116,7 @@ function ModuleManager() {
         setIsUploading(true);
         toast({ title: 'Téléversement en cours...', description: 'Veuillez patienter.' });
         
-        const filePath = `Formation/${user.uid}/${Date.now()}-${file.name}`;
+        const filePath = `Formation/${Date.now()}-${file.name}`;
         const fileRef = ref(storage, filePath);
 
         try {
