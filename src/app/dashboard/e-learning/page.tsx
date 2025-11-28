@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -9,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users, CheckCircle, EyeOff } from 'lucide-react';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -24,13 +25,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Slider } from '@/components/ui/slider';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import Link from 'next/link';
 
 
@@ -198,7 +194,6 @@ type TrainingModule = ModuleFormData & {
 function ModuleManager() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const storage = useStorage();
     const { toast } = useToast();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -478,7 +473,6 @@ type Training = {
 function TrainingManager() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const storage = useStorage();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingTraining, setEditingTraining] = useState<Training | null>(null);
@@ -855,7 +849,7 @@ function MemberManagement() {
                 </div>
             </CardHeader>
             <CardContent>
-                <Table>
+                 <Table>
                     <TableHeader>
                         <TableRow>
                             <TableHead>Client</TableHead>
@@ -931,3 +925,7 @@ export default function ElearningPage() {
         </div>
     );
 }
+
+    
+
+    
