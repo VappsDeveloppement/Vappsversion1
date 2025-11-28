@@ -613,7 +613,7 @@ function TrainingManager() {
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <Link href={`/dashboard/e-learning/path/${training.id}`} passHref>
+                                                            <Link href={`/dashboard/e-learning/${training.id}`} passHref>
                                                                 <Button variant="ghost" size="icon">
                                                                     <FileText className="h-4 w-4"/>
                                                                 </Button>
@@ -718,6 +718,8 @@ function MemberManagement() {
     const { toast } = useToast();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [selectedClient, setSelectedClient] = useState('');
+    const [selectedTraining, setSelectedTraining] = useState('');
 
     const enrollmentsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -732,6 +734,12 @@ function MemberManagement() {
         setIsSheetOpen(true);
     };
 
+    const handleEnroll = () => {
+        // Logic to enroll user will go here
+        toast({ title: 'Fonctionnalité en cours de développement' });
+        setIsSheetOpen(false);
+    }
+
     return (
         <Card>
             <CardHeader>
@@ -740,7 +748,43 @@ function MemberManagement() {
                         <CardTitle>Gestion des Membres</CardTitle>
                         <CardDescription>Inscrivez vos clients à des formations ou parcours et suivez leur progression.</CardDescription>
                     </div>
-                    <Button onClick={handleNewEnrollment}><PlusCircle className="mr-2 h-4 w-4" />Inscrire un membre</Button>
+                     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                        <SheetTrigger asChild>
+                            <Button onClick={handleNewEnrollment}><PlusCircle className="mr-2 h-4 w-4" />Inscrire un membre</Button>
+                        </SheetTrigger>
+                        <SheetContent>
+                             <SheetHeader>
+                                <SheetTitle>Inscrire un membre à une formation</SheetTitle>
+                                <SheetDescription>Sélectionnez un client et la formation à laquelle l'inscrire.</SheetDescription>
+                            </SheetHeader>
+                            <div className="space-y-4 py-6">
+                                <div className="space-y-2">
+                                    <Label htmlFor="client-select">Client</Label>
+                                    <Select value={selectedClient} onValueChange={setSelectedClient}>
+                                        <SelectTrigger><SelectValue placeholder="Sélectionnez un client" /></SelectTrigger>
+                                        <SelectContent>
+                                            {/* Dummy data for now */}
+                                            <SelectItem value="client1">Client 1</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="training-select">Formation</Label>
+                                    <Select value={selectedTraining} onValueChange={setSelectedTraining}>
+                                        <SelectTrigger><SelectValue placeholder="Sélectionnez une formation" /></SelectTrigger>
+                                        <SelectContent>
+                                            {/* Dummy data for now */}
+                                            <SelectItem value="training1">Formation 1</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+                            <SheetFooter>
+                                <SheetClose asChild><Button variant="outline">Annuler</Button></SheetClose>
+                                <Button onClick={handleEnroll}>Inscrire</Button>
+                            </SheetFooter>
+                        </SheetContent>
+                    </Sheet>
                 </div>
             </CardHeader>
             <CardContent>
