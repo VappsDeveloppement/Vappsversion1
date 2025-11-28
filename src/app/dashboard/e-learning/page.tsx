@@ -10,10 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users, CheckCircle, EyeOff } from 'lucide-react';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { useFirestore } from '@/firebase/provider';
+import { useFirestore, useStorage } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose, SheetDescription } from "@/components/ui/sheet";
@@ -785,8 +785,6 @@ function TrainingManager() {
     );
 }
 
-// ... rest of the file remains the same ...
-
 export default function ElearningPage() {
     return (
         <div className="space-y-8">
@@ -798,15 +796,12 @@ export default function ElearningPage() {
             </div>
 
             <Tabs defaultValue="catalog">
-                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto">
+                <TabsList className="grid w-full grid-cols-1 sm:grid-cols-2 h-auto">
                     <TabsTrigger value="catalog">
                         <BookOpen className="mr-2 h-4 w-4" /> Catalogue de Formations
                     </TabsTrigger>
                     <TabsTrigger value="modules">
                         <ScrollText className="mr-2 h-4 w-4" /> Modules & Évaluations
-                    </TabsTrigger>
-                     <TabsTrigger value="members">
-                        <Users className="mr-2 h-4 w-4" /> Gestion des Membres
                     </TabsTrigger>
                 </TabsList>
                 
@@ -820,13 +815,7 @@ export default function ElearningPage() {
                 <TabsContent value="modules">
                      <ModuleManager />
                 </TabsContent>
-                
-                <TabsContent value="members">
-                    <MemberManagement />
-                </TabsContent>
             </Tabs>
         </div>
     );
 }
-
-    
