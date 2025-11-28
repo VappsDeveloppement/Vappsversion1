@@ -257,11 +257,9 @@ export default function ClientManagementPage() {
             const userDocRef = doc(firestore, "users", userToDelete.id);
             batch.delete(userDocRef);
             
-            // If the user is a counselor, also delete their minisite document
-            if (userToDelete.role === 'conseiller') {
-                const miniSiteDocRef = doc(firestore, "minisites", userToDelete.id);
-                batch.delete(miniSiteDocRef);
-            }
+            // Delete the minisite document for this user.
+            const miniSiteDocRef = doc(firestore, "minisites", userToDelete.id);
+            batch.delete(miniSiteDocRef);
 
             await batch.commit();
 
