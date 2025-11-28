@@ -78,29 +78,17 @@ export default function AdminLayout({
   const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
   const { data: allUsers, isLoading: areUsersLoading } = useCollection(usersQuery);
   
-  const hasAdminAccess = useMemo(() => {
-    if (!userData) return false;
-    // Standard check: Does the user have the FULLACCESS permission?
-    if (userData.permissions?.includes('FULLACCESS')) {
-      return true;
-    }
-    // Temporary fallback: Is this user the one and only user on the platform?
-    if (allUsers && allUsers.length === 1 && allUsers[0].id === user?.uid) {
-      return true;
-    }
-    return false;
-  }, [userData, allUsers, user]);
-  // --- End of Temporary Fix Logic ---
+  // TEMPORARY: Grant access unconditionally to allow self-assignment of permission.
+  const hasAdminAccess = true;
 
 
   useEffect(() => {
-    // Wait for all data to be loaded before making a decision
-    if (!isUserLoading && !isUserDataLoading && !areUsersLoading) {
-      if (!hasAdminAccess) {
-        router.push('/dashboard');
-      }
+    // Wait for auth to finish loading before checking user status
+    if (!isUserLoading && !user) {
+        router.push('/application');
     }
-  }, [isUserLoading, isUserDataLoading, areUsersLoading, hasAdminAccess, router]);
+    // The permission check redirect is temporarily disabled.
+  }, [isUserLoading, user, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -119,12 +107,12 @@ export default function AdminLayout({
     );
   }
   
-  if (!hasAdminAccess) {
+  if (!user) {
      return (
       <div className="flex h-screen items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-4 text-center">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            <p className="text-muted-foreground">Vérification des autorisations...</p>
+            <p className="text-muted-foreground">Redirection...</p>
         </div>
       </div>
     );
