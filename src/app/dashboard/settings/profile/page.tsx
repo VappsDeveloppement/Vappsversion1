@@ -5,9 +5,9 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs, limit, documentId } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -162,11 +162,13 @@ export default function ProfilePage() {
     if (!user || !userDocRef) return;
     setIsSubmitting(true);
 
-    const publicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
+    const newPublicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
+    const oldPublicProfileName = userData?.publicProfileName;
     
-    if (publicProfileName && publicProfileName !== userData?.publicProfileName) {
+    // Check if the new public profile name is already taken
+    if (newPublicProfileName && newPublicProfileName !== oldPublicProfileName) {
         const minisitesRef = collection(firestore, 'minisites');
-        const q = query(minisitesRef, where("miniSite.publicProfileName", "==", publicProfileName), limit(1));
+        const q = query(minisitesRef, where("miniSite.publicProfileName", "==", newPublicProfileName), limit(1));
         const querySnapshot = await getDocs(q);
         if (!querySnapshot.empty) {
             form.setError("publicProfileName", {
@@ -180,42 +182,56 @@ export default function ProfilePage() {
 
     const updateData: Partial<UserProfile> = {
         ...data,
-        publicProfileName: publicProfileName,
+        publicProfileName: newPublicProfileName,
     };
     
-    await setDocumentNonBlocking(userDocRef, updateData, { merge: true });
+    try {
+        // Update user document
+        await setDocumentNonBlocking(userDocRef, updateData, { merge: true });
 
-    if (userData?.role === 'conseiller' || userData?.role === 'superadmin') {
-      const minisiteDocRef = doc(firestore, 'minisites', user.uid);
-      const publicProfileData = {
-        id: user.uid,
-        firstName: data.firstName,
-        lastName: data.lastName,
-        email: userData.email,
-        publicTitle: data.publicTitle,
-        publicBio: data.publicBio,
-        photoUrl: data.photoUrl,
-        phone: data.phone,
-        city: data.city,
-        isVatSubject: data.isVatSubject,
-        vatRate: data.vatRate,
-        vatNumber: data.vatNumber,
-        miniSite: {
-            ...userData?.miniSite,
-            publicProfileName: publicProfileName,
-        },
-        dashboardTheme: data.dashboardTheme,
-      };
-      await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
+        // Update or move the minisite document
+        if (userData?.role === 'conseiller' || userData?.role === 'superadmin') {
+            const minisiteDocRef = doc(firestore, 'minisites', user.uid);
+            
+            // This data will be written to the `minisites/{userId}` document.
+            const publicProfileData = {
+                id: user.uid,
+                firstName: data.firstName,
+                lastName: data.lastName,
+                email: userData.email,
+                publicTitle: data.publicTitle,
+                publicBio: data.publicBio,
+                photoUrl: data.photoUrl,
+                phone: data.phone,
+                city: data.city,
+                isVatSubject: data.isVatSubject,
+                vatRate: data.vatRate,
+                vatNumber: data.vatNumber,
+                miniSite: {
+                    ...userData?.miniSite,
+                    publicProfileName: newPublicProfileName,
+                },
+                dashboardTheme: data.dashboardTheme,
+            };
+            await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
+        }
+
+        toast({
+            title: 'Profil mis à jour',
+            description: 'Vos informations ont été sauvegardées.',
+        });
+    } catch (e) {
+      console.error(e);
+      toast({
+        title: 'Erreur',
+        description: 'Une erreur est survenue lors de la sauvegarde.',
+        variant: 'destructive',
+      });
+    } finally {
+        setIsSubmitting(false);
     }
-
-    toast({
-      title: 'Profil mis à jour',
-      description: 'Vos informations ont été sauvegardées.',
-    });
-    
-    setIsSubmitting(false);
   };
+
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
