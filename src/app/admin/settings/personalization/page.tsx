@@ -557,6 +557,8 @@ const defaultPersonalization = {
         enabled: true,
     },
     trainingCatalogSection: {
+        title: "Catalogue des Formations",
+        description: "Découvrez toutes nos formations disponibles.",
         enabled: false,
     },
     paymentSettings: {
@@ -1109,6 +1111,9 @@ export default function PersonalizationPage() {
         otherActivitiesSection: {
             ...settings.otherActivitiesSection,
             ...formData.otherActivitiesSection,
+        },
+        trainingCatalogSection: {
+            ...settings.trainingCatalogSection,
         }
     };
     
@@ -2577,25 +2582,15 @@ export default function PersonalizationPage() {
                                       </section>
                                     </div>
                                 ) : section.id === 'trainingCatalog' ? (
-                                     <div className="space-y-6">
-                                        <FormField
-                                            control={null as any}
-                                            name="trainingCatalogSection.enabled"
-                                            render={({ field } : any) => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                                    <div className="space-y-0.5">
-                                                        <FormLabel className="text-base">Afficher le Catalogue de Formation</FormLabel>
-                                                        <FormDescription>Si cette option est activée, la section du catalogue de formation de la plateforme sera affichée sur la page d'accueil.</FormDescription>
-                                                    </div>
-                                                    <FormControl>
-                                                        <Switch
-                                                            checked={settings.trainingCatalogSection?.enabled}
-                                                            onCheckedChange={(checked) => handleTrainingCatalogSectionChange('enabled', checked)}
-                                                        />
-                                                    </FormControl>
-                                                </FormItem>
-                                            )}
-                                        />
+                                    <div className="space-y-6">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="training-catalog-title">Titre</Label>
+                                            <Input id="training-catalog-title" value={settings.trainingCatalogSection?.title} onChange={e => handleTrainingCatalogSectionChange('title', e.target.value)} placeholder="Catalogue de Formations" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="training-catalog-description">Description</Label>
+                                            <Textarea id="training-catalog-description" value={settings.trainingCatalogSection?.description} onChange={e => handleTrainingCatalogSectionChange('description', e.target.value)} placeholder="Découvrez toutes nos formations disponibles..." />
+                                        </div>
                                     </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>
@@ -2795,3 +2790,4 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+

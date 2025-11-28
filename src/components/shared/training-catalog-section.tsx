@@ -15,27 +15,49 @@ import { collection, query, where } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
 import type { Plan as Training } from "./plan-management";
+import { useAgency } from "@/context/agency-provider";
 
 type TrainingWithCategory = Training & { categoryName?: string };
 type Category = { id: string; name: string; };
 
-export function TrainingCatalogSection({ primaryColor = '#10B981' }: { primaryColor?: string }) {
+interface TrainingCatalogSectionProps {
+    primaryColor?: string;
+    sectionData?: {
+        title?: string;
+        description?: string;
+    }
+}
+
+export function TrainingCatalogSection({ primaryColor = '#10B981', sectionData }: TrainingCatalogSectionProps) {
     const [isClient, setIsClient] = useState(false);
     useEffect(() => {
         setIsClient(true);
     }, []);
 
+    const { agency } = useAgency();
     const firestore = useFirestore();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const trainingsQuery = useMemoFirebase(() => 
-        isClient ? query(collection(firestore, 'trainings'), where('isPublic', '==', true)) : null, 
-    [firestore, isClient]);
-    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+    const trainingsQuery = useMemoFirebase(() => {
+        if (!isClient) return null;
+        // Fetch trainings from the agency (superadmin)
+        return query(
+            collection(firestore, 'trainings'), 
+            where('isPublic', '==', true),
+            where('authorId', '==', agency?.id || 'non-existent-author') // Fallback to prevent error if agency id is not ready
+        );
+    }, [firestore, isClient, agency?.id]);
 
-    const categoriesQuery = useMemoFirebase(() => 
-        isClient ? collection(firestore, 'training_categories') : null, 
-    [firestore, isClient]);
+    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+    
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!isClient) return null;
+        // Fetch categories from the agency (superadmin)
+        return query(
+            collection(firestore, 'training_categories'), 
+            where('counselorId', '==', agency?.id || 'non-existent-author')
+        );
+    }, [firestore, isClient, agency?.id]);
     const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesQuery);
 
     const trainingsWithCategory = useMemo(() => {
@@ -61,6 +83,9 @@ export function TrainingCatalogSection({ primaryColor = '#10B981' }: { primaryCo
 
     const isLoading = areTrainingsLoading || areCategoriesLoading;
 
+    const title = sectionData?.title || "Catalogue des Formations";
+    const description = sectionData?.description || "Montez en compétences avec nos formations conçues pour les professionnels.";
+
     if (!isClient) {
         return (
              <section className="bg-muted/30 text-foreground py-16 sm:py-24">
@@ -79,9 +104,9 @@ export function TrainingCatalogSection({ primaryColor = '#10B981' }: { primaryCo
         <section className="bg-muted/30 text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
-                    <h2 className="text-3xl lg:text-4xl font-bold">Catalogue des Formations</h2>
+                    <h2 className="text-3xl lg:text-4xl font-bold">{title}</h2>
                     <p className="text-lg text-muted-foreground mt-2">
-                        Montez en compétences avec nos formations conçues pour les professionnels.
+                        {description}
                     </p>
                 </div>
                 
