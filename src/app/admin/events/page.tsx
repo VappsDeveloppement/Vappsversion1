@@ -15,15 +15,16 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Skeleton } from '@/components/ui/skeleton';
-import { PlusCircle, Edit, Trash2, Loader2, Calendar, MoreHorizontal, Users } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Calendar, MoreHorizontal, Users, Send } from 'lucide-react';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Switch } from '@/components/ui/switch';
 import Image from 'next/image';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useAgency } from '@/context/agency-provider';
+import { sendConfirmationEmails } from '@/app/actions/events';
 
 type Event = {
   id: string;
@@ -121,7 +122,7 @@ function RegistrationsSheet({ eventId, maxAttendees }: { eventId: string, maxAtt
 
 export default function AdminEventsPage() {
   const { user, isUserLoading } = useUser();
-  const { agency, isLoading: isAgencyLoading } = useAgency();
+  const { agency, personalization, isLoading: isAgencyLoading } = useAgency();
   const firestore = useFirestore();
   const { toast } = useToast();
   
@@ -230,6 +231,25 @@ export default function AdminEventsPage() {
     }
   };
 
+  const handleSendConfirmations = async (event: Event) => {
+    if (!personalization?.emailSettings?.fromEmail) {
+        toast({ title: "Configuration requise", description: "Veuillez configurer les informations d'envoi d'e-mail dans les paramètres.", variant: "destructive" });
+        return;
+    }
+    setIsSubmitting(true);
+    const result = await sendConfirmationEmails({
+        event: { id: event.id, title: event.title, date: event.date, location: event.location, meetLink: event.meetLink },
+        emailSettings: personalization.emailSettings,
+    });
+    setIsSubmitting(false);
+
+    if (result.success) {
+        toast({ title: "E-mails envoyés", description: `${result.sentCount} e-mails de confirmation ont été envoyés.` });
+    } else {
+        toast({ title: "Erreur d'envoi", description: result.error, variant: "destructive" });
+    }
+  };
+
   const isLoading = isUserLoading || areEventsLoading || isAgencyLoading;
 
   return (
@@ -261,8 +281,12 @@ export default function AdminEventsPage() {
               <CardFooter className="flex justify-between items-center">
                 <RegistrationsSheet eventId={event.id} maxAttendees={event.maxAttendees} />
                 <DropdownMenu>
-                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                  <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" disabled={isSubmitting}><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                   <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => handleSendConfirmations(event)} disabled={isSubmitting}>
+                        <Send className="mr-2 h-4 w-4" /> Envoyer confirmations
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => handleEditEvent(event)}><Edit className="mr-2 h-4 w-4"/>Modifier</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setEventToDelete(event)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4"/>Supprimer</DropdownMenuItem>
                   </DropdownMenuContent>
