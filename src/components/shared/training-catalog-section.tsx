@@ -6,58 +6,74 @@ import Link from "next/link";
 import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Input } from "../ui/input";
 import { Search } from "lucide-react";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
+import { useCollection, useMemoFirebase } from "@/firebase";
+import { collection, query, where } from "firebase/firestore";
+import { useFirestore } from "@/firebase/provider";
+import { Skeleton } from "../ui/skeleton";
+import type { Plan as Training } from "./plan-management";
 
-const trainings = [
-    {
-        id: "training-1",
-        title: "Devenir un Manager Inspirant",
-        description: "Développez les compétences clés pour motiver et mener votre équipe vers le succès.",
-        category: "Management",
-    },
-    {
-        id: "training-2",
-        title: "Maîtriser la Prise de Parole en Public",
-        description: "Gagnez en confiance et en impact lors de vos présentations et réunions.",
-        category: "Communication",
-    },
-    {
-        id: "training-3",
-        title: "Gestion du Temps et des Priorités",
-        description: "Optimisez votre organisation pour plus d'efficacité et moins de stress.",
-        category: "Productivité",
-    },
-    {
-        id: "training-4",
-        title: "Négociation et Influence",
-        description: "Apprenez à convaincre et à obtenir de meilleurs résultats dans vos échanges.",
-        category: "Communication",
-    },
-    {
-        id: "training-5",
-        title: "Leadership Agile",
-        description: "Adaptez votre style de management aux environnements complexes et changeants.",
-        category: "Management",
-    }
-];
+type TrainingWithCategory = Training & { categoryName?: string };
+type Category = { id: string; name: string; };
 
 export function TrainingCatalogSection({ primaryColor = '#10B981' }: { primaryColor?: string }) {
+    const [isClient, setIsClient] = useState(false);
+    useEffect(() => {
+        setIsClient(true);
+    }, []);
+
+    const firestore = useFirestore();
     const [searchTerm, setSearchTerm] = useState('');
+
+    const trainingsQuery = useMemoFirebase(() => 
+        isClient ? query(collection(firestore, 'trainings'), where('isPublic', '==', true)) : null, 
+    [firestore, isClient]);
+    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+
+    const categoriesQuery = useMemoFirebase(() => 
+        isClient ? collection(firestore, 'training_categories') : null, 
+    [firestore, isClient]);
+    const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesQuery);
+
+    const trainingsWithCategory = useMemo(() => {
+        if (!trainings || !categories) return [];
+        const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+        return trainings.map(training => ({
+            ...training,
+            categoryName: categoryMap.get(training.categoryId) || 'Non classé',
+        }));
+    }, [trainings, categories]);
 
     const filteredTrainings = useMemo(() => {
         if (!searchTerm) {
-            return trainings;
+            return trainingsWithCategory;
         }
         const lowercasedTerm = searchTerm.toLowerCase();
-        return trainings.filter(training =>
+        return trainingsWithCategory.filter(training =>
             training.title.toLowerCase().includes(lowercasedTerm) ||
-            training.category.toLowerCase().includes(lowercasedTerm) ||
-            training.description.toLowerCase().includes(lowercasedTerm)
+            training.categoryName?.toLowerCase().includes(lowercasedTerm) ||
+            training.description?.toLowerCase().includes(lowercasedTerm)
         );
-    }, [searchTerm]);
+    }, [searchTerm, trainingsWithCategory]);
+
+    const isLoading = areTrainingsLoading || areCategoriesLoading;
+
+    if (!isClient) {
+        return (
+             <section className="bg-muted/30 text-foreground py-16 sm:py-24">
+                <div className="container mx-auto px-4">
+                    <Skeleton className="h-10 w-1/3 mx-auto mb-4" />
+                    <Skeleton className="h-6 w-1/2 mx-auto mb-12" />
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {[...Array(3)].map((_, i) => <Card key={i}><Skeleton className="h-64 w-full" /></Card>)}
+                    </div>
+                </div>
+            </section>
+        );
+    }
 
     return (
         <section className="bg-muted/30 text-foreground py-16 sm:py-24">
@@ -81,43 +97,45 @@ export function TrainingCatalogSection({ primaryColor = '#10B981' }: { primaryCo
                     </div>
                 </div>
 
-                {filteredTrainings.length > 0 ? (
+                {isLoading ? (
+                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {[...Array(3)].map((_, i) => <Card key={i}><Skeleton className="h-64 w-full" /></Card>)}
+                    </div>
+                ) : filteredTrainings.length > 0 ? (
                      <Carousel
                         opts={{
                             align: "start",
-                            loop: false,
+                            loop: filteredTrainings.length > 3,
                         }}
                         className="w-full max-w-5xl mx-auto"
                     >
                         <CarouselContent>
                             {filteredTrainings.map((training) => {
-                                const image = PlaceHolderImages.find((p) => p.id === training.id);
                                 return (
                                      <CarouselItem key={training.id} className="md:basis-1/2 lg:basis-1/3">
                                         <div className="p-1 h-full">
                                             <Card className="overflow-hidden group flex flex-col shadow-sm hover:shadow-lg transition-shadow duration-300 h-full">
-                                                {image && (
+                                                {training.imageUrl ? (
                                                     <div className="h-48 relative overflow-hidden">
                                                         <Image
-                                                            src={image.imageUrl}
-                                                            alt={image.description}
+                                                            src={training.imageUrl}
+                                                            alt={training.title}
                                                             fill
                                                             sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
                                                             className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-                                                            data-ai-hint={image.imageHint}
                                                         />
                                                     </div>
-                                                )}
+                                                ) : <div className="h-48 bg-muted"></div>}
                                                 <CardHeader>
                                                     <CardTitle>{training.title}</CardTitle>
-                                                    <CardDescription>{training.category}</CardDescription>
+                                                    <CardDescription>{training.categoryName}</CardDescription>
                                                 </CardHeader>
                                                 <CardContent className="flex-1">
-                                                    <p className="text-muted-foreground text-sm">{training.description}</p>
+                                                    <p className="text-muted-foreground text-sm line-clamp-3">{training.description}</p>
                                                 </CardContent>
                                                 <CardFooter>
                                                     <Button asChild className="w-full" style={{ backgroundColor: primaryColor }}>
-                                                        <Link href="#">Voir le programme</Link>
+                                                        <Link href={`/dashboard/e-learning/path/${training.id}`}>Voir le programme</Link>
                                                     </Button>
                                                 </CardFooter>
                                             </Card>
