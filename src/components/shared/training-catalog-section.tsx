@@ -28,23 +28,28 @@ interface TrainingCatalogSectionProps {
     }
 }
 
-export function TrainingCatalogSection({ primaryColor = '#10B981', sectionData }: TrainingCatalogSectionProps) {
+export function TrainingCatalogSection({ sectionData }: TrainingCatalogSectionProps) {
     const [isClient, setIsClient] = useState(false);
     useEffect(() => {
         setIsClient(true);
     }, []);
 
-    const { agency } = useAgency();
+    const { agency, personalization } = useAgency();
     const firestore = useFirestore();
     const [searchTerm, setSearchTerm] = useState('');
 
+    const primaryColor = personalization?.primaryColor || '#10B981';
+    const title = sectionData?.title || "Catalogue des Formations";
+    const description = sectionData?.description || "Montez en compétences avec nos formations conçues pour les professionnels.";
+
     const trainingsQuery = useMemoFirebase(() => {
         if (!isClient) return null;
-        // Fetch trainings from the agency (superadmin)
+        // Fetch trainings from the agency (superadmin) using the static agency ID
+        const agencyId = agency?.id || 'vapps-agency';
         return query(
             collection(firestore, 'trainings'), 
             where('isPublic', '==', true),
-            where('authorId', '==', agency?.id || 'non-existent-author') // Fallback to prevent error if agency id is not ready
+            where('authorId', '==', agencyId)
         );
     }, [firestore, isClient, agency?.id]);
 
@@ -52,10 +57,11 @@ export function TrainingCatalogSection({ primaryColor = '#10B981', sectionData }
     
     const categoriesQuery = useMemoFirebase(() => {
         if (!isClient) return null;
+        const agencyId = agency?.id || 'vapps-agency';
         // Fetch categories from the agency (superadmin)
         return query(
             collection(firestore, 'training_categories'), 
-            where('counselorId', '==', agency?.id || 'non-existent-author')
+            where('counselorId', '==', agencyId)
         );
     }, [firestore, isClient, agency?.id]);
     const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesQuery);
@@ -83,23 +89,7 @@ export function TrainingCatalogSection({ primaryColor = '#10B981', sectionData }
 
     const isLoading = areTrainingsLoading || areCategoriesLoading;
 
-    const title = sectionData?.title || "Catalogue des Formations";
-    const description = sectionData?.description || "Montez en compétences avec nos formations conçues pour les professionnels.";
-
-    if (!isClient) {
-        return (
-             <section className="bg-muted/30 text-foreground py-16 sm:py-24">
-                <div className="container mx-auto px-4">
-                    <Skeleton className="h-10 w-1/3 mx-auto mb-4" />
-                    <Skeleton className="h-6 w-1/2 mx-auto mb-12" />
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {[...Array(3)].map((_, i) => <Card key={i}><Skeleton className="h-64 w-full" /></Card>)}
-                    </div>
-                </div>
-            </section>
-        );
-    }
-
+    // We render the section container even if loading or no trainings, to ensure it's always on the page if enabled.
     return (
         <section className="bg-muted/30 text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
