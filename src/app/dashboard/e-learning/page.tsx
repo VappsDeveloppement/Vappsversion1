@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -7,7 +8,7 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -88,13 +89,14 @@ function ModuleManager() {
     useEffect(() => {
         if (isSheetOpen) {
             if (editingModule) {
-                 const currentPdfUrl = editingModule.pdfUrl || '';
-                const initialValues = {
+                // If the stored URL is a base64 string from a previous bug, clear it.
+                const initialPdfUrl = editingModule.pdfUrl || '';
+                const cleanPdfUrl = initialPdfUrl.startsWith('data:application/pdf;base64,') ? '' : initialPdfUrl;
+                
+                form.reset({
                     ...editingModule,
-                    // If the stored URL is a base64 string, clear it.
-                    pdfUrl: currentPdfUrl.startsWith('data:application/pdf;base64,') ? '' : currentPdfUrl,
-                };
-                form.reset(initialValues);
+                    pdfUrl: cleanPdfUrl,
+                });
             } else {
                 form.reset({
                     title: '', description: '', videoUrl: '', pdfUrl: '', content: '',
