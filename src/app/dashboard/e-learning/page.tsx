@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -29,7 +30,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Dialog, DialogHeader } from '../ui/dialog';
+import { Switch } from '@/components/ui/switch';
 
 
 const categorySchema = z.object({
@@ -222,7 +223,7 @@ function ModuleManager() {
     
     useEffect(() => {
         if (isSheetOpen) {
-            const initialData = editingModule || {
+            let initialData: ModuleFormData = editingModule ? { ...editingModule } : {
                 title: '', description: '', videoUrl: '', pdfUrl: '', content: '',
                 quiz: { title: '', successPercentage: 80, questions: [] }
             };
