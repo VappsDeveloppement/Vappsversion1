@@ -1,33 +1,35 @@
-
-
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookCopy, CheckSquare, Users, Presentation, ScrollText, PlusCircle, Edit, Trash2, Loader2, Video, FileText, Upload, Link as LinkIcon } from "lucide-react";
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon } from 'lucide-react';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { useToast } from '@/hooks/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose, SheetDescription } from "@/components/ui/sheet";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { useToast } from '@/hooks/use-toast';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Slider } from "@/components/ui/slider";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import Image from 'next/image';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { Slider } from '@/components/ui/slider';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
-// Schemas
+
 const questionSchema = z.object({
   questionText: z.string().min(1, 'Le texte de la question est requis.'),
   options: z.array(z.object({ text: z.string().min(1, "L'option ne peut pas être vide.") })).min(2, "Il faut au moins 2 options."),
@@ -86,7 +88,13 @@ function ModuleManager() {
     useEffect(() => {
         if (isSheetOpen) {
             if (editingModule) {
-                form.reset(editingModule);
+                 const currentPdfUrl = editingModule.pdfUrl || '';
+                const initialValues = {
+                    ...editingModule,
+                    // If the stored URL is a base64 string, clear it.
+                    pdfUrl: currentPdfUrl.startsWith('data:application/pdf;base64,') ? '' : currentPdfUrl,
+                };
+                form.reset(initialValues);
             } else {
                 form.reset({
                     title: '', description: '', videoUrl: '', pdfUrl: '', content: '',
@@ -101,12 +109,12 @@ function ModuleManager() {
 
     const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
-        if (!file || !storage) return;
+        if (!file || !storage || !user) return;
 
         setIsUploading(true);
         toast({ title: 'Téléversement en cours...', description: 'Veuillez patienter.' });
         
-        const filePath = `Formation/${Date.now()}-${file.name}`;
+        const filePath = `Formation/${user.uid}/${Date.now()}-${file.name}`;
         const fileRef = ref(storage, filePath);
 
         try {
@@ -119,9 +127,11 @@ function ModuleManager() {
             toast({ title: 'Erreur de téléversement', description: "Impossible d'envoyer le fichier.", variant: 'destructive' });
         } finally {
             setIsUploading(false);
+             if (pdfInputRef.current) {
+                pdfInputRef.current.value = "";
+            }
         }
     }
-
 
     const onSubmit = (data: ModuleFormData) => {
         if (!user) return;
@@ -203,8 +213,8 @@ function ModuleManager() {
                                                         <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
                                                           {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
                                                         </Button>
-                                                        {field.value && (
-                                                            <a href={field.value} target="_blank" rel="noopener noreferrer">
+                                                        {watchPdfUrl && (
+                                                            <a href={watchPdfUrl} target="_blank" rel="noopener noreferrer">
                                                                 <Button type="button" variant="outline" size="icon" className="h-10 w-10">
                                                                     <LinkIcon className="h-4 w-4" />
                                                                 </Button>
@@ -310,7 +320,7 @@ export default function ElearningPage() {
             <Tabs defaultValue="modules">
                 <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto">
                     <TabsTrigger value="catalog">
-                        <BookCopy className="mr-2 h-4 w-4" /> Catalogue de Formations
+                        <BookOpen className="mr-2 h-4 w-4" /> Catalogue de Formations
                     </TabsTrigger>
                     <TabsTrigger value="modules">
                         <ScrollText className="mr-2 h-4 w-4" /> Modules & Évaluations
@@ -330,7 +340,7 @@ export default function ElearningPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96">
-                                <BookCopy className="h-16 w-16 text-muted-foreground mb-4" />
+                                <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
                                 <h3 className="text-xl font-semibold">Gestion des Formations</h3>
                                 <p className="text-muted-foreground mt-2 max-w-2xl">Cette section vous permettra de créer vos formations (internes ou externes) et de les organiser dans un catalogue complet.</p>
                             </div>
@@ -363,5 +373,3 @@ export default function ElearningPage() {
         </div>
     );
 }
-
-    
