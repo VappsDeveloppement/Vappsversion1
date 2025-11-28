@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Folder, File as FileIcon, Upload, Trash2, MoreHorizontal, ArrowLeft, Home } from 'lucide-react';
+import { Folder, File as FileIcon, Upload, Trash2, ArrowLeft, Home } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
@@ -227,3 +227,4 @@ export default function GedPage() {
     );
 }
 
+    
