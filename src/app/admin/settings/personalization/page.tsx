@@ -673,6 +673,21 @@ const personalizationSchema = z.object({
             imageUrl: z.string().nullable(),
         })).optional(),
     }).optional(),
+    whiteLabelSection: z.object({
+        title: z.string().optional(),
+        description: z.string().optional(),
+        mediaType: z.enum(['video', 'image']).optional(),
+        videoUrl: z.string().optional(),
+        imageUrl: z.string().nullable().optional(),
+        statsSource: z.string().optional(),
+        stats: z.array(z.object({
+            id: z.string(),
+            icon: z.string(),
+            value: z.string(),
+            label: z.string(),
+        })).optional(),
+        plans: z.array(planFormSchema).optional(),
+    }).optional(),
 });
 
 
@@ -710,6 +725,7 @@ export default function PersonalizationPage() {
          defaultValues: {
             pricingSection: personalization?.pricingSection || defaultPersonalization.pricingSection,
             otherActivitiesSection: personalization?.otherActivitiesSection || defaultPersonalization.otherActivitiesSection,
+            whiteLabelSection: personalization?.whiteLabelSection || defaultPersonalization.whiteLabelSection,
         }
     });
 
@@ -790,6 +806,11 @@ export default function PersonalizationPage() {
                 ...(personalization.otherActivitiesSection || {}),
                 activities: personalization.otherActivitiesSection?.activities || defaultPersonalization.otherActivitiesSection.activities,
             },
+             whiteLabelSection: {
+                ...defaultPersonalization.whiteLabelSection,
+                ...(personalization.whiteLabelSection || {}),
+                plans: personalization.whiteLabelSection?.plans || [],
+             },
        });
 
       if (personalization.logoDataUrl) {
@@ -1111,6 +1132,10 @@ export default function PersonalizationPage() {
         otherActivitiesSection: {
             ...settings.otherActivitiesSection,
             ...formData.otherActivitiesSection,
+        },
+        whiteLabelSection: {
+            ...settings.whiteLabelSection,
+            ...formData.whiteLabelSection,
         },
         trainingCatalogSection: {
             ...settings.trainingCatalogSection,
@@ -2278,8 +2303,8 @@ export default function PersonalizationPage() {
                                             </div>
                                             <div className="space-y-6">
                                                 <SubscriptionPlanManager 
-                                                    plans={settings.whiteLabelSection?.plans || []}
-                                                    onSave={(updatedPlans) => handleWhiteLabelSectionChange('plans', updatedPlans)}
+                                                    plans={form.watch('whiteLabelSection.plans') || []}
+                                                    onSave={(updatedPlans) => form.setValue('whiteLabelSection.plans', updatedPlans)}
                                                 />
                                             </div>
                                         </div>
@@ -2779,3 +2804,4 @@ export default function PersonalizationPage() {
     </div>
   );
 }
+
