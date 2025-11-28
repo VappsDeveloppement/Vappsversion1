@@ -42,7 +42,7 @@ export interface FirebaseServicesAndUser {
 }
 
 // Return type for useUser() - specific to user auth state
-export interface UserHookResult { // Renamed from UserAuthHookResult for consistency if desired, or keep as UserAuthHookResult
+export interface UserHookResult { 
   user: User | null;
   isUserLoading: boolean;
   userError: Error | null;
@@ -96,7 +96,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                   const userDocSnap = await getDoc(userDocRef);
 
                   if (!userDocSnap.exists()) {
-                      // Check if this is the very first user in the entire system.
                       const usersCollectionRef = collection(firestore, 'users');
                       const q = query(usersCollectionRef, where("role", "==", "superadmin"));
                       const superAdminQuerySnap = await getDocs(q);
@@ -133,7 +132,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
               }
             })(); // Self-execute the async function
         }
-        // This state update now happens immediately, not waiting for the async DB operations
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
       },
       (error) => { // Auth listener error

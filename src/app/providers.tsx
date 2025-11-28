@@ -1,6 +1,6 @@
 'use client';
 
-import { FirebaseClientProvider } from "@/firebase";
+import { FirebaseClientProvider } from "@/firebase/client-provider";
 import { AgencyProvider } from "@/context/agency-provider";
 import { Toaster } from "@/components/ui/toaster";
 
