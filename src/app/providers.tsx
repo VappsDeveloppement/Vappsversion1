@@ -1,8 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { FirebaseClientProvider } from "@/firebase/client-provider";
+import React, { useState, useEffect, ReactNode } from 'react';
 import { AgencyProvider } from "@/context/agency-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseProvider } from '@/firebase/provider';
