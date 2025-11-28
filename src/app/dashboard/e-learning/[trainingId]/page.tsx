@@ -9,7 +9,7 @@ import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ArrowLeft, PlusCircle, Trash2, GripVertical, FilePlus, X } from 'lucide-react';
 import Link from 'next/link';
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -21,7 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 
 const parcoursSchema = z.object({
   prerequisites: z.array(z.string()).optional(),
@@ -48,26 +48,27 @@ type TrainingModule = {
     description?: string;
 };
 
-const TagInput = ({ value, onChange, placeholder }: { value: string[]; onChange: (value: string[]) => void, placeholder: string }) => {
+const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
+    const currentValues = value || [];
 
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
             e.preventDefault();
-            const newTags = [...(value || []), inputValue.trim()];
+            const newTags = [...currentValues, inputValue.trim()];
             onChange(newTags);
             setInputValue('');
         }
     };
 
     const removeTag = (tagToRemove: string) => {
-        onChange((value || []).filter(tag => tag !== tagToRemove));
+        onChange(currentValues.filter(tag => tag !== tagToRemove));
     };
 
     return (
         <div>
             <div className="flex flex-wrap gap-2 mb-2">
-                {(value || []).map(tag => (
+                {currentValues.map(tag => (
                     <Badge key={tag} variant="secondary">
                         {tag}
                         <button type="button" onClick={() => removeTag(tag)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
