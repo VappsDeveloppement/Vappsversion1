@@ -1125,9 +1125,15 @@
         "duration": { "type": "number", "description": "Estimated duration in hours." },
         "price": { "type": "number" },
         "isPublic": { "type": "boolean", "default": false },
-        "imageUrl": { "type": "string", "format": "uri" }
+        "imageUrl": { "type": "string", "format": "uri" },
+        "type": { "type": "string", "enum": ["internal", "external"] },
+        "externalUrl": { "type": "string", "format": "uri" },
+        "prerequisites": { "type": "array", "items": { "type": "string" } },
+        "entryLevel": { "type": "array", "items": { "type": "string" } },
+        "exitLevel": { "type": "array", "items": { "type": "string" } },
+        "moduleIds": { "type": "array", "items": { "type": "string" } }
       },
-      "required": ["id", "title", "authorId", "categoryId"]
+      "required": ["id", "title", "authorId", "categoryId", "type"]
     },
     "TrainingModule": {
       "title": "Training Module",
