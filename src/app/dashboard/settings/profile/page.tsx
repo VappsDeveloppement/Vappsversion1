@@ -185,7 +185,7 @@ export default function ProfilePage() {
     
     await setDocumentNonBlocking(userDocRef, updateData, { merge: true });
 
-    if (userData?.role === 'conseiller') {
+    if (userData?.role === 'conseiller' || userData?.role === 'superadmin') {
       const minisiteDocRef = doc(firestore, 'minisites', user.uid);
       const publicProfileData = {
         id: user.uid,
@@ -254,6 +254,7 @@ export default function ProfilePage() {
 
   const isConseiller = userData?.role === 'conseiller';
   const isSuperAdmin = userData?.role === 'superadmin';
+  const canHaveMiniSite = isConseiller || isSuperAdmin;
   const watchIsVatSubject = form.watch('isVatSubject');
 
 
@@ -271,13 +272,13 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle>Informations Personnelles & Publiques</CardTitle>
               <CardDescription>
-                {isConseiller
+                {canHaveMiniSite
                   ? "Ces informations sont utilisées pour votre compte et peuvent être affichées publiquement sur votre mini-site."
                   : "Ces informations sont utilisées pour votre compte."}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {isConseiller && form.getValues('publicProfileName') && (
+              {canHaveMiniSite && form.getValues('publicProfileName') && (
                     <Alert>
                         <LinkIcon className="h-4 w-4" />
                         <AlertTitle>Votre page publique</AlertTitle>
@@ -343,7 +344,7 @@ export default function ProfilePage() {
                   </div>
                </div>
 
-                {isConseiller && (
+                {canHaveMiniSite && (
                     <div className="border-t pt-6 space-y-6">
                         <FormField
                             control={form.control}
@@ -548,7 +549,7 @@ export default function ProfilePage() {
             </CardContent>
           </Card>
 
-            {isConseiller && (
+            {canHaveMiniSite && (
             <Card>
                 <CardHeader>
                 <CardTitle>Personnalisation du Tableau de Bord</CardTitle>
