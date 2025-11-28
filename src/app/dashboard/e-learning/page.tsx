@@ -1,9 +1,10 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookCopy, CheckSquare, Users, Presentation, ScrollText, PlusCircle, Edit, Trash2, Loader2, Video, FileText, Upload } from "lucide-react";
+import { BookCopy, CheckSquare, Users, Presentation, ScrollText, PlusCircle, Edit, Trash2, Loader2, Video, FileText, Upload, Link as LinkIcon } from "lucide-react";
 import React, { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -150,6 +151,8 @@ function ModuleManager() {
         toast({ title: 'Module supprimé' });
         setModuleToDelete(null);
     }
+    
+    const watchPdfUrl = form.watch('pdfUrl');
 
     return (
         <Card>
@@ -206,9 +209,16 @@ function ModuleManager() {
                                                     <div className="flex items-center gap-2">
                                                         <FileText className="h-4 w-4 text-muted-foreground"/>
                                                         <Input {...field} placeholder="URL du PDF..." disabled />
-                                                        <Button type="button" variant="outline" size="sm" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
+                                                        <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
                                                           {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
                                                         </Button>
+                                                        {watchPdfUrl && (
+                                                            <a href={watchPdfUrl} target="_blank" rel="noopener noreferrer">
+                                                                <Button type="button" variant="outline" size="icon" className="h-10 w-10">
+                                                                    <LinkIcon className="h-4 w-4" />
+                                                                </Button>
+                                                            </a>
+                                                        )}
                                                         <input type="file" ref={pdfInputRef} onChange={handlePdfUpload} className="hidden" accept="application/pdf" />
                                                     </div>
                                                 </FormControl>
@@ -362,3 +372,5 @@ export default function ElearningPage() {
         </div>
     );
 }
+
+    
