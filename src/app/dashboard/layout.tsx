@@ -50,7 +50,6 @@ import { useAgency } from "@/context/agency-provider";
 const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
-  { href: "/dashboard/events", label: "Mes évènements", icon: <CalendarDays /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
 ];
 
@@ -209,6 +208,14 @@ export default function DashboardLayout({
               ))}
                {(isConseiller || isSuperAdmin) && (
                  <>
+                    <SidebarMenuItem>
+                        <Link href="/dashboard/events">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/events")}>
+                            <CalendarDays />
+                            <span>Mes Évènements</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
                     <SidebarMenuItem>
                         <Link href="/dashboard/billing">
                         <SidebarMenuButton isActive={pathname.startsWith("/dashboard/billing")}>
