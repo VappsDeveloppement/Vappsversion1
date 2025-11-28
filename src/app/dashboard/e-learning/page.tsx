@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -712,11 +711,21 @@ function TrainingManager() {
     );
 }
 
+type PathEnrollment = {
+    id: string;
+    userId: string;
+    pathId: string;
+    counselorId: string;
+    userName?: string;
+    pathTitle?: string;
+    progress?: Record<string, 'completed' | 'in_progress'>;
+    quizScores?: Record<string, number>;
+};
+
 type Client = {
     id: string;
     firstName: string;
     lastName: string;
-    email: string;
 };
 
 function MemberManagement() {
@@ -725,15 +734,16 @@ function MemberManagement() {
     const { toast } = useToast();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [selectedClient, setSelectedClient] = useState('');
-    const [selectedTraining, setSelectedTraining] = useState('');
-
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [selectedTraining, setSelectedTraining] = useState<Training | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
     const clientsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
     }, [user, firestore]);
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
-
+    
     const trainingsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, 'trainings'), where('authorId', '==', user.uid));
@@ -745,17 +755,43 @@ function MemberManagement() {
         if (!user) return null;
         return query(collection(firestore, 'path_enrollments'), where('counselorId', '==', user.uid));
     }, [user, firestore]);
-    const { data: enrollments, isLoading } = useCollection<any>(enrollmentsQuery);
+    const { data: enrollments, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(enrollmentsQuery);
 
     const handleNewEnrollment = () => {
+        setSelectedClient(null);
+        setSelectedTraining(null);
         setIsSheetOpen(true);
     };
 
-    const handleEnroll = () => {
-        // Logic to enroll user will go here
-        toast({ title: 'Fonctionnalité en cours de développement' });
-        setIsSheetOpen(false);
+    const handleEnroll = async () => {
+        if (!user || !selectedClient || !selectedTraining) {
+            toast({ title: 'Erreur', description: 'Veuillez sélectionner un client et une formation.', variant: 'destructive' });
+            return;
+        }
+        setIsSubmitting(true);
+        const enrollmentData: Omit<PathEnrollment, 'id'> = {
+            userId: selectedClient.id,
+            pathId: selectedTraining.id,
+            counselorId: user.uid,
+            userName: `${selectedClient.firstName} ${selectedClient.lastName}`,
+            pathTitle: selectedTraining.title,
+            enrolledAt: new Date().toISOString(),
+            progress: {},
+            quizScores: {},
+        };
+
+        try {
+            await addDocumentNonBlocking(collection(firestore, 'path_enrollments'), enrollmentData);
+            toast({ title: 'Inscription réussie', description: `${selectedClient.firstName} a été inscrit(e) à la formation.` });
+            setIsSheetOpen(false);
+        } catch (error) {
+            toast({ title: 'Erreur', description: "Une erreur est survenue lors de l'inscription.", variant: 'destructive' });
+        } finally {
+            setIsSubmitting(false);
+        }
     }
+    
+    const isLoading = areClientsLoading || areTrainingsLoading || areEnrollmentsLoading;
 
     return (
         <Card>
@@ -776,8 +812,8 @@ function MemberManagement() {
                             </SheetHeader>
                             <div className="space-y-4 py-6">
                                 <div className="space-y-2">
-                                    <Label htmlFor="client-select">Client</Label>
-                                    <Select value={selectedClient} onValueChange={setSelectedClient} disabled={areClientsLoading}>
+                                    <Label>Client</Label>
+                                    <Select onValueChange={(value) => setSelectedClient(clients?.find(c => c.id === value) || null)} disabled={areClientsLoading}>
                                         <SelectTrigger><SelectValue placeholder="Sélectionnez un client" /></SelectTrigger>
                                         <SelectContent>
                                             {clients?.map(client => (
@@ -787,8 +823,8 @@ function MemberManagement() {
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="training-select">Formation</Label>
-                                    <Select value={selectedTraining} onValueChange={setSelectedTraining} disabled={areTrainingsLoading}>
+                                    <Label>Formation</Label>
+                                    <Select onValueChange={(value) => setSelectedTraining(trainings?.find(t => t.id === value) || null)} disabled={areTrainingsLoading}>
                                         <SelectTrigger><SelectValue placeholder="Sélectionnez une formation" /></SelectTrigger>
                                         <SelectContent>
                                             {trainings?.map(training => (
@@ -800,7 +836,10 @@ function MemberManagement() {
                             </div>
                             <SheetFooter>
                                 <SheetClose asChild><Button variant="outline">Annuler</Button></SheetClose>
-                                <Button onClick={handleEnroll}>Inscrire</Button>
+                                <Button onClick={handleEnroll} disabled={isSubmitting}>
+                                     {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Inscrire
+                                </Button>
                             </SheetFooter>
                         </SheetContent>
                     </Sheet>
