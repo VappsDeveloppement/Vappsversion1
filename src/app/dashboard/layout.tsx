@@ -182,7 +182,7 @@ export default function DashboardLayout({
     );
   }
 
-  const showPrisme = hasAdminAccess || (isConseiller && userPlan?.hasPrismeAccess);
+  const showPrisme = isConseiller && userPlan?.hasPrismeAccess;
   const showVitae = isConseiller && userPlan?.hasVitaeAccess;
   const showAura = isConseiller && userPlan?.hasAuraAccess;
 
