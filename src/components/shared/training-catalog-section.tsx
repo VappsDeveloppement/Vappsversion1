@@ -16,8 +16,9 @@ import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "../ui/skeleton";
 import type { Plan as Training } from "./plan-management";
 import { useAgency } from "@/context/agency-provider";
+import { Badge } from "../ui/badge";
 
-type TrainingWithCategory = Training & { categoryName?: string };
+type TrainingWithCategory = Training & { categoryName?: string, type?: 'internal' | 'external', externalUrl?: string };
 type Category = { id: string; name: string; };
 
 interface TrainingCatalogSectionProps {
@@ -45,7 +46,6 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
 
     const trainingsQuery = useMemoFirebase(() => {
         if (!isClient || !counselorId) return null;
-        // Fetch trainings from the specific counselor
         return query(
             collection(firestore, 'trainings'), 
             where('isPublic', '==', true),
@@ -57,7 +57,6 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
     
     const categoriesQuery = useMemoFirebase(() => {
         if (!isClient || !counselorId) return null;
-        // Fetch categories from the specific counselor
         return query(
             collection(firestore, 'training_categories'), 
             where('counselorId', '==', counselorId)
@@ -124,6 +123,10 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
                     >
                         <CarouselContent>
                             {filteredTrainings.map((training) => {
+                                const isExternal = training.type === 'external';
+                                const linkHref = isExternal ? (training.externalUrl || '#') : `/dashboard/e-learning/path/${training.id}`;
+                                const linkTarget = isExternal ? '_blank' : '_self';
+                                
                                 return (
                                      <CarouselItem key={training.id} className="md:basis-1/2 lg:basis-1/3">
                                         <div className="p-1 h-full">
@@ -142,13 +145,22 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
                                                 <CardHeader>
                                                     <CardTitle>{training.title}</CardTitle>
                                                     <CardDescription>{training.categoryName}</CardDescription>
+                                                    {training.financingOptions && training.financingOptions.length > 0 && (
+                                                        <div className="flex flex-wrap gap-2 pt-2">
+                                                            {training.financingOptions.map(option => (
+                                                                <Badge key={option} variant="secondary">{option}</Badge>
+                                                            ))}
+                                                        </div>
+                                                    )}
                                                 </CardHeader>
                                                 <CardContent className="flex-1">
                                                     <p className="text-muted-foreground text-sm line-clamp-3">{training.description}</p>
                                                 </CardContent>
                                                 <CardFooter>
                                                     <Button asChild className="w-full" style={{ backgroundColor: primaryColor }}>
-                                                        <Link href={`/dashboard/e-learning/path/${training.id}`}>Voir le programme</Link>
+                                                        <Link href={linkHref} target={linkTarget}>
+                                                            Voir le programme
+                                                        </Link>
                                                     </Button>
                                                 </CardFooter>
                                             </Card>
