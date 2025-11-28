@@ -1101,6 +1101,17 @@
         },
         "required": ["id", "name", "email", "liveDate", "wantsContact", "status", "createdAt", "counselorId"]
     },
+    "TrainingCategory": {
+      "title": "Training Category",
+      "type": "object",
+      "description": "A category for trainings in the catalog.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "counselorId": { "type": "string" }
+      },
+      "required": ["id", "name", "counselorId"]
+    },
     "Training": {
       "title": "Training",
       "type": "object",
@@ -1444,9 +1455,18 @@
           "schema": { "$ref": "#/entities/TrainingModule" },
           "description": "Stores individual training modules."
         }
+      },
+      {
+        "path": "/training_categories/{categoryId}",
+        "definition": {
+            "entityName": "TrainingCategory",
+            "schema": { "$ref": "#/entities/TrainingCategory" },
+            "description": "Stores categories for training courses."
+        }
       }
     ],
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
 
+    

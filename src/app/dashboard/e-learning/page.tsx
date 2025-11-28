@@ -29,7 +29,141 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Dialog, DialogHeader } from '../ui/dialog';
 
+
+const categorySchema = z.object({
+  name: z.string().min(1, "Le nom de la catégorie est requis."),
+});
+
+type TrainingCategory = {
+    id: string;
+    counselorId: string;
+    name: string;
+};
+
+type CategoryFormData = z.infer<typeof categorySchema>;
+
+function CategoryManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingCategory, setEditingCategory] = useState<TrainingCategory | null>(null);
+    const [categoryToDelete, setCategoryToDelete] = useState<TrainingCategory | null>(null);
+
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'training_categories'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: categories, isLoading } = useCollection<TrainingCategory>(categoriesQuery);
+
+    const form = useForm<CategoryFormData>({ resolver: zodResolver(categorySchema) });
+
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingCategory || { name: '' });
+        }
+    }, [isSheetOpen, editingCategory, form]);
+
+    const handleNew = () => {
+        setEditingCategory(null);
+        setIsSheetOpen(true);
+    };
+
+    const handleEdit = (category: TrainingCategory) => {
+        setEditingCategory(category);
+        setIsSheetOpen(true);
+    };
+    
+    const onSubmit = (data: CategoryFormData) => {
+        if (!user) return;
+        const categoryData = { counselorId: user.uid, ...data };
+        if (editingCategory) {
+            setDocumentNonBlocking(doc(firestore, 'training_categories', editingCategory.id), categoryData, { merge: true });
+            toast({ title: 'Catégorie mise à jour' });
+        } else {
+            addDocumentNonBlocking(collection(firestore, 'training_categories'), categoryData);
+            toast({ title: 'Catégorie créée' });
+        }
+        setIsSheetOpen(false);
+    };
+
+    const handleDelete = () => {
+        if (!categoryToDelete) return;
+        deleteDocumentNonBlocking(doc(firestore, 'training_categories', categoryToDelete.id));
+        toast({ title: 'Catégorie supprimée' });
+        setCategoryToDelete(null);
+    };
+
+
+    return (
+         <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Catégories de Formation</CardTitle>
+                        <CardDescription>Organisez vos formations en différentes catégories.</CardDescription>
+                    </div>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouvelle Catégorie</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow><TableHead>Nom de la catégorie</TableHead><TableHead className="text-right">Actions</TableHead></TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            : categories && categories.length > 0 ? (
+                                categories.map(cat => (
+                                    <TableRow key={cat.id}>
+                                        <TableCell className="font-medium">{cat.name}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(cat)}><Edit className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => setCategoryToDelete(cat)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={2} className="h-24 text-center">Aucune catégorie créée.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-lg w-full">
+                        <SheetHeader>
+                            <SheetTitle>{editingCategory ? 'Modifier la' : 'Nouvelle'} catégorie</SheetTitle>
+                        </SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+                 <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer cette catégorie ?</AlertDialogTitle>
+                            <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+        </Card>
+    );
+}
 
 const questionSchema = z.object({
   questionText: z.string().min(1, 'Le texte de la question est requis.'),
@@ -88,21 +222,17 @@ function ModuleManager() {
 
     useEffect(() => {
         if (isSheetOpen) {
-            if (editingModule) {
-                // If the stored URL is a base64 string from a previous bug, clear it.
-                const initialPdfUrl = editingModule.pdfUrl || '';
-                const cleanPdfUrl = initialPdfUrl.startsWith('data:application/pdf;base64,') ? '' : initialPdfUrl;
-                
-                form.reset({
-                    ...editingModule,
-                    pdfUrl: cleanPdfUrl,
-                });
-            } else {
-                form.reset({
-                    title: '', description: '', videoUrl: '', pdfUrl: '', content: '',
-                    quiz: { title: '', successPercentage: 80, questions: [] }
-                });
+            const initialData = editingModule || {
+                title: '', description: '', videoUrl: '', pdfUrl: '', content: '',
+                quiz: { title: '', successPercentage: 80, questions: [] }
+            };
+            
+            // Clean up potentially stale base64 pdfUrl
+            if (initialData.pdfUrl?.startsWith('data:application/pdf;base64,')) {
+                initialData.pdfUrl = '';
             }
+
+            form.reset(initialData);
         }
     }, [isSheetOpen, editingModule, form]);
     
@@ -116,7 +246,7 @@ function ModuleManager() {
         setIsUploading(true);
         toast({ title: 'Téléversement en cours...', description: 'Veuillez patienter.' });
         
-        const filePath = `Formation/${Date.now()}-${file.name}`;
+        const filePath = `Formation/${file.name}`;
         const fileRef = ref(storage, filePath);
 
         try {
@@ -333,21 +463,7 @@ export default function ElearningPage() {
                 </TabsList>
                 
                 <TabsContent value="catalog">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Catalogue de Formations</CardTitle>
-                            <CardDescription>
-                                Créez la structure globale de vos formations. Celles-ci pourront être affichées sur votre page d'accueil.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96">
-                                <BookOpen className="h-16 w-16 text-muted-foreground mb-4" />
-                                <h3 className="text-xl font-semibold">Gestion des Formations</h3>
-                                <p className="text-muted-foreground mt-2 max-w-2xl">Cette section vous permettra de créer vos formations (internes ou externes) et de les organiser dans un catalogue complet.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <CategoryManager />
                 </TabsContent>
 
                 <TabsContent value="modules">
@@ -375,3 +491,5 @@ export default function ElearningPage() {
         </div>
     );
 }
+
+    
