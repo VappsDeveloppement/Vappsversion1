@@ -25,7 +25,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 
 // Schemas
 const questionSchema = z.object({
@@ -110,9 +110,9 @@ function ModuleManager() {
         const fileRef = ref(storage, filePath);
 
         try {
-            const snapshot = await uploadBytes(fileRef, file);
-            const downloadURL = await getDownloadURL(snapshot.ref);
-            form.setValue('pdfUrl', downloadURL);
+            await uploadBytes(fileRef, file);
+            const downloadURL = await getDownloadURL(fileRef);
+            form.setValue('pdfUrl', downloadURL, { shouldValidate: true });
             toast({ title: 'Téléversement réussi', description: 'Le fichier PDF a été ajouté.' });
         } catch (error) {
             console.error("PDF Upload Error:", error);
@@ -203,8 +203,8 @@ function ModuleManager() {
                                                         <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
                                                           {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
                                                         </Button>
-                                                        {watchPdfUrl && (
-                                                            <a href={watchPdfUrl} target="_blank" rel="noopener noreferrer">
+                                                        {field.value && (
+                                                            <a href={field.value} target="_blank" rel="noopener noreferrer">
                                                                 <Button type="button" variant="outline" size="icon" className="h-10 w-10">
                                                                     <LinkIcon className="h-4 w-4" />
                                                                 </Button>
@@ -363,3 +363,5 @@ export default function ElearningPage() {
         </div>
     );
 }
+
+    
