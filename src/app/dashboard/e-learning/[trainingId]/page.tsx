@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -48,6 +49,8 @@ type Training = {
     exitLevel?: string[];
     moduleIds?: string[];
     authorId: string;
+    price?: number;
+    duration?: number;
 };
 
 type TrainingModule = {
@@ -148,7 +151,7 @@ export default function TrainingCurriculumPage() {
         const moduleIds = form.watch('moduleIds') || [];
         if (!allModules) return [];
         return moduleIds.map(id => allModules.find(m => m.id === id)).filter(Boolean) as TrainingModule[];
-    }, [form, allModules]);
+    }, [form.watch('moduleIds'), allModules]);
     
     const onDragEnd = (result: any) => {
         if (!result.destination) return;
@@ -188,6 +191,22 @@ export default function TrainingCurriculumPage() {
         doc.line(15, 35, 195, 35);
 
         let y = 45;
+        
+        const addInfoLine = (label: string, value: string) => {
+            if (value) {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text(label, 15, y);
+                doc.setFont('helvetica', 'normal');
+                doc.text(value, 45, y);
+                y += 7;
+            }
+        };
+
+        addInfoLine("Durée :", training?.duration ? `${training.duration} heures` : '');
+        addInfoLine("Prix :", training?.price ? `${training.price} €` : '');
+
+        y += 5;
 
         const addTagsSection = (title: string, tags: string[] | undefined) => {
             if (tags && tags.length > 0) {
@@ -205,6 +224,8 @@ export default function TrainingCurriculumPage() {
         addTagsSection("Prérequis", training?.prerequisites);
         addTagsSection("Niveau d'entrée", training?.entryLevel);
         addTagsSection("Niveau de sortie", training?.exitLevel);
+        
+        y += 5;
         
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
@@ -236,7 +257,7 @@ export default function TrainingCurriculumPage() {
             return;
         }
 
-        const emailSettingsToUse = counselorData?.emailSettings?.fromEmail ? counselorData.emailSettings : personalization?.emailSettings;
+        const emailSettingsToUse = (counselorData as any)?.emailSettings?.fromEmail ? (counselorData as any).emailSettings : personalization?.emailSettings;
         if (!emailSettingsToUse?.fromEmail) {
              toast({ title: "Configuration requise", description: "Les paramètres d'envoi d'e-mails ne sont pas configurés.", variant: "destructive" });
             return;
@@ -364,7 +385,7 @@ export default function TrainingCurriculumPage() {
                                             <div key={module.id} className="flex items-center gap-4 p-2 border rounded-md">
                                                 <Checkbox
                                                     id={`module-${module.id}`}
-                                                    checked={form.watch('moduleIds')?.includes(module.id)}
+                                                    checked={(form.watch('moduleIds') || []).includes(module.id)}
                                                     onCheckedChange={() => handleModuleSelection(module.id)}
                                                 />
                                                 <label htmlFor={`module-${module.id}`} className="flex-1 cursor-pointer">
