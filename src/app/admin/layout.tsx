@@ -20,6 +20,7 @@ import {
   Loader2,
   Settings,
   Folder,
+  CalendarDays,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -45,6 +46,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
+  { href: "/admin/events", label: "Événements", icon: <CalendarDays /> },
   { href: "/admin/blog", label: "Gestion du Blog", icon: <Newspaper /> },
   { href: "/admin/clients", label: "Gestion des utilisateurs", icon: <Users /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
