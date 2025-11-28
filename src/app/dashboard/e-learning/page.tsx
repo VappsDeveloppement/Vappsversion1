@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -484,21 +485,22 @@ function TagInput({ value, onChange, placeholder }: { value: string[], onChange:
     const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
             e.preventDefault();
-            if (!value.includes(inputValue.trim())) {
-                onChange([...value, inputValue.trim()]);
+            const currentValues = value || [];
+            if (!currentValues.includes(inputValue.trim())) {
+                onChange([...currentValues, inputValue.trim()]);
             }
             setInputValue('');
         }
     };
 
     const removeTag = (tagToRemove: string) => {
-        onChange(value.filter(tag => tag !== tagToRemove));
+        onChange((value || []).filter(tag => tag !== tagToRemove));
     };
 
     return (
         <div>
             <div className="flex flex-wrap gap-2 mb-2">
-                {value.map(tag => (
+                {(value || []).map(tag => (
                     <Badge key={tag} variant="secondary">
                         {tag}
                         <button type="button" onClick={() => removeTag(tag)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
