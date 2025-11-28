@@ -712,6 +712,13 @@ function TrainingManager() {
     );
 }
 
+type Client = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+};
+
 function MemberManagement() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -721,11 +728,21 @@ function MemberManagement() {
     const [selectedClient, setSelectedClient] = useState('');
     const [selectedTraining, setSelectedTraining] = useState('');
 
+    const clientsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
+
+    const trainingsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'trainings'), where('authorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+
+
     const enrollmentsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        // This is a simplification. A real app would need to query enrollments
-        // across all users for a counselor, which requires more complex queries or data duplication.
-        // For now, let's assume we can query enrollments directly.
         return query(collection(firestore, 'path_enrollments'), where('counselorId', '==', user.uid));
     }, [user, firestore]);
     const { data: enrollments, isLoading } = useCollection<any>(enrollmentsQuery);
@@ -760,21 +777,23 @@ function MemberManagement() {
                             <div className="space-y-4 py-6">
                                 <div className="space-y-2">
                                     <Label htmlFor="client-select">Client</Label>
-                                    <Select value={selectedClient} onValueChange={setSelectedClient}>
+                                    <Select value={selectedClient} onValueChange={setSelectedClient} disabled={areClientsLoading}>
                                         <SelectTrigger><SelectValue placeholder="Sélectionnez un client" /></SelectTrigger>
                                         <SelectContent>
-                                            {/* Dummy data for now */}
-                                            <SelectItem value="client1">Client 1</SelectItem>
+                                            {clients?.map(client => (
+                                                <SelectItem key={client.id} value={client.id}>{client.firstName} {client.lastName}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="training-select">Formation</Label>
-                                    <Select value={selectedTraining} onValueChange={setSelectedTraining}>
+                                    <Select value={selectedTraining} onValueChange={setSelectedTraining} disabled={areTrainingsLoading}>
                                         <SelectTrigger><SelectValue placeholder="Sélectionnez une formation" /></SelectTrigger>
                                         <SelectContent>
-                                            {/* Dummy data for now */}
-                                            <SelectItem value="training1">Formation 1</SelectItem>
+                                            {trainings?.map(training => (
+                                                <SelectItem key={training.id} value={training.id}>{training.title}</SelectItem>
+                                            ))}
                                         </SelectContent>
                                     </Select>
                                 </div>
