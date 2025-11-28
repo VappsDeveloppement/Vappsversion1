@@ -157,7 +157,6 @@ export default function EventsPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const { agency, personalization } = useAgency();
   
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -167,6 +166,7 @@ export default function EventsPage() {
 
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+  const { personalization } = useAgency();
 
   const userPlan = useMemo(() => {
     if (!userData?.planId || !personalization?.whiteLabelSection?.plans) {
@@ -240,12 +240,12 @@ export default function EventsPage() {
     
     const eventData: Partial<Event> = {
       ...data,
-      counselorId: user.uid, // Always assign to the current user
+      counselorId: user.uid,
       imageUrl: imagePreview,
     };
     
     if (!editingEvent) {
-        eventData.registrationsCount = 0; // Initialize counter for new events
+        eventData.registrationsCount = 0;
     }
 
     try {
@@ -274,8 +274,9 @@ export default function EventsPage() {
   };
 
   const isLoading = isUserLoading || areEventsLoading || isUserDataLoading;
+  const isSuperAdmin = user?.email === 'roussey.romain@gmail.com';
 
-  const showPrismeButton = userData?.role === 'superadmin' || (userData?.role === 'conseiller' && userPlan?.hasPrismeAccess);
+  const showPrismeButton = isSuperAdmin || (userData?.role === 'conseiller' && userPlan?.hasPrismeAccess);
 
   return (
     <div className="space-y-8">

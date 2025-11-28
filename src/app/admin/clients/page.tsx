@@ -47,7 +47,7 @@ const userFormSchema = z.object({
   address: z.string().optional(),
   zipCode: z.string().optional(),
   city: z.string().optional(),
-  role: z.enum(['superadmin', 'conseiller', 'membre'], { required_error: "Le rôle est requis." }),
+  role: z.enum(['conseiller', 'membre'], { required_error: "Le rôle est requis." }),
   password: z.string().optional(),
   planId: z.string().optional(),
   subscriptionStatus: z.enum(['pending_payment', 'active', 'cancelled', 'trial']).optional(),
@@ -97,17 +97,7 @@ export default function ClientManagementPage() {
     const [showPassword, setShowPassword] = useState(false);
     const { toast } = useToast();
     
-    const currentUserDocRef = useMemoFirebase(() => currentUser ? doc(firestore, 'users', currentUser.uid) : null, [currentUser, firestore]);
-    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc(currentUserDocRef);
-    
-    const canFetchAllUsers = !isUserLoading && !isCurrentUserDataLoading && currentUserData?.role === 'superadmin';
-
-    const usersQuery = useMemoFirebase(() => {
-        if (canFetchAllUsers) {
-            return query(collection(firestore, 'users'));
-        }
-        return null;
-    }, [firestore, canFetchAllUsers]);
+    const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
 
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
@@ -268,7 +258,7 @@ export default function ClientManagementPage() {
         }
     };
     
-    const isLoading = isUserLoading || isCurrentUserDataLoading || areUsersLoading || isAgencyLoading;
+    const isLoading = isUserLoading || areUsersLoading || isAgencyLoading;
     const watchRole = form.watch('role');
 
     return (
@@ -289,7 +279,11 @@ export default function ClientManagementPage() {
                     <div className="flex gap-4 pt-4">
                         <Input placeholder="Rechercher par nom ou email..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="flex-grow"/>
                          <Select value={roleFilter} onValueChange={setRoleFilter}><SelectTrigger className="w-[180px]"><SelectValue placeholder="Filtrer par rôle" /></SelectTrigger>
-                            <SelectContent><SelectItem value="all">Tous les rôles</SelectItem><SelectItem value="superadmin">Super Admin</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem></SelectContent>
+                            <SelectContent>
+                                <SelectItem value="all">Tous les rôles</SelectItem>
+                                <SelectItem value="conseiller">Conseiller</SelectItem>
+                                <SelectItem value="membre">Membre</SelectItem>
+                            </SelectContent>
                         </Select>
                     </div>
                 </CardHeader>
@@ -381,7 +375,10 @@ export default function ClientManagementPage() {
                                 <FormItem>
                                     <FormLabel>Rôle</FormLabel>
                                     <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Sélectionner un rôle" /></SelectTrigger></FormControl>
-                                        <SelectContent><SelectItem value="superadmin">Super Admin</SelectItem><SelectItem value="conseiller">Conseiller</SelectItem><SelectItem value="membre">Membre</SelectItem></SelectContent>
+                                        <SelectContent>
+                                            <SelectItem value="conseiller">Conseiller</SelectItem>
+                                            <SelectItem value="membre">Membre</SelectItem>
+                                        </SelectContent>
                                     </Select>
                                     <FormMessage />
                                 </FormItem>

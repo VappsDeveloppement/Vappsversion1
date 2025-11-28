@@ -135,8 +135,8 @@ export default function DashboardLayout({
     }
   }, [isUserLoading, isUserDataLoading, user, router]);
 
-  const isSuperAdmin = userData?.role === 'superadmin';
-  const isConseiller = userData?.role === 'conseiller';
+  const isSuperAdmin = user?.email === 'roussey.romain@gmail.com';
+  const isConseiller = userData?.role === 'conseiller' || isSuperAdmin;
   
   const activeProfilePath = profileMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -206,7 +206,7 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
-               {(isConseiller || isSuperAdmin) && (
+               {(isConseiller) && (
                  <>
                     <SidebarMenuItem>
                         <Link href="/dashboard/events">
@@ -244,7 +244,7 @@ export default function DashboardLayout({
                     )}
                  </>
                )}
-              {(isConseiller || isSuperAdmin) && (
+              {(isConseiller) && (
                   <>
                     <SidebarMenuItem>
                         <Link href="/dashboard/clients">
@@ -271,7 +271,7 @@ export default function DashboardLayout({
                             <span className="truncate flex-1">Mon Profil</span>
                         </AccordionTrigger>
                         <AccordionContent className="p-0 pl-6 space-y-1">
-                            {(isConseiller || isSuperAdmin) ? (
+                            {(isConseiller) ? (
                                 profileMenuItems.map(item => (
                                    <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
                                      {React.cloneElement(item.icon, { className: "h-4 w-4"})}

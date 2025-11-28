@@ -97,14 +97,6 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                   const userDocSnap = await getDoc(userDocRef);
 
                   if (!userDocSnap.exists()) {
-                      const usersCollectionRef = collection(firestore, 'users');
-                      const q = query(usersCollectionRef, where("role", "==", "superadmin"));
-                      const superAdminQuerySnap = await getDocs(q);
-
-                      const isFirstUserEver = superAdminQuerySnap.empty;
-                      const isSpecificUser = firebaseUser.email === 'admin@example.com';
-                      const publicProfileName = isSpecificUser ? 'romain-roussey' : '';
-
                       const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
                       const firstName = nameParts.shift() || 'Nouveau';
                       const lastName = nameParts.join(' ') || 'Utilisateur';
@@ -114,12 +106,10 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                           firstName: firstName,
                           lastName: lastName,
                           email: firebaseUser.email,
-                          role: isFirstUserEver ? 'superadmin' : 'membre',
-                          counselorIds: isFirstUserEver ? [firebaseUser.uid] : [],
+                          role: 'membre', // Default role for any new user
                           dateJoined: new Date().toISOString(),
                           lastSignInTime: new Date().toISOString(),
                           phone: firebaseUser.phoneNumber || '',
-                          publicProfileName: publicProfileName,
                       };
                       
                       setDocumentNonBlocking(userDocRef, newUserDoc);

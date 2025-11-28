@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from "next/link";
@@ -67,27 +66,16 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
   const auth = useAuth();
   const router = useRouter();
   
-  const userDocRef = useMemoFirebase(() => {
-    if (!user) return null;
-    return doc(firestore, 'users', user.uid);
-  }, [firestore, user]);
-
-  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+  const isSuperAdmin = user?.email === 'roussey.romain@gmail.com';
 
   useEffect(() => {
-    if (!isUserLoading && !user) {
-      router.push('/application');
-      return;
-    }
-    // This condition is crucial : on ne redirige que si TOUT est chargé ET que le rôle n'est pas le bon.
-    if (!isUserLoading && !isUserDataLoading && userData && userData.role !== 'superadmin') {
+    if (!isUserLoading && !isSuperAdmin) {
       router.push('/dashboard');
     }
-  }, [isUserLoading, user, isUserDataLoading, userData, router]);
+  }, [isUserLoading, isSuperAdmin, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -96,9 +84,8 @@ export default function AdminLayout({
     router.push('/application');
   };
 
-  // Condition de chargement renforcée : on attend que tout soit prêt.
-  const isLoading = isUserLoading || isUserDataLoading;
-  if (isLoading || (user && !userData)) {
+  const isLoading = isUserLoading;
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -106,8 +93,7 @@ export default function AdminLayout({
     );
   }
   
-  // Cette vérification finale est une sécurité supplémentaire.
-  if (!user || (userData && userData.role !== 'superadmin')) {
+  if (!isSuperAdmin) {
      return (
       <div className="flex h-screen items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -195,5 +181,3 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
-
-    
