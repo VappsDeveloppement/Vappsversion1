@@ -1101,6 +1101,17 @@
         },
         "required": ["id", "name", "email", "liveDate", "wantsContact", "status", "createdAt", "counselorId"]
     },
+    "TrainingCategory": {
+      "title": "Training Category",
+      "type": "object",
+      "description": "A category for trainings in the catalog.",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "counselorId": { "type": "string" }
+      },
+      "required": ["id", "name", "counselorId"]
+    },
     "Training": {
       "title": "Training",
       "type": "object",
@@ -1109,12 +1120,14 @@
         "id": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
-        "type": { "type": "string", "enum": ["internal", "external"] },
-        "externalUrl": { "type": "string", "format": "uri" },
+        "categoryId": { "type": "string" },
         "authorId": { "type": "string" },
-        "duration": { "type": "number", "description": "Estimated duration in hours." }
+        "duration": { "type": "number", "description": "Estimated duration in hours." },
+        "price": { "type": "number" },
+        "isPublic": { "type": "boolean", "default": false },
+        "imageUrl": { "type": "string", "format": "uri" }
       },
-      "required": ["id", "title", "type", "authorId"]
+      "required": ["id", "title", "authorId", "categoryId"]
     },
     "TrainingModule": {
       "title": "Training Module",
@@ -1123,11 +1136,14 @@
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
+        "description": { "type": "string" },
         "content": { "type": "string", "format": "html" },
         "videoUrl": { "type": "string", "format": "uri" },
-        "order": { "type": "number" }
+        "pdfUrl": { "type": "string", "format": "uri" },
+        "counselorId": { "type": "string" },
+        "quiz": { "$ref": "#/entities/Quiz" }
       },
-      "required": ["id", "title", "content"]
+      "required": ["id", "title", "content", "counselorId"]
     },
     "Quiz": {
       "title": "Quiz",
@@ -1135,7 +1151,9 @@
       "description": "A quiz to test knowledge, can be part of a training or standalone.",
       "properties": {
         "id": { "type": "string" },
+        "moduleId": { "type": "string" },
         "title": { "type": "string" },
+        "successPercentage": { "type": "number" },
         "questions": {
           "type": "array",
           "items": {
@@ -1148,7 +1166,7 @@
           }
         }
       },
-      "required": ["id", "title", "questions"]
+      "required": ["id", "moduleId", "title", "questions"]
     },
     "LearningPath": {
       "title": "Learning Path",
@@ -1430,6 +1448,30 @@
           "entityName": "ClairvoyanceModel",
           "schema": { "$ref": "#/entities/ClairvoyanceModel" },
           "description": "Stores models for clairvoyance and pendulum readings."
+        }
+      },
+      {
+        "path": "/training_modules/{moduleId}",
+        "definition": {
+          "entityName": "TrainingModule",
+          "schema": { "$ref": "#/entities/TrainingModule" },
+          "description": "Stores individual training modules."
+        }
+      },
+      {
+        "path": "/training_categories/{categoryId}",
+        "definition": {
+            "entityName": "TrainingCategory",
+            "schema": { "$ref": "#/entities/TrainingCategory" },
+            "description": "Stores categories for training courses."
+        }
+      },
+      {
+        "path": "/trainings/{trainingId}",
+        "definition": {
+          "entityName": "Training",
+          "schema": { "$ref": "#/entities/Training" },
+          "description": "Stores the main information for a training course."
         }
       }
     ],

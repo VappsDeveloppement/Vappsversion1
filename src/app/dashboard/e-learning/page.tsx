@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -219,19 +218,17 @@ function ModuleManager() {
         control: form.control,
         name: "quiz.questions",
     });
-
+    
     useEffect(() => {
         if (isSheetOpen) {
             const initialData = editingModule || {
                 title: '', description: '', videoUrl: '', pdfUrl: '', content: '',
                 quiz: { title: '', successPercentage: 80, questions: [] }
             };
-            
             // Clean up potentially stale base64 pdfUrl
-            if (initialData.pdfUrl?.startsWith('data:application/pdf;base64,')) {
+            if (initialData.pdfUrl?.startsWith('data:')) {
                 initialData.pdfUrl = '';
             }
-
             form.reset(initialData);
         }
     }, [isSheetOpen, editingModule, form]);
@@ -439,6 +436,157 @@ function ModuleManager() {
     );
 }
 
+const trainingFormSchema = z.object({
+  title: z.string().min(1, "Le titre est requis."),
+  description: z.string().optional(),
+  categoryId: z.string().min(1, "Veuillez sélectionner une catégorie."),
+});
+
+type TrainingFormData = z.infer<typeof trainingFormSchema>;
+
+type Training = {
+    id: string;
+    counselorId: string;
+    title: string;
+    description: string;
+    categoryId: string;
+};
+
+function TrainingManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingTraining, setEditingTraining] = useState<Training | null>(null);
+
+    const categoriesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'training_categories'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: categories, isLoading: areCategoriesLoading } = useCollection<TrainingCategory>(categoriesQuery);
+
+    const trainingsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'trainings'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+
+    const form = useForm<TrainingFormData>({ resolver: zodResolver(trainingFormSchema) });
+    
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingTraining || { title: '', description: '', categoryId: '' });
+        }
+    }, [isSheetOpen, editingTraining, form]);
+
+    const handleNew = () => {
+        setEditingTraining(null);
+        setIsSheetOpen(true);
+    };
+
+    const handleEdit = (training: Training) => {
+        setEditingTraining(training);
+        setIsSheetOpen(true);
+    };
+
+    const handleDelete = (trainingId: string) => {
+        deleteDocumentNonBlocking(doc(firestore, 'trainings', trainingId));
+        toast({ title: 'Formation supprimée' });
+    };
+
+    const onSubmit = (data: TrainingFormData) => {
+        if (!user) return;
+        const trainingData = { counselorId: user.uid, ...data };
+        if (editingTraining) {
+            setDocumentNonBlocking(doc(firestore, 'trainings', editingTraining.id), trainingData, { merge: true });
+            toast({ title: 'Formation mise à jour' });
+        } else {
+            addDocumentNonBlocking(collection(firestore, 'trainings'), trainingData);
+            toast({ title: 'Formation créée' });
+        }
+        setIsSheetOpen(false);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Catalogue de Formations</CardTitle>
+                        <CardDescription>Créez et gérez les "coquilles" de vos formations.</CardDescription>
+                    </div>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4"/>Nouvelle Formation</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="border rounded-lg">
+                    <Table>
+                         <TableHeader>
+                            <TableRow>
+                                <TableHead>Titre</TableHead>
+                                <TableHead>Catégorie</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                             {areTrainingsLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full"/></TableCell></TableRow>
+                            : trainings && trainings.length > 0 ? (
+                                trainings.map(training => {
+                                    const categoryName = categories?.find(c => c.id === training.categoryId)?.name || 'N/A';
+                                    return (
+                                        <TableRow key={training.id}>
+                                            <TableCell className="font-medium">{training.title}</TableCell>
+                                            <TableCell>{categoryName}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" onClick={() => handleEdit(training)}><Edit className="h-4 w-4"/></Button>
+                                                <Button variant="ghost" size="icon" onClick={() => handleDelete(training.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
+                            ) : (
+                                <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucune formation créée.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-lg w-full">
+                        <SheetHeader>
+                            <SheetTitle>{editingTraining ? 'Modifier la' : 'Nouvelle'} formation</SheetTitle>
+                        </SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description courte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="categoryId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Catégorie</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger disabled={areCategoriesLoading}><SelectValue placeholder="Sélectionner une catégorie" /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>
+                                                {categories?.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    );
+}
+
+
 export default function ElearningPage() {
     return (
         <div className="space-y-8">
@@ -449,7 +597,7 @@ export default function ElearningPage() {
                 </p>
             </div>
 
-            <Tabs defaultValue="modules">
+            <Tabs defaultValue="catalog">
                 <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto">
                     <TabsTrigger value="catalog">
                         <BookOpen className="mr-2 h-4 w-4" /> Catalogue de Formations
@@ -463,7 +611,10 @@ export default function ElearningPage() {
                 </TabsList>
                 
                 <TabsContent value="catalog">
-                    <CategoryManager />
+                   <div className="space-y-8">
+                        <CategoryManager />
+                        <TrainingManager />
+                    </div>
                 </TabsContent>
 
                 <TabsContent value="modules">
@@ -491,5 +642,3 @@ export default function ElearningPage() {
         </div>
     );
 }
-
-    
