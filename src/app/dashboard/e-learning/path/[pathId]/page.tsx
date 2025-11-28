@@ -47,6 +47,7 @@ type Training = {
     prerequisites?: string[];
     entryLevel?: string[];
     exitLevel?: string[];
+    financingOptions?: string[];
     moduleIds?: string[];
     authorId: string;
     price?: number;
@@ -225,7 +226,7 @@ export default function TrainingCurriculumPage() {
                 doc.setFont('helvetica', 'bold');
                 doc.text(label, 15, y);
                 doc.setFont('helvetica', 'normal');
-                doc.text(value, 45, y);
+                doc.text(value, 55, y);
                 y += 7;
             }
         };
@@ -251,6 +252,7 @@ export default function TrainingCurriculumPage() {
         addTagsSection("Prérequis", training?.prerequisites);
         addTagsSection("Niveau d'entrée", training?.entryLevel);
         addTagsSection("Niveau de sortie", training?.exitLevel);
+        addTagsSection("Financements possibles", training?.financingOptions);
         
         y += 5;
         

@@ -1137,7 +1137,8 @@
         "prerequisites": { "type": "array", "items": { "type": "string" } },
         "entryLevel": { "type": "array", "items": { "type": "string" } },
         "exitLevel": { "type": "array", "items": { "type": "string" } },
-        "moduleIds": { "type": "array", "items": { "type": "string" } }
+        "moduleIds": { "type": "array", "items": { "type": "string" } },
+        "financingOptions": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "title", "authorId", "categoryId", "type"]
     },
