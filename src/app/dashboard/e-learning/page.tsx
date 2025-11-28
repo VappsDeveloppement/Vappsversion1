@@ -10,7 +10,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users, EyeOff, CheckCircle } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -713,20 +713,66 @@ function TrainingManager() {
 }
 
 function MemberManagement() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+    const enrollmentsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        // This is a simplification. A real app would need to query enrollments
+        // across all users for a counselor, which requires more complex queries or data duplication.
+        // For now, let's assume we can query enrollments directly.
+        return query(collection(firestore, 'path_enrollments'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: enrollments, isLoading } = useCollection<any>(enrollmentsQuery);
+
+    const handleNewEnrollment = () => {
+        setIsSheetOpen(true);
+    };
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Gestion des Membres</CardTitle>
-                <CardDescription>
-                    Inscrivez vos clients à des formations ou parcours et suivez leur progression.
-                </CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Gestion des Membres</CardTitle>
+                        <CardDescription>Inscrivez vos clients à des formations ou parcours et suivez leur progression.</CardDescription>
+                    </div>
+                    <Button onClick={handleNewEnrollment}><PlusCircle className="mr-2 h-4 w-4" />Inscrire un membre</Button>
+                </div>
             </CardHeader>
             <CardContent>
-                <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96">
-                    <Users className="h-16 w-16 text-muted-foreground mb-4" />
-                    <h3 className="text-xl font-semibold">Suivi de l'Assiduité</h3>
-                    <p className="text-muted-foreground mt-2 max-w-2xl">Un tableau de bord vous permettra d'inscrire vos clients aux différents parcours et de visualiser leur avancement et leurs résultats.</p>
-                </div>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Parcours</TableHead>
+                            <TableHead>Progression</TableHead>
+                            <TableHead>Score Quiz</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full"/></TableCell></TableRow>
+                        : enrollments && enrollments.length > 0 ? (
+                            enrollments.map(enrollment => (
+                                <TableRow key={enrollment.id}>
+                                    <TableCell>{enrollment.userName || 'N/A'}</TableCell>
+                                    <TableCell>{enrollment.pathTitle || 'N/A'}</TableCell>
+                                    <TableCell>{/* Progress bar */}</TableCell>
+                                    <TableCell>{/* Quiz score */}</TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                             <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">
+                                    <p>Aucun membre inscrit pour le moment.</p>
+                                </TableCell>
+                            </TableRow>
+                        )}
+                    </TableBody>
+                </Table>
             </CardContent>
         </Card>
     );
