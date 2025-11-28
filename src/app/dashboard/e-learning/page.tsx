@@ -1,14 +1,14 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users, EyeOff, CheckCircle } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users, CheckCircle, EyeOff } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -30,7 +30,7 @@ import { Slider } from '@/components/ui/slider';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Badge } from '@/components/ui/badge';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
 
 
@@ -575,6 +575,15 @@ function TrainingManager() {
     const watchTrainingType = form.watch("type");
     const watchImageUrl = form.watch("imageUrl");
 
+    const trainingsWithCategory = useMemo(() => {
+        if (!trainings || !categories) return [];
+        const categoryMap = new Map(categories.map(c => [c.id, c.name]));
+        return trainings.map(training => ({
+            ...training,
+            categoryName: categoryMap.get(training.categoryId) || 'Non classé',
+        }));
+    }, [trainings, categories]);
+
     return (
         <Card>
             <CardHeader>
@@ -600,13 +609,12 @@ function TrainingManager() {
                         </TableHeader>
                         <TableBody>
                              {areTrainingsLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-10 w-full"/></TableCell></TableRow>
-                            : trainings && trainings.length > 0 ? (
-                                trainings.map(training => {
-                                    const categoryName = categories?.find(c => c.id === training.categoryId)?.name || 'N/A';
+                            : trainingsWithCategory && trainingsWithCategory.length > 0 ? (
+                                trainingsWithCategory.map(training => {
                                     return (
                                         <TableRow key={training.id}>
                                             <TableCell className="font-medium">{training.title}</TableCell>
-                                            <TableCell>{categoryName}</TableCell>
+                                            <TableCell>{training.categoryName}</TableCell>
                                             <TableCell>{training.price ? `${training.price}€` : '-'}</TableCell>
                                             <TableCell>{training.isPublic ? <CheckCircle className="h-5 w-5 text-green-500" /> : <EyeOff className="h-5 w-5 text-muted-foreground" />}</TableCell>
                                             <TableCell className="text-right">
@@ -923,5 +931,3 @@ export default function ElearningPage() {
         </div>
     );
 }
-
-    
