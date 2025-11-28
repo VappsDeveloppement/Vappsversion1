@@ -54,6 +54,8 @@ type CounselorProfile = {
         blogSection?: any;
         trainingCatalogSection?: {
             enabled?: boolean;
+            title?: string;
+            subtitle?: string;
         };
     };
     dashboardTheme?: {
@@ -119,7 +121,13 @@ export default function CounselorPublicProfilePage() {
         <CounselorJobOffersSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
-        {counselor.miniSite?.trainingCatalogSection?.enabled && <TrainingCatalogSection primaryColor={primaryColor} />}
+        {counselor.miniSite?.trainingCatalogSection?.enabled && (
+          <TrainingCatalogSection 
+            sectionData={counselor.miniSite.trainingCatalogSection} 
+            primaryColor={primaryColor} 
+            counselorId={counselor.id} 
+          />
+        )}
         <CounselorBlogSection counselor={counselor} />
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
@@ -131,3 +139,4 @@ export default function CounselorPublicProfilePage() {
     </div>
   );
 }
+
