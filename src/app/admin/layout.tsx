@@ -20,6 +20,7 @@ import {
   Newspaper,
   Loader2,
   Settings,
+  Folder,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -48,6 +49,7 @@ const adminMenuItems = [
   { href: "/admin/blog", label: "Gestion du Blog", icon: <Newspaper /> },
   { href: "/admin/clients", label: "Gestion des utilisateurs", icon: <Users /> },
   { href: "/admin/email-marketing", label: "Email Campaigns", icon: <Mails /> },
+  { href: "/admin/ged", label: "Stockage (GED)", icon: <Folder /> },
   { href: "/admin/beta-test", label: "Recette de test", icon: <FlaskConical /> },
   { href: "/admin/beta-test/results", label: "Résultats Tests", icon: <ClipboardList /> },
   { href: "/admin/support", label: "Support Technique", icon: <LifeBuoy /> },
