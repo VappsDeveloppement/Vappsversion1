@@ -111,12 +111,13 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                           firstName: firstName,
                           lastName: lastName,
                           email: firebaseUser.email,
-                          role: 'conseiller', // First user is always a conseiller
+                          role: 'conseiller', 
                           dateJoined: new Date().toISOString(),
                           lastSignInTime: new Date().toISOString(),
                           phone: firebaseUser.phoneNumber || '',
                       };
-
+                      
+                      // This ensures the very first user ever gets admin rights.
                       if (isFirstUser) {
                         newUserDoc.permissions = ['FULLACCESS'];
                       }
@@ -124,8 +125,19 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                       setDocumentNonBlocking(userDocRef, newUserDoc);
                       
                   } else {
-                      const lastSignInTime = new Date().toISOString();
-                      setDocumentNonBlocking(userDocRef, { lastSignInTime }, { merge: true });
+                      // This logic handles the case for an existing user.
+                      const userData = userDocSnap.data();
+                      const usersCollectionRef = collection(firestore, 'users');
+                      const allUsersSnapshot = await getDocs(usersCollectionRef);
+
+                      // If this is the only user account and it doesn't have permissions set, grant them.
+                      if (allUsersSnapshot.size === 1 && !userData.permissions) {
+                           setDocumentNonBlocking(userDocRef, { permissions: ['FULLACCESS'] }, { merge: true });
+                      } else {
+                          // Just update the sign-in time for regular users.
+                          const lastSignInTime = new Date().toISOString();
+                          setDocumentNonBlocking(userDocRef, { lastSignInTime }, { merge: true });
+                      }
                   }
               } catch (error) {
                   console.error("Error handling user document:", error);
@@ -225,5 +237,3 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
   
   return memoized;
 }
-
-    
