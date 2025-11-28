@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -7,7 +8,7 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users, EyeOff, CheckCircle } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -225,7 +226,6 @@ function ModuleManager() {
                 title: '', description: '', videoUrl: '', pdfUrl: '', content: '',
                 quiz: { title: '', successPercentage: 80, questions: [] }
             };
-            // Clean up potentially stale base64 pdfUrl
             if (initialData.pdfUrl?.startsWith('data:')) {
                 initialData.pdfUrl = '';
             }
@@ -440,16 +440,37 @@ const trainingFormSchema = z.object({
   title: z.string().min(1, "Le titre est requis."),
   description: z.string().optional(),
   categoryId: z.string().min(1, "Veuillez sélectionner une catégorie."),
+  imageUrl: z.string().nullable().optional(),
+  price: z.coerce.number().min(0, "Le prix doit être positif.").optional(),
+  duration: z.coerce.number().min(0, "La durée doit être positive.").optional(),
+  isPublic: z.boolean().default(false),
+  type: z.enum(['internal', 'external']).default('internal'),
+  externalUrl: z.string().url("Veuillez entrer une URL valide.").optional().or(z.literal('')),
+}).refine((data) => {
+    if (data.type === 'external' && !data.externalUrl) {
+        return false;
+    }
+    return true;
+}, {
+    message: "L'URL externe est requise pour ce type de formation.",
+    path: ["externalUrl"],
 });
+
 
 type TrainingFormData = z.infer<typeof trainingFormSchema>;
 
 type Training = {
     id: string;
-    counselorId: string;
+    authorId: string;
     title: string;
-    description: string;
+    description?: string;
     categoryId: string;
+    imageUrl?: string | null;
+    price?: number;
+    duration?: number;
+    isPublic?: boolean;
+    type?: 'internal' | 'external';
+    externalUrl?: string;
 };
 
 function TrainingManager() {
@@ -458,6 +479,7 @@ function TrainingManager() {
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingTraining, setEditingTraining] = useState<Training | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const categoriesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -467,7 +489,7 @@ function TrainingManager() {
 
     const trainingsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, 'trainings'), where('counselorId', '==', user.uid));
+        return query(collection(firestore, 'trainings'), where('authorId', '==', user.uid));
     }, [user, firestore]);
     const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
 
@@ -475,7 +497,23 @@ function TrainingManager() {
     
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingTraining || { title: '', description: '', categoryId: '' });
+            if (editingTraining) {
+                form.reset(editingTraining);
+                setImagePreview(editingTraining.imageUrl || null);
+            } else {
+                 form.reset({
+                    title: '',
+                    description: '',
+                    categoryId: '',
+                    imageUrl: null,
+                    price: 0,
+                    duration: 0,
+                    isPublic: false,
+                    type: 'internal',
+                    externalUrl: ''
+                });
+                setImagePreview(null);
+            }
         }
     }, [isSheetOpen, editingTraining, form]);
 
@@ -496,7 +534,7 @@ function TrainingManager() {
 
     const onSubmit = (data: TrainingFormData) => {
         if (!user) return;
-        const trainingData = { counselorId: user.uid, ...data };
+        const trainingData = { authorId: user.uid, ...data, imageUrl: imagePreview };
         if (editingTraining) {
             setDocumentNonBlocking(doc(firestore, 'trainings', editingTraining.id), trainingData, { merge: true });
             toast({ title: 'Formation mise à jour' });
@@ -506,6 +544,16 @@ function TrainingManager() {
         }
         setIsSheetOpen(false);
     };
+    
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            setImagePreview(base64);
+        }
+    };
+    
+    const watchTrainingType = form.watch("type");
 
     return (
         <Card>
@@ -525,11 +573,13 @@ function TrainingManager() {
                             <TableRow>
                                 <TableHead>Titre</TableHead>
                                 <TableHead>Catégorie</TableHead>
+                                <TableHead>Prix</TableHead>
+                                <TableHead>Publique</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                             {areTrainingsLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full"/></TableCell></TableRow>
+                             {areTrainingsLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-10 w-full"/></TableCell></TableRow>
                             : trainings && trainings.length > 0 ? (
                                 trainings.map(training => {
                                     const categoryName = categories?.find(c => c.id === training.categoryId)?.name || 'N/A';
@@ -537,6 +587,8 @@ function TrainingManager() {
                                         <TableRow key={training.id}>
                                             <TableCell className="font-medium">{training.title}</TableCell>
                                             <TableCell>{categoryName}</TableCell>
+                                            <TableCell>{training.price ? `${training.price}€` : '-'}</TableCell>
+                                            <TableCell>{training.isPublic ? <CheckCircle className="h-5 w-5 text-green-500" /> : <EyeOff className="h-5 w-5 text-muted-foreground" />}</TableCell>
                                             <TableCell className="text-right">
                                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(training)}><Edit className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(training.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
@@ -545,35 +597,73 @@ function TrainingManager() {
                                     );
                                 })
                             ) : (
-                                <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucune formation créée.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucune formation créée.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
                 </div>
                  <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-lg w-full">
+                    <SheetContent className="sm:max-w-2xl w-full">
                         <SheetHeader>
                             <SheetTitle>{editingTraining ? 'Modifier la' : 'Nouvelle'} formation</SheetTitle>
                         </SheetHeader>
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description courte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="categoryId" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Catégorie</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
+                            <form onSubmit={form.handleSubmit(onSubmit)}>
+                                <ScrollArea className="h-[calc(100vh-8rem)]">
+                                <div className="space-y-6 py-4 pr-6">
+                                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description courte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="categoryId" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Catégorie</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger disabled={areCategoriesLoading}><SelectValue placeholder="Sélectionner une catégorie" /></SelectTrigger></FormControl>
+                                                <SelectContent>
+                                                    {categories?.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
+                                                </SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}/>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (heures)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
+                                    <div>
+                                        <Label>Image de couverture</Label>
+                                        <div className="flex items-center gap-4 mt-2">
+                                            {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={160} height={90} className="rounded-md object-cover" /> : <div className="w-40 h-[90px] bg-muted rounded-md" />}
+                                            <input type="file" id="training-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
+                                            <div className="flex flex-col gap-2">
+                                                <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('training-image-upload')?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
+                                                {imagePreview && <Button type="button" variant="destructive" size="sm" onClick={() => setImagePreview(null)}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <FormField control={form.control} name="type" render={({ field }) => (
+                                        <FormItem className="space-y-3">
+                                            <FormLabel>Type de formation</FormLabel>
                                             <FormControl>
-                                                <SelectTrigger disabled={areCategoriesLoading}><SelectValue placeholder="Sélectionner une catégorie" /></SelectTrigger>
+                                                <RadioGroup onValueChange={field.onChange} defaultValue={field.value} value={field.value} className="flex space-x-4">
+                                                    <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="internal" /></FormControl><FormLabel className="font-normal">Interne</FormLabel></FormItem>
+                                                    <FormItem className="flex items-center space-x-2 space-y-0"><FormControl><RadioGroupItem value="external" /></FormControl><FormLabel className="font-normal">Externe</FormLabel></FormItem>
+                                                </RadioGroup>
                                             </FormControl>
-                                            <SelectContent>
-                                                {categories?.map(cat => <SelectItem key={cat.id} value={cat.id}>{cat.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}/>
-                                <SheetFooter className="pt-6">
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                     {watchTrainingType === 'external' && (
+                                        <FormField control={form.control} name="externalUrl" render={({ field }) => (<FormItem><FormLabel>URL Externe</FormLabel><FormControl><Input {...field} placeholder="https://example.com/training" /></FormControl><FormMessage /></FormItem>)} />
+                                    )}
+                                    <FormField control={form.control} name="isPublic" render={({ field }) => (
+                                        <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                                            <div className="space-y-1 leading-none"><FormLabel>Formation Publique</FormLabel></div>
+                                            <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                        </FormItem>
+                                    )}/>
+                                </div>
+                                </ScrollArea>
+                                <SheetFooter className="pt-6 border-t mt-4">
                                     <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                     <Button type="submit">Sauvegarder</Button>
                                 </SheetFooter>
@@ -642,3 +732,6 @@ export default function ElearningPage() {
         </div>
     );
 }
+    
+
+    
