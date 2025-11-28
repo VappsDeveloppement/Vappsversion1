@@ -9,11 +9,14 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Folder, File as FileIcon, Upload, Trash2, ArrowLeft, Home, Loader2 } from 'lucide-react';
+import { Folder, File as FileIcon, Upload, Trash2, ArrowLeft, Home, Loader2, FolderPlus } from 'lucide-react';
 import Image from 'next/image';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 type StorageItem = {
     name: string;
@@ -32,8 +35,11 @@ export default function GedPage() {
     const [currentPath, setCurrentPath] = useState('');
     const [items, setItems] = useState<StorageItem[]>([]);
     const [isLoading, setIsLoading] = useState(true);
-    const [fileToDelete, setFileToDelete] = useState<StorageItem | null>(null);
+    const [itemToDelete, setItemToDelete] = useState<StorageItem | null>(null);
     const [uploadingFile, setUploadingFile] = useState<File | null>(null);
+    
+    const [isCreateFolderOpen, setIsCreateFolderOpen] = useState(false);
+    const [newFolderName, setNewFolderName] = useState('');
 
     const fetchItems = useCallback(async () => {
         if (!storage) return;
@@ -65,7 +71,7 @@ export default function GedPage() {
 
             const files = await Promise.all(filesPromises);
 
-            setItems([...folders, ...files]);
+            setItems([...folders, ...files.filter(file => !file.name.endsWith('.placeholder'))]); // Filter out placeholder files
         } catch (error) {
             console.error("Error fetching storage items:", error);
             toast({ title: "Erreur", description: "Impossible de lister les fichiers.", variant: "destructive" });
@@ -101,18 +107,53 @@ export default function GedPage() {
         }
     };
     
-    const handleDeleteFile = async () => {
-        if (!fileToDelete || !storage) return;
+    const handleDeleteItem = async () => {
+        if (!itemToDelete || !storage) return;
         
-        const fileRef = ref(storage, fileToDelete.fullPath);
+        if (itemToDelete.type === 'folder') {
+            const folderRef = ref(storage, itemToDelete.fullPath);
+            const res = await listAll(folderRef);
+            if (res.items.length > 0 || res.prefixes.length > 0) {
+                 toast({ title: "Dossier non vide", description: "Veuillez vider le dossier avant de le supprimer.", variant: "destructive" });
+                 setItemToDelete(null);
+                 return;
+            }
+            // For folders, we delete the placeholder if it exists, but otherwise there's nothing to delete
+            // as folders are implicit. We just need to refresh.
+            // Let's try to delete a .placeholder file to be sure
+            try {
+                const placeholderRef = ref(storage, `${itemToDelete.fullPath}/.placeholder`);
+                await deleteObject(placeholderRef);
+            } catch (error) {
+                // Ignore error if placeholder doesn't exist
+            }
+        } else {
+             const fileRef = ref(storage, itemToDelete.fullPath);
+             await deleteObject(fileRef);
+        }
+        
+        toast({ title: `${itemToDelete.type === 'folder' ? 'Dossier' : 'Fichier'} supprimé`, description: `${itemToDelete.name} a été supprimé.` });
+        fetchItems(); // Refresh list
+        setItemToDelete(null);
+    };
+
+    const handleCreateFolder = async () => {
+        if (!newFolderName || !storage) return;
+
+        const folderPath = currentPath ? `${currentPath}/${newFolderName}` : newFolderName;
+        const placeholderPath = `${folderPath}/.placeholder`;
+        const placeholderRef = ref(storage, placeholderPath);
+
         try {
-            await deleteObject(fileRef);
-            toast({ title: "Fichier supprimé", description: `${fileToDelete.name} a été supprimé.` });
-            fetchItems(); // Refresh list
+            await uploadBytes(placeholderRef, new Blob([])); // Upload an empty file
+            toast({ title: "Dossier créé", description: `Le dossier "${newFolderName}" a été créé.` });
+            fetchItems();
         } catch (error) {
-            toast({ title: "Erreur de suppression", variant: "destructive" });
+            console.error("Error creating folder:", error);
+            toast({ title: "Erreur", description: "Impossible de créer le dossier.", variant: "destructive" });
         } finally {
-            setFileToDelete(null);
+            setIsCreateFolderOpen(false);
+            setNewFolderName('');
         }
     };
 
@@ -143,29 +184,53 @@ export default function GedPage() {
             </div>
             <Card>
                 <CardHeader>
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Button variant="ghost" size="icon" onClick={() => handleNavigate('')} disabled={!currentPath}><Home className="h-4 w-4" /></Button>
-                            {currentPath && <Button variant="ghost" size="icon" onClick={handleNavigateBack}><ArrowLeft className="h-4 w-4" /></Button>}
+                            <Button variant="ghost" size="icon" onClick={() => handleNavigate('')} disabled={!currentPath || isLoading}><Home className="h-4 w-4" /></Button>
+                            {currentPath && <Button variant="ghost" size="icon" onClick={handleNavigateBack} disabled={isLoading}><ArrowLeft className="h-4 w-4" /></Button>}
                             <span>/</span>
                             <span className="truncate">{currentPath || "Racine"}</span>
                         </div>
-                        <label htmlFor="file-upload" className="cursor-pointer">
-                            <Button asChild>
-                                <div>
-                                    {uploadingFile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
-                                    Téléverser un fichier
-                                </div>
-                            </Button>
-                             <input id="file-upload" ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} disabled={!!uploadingFile} />
-                        </label>
+                        <div className="flex gap-2">
+                             <Dialog open={isCreateFolderOpen} onOpenChange={setIsCreateFolderOpen}>
+                                <DialogTrigger asChild>
+                                     <Button variant="outline"><FolderPlus className="mr-2 h-4 w-4" />Nouveau Dossier</Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-[425px]">
+                                    <DialogHeader>
+                                        <DialogTitle>Nouveau dossier</DialogTitle>
+                                        <DialogDescription>
+                                            Entrez le nom du nouveau dossier à créer dans le répertoire actuel.
+                                        </DialogDescription>
+                                    </DialogHeader>
+                                    <div className="grid gap-4 py-4">
+                                        <div className="grid grid-cols-4 items-center gap-4">
+                                            <Label htmlFor="folder-name" className="text-right">Nom</Label>
+                                            <Input id="folder-name" value={newFolderName} onChange={(e) => setNewFolderName(e.target.value)} className="col-span-3" />
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button type="button" onClick={handleCreateFolder}>Créer</Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+                            <label htmlFor="file-upload" className="cursor-pointer">
+                                <Button asChild>
+                                    <div>
+                                        {uploadingFile ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />}
+                                        Téléverser
+                                    </div>
+                                </Button>
+                                 <input id="file-upload" ref={fileInputRef} type="file" className="hidden" onChange={handleFileUpload} disabled={!!uploadingFile} />
+                            </label>
+                        </div>
                     </div>
                 </CardHeader>
                 <CardContent>
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[60%]">Nom</TableHead>
+                                <TableHead className="w-[50%]">Nom</TableHead>
                                 <TableHead>Taille</TableHead>
                                 <TableHead>Dernière modification</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
@@ -185,7 +250,7 @@ export default function GedPage() {
                                                     : <FileIcon className="h-5 w-5 text-muted-foreground" />
                                                 )}
                                                 {item.type === 'folder' ? (
-                                                    <button onClick={() => handleNavigate(item.fullPath)} className="font-medium hover:underline">{item.name}</button>
+                                                    <button onClick={() => handleNavigate(item.fullPath)} className="font-medium hover:underline text-left">{item.name}</button>
                                                 ) : (
                                                     <a href={item.url} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline truncate" title={item.name}>{item.name}</a>
                                                 )}
@@ -194,11 +259,9 @@ export default function GedPage() {
                                          <TableCell>{formatBytes(item.size)}</TableCell>
                                         <TableCell>{item.updated ? format(new Date(item.updated), 'dd/MM/yyyy HH:mm', { locale: fr }) : '-'}</TableCell>
                                         <TableCell className="text-right">
-                                            {item.type === 'file' && (
-                                                 <Button variant="ghost" size="icon" onClick={() => setFileToDelete(item)}>
-                                                    <Trash2 className="h-4 w-4 text-destructive" />
-                                                </Button>
-                                            )}
+                                            <Button variant="ghost" size="icon" onClick={() => setItemToDelete(item)}>
+                                                <Trash2 className="h-4 w-4 text-destructive" />
+                                            </Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -210,17 +273,17 @@ export default function GedPage() {
                 </CardContent>
             </Card>
 
-             <AlertDialog open={!!fileToDelete} onOpenChange={(open) => !open && setFileToDelete(null)}>
+             <AlertDialog open={!!itemToDelete} onOpenChange={(open) => !open && setItemToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
                         <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
                         <AlertDialogDescription>
-                            Cette action supprimera définitivement le fichier <strong>{fileToDelete?.name}</strong>.
+                            Cette action supprimera définitivement {itemToDelete?.type === 'folder' ? 'le dossier' : 'le fichier'} <strong>{itemToDelete?.name}</strong>. {itemToDelete?.type === 'folder' && 'Le dossier doit être vide pour être supprimé.'}
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                         <AlertDialogCancel>Annuler</AlertDialogCancel>
-                        <AlertDialogAction onClick={handleDeleteFile} className="bg-destructive hover:bg-destructive/90">
+                        <AlertDialogAction onClick={handleDeleteItem} className="bg-destructive hover:bg-destructive/90">
                            Supprimer
                         </AlertDialogAction>
                     </AlertDialogFooter>
@@ -229,6 +292,5 @@ export default function GedPage() {
         </div>
     );
 }
-    
 
     
