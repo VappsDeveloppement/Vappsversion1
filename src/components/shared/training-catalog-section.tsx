@@ -22,48 +22,47 @@ type Category = { id: string; name: string; };
 
 interface TrainingCatalogSectionProps {
     primaryColor?: string;
+    counselorId: string;
     sectionData?: {
         title?: string;
-        description?: string;
+        subtitle?: string;
     }
 }
 
-export function TrainingCatalogSection({ sectionData }: TrainingCatalogSectionProps) {
+export function TrainingCatalogSection({ sectionData, counselorId, primaryColor: propPrimaryColor }: TrainingCatalogSectionProps) {
     const [isClient, setIsClient] = useState(false);
     useEffect(() => {
         setIsClient(true);
     }, []);
 
-    const { agency, personalization } = useAgency();
+    const { personalization } = useAgency();
     const firestore = useFirestore();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const primaryColor = personalization?.primaryColor || '#10B981';
+    const primaryColor = propPrimaryColor || personalization?.primaryColor || '#10B981';
     const title = sectionData?.title || "Catalogue des Formations";
-    const description = sectionData?.description || "Montez en compétences avec nos formations conçues pour les professionnels.";
+    const description = sectionData?.subtitle || "Montez en compétences avec nos formations conçues pour les professionnels.";
 
     const trainingsQuery = useMemoFirebase(() => {
-        if (!isClient) return null;
-        // Fetch trainings from the agency (superadmin) using the static agency ID
-        const agencyId = agency?.id || 'vapps-agency';
+        if (!isClient || !counselorId) return null;
+        // Fetch trainings from the specific counselor
         return query(
             collection(firestore, 'trainings'), 
             where('isPublic', '==', true),
-            where('authorId', '==', agencyId)
+            where('authorId', '==', counselorId)
         );
-    }, [firestore, isClient, agency?.id]);
+    }, [firestore, isClient, counselorId]);
 
     const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
     
     const categoriesQuery = useMemoFirebase(() => {
-        if (!isClient) return null;
-        const agencyId = agency?.id || 'vapps-agency';
-        // Fetch categories from the agency (superadmin)
+        if (!isClient || !counselorId) return null;
+        // Fetch categories from the specific counselor
         return query(
             collection(firestore, 'training_categories'), 
-            where('counselorId', '==', agencyId)
+            where('counselorId', '==', counselorId)
         );
-    }, [firestore, isClient, agency?.id]);
+    }, [firestore, isClient, counselorId]);
     const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesQuery);
 
     const trainingsWithCategory = useMemo(() => {
@@ -89,7 +88,6 @@ export function TrainingCatalogSection({ sectionData }: TrainingCatalogSectionPr
 
     const isLoading = areTrainingsLoading || areCategoriesLoading;
 
-    // We render the section container even if loading or no trainings, to ensure it's always on the page if enabled.
     return (
         <section className="bg-muted/30 text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
