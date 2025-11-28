@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useDoc, useMemoFirebase, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc, setDoc, query, collection, where, getDocs, limit, documentId } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs, limit, documentId, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -163,10 +163,9 @@ export default function ProfilePage() {
     setIsSubmitting(true);
 
     const newPublicProfileName = data.publicProfileName?.trim().toLowerCase().replace(/\s+/g, '-') || '';
-    const oldPublicProfileName = userData?.publicProfileName;
     
-    // Check if the new public profile name is already taken
-    if (newPublicProfileName && newPublicProfileName !== oldPublicProfileName) {
+    // Check if the new public profile name is already taken by ANOTHER user
+    if (newPublicProfileName && newPublicProfileName !== userData?.publicProfileName) {
         const minisitesRef = collection(firestore, 'minisites');
         const q = query(minisitesRef, where("miniSite.publicProfileName", "==", newPublicProfileName), limit(1));
         const querySnapshot = await getDocs(q);
@@ -186,14 +185,15 @@ export default function ProfilePage() {
     };
     
     try {
-        // Update user document
-        await setDocumentNonBlocking(userDocRef, updateData, { merge: true });
+        const batch = writeBatch(firestore);
 
-        // Update or move the minisite document
+        // Update user document
+        batch.set(userDocRef, updateData, { merge: true });
+
+        // Update or create the minisite document
         if (userData?.role === 'conseiller' || userData?.role === 'superadmin') {
             const minisiteDocRef = doc(firestore, 'minisites', user.uid);
             
-            // This data will be written to the `minisites/{userId}` document.
             const publicProfileData = {
                 id: user.uid,
                 firstName: data.firstName,
@@ -213,8 +213,10 @@ export default function ProfilePage() {
                 },
                 dashboardTheme: data.dashboardTheme,
             };
-            await setDocumentNonBlocking(minisiteDocRef, publicProfileData, { merge: true });
+            batch.set(minisiteDocRef, publicProfileData, { merge: true });
         }
+        
+        await batch.commit();
 
         toast({
             title: 'Profil mis à jour',

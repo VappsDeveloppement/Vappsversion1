@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { useCollection, useMemoFirebase, useUser, useDoc, deleteDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, doc, writeBatch } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
@@ -251,17 +251,23 @@ export default function ClientManagementPage() {
         }
 
         try {
-            const userDocRef = doc(firestore, "users", userToDelete.id);
-            await deleteDocumentNonBlocking(userDocRef);
+            const batch = writeBatch(firestore);
             
+            // Delete user document
+            const userDocRef = doc(firestore, "users", userToDelete.id);
+            batch.delete(userDocRef);
+            
+            // If the user is a counselor, also delete their minisite document
             if (userToDelete.role === 'conseiller') {
                 const miniSiteDocRef = doc(firestore, "minisites", userToDelete.id);
-                await deleteDocumentNonBlocking(miniSiteDocRef);
+                batch.delete(miniSiteDocRef);
             }
+
+            await batch.commit();
 
             toast({ title: "Utilisateur supprimé", description: "Les données de l'utilisateur ont été supprimées de la base de données. Vous devez supprimer le compte de la console Firebase Authentication manuellement." });
         } catch (error) {
-            toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur.", variant: "destructive" });
+            toast({ title: "Erreur", description: "Impossible de supprimer l'utilisateur et ses données associées.", variant: "destructive" });
         } finally {
             setUserToDelete(null);
         }
@@ -436,23 +442,25 @@ export default function ClientManagementPage() {
                                             control={form.control}
                                             name="permissions"
                                             render={() => (
-                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
-                                                    <div className="space-y-0.5">
-                                                        <FormLabel>Accès Administrateur</FormLabel>
-                                                        <FormDescription>Donner à cet utilisateur un accès complet au panneau d'administration.</FormDescription>
+                                                <FormItem>
+                                                    <div className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
+                                                        <div className="space-y-0.5">
+                                                            <FormLabel>Accès Administrateur</FormLabel>
+                                                            <FormDescription>Donner à cet utilisateur un accès complet au panneau d'administration.</FormDescription>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Checkbox
+                                                                checked={form.watch('permissions')?.includes('FULLACCESS')}
+                                                                onCheckedChange={(checked) => {
+                                                                    const currentPermissions = form.getValues('permissions') || [];
+                                                                    const newPermissions = checked
+                                                                        ? [...currentPermissions, 'FULLACCESS']
+                                                                        : currentPermissions.filter(p => p !== 'FULLACCESS');
+                                                                    form.setValue('permissions', newPermissions);
+                                                                }}
+                                                            />
+                                                        </FormControl>
                                                     </div>
-                                                    <FormControl>
-                                                        <Checkbox
-                                                            checked={form.watch('permissions')?.includes('FULLACCESS')}
-                                                            onCheckedChange={(checked) => {
-                                                                const currentPermissions = form.getValues('permissions') || [];
-                                                                const newPermissions = checked
-                                                                    ? [...currentPermissions, 'FULLACCESS']
-                                                                    : currentPermissions.filter(p => p !== 'FULLACCESS');
-                                                                form.setValue('permissions', newPermissions);
-                                                            }}
-                                                        />
-                                                    </FormControl>
                                                 </FormItem>
                                             )}
                                         />
@@ -484,4 +492,3 @@ export default function ClientManagementPage() {
         </div>
     );
 }
-
