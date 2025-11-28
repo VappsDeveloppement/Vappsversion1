@@ -36,10 +36,10 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser, useAuth, useMemoFirebase, useDoc } from "@/firebase";
-import React, { useEffect } from "react";
+import { useUser, useAuth, useMemoFirebase, useDoc, useCollection } from "@/firebase";
+import React, { useEffect, useMemo } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { doc } from "firebase/firestore";
+import { doc, collection, query } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -73,13 +73,34 @@ export default function AdminLayout({
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
-  const hasAdminAccess = userData?.permissions?.includes('FULLACCESS');
+  // --- Temporary Fix Logic ---
+  // We fetch all users to check if the current user is the only one.
+  const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
+  const { data: allUsers, isLoading: areUsersLoading } = useCollection(usersQuery);
+  
+  const hasAdminAccess = useMemo(() => {
+    if (!userData) return false;
+    // Standard check: Does the user have the FULLACCESS permission?
+    if (userData.permissions?.includes('FULLACCESS')) {
+      return true;
+    }
+    // Temporary fallback: Is this user the one and only user on the platform?
+    if (allUsers && allUsers.length === 1 && allUsers[0].id === user?.uid) {
+      return true;
+    }
+    return false;
+  }, [userData, allUsers, user]);
+  // --- End of Temporary Fix Logic ---
+
 
   useEffect(() => {
-    if (!isUserLoading && !isUserDataLoading && !hasAdminAccess) {
-      router.push('/dashboard');
+    // Wait for all data to be loaded before making a decision
+    if (!isUserLoading && !isUserDataLoading && !areUsersLoading) {
+      if (!hasAdminAccess) {
+        router.push('/dashboard');
+      }
     }
-  }, [isUserLoading, isUserDataLoading, hasAdminAccess, router]);
+  }, [isUserLoading, isUserDataLoading, areUsersLoading, hasAdminAccess, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -88,7 +109,8 @@ export default function AdminLayout({
     router.push('/application');
   };
 
-  const isLoading = isUserLoading || isUserDataLoading;
+  const isLoading = isUserLoading || isUserDataLoading || areUsersLoading;
+  
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -185,5 +207,3 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
-
-    
