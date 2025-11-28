@@ -503,7 +503,7 @@ export default function MiniSitePage() {
         miniSite: fullMiniSiteData,
       }, { merge: true });
 
-      if(userData?.role === 'conseiller') {
+      if(userData?.role === 'conseiller' || userData?.role === 'superadmin') {
           const minisiteDocRef = doc(firestore, 'minisites', user.uid);
           await setDocumentNonBlocking(minisiteDocRef, {
               miniSite: fullMiniSiteData,
@@ -553,7 +553,7 @@ export default function MiniSitePage() {
     );
   }
   
-  if (userData?.role !== 'conseiller') {
+  if (userData?.role !== 'conseiller' && userData?.role !== 'superadmin') {
      return (
         <div className="space-y-8">
             <div>
@@ -567,7 +567,7 @@ export default function MiniSitePage() {
                     <CardTitle>Fonctionnalité non disponible</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-muted-foreground">La gestion du mini-site est réservée aux conseillers.</p>
+                    <p className="text-muted-foreground">La gestion du mini-site est réservée aux conseillers et administrateurs.</p>
                 </CardContent>
             </Card>
         </div>
@@ -579,7 +579,7 @@ export default function MiniSitePage() {
       <div>
         <h1 className="text-3xl font-bold font-headline">Mon Mini-site</h1>
         <p className="text-muted-foreground">
-          Gérez l'apparence et le contenu de votre page publique de conseiller.
+          Gérez l'apparence et le contenu de votre page publique.
         </p>
       </div>
 
@@ -1107,5 +1107,7 @@ export default function MiniSitePage() {
     </div>
   );
 }
+
+    
 
     
