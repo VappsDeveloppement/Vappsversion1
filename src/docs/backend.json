@@ -1126,7 +1126,10 @@
         "isPublic": { "type": "boolean", "default": false },
         "imageUrl": { "type": "string", "format": "uri" },
         "type": { "type": "string", "enum": ["internal", "external"] },
-        "externalUrl": { "type": "string", "format": "uri" }
+        "externalUrl": { "type": "string", "format": "uri" },
+        "prerequisites": { "type": "array", "items": { "type": "string" }, "description": "List of prerequisites for the training." },
+        "entryLevel": { "type": "array", "items": { "type": "string" }, "description": "Entry skill level for the training." },
+        "exitLevel": { "type": "array", "items": { "type": "string" }, "description": "Exit skill level after the training." }
       },
       "required": ["id", "title", "authorId", "categoryId", "type"]
     },
@@ -1479,4 +1482,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-    

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -24,12 +23,12 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import Image from 'next/image';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import { Slider } from '@/components/ui/slider';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Slider } from '@/components/ui/slider';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Badge } from '@/components/ui/badge';
 
 
 const categorySchema = z.object({
@@ -446,6 +445,9 @@ const trainingFormSchema = z.object({
   isPublic: z.boolean().default(false),
   type: z.enum(['internal', 'external']).default('internal'),
   externalUrl: z.string().url("Veuillez entrer une URL valide.").optional().or(z.literal('')),
+  prerequisites: z.array(z.string()).optional(),
+  entryLevel: z.array(z.string()).optional(),
+  exitLevel: z.array(z.string()).optional(),
 }).refine((data) => {
     if (data.type === 'external' && !data.externalUrl) {
         return false;
@@ -471,7 +473,50 @@ type Training = {
     isPublic?: boolean;
     type?: 'internal' | 'external';
     externalUrl?: string;
+    prerequisites?: string[];
+    entryLevel?: string[];
+    exitLevel?: string[];
 };
+
+function TagInput({ value, onChange, placeholder }: { value: string[], onChange: (value: string[]) => void, placeholder: string }) {
+    const [inputValue, setInputValue] = useState('');
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inputValue.trim()) {
+            e.preventDefault();
+            if (!value.includes(inputValue.trim())) {
+                onChange([...value, inputValue.trim()]);
+            }
+            setInputValue('');
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        onChange(value.filter(tag => tag !== tagToRemove));
+    };
+
+    return (
+        <div>
+            <div className="flex flex-wrap gap-2 mb-2">
+                {value.map(tag => (
+                    <Badge key={tag} variant="secondary">
+                        {tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                          <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
+                    </Badge>
+                ))}
+            </div>
+            <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder={placeholder}
+            />
+             <p className="text-xs text-muted-foreground mt-1">Appuyez sur Entrée pour ajouter un tag.</p>
+        </div>
+    );
+}
 
 function TrainingManager() {
     const { user } = useUser();
@@ -511,7 +556,10 @@ function TrainingManager() {
                     duration: 0,
                     isPublic: false,
                     type: 'internal',
-                    externalUrl: ''
+                    externalUrl: '',
+                    prerequisites: [],
+                    entryLevel: [],
+                    exitLevel: [],
                 });
             }
         }
@@ -647,6 +695,11 @@ function TrainingManager() {
                                         <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (heures)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
+                                    <div className="space-y-4">
+                                        <FormField control={form.control} name="prerequisites" render={({ field }) => ( <FormItem><FormLabel>Prérequis</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un prérequis..."/></FormControl><FormMessage/></FormItem> )}/>
+                                        <FormField control={form.control} name="entryLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau d'entrée</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..."/></FormControl><FormMessage/></FormItem> )}/>
+                                        <FormField control={form.control} name="exitLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau de sortie</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..."/></FormControl><FormMessage/></FormItem> )}/>
+                                    </div>
                                     <div>
                                         <Label>Image de couverture</Label>
                                         <div className="flex items-center gap-4 mt-2">
@@ -752,6 +805,3 @@ export default function ElearningPage() {
         </div>
     );
 }
-
-    
-    
