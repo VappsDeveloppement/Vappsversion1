@@ -613,7 +613,7 @@ function TrainingManager() {
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <Link href={`/dashboard/e-learning/${training.id}`} passHref>
+                                                            <Link href={`/dashboard/e-learning/path/${training.id}`} passHref>
                                                                 <Button variant="ghost" size="icon">
                                                                     <FileText className="h-4 w-4"/>
                                                                 </Button>
@@ -712,44 +712,25 @@ function TrainingManager() {
     );
 }
 
-const TagInput = ({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) => {
-    const [inputValue, setInputValue] = useState('');
-
-    const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && inputValue.trim()) {
-            e.preventDefault();
-            if (!value.includes(inputValue.trim())) {
-                onChange([...value, inputValue.trim()]);
-            }
-            setInputValue('');
-        }
-    };
-
-    const removeTag = (tagToRemove: string) => {
-        onChange(value.filter(tag => tag !== tagToRemove));
-    };
-
+function MemberManagement() {
     return (
-        <div>
-            <div className="flex flex-wrap gap-2 mb-2">
-                {(value || []).map(tag => (
-                    <Badge key={tag} variant="secondary">
-                        {tag}
-                        <button type="button" onClick={() => removeTag(tag)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                        </button>
-                    </Badge>
-                ))}
-            </div>
-            <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={addTag}
-                placeholder="Ajouter et appuyer sur Entrée..."
-            />
-        </div>
+        <Card>
+            <CardHeader>
+                <CardTitle>Gestion des Membres</CardTitle>
+                <CardDescription>
+                    Inscrivez vos clients à des formations ou parcours et suivez leur progression.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96">
+                    <Users className="h-16 w-16 text-muted-foreground mb-4" />
+                    <h3 className="text-xl font-semibold">Suivi de l'Assiduité</h3>
+                    <p className="text-muted-foreground mt-2 max-w-2xl">Un tableau de bord vous permettra d'inscrire vos clients aux différents parcours et de visualiser leur avancement et leurs résultats.</p>
+                </div>
+            </CardContent>
+        </Card>
     );
-};
+}
 
 
 export default function ElearningPage() {
@@ -787,21 +768,7 @@ export default function ElearningPage() {
                 </TabsContent>
                 
                 <TabsContent value="members">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Gestion des Membres</CardTitle>
-                            <CardDescription>
-                                Inscrivez vos clients à des formations ou parcours et suivez leur progression.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96">
-                                <Users className="h-16 w-16 text-muted-foreground mb-4" />
-                                <h3 className="text-xl font-semibold">Suivi de l'Assiduité</h3>
-                                <p className="text-muted-foreground mt-2 max-w-2xl">Un tableau de bord vous permettra d'inscrire vos clients aux différents parcours et de visualiser leur avancement et leurs résultats.</p>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <MemberManagement />
                 </TabsContent>
             </Tabs>
         </div>

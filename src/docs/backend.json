@@ -1127,7 +1127,11 @@
         "isPublic": { "type": "boolean", "default": false },
         "imageUrl": { "type": "string", "format": "uri" },
         "type": { "type": "string", "enum": ["internal", "external"] },
-        "externalUrl": { "type": "string", "format": "uri" }
+        "externalUrl": { "type": "string", "format": "uri" },
+        "prerequisites": { "type": "array", "items": { "type": "string" } },
+        "entryLevel": { "type": "array", "items": { "type": "string" } },
+        "exitLevel": { "type": "array", "items": { "type": "string" } },
+        "moduleIds": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "title", "authorId", "categoryId", "type"]
     },
@@ -1474,6 +1478,26 @@
           "entityName": "Training",
           "schema": { "$ref": "#/entities/Training" },
           "description": "Stores the main information for a training course."
+        }
+      },
+      {
+        "path": "/learning_paths/{pathId}",
+        "definition": {
+          "entityName": "LearningPath",
+          "schema": {
+            "$ref": "#/entities/LearningPath"
+          },
+          "description": "Stores structured learning paths created by counselors."
+        }
+      },
+      {
+        "path": "/users/{userId}/enrollments/{enrollmentId}",
+        "definition": {
+          "entityName": "PathEnrollment",
+          "schema": {
+            "$ref": "#/entities/PathEnrollment"
+          },
+          "description": "Tracks a user's enrollment and progress in a learning path."
         }
       }
     ],
