@@ -432,32 +432,30 @@ export default function ClientManagementPage() {
                                                 <FormMessage />
                                             </FormItem>
                                         )}/>
-                                        {currentUserData?.permissions?.includes('FULLACCESS') && (
-                                            <FormField
-                                                control={form.control}
-                                                name="permissions"
-                                                render={() => (
-                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
-                                                        <div className="space-y-0.5">
-                                                            <FormLabel>Accès Administrateur</FormLabel>
-                                                            <FormDescription>Donner à cet utilisateur un accès complet au panneau d'administration.</FormDescription>
-                                                        </div>
-                                                        <FormControl>
-                                                            <Checkbox
-                                                                checked={form.watch('permissions')?.includes('FULLACCESS')}
-                                                                onCheckedChange={(checked) => {
-                                                                    const currentPermissions = form.getValues('permissions') || [];
-                                                                    const newPermissions = checked
-                                                                        ? [...currentPermissions, 'FULLACCESS']
-                                                                        : currentPermissions.filter(p => p !== 'FULLACCESS');
-                                                                    form.setValue('permissions', newPermissions);
-                                                                }}
-                                                            />
-                                                        </FormControl>
-                                                    </FormItem>
-                                                )}
-                                            />
-                                        )}
+                                        <FormField
+                                            control={form.control}
+                                            name="permissions"
+                                            render={() => (
+                                                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
+                                                    <div className="space-y-0.5">
+                                                        <FormLabel>Accès Administrateur</FormLabel>
+                                                        <FormDescription>Donner à cet utilisateur un accès complet au panneau d'administration.</FormDescription>
+                                                    </div>
+                                                    <FormControl>
+                                                        <Checkbox
+                                                            checked={form.watch('permissions')?.includes('FULLACCESS')}
+                                                            onCheckedChange={(checked) => {
+                                                                const currentPermissions = form.getValues('permissions') || [];
+                                                                const newPermissions = checked
+                                                                    ? [...currentPermissions, 'FULLACCESS']
+                                                                    : currentPermissions.filter(p => p !== 'FULLACCESS');
+                                                                form.setValue('permissions', newPermissions);
+                                                            }}
+                                                        />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
                                     </CardContent>
                                 </Card>
                             )}
@@ -487,4 +485,3 @@ export default function ClientManagementPage() {
     );
 }
 
-    
