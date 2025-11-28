@@ -432,7 +432,9 @@
             "trainingCatalogSection": {
                 "type": "object",
                 "properties": {
-                    "enabled": { "type": "boolean" }
+                    "enabled": { "type": "boolean" },
+                    "title": { "type": "string" },
+                    "subtitle": { "type": "string" }
                 }
             },
             "contactSection": {
@@ -1129,12 +1131,14 @@
         "duration": { "type": "number", "description": "Estimated duration in hours." },
         "price": { "type": "number" },
         "isPublic": { "type": "boolean", "default": false },
+        "isPlatformPublic": { "type": "boolean", "default": false },
         "imageUrl": { "type": "string", "format": "uri" },
         "type": { "type": "string", "enum": ["internal", "external"] },
         "externalUrl": { "type": "string", "format": "uri" },
         "prerequisites": { "type": "array", "items": { "type": "string" } },
         "entryLevel": { "type": "array", "items": { "type": "string" } },
         "exitLevel": { "type": "array", "items": { "type": "string" } },
+        "financingOptions": { "type": "array", "items": { "type": "string" } },
         "moduleIds": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "title", "authorId", "categoryId", "type"]
@@ -1488,3 +1492,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    

@@ -18,12 +18,12 @@ import type { Plan as Training } from "./plan-management";
 import { useAgency } from "@/context/agency-provider";
 import { Badge } from "../ui/badge";
 
-type TrainingWithCategory = Training & { categoryName?: string, type?: 'internal' | 'external', externalUrl?: string, financingOptions?: string[] };
+type TrainingWithCategory = Training & { categoryName?: string, type?: 'internal' | 'external', externalUrl?: string, financingOptions?: string[], isPlatformPublic?: boolean };
 type Category = { id: string; name: string; };
 
 interface TrainingCatalogSectionProps {
     primaryColor?: string;
-    counselorId: string;
+    counselorId?: string; // Made optional
     sectionData?: {
         title?: string;
         subtitle?: string;
@@ -42,26 +42,28 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
 
     const primaryColor = propPrimaryColor || personalization?.primaryColor || '#10B981';
     const title = sectionData?.title || "Catalogue des Formations";
-    const description = sectionData?.subtitle || "Montez en compétences avec nos formations conçues pour les professionnels.";
+    const description = sectionData?.subtitle || "Découvrez une sélection de nos meilleures formations.";
 
     const trainingsQuery = useMemoFirebase(() => {
-        if (!isClient || !counselorId) return null;
-        return query(
-            collection(firestore, 'trainings'), 
-            where('isPublic', '==', true),
-            where('authorId', '==', counselorId)
-        );
+        if (!isClient) return null;
+        let q = collection(firestore, 'trainings');
+        
+        if (counselorId) {
+            // Mini-site context: fetch public trainings for a specific counselor
+            return query(q, where('authorId', '==', counselorId), where('isPublic', '==', true));
+        } else {
+            // Main homepage context: fetch trainings marked for platform
+            return query(q, where('isPlatformPublic', '==', true));
+        }
     }, [firestore, isClient, counselorId]);
 
     const { data: trainings, isLoading: areTrainingsLoading } = useCollection<TrainingWithCategory>(trainingsQuery);
     
     const categoriesQuery = useMemoFirebase(() => {
-        if (!isClient || !counselorId) return null;
-        return query(
-            collection(firestore, 'training_categories'), 
-            where('counselorId', '==', counselorId)
-        );
-    }, [firestore, isClient, counselorId]);
+        if (!isClient) return null;
+        // Fetch all categories for simplicity, or could be filtered if needed
+        return query(collection(firestore, 'training_categories'));
+    }, [firestore, isClient]);
     const { data: categories, isLoading: areCategoriesLoading } = useCollection<Category>(categoriesQuery);
 
     const trainingsWithCategory = useMemo(() => {
@@ -181,3 +183,5 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
         </section>
     );
 }
+
+    
