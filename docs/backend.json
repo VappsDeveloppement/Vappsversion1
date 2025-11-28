@@ -34,6 +34,11 @@
           "enum": ["superadmin", "conseiller", "membre", "moderateur"],
           "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'moderateur' has moderation rights."
         },
+        "permissions": {
+            "type": "array",
+            "description": "A list of special permissions granted to the user, like 'FULLACCESS' for admin rights.",
+            "items": { "type": "string" }
+        },
         "counselorIds": {
             "type": "array",
             "description": "A list of counselor IDs this user is a client of. Enables many-to-many relationships.",
@@ -1484,3 +1489,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    

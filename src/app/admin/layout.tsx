@@ -66,16 +66,20 @@ export default function AdminLayout({
 }) {
   const pathname = usePathname();
   const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const auth = useAuth();
   const router = useRouter();
   
-  const isSuperAdmin = user?.email === 'roussey.romain@gmail.com';
+  const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+  const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+  const hasAdminAccess = userData?.permissions?.includes('FULLACCESS');
 
   useEffect(() => {
-    if (!isUserLoading && !isSuperAdmin) {
+    if (!isUserLoading && !isUserDataLoading && !hasAdminAccess) {
       router.push('/dashboard');
     }
-  }, [isUserLoading, isSuperAdmin, router]);
+  }, [isUserLoading, isUserDataLoading, hasAdminAccess, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -84,7 +88,7 @@ export default function AdminLayout({
     router.push('/application');
   };
 
-  const isLoading = isUserLoading;
+  const isLoading = isUserLoading || isUserDataLoading;
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -93,7 +97,7 @@ export default function AdminLayout({
     );
   }
   
-  if (!isSuperAdmin) {
+  if (!hasAdminAccess) {
      return (
       <div className="flex h-screen items-center justify-center bg-muted">
         <div className="flex flex-col items-center gap-4 text-center">
@@ -181,3 +185,5 @@ export default function AdminLayout({
     </SidebarProvider>
   );
 }
+
+    

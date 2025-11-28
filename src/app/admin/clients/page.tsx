@@ -11,7 +11,7 @@ import { useFirestore, useAuth } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from "@/components/ui/button";
-import { Loader2, Edit, Trash2, MoreHorizontal, Info, PlusCircle, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Edit, Trash2, MoreHorizontal, Info, PlusCircle, Eye, EyeOff, ShieldCheck } from 'lucide-react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAgency } from '@/context/agency-provider';
+import { Checkbox } from '@/components/ui/checkbox';
 
 type User = {
     id: string;
@@ -37,6 +38,7 @@ type User = {
     city?: string;
     planId?: string;
     subscriptionStatus?: 'pending_payment' | 'active' | 'cancelled' | 'trial';
+    permissions?: string[];
 };
 
 const userFormSchema = z.object({
@@ -51,6 +53,7 @@ const userFormSchema = z.object({
   password: z.string().optional(),
   planId: z.string().optional(),
   subscriptionStatus: z.enum(['pending_payment', 'active', 'cancelled', 'trial']).optional(),
+  permissions: z.array(z.string()).optional(),
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -96,6 +99,9 @@ export default function ClientManagementPage() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const { toast } = useToast();
+
+    const currentUserDocRef = useMemoFirebase(() => currentUser ? doc(firestore, 'users', currentUser.uid) : null, [currentUser, firestore]);
+    const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc<User>(currentUserDocRef);
     
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
 
@@ -145,6 +151,7 @@ export default function ClientManagementPage() {
                     city: editingUser.city || '',
                     planId: editingUser.planId || 'none',
                     subscriptionStatus: editingUser.subscriptionStatus || 'pending_payment',
+                    permissions: editingUser.permissions || [],
                 });
             } else {
                  form.reset({
@@ -159,6 +166,7 @@ export default function ClientManagementPage() {
                     password: '',
                     planId: 'none',
                     subscriptionStatus: 'pending_payment',
+                    permissions: [],
                 });
             }
         }
@@ -189,6 +197,7 @@ export default function ClientManagementPage() {
                 address: values.address,
                 zipCode: values.zipCode,
                 city: values.city,
+                permissions: values.permissions || [],
             };
 
             if (values.role === 'conseiller') {
@@ -258,7 +267,7 @@ export default function ClientManagementPage() {
         }
     };
     
-    const isLoading = isUserLoading || areUsersLoading || isAgencyLoading;
+    const isLoading = isUserLoading || areUsersLoading || isAgencyLoading || isCurrentUserDataLoading;
     const watchRole = form.watch('role');
 
     return (
@@ -294,6 +303,7 @@ export default function ClientManagementPage() {
                                 <TableHead>Utilisateur</TableHead>
                                 <TableHead>Email</TableHead>
                                 <TableHead>Rôle</TableHead>
+                                <TableHead>Permissions</TableHead>
                                 <TableHead>Abonnement</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -301,13 +311,18 @@ export default function ClientManagementPage() {
                         <TableBody>
                             {isLoading ? (
                                 [...Array(5)].map((_, i) => (
-                                    <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                                    <TableRow key={i}><TableCell colSpan={6}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
                                 ))
                             ) : filteredUsers.length > 0 ? ( filteredUsers.map((user: any) => (
                                <TableRow key={user.id}>
                                    <TableCell className="font-medium">{user.firstName} {user.lastName}</TableCell>
                                    <TableCell>{user.email}</TableCell>
                                    <TableCell><Badge variant={roleVariant[user.role] || 'secondary'}>{roleText[user.role] || user.role}</Badge></TableCell>
+                                   <TableCell>
+                                        {user.permissions?.includes('FULLACCESS') && (
+                                            <Badge variant="destructive"><ShieldCheck className="h-4 w-4" /></Badge>
+                                        )}
+                                   </TableCell>
                                    <TableCell>
                                         {user.role === 'conseiller' ? (
                                             user.planName && user.subscriptionStatus ? (
@@ -330,7 +345,7 @@ export default function ClientManagementPage() {
                                </TableRow>
                            ))
                             ) : (
-                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun utilisateur trouvé.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} className="h-24 text-center">Aucun utilisateur trouvé.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
@@ -386,7 +401,7 @@ export default function ClientManagementPage() {
                             {watchRole === 'conseiller' && (
                                 <Card className="p-4 bg-muted/50">
                                     <CardHeader className="p-2">
-                                        <CardTitle className="text-base">Abonnement du Conseiller</CardTitle>
+                                        <CardTitle className="text-base">Abonnement & Permissions</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-2 space-y-4">
                                         <FormField control={form.control} name="planId" render={({ field }) => (
@@ -417,6 +432,32 @@ export default function ClientManagementPage() {
                                                 <FormMessage />
                                             </FormItem>
                                         )}/>
+                                        {currentUserData?.permissions?.includes('FULLACCESS') && (
+                                            <FormField
+                                                control={form.control}
+                                                name="permissions"
+                                                render={() => (
+                                                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm mt-4">
+                                                        <div className="space-y-0.5">
+                                                            <FormLabel>Accès Administrateur</FormLabel>
+                                                            <FormDescription>Donner à cet utilisateur un accès complet au panneau d'administration.</FormDescription>
+                                                        </div>
+                                                        <FormControl>
+                                                            <Checkbox
+                                                                checked={form.watch('permissions')?.includes('FULLACCESS')}
+                                                                onCheckedChange={(checked) => {
+                                                                    const currentPermissions = form.getValues('permissions') || [];
+                                                                    const newPermissions = checked
+                                                                        ? [...currentPermissions, 'FULLACCESS']
+                                                                        : currentPermissions.filter(p => p !== 'FULLACCESS');
+                                                                    form.setValue('permissions', newPermissions);
+                                                                }}
+                                                            />
+                                                        </FormControl>
+                                                    </FormItem>
+                                                )}
+                                            />
+                                        )}
                                     </CardContent>
                                 </Card>
                             )}
@@ -445,3 +486,5 @@ export default function ClientManagementPage() {
         </div>
     );
 }
+
+    

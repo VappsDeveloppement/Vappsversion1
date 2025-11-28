@@ -97,6 +97,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                   const userDocSnap = await getDoc(userDocRef);
 
                   if (!userDocSnap.exists()) {
+                      const usersCollectionRef = collection(firestore, 'users');
+                      const q = query(usersCollectionRef);
+                      const allUsersSnapshot = await getDocs(q);
+                      const isFirstUser = allUsersSnapshot.empty;
+
                       const nameParts = firebaseUser.displayName?.split(' ') || [firebaseUser.email?.split('@')[0] || 'Utilisateur', ''];
                       const firstName = nameParts.shift() || 'Nouveau';
                       const lastName = nameParts.join(' ') || 'Utilisateur';
@@ -106,11 +111,15 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                           firstName: firstName,
                           lastName: lastName,
                           email: firebaseUser.email,
-                          role: 'membre', // Default role for any new user
+                          role: 'conseiller', // First user is always a conseiller
                           dateJoined: new Date().toISOString(),
                           lastSignInTime: new Date().toISOString(),
                           phone: firebaseUser.phoneNumber || '',
                       };
+
+                      if (isFirstUser) {
+                        newUserDoc.permissions = ['FULLACCESS'];
+                      }
                       
                       setDocumentNonBlocking(userDocRef, newUserDoc);
                       
@@ -216,3 +225,5 @@ export function useMemoFirebase<T>(factory: () => T, deps: DependencyList): T | 
   
   return memoized;
 }
+
+    

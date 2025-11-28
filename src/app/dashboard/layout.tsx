@@ -135,8 +135,8 @@ export default function DashboardLayout({
     }
   }, [isUserLoading, isUserDataLoading, user, router]);
 
-  const isSuperAdmin = user?.email === 'roussey.romain@gmail.com';
-  const isConseiller = userData?.role === 'conseiller' || isSuperAdmin;
+  const hasAdminAccess = userData?.permissions?.includes('FULLACCESS');
+  const isConseiller = userData?.role === 'conseiller';
   
   const activeProfilePath = profileMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -182,9 +182,9 @@ export default function DashboardLayout({
     );
   }
 
-  const showPrisme = isSuperAdmin || (isConseiller && userPlan?.hasPrismeAccess);
-  const showVitae = isSuperAdmin || (isConseiller && userPlan?.hasVitaeAccess);
-  const showAura = isSuperAdmin || (isConseiller && userPlan?.hasAuraAccess);
+  const showPrisme = hasAdminAccess || (isConseiller && userPlan?.hasPrismeAccess);
+  const showVitae = hasAdminAccess || (isConseiller && userPlan?.hasVitaeAccess);
+  const showAura = hasAdminAccess || (isConseiller && userPlan?.hasAuraAccess);
 
 
   return (
@@ -298,7 +298,7 @@ export default function DashboardLayout({
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
-                 {isSuperAdmin && (
+                 {hasAdminAccess && (
                     <SidebarMenuItem>
                         <Link href="/admin">
                             <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
@@ -342,3 +342,5 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+    
