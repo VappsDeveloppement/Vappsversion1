@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -477,10 +476,12 @@ type Training = {
 function TrainingManager() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingTraining, setEditingTraining] = useState<Training | null>(null);
-    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const imageInputRef = useRef<HTMLInputElement>(null);
 
     const categoriesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -500,7 +501,6 @@ function TrainingManager() {
         if (isSheetOpen) {
             if (editingTraining) {
                 form.reset(editingTraining);
-                setImagePreview(editingTraining.imageUrl || null);
             } else {
                  form.reset({
                     title: '',
@@ -513,7 +513,6 @@ function TrainingManager() {
                     type: 'internal',
                     externalUrl: ''
                 });
-                setImagePreview(null);
             }
         }
     }, [isSheetOpen, editingTraining, form]);
@@ -533,9 +532,34 @@ function TrainingManager() {
         toast({ title: 'Formation supprimée' });
     };
 
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !storage || !user) return;
+
+        setIsUploading(true);
+        toast({ title: 'Téléversement en cours...' });
+        
+        const filePath = `FormationImages/${file.name}`;
+        const fileRef = ref(storage, filePath);
+
+        try {
+            await uploadBytes(fileRef, file);
+            const downloadURL = await getDownloadURL(fileRef);
+            form.setValue('imageUrl', downloadURL, { shouldValidate: true });
+            toast({ title: 'Image téléversée' });
+        } catch (error) {
+            console.error("Image Upload Error:", error);
+            toast({ title: "Erreur de téléversement", variant: 'destructive' });
+        } finally {
+            setIsUploading(false);
+            if(imageInputRef.current) imageInputRef.current.value = "";
+        }
+    };
+
+
     const onSubmit = (data: TrainingFormData) => {
         if (!user) return;
-        const trainingData = { authorId: user.uid, ...data, imageUrl: imagePreview };
+        const trainingData = { authorId: user.uid, ...data };
         if (editingTraining) {
             setDocumentNonBlocking(doc(firestore, 'trainings', editingTraining.id), trainingData, { merge: true });
             toast({ title: 'Formation mise à jour' });
@@ -545,16 +569,9 @@ function TrainingManager() {
         }
         setIsSheetOpen(false);
     };
-    
-    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const base64 = await toBase64(file);
-            setImagePreview(base64);
-        }
-    };
-    
+        
     const watchTrainingType = form.watch("type");
+    const watchImageUrl = form.watch("imageUrl");
 
     return (
         <Card>
@@ -633,11 +650,13 @@ function TrainingManager() {
                                     <div>
                                         <Label>Image de couverture</Label>
                                         <div className="flex items-center gap-4 mt-2">
-                                            {imagePreview ? <Image src={imagePreview} alt="Aperçu" width={160} height={90} className="rounded-md object-cover" /> : <div className="w-40 h-[90px] bg-muted rounded-md" />}
-                                            <input type="file" id="training-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
+                                            {watchImageUrl ? <Image src={watchImageUrl} alt="Aperçu" width={160} height={90} className="rounded-md object-cover border" /> : <div className="w-40 h-[90px] bg-muted rounded-md" />}
+                                            <input type="file" ref={imageInputRef} onChange={handleImageUpload} className="hidden" accept="image/*" />
                                             <div className="flex flex-col gap-2">
-                                                <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('training-image-upload')?.click()}><Upload className="mr-2 h-4 w-4" /> Uploader</Button>
-                                                {imagePreview && <Button type="button" variant="destructive" size="sm" onClick={() => setImagePreview(null)}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
+                                                <Button type="button" variant="outline" size="sm" onClick={() => imageInputRef.current?.click()} disabled={isUploading}>
+                                                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin"/> : <Upload className="mr-2 h-4 w-4" />} Uploader
+                                                </Button>
+                                                {watchImageUrl && <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue('imageUrl', null)}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</Button>}
                                             </div>
                                         </div>
                                     </div>
@@ -733,6 +752,6 @@ export default function ElearningPage() {
         </div>
     );
 }
-    
 
+    
     
