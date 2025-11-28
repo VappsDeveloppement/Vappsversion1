@@ -18,7 +18,7 @@ import type { Plan as Training } from "./plan-management";
 import { useAgency } from "@/context/agency-provider";
 import { Badge } from "../ui/badge";
 
-type TrainingWithCategory = Training & { categoryName?: string, type?: 'internal' | 'external', externalUrl?: string };
+type TrainingWithCategory = Training & { categoryName?: string, type?: 'internal' | 'external', externalUrl?: string, financingOptions?: string[] };
 type Category = { id: string; name: string; };
 
 interface TrainingCatalogSectionProps {
@@ -53,7 +53,7 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
         );
     }, [firestore, isClient, counselorId]);
 
-    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<TrainingWithCategory>(trainingsQuery);
     
     const categoriesQuery = useMemoFirebase(() => {
         if (!isClient || !counselorId) return null;
@@ -124,7 +124,7 @@ export function TrainingCatalogSection({ sectionData, counselorId, primaryColor:
                         <CarouselContent>
                             {filteredTrainings.map((training) => {
                                 const isExternal = training.type === 'external';
-                                const linkHref = isExternal ? (training.externalUrl || '#') : `/dashboard/e-learning/path/${training.id}`;
+                                const linkHref = isExternal ? (training.externalUrl || '#') : `/training/${training.id}`;
                                 const linkTarget = isExternal ? '_blank' : '_self';
                                 
                                 return (
