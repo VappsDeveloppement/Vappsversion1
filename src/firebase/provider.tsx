@@ -9,6 +9,7 @@ import { FirebaseStorage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
+import { setDocumentNonBlocking } from './non-blocking-updates';
 
 // Internal state for user authentication
 interface UserAuthState {
@@ -121,11 +122,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                           publicProfileName: publicProfileName,
                       };
                       
-                      await setDoc(userDocRef, newUserDoc);
+                      setDocumentNonBlocking(userDocRef, newUserDoc);
                       
                   } else {
                       const lastSignInTime = new Date().toISOString();
-                      await setDoc(userDocRef, { lastSignInTime }, { merge: true });
+                      setDocumentNonBlocking(userDocRef, { lastSignInTime }, { merge: true });
                   }
               } catch (error) {
                   console.error("Error handling user document:", error);
