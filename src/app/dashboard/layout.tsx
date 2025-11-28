@@ -242,6 +242,26 @@ export default function DashboardLayout({
                             </Link>
                         </SidebarMenuItem>
                     )}
+                    {showVitae && (
+                        <SidebarMenuItem>
+                            <Link href="/dashboard/vitae">
+                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/vitae")}>
+                                <Bot />
+                                <span>Vitae</span>
+                            </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )}
+                     {showAura && (
+                        <SidebarMenuItem>
+                            <Link href="/dashboard/aura">
+                            <SidebarMenuButton isActive={pathname.startsWith("/dashboard/aura")}>
+                                <Wand />
+                                <span>Aura</span>
+                            </SidebarMenuButton>
+                            </Link>
+                        </SidebarMenuItem>
+                    )}
                  </>
                )}
               {(isConseiller) && (
@@ -342,5 +362,3 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
-
-    

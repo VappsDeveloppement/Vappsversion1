@@ -2581,17 +2581,6 @@ export default function PersonalizationPage() {
                                          </Button>
                                       </section>
                                     </div>
-                                ) : section.id === 'trainingCatalog' ? (
-                                    <div className="space-y-6">
-                                        <div className="space-y-2">
-                                            <Label htmlFor="training-catalog-title">Titre</Label>
-                                            <Input id="training-catalog-title" value={settings.trainingCatalogSection?.title} onChange={e => handleTrainingCatalogSectionChange('title', e.target.value)} placeholder="Catalogue de Formations" />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <Label htmlFor="training-catalog-description">Description</Label>
-                                            <Textarea id="training-catalog-description" value={settings.trainingCatalogSection?.description} onChange={e => handleTrainingCatalogSectionChange('description', e.target.value)} placeholder="Découvrez toutes nos formations disponibles..." />
-                                        </div>
-                                    </div>
                                 ) : (
                                     <p className="text-sm text-muted-foreground">Aucun paramètre de personnalisation pour cette section.</p>
                                 )}
@@ -2790,4 +2779,3 @@ export default function PersonalizationPage() {
     </div>
   );
 }
-

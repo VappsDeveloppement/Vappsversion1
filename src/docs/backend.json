@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -33,6 +32,11 @@
           "type": "string",
           "enum": ["superadmin", "conseiller", "membre", "moderateur"],
           "description": "The global role of the user on the platform. 'superadmin' has all rights. 'conseiller' is a coach. 'membre' is a standard user/client. 'moderateur' has moderation rights."
+        },
+        "permissions": {
+            "type": "array",
+            "description": "A list of special permissions granted to the user, like 'FULLACCESS' for admin rights.",
+            "items": { "type": "string" }
         },
         "counselorIds": {
             "type": "array",
@@ -1205,9 +1209,6 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "pathId": { "type": "string" },
-        "counselorId": { "type": "string" },
-        "userName": { "type": "string" },
-        "pathTitle": { "type": "string" },
         "enrolledAt": { "type": "string", "format": "date-time" },
         "progress": {
           "type": "object",
@@ -1482,26 +1483,8 @@
           "schema": { "$ref": "#/entities/Training" },
           "description": "Stores the main information for a training course."
         }
-      },
-      {
-        "path": "/learning_paths/{pathId}",
-        "definition": {
-          "entityName": "LearningPath",
-          "schema": { "$ref": "#/entities/LearningPath" },
-          "description": "Stores structured learning paths created by counselors."
-        }
-      },
-      {
-        "path": "/path_enrollments/{enrollmentId}",
-        "definition": {
-          "entityName": "PathEnrollment",
-          "schema": { "$ref": "#/entities/PathEnrollment" },
-          "description": "Tracks a user's enrollment and progress in a learning path."
-        }
       }
     ],
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
-    
