@@ -1,27 +1,28 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
-import { useDoc, useMemoFirebase, useCollection, setDocumentNonBlocking, useUser } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
-import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, PlusCircle, Trash2, GripVertical, FilePlus, X } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
+import { useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import { useDoc, useMemoFirebase, useCollection, setDocumentNonBlocking, useUser } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { useToast } from '@/hooks/use-toast';
+import { Skeleton } from '@/components/ui/skeleton';
+import { ArrowLeft, PlusCircle, Trash2, GripVertical, FilePlus, X } from 'lucide-react';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Checkbox } from '@/components/ui/checkbox';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+
 
 const parcoursSchema = z.object({
   prerequisites: z.array(z.string()).optional(),
@@ -287,8 +288,9 @@ export default function TrainingCurriculumPage() {
                     </DragDropContext>
                 </CardContent>
             </Card>
-
         </form>
         </Form>
     );
 }
+
+    
