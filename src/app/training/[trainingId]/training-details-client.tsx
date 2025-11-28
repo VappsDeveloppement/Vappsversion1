@@ -1,18 +1,101 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { Calendar, Clock, Euro, Link as LinkIcon, BookOpen, User, Check, List, Target } from 'lucide-react';
+import { Calendar, Clock, Euro, Link as LinkIcon, BookOpen, User, Check, List, Target, Send, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Badge } from '@/components/ui/badge';
 import type { Training, TrainingModule } from '@/app/dashboard/e-learning/[trainingId]/page';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
+import { useFirestore } from '@/firebase/provider';
+import { addDocumentNonBlocking } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 interface TrainingDetailsClientProps {
     training: Training;
     modules: TrainingModule[];
+}
+
+const requestSchema = z.object({
+  name: z.string().min(1, "Le nom est requis."),
+  email: z.string().email("L'email est invalide."),
+  phone: z.string().optional(),
+  message: z.string().optional(),
+});
+type RequestFormData = z.infer<typeof requestSchema>;
+
+function TrainingRegistrationForm({ training }: { training: Training }) {
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isLoading, setIsLoading] = useState(false);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    
+    const form = useForm<RequestFormData>({
+        resolver: zodResolver(requestSchema),
+        defaultValues: { name: '', email: '', phone: '', message: ''},
+    });
+    
+    const onSubmit = async (data: RequestFormData) => {
+        setIsLoading(true);
+        try {
+            await addDocumentNonBlocking(collection(firestore, 'training_requests'), {
+                ...data,
+                trainingId: training.id,
+                trainingTitle: training.title,
+                counselorId: training.authorId,
+                status: 'new',
+                createdAt: new Date().toISOString(),
+            });
+            toast({ title: 'Demande envoyée', description: 'Votre demande a bien été envoyée. Le conseiller vous recontactera prochainement.' });
+            setIsDialogOpen(false);
+            form.reset();
+        } catch (error) {
+            console.error(error);
+            toast({ title: 'Erreur', description: 'Une erreur est survenue.', variant: 'destructive' });
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+    return (
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+                <Button className="w-full">
+                    Demander plus d'informations
+                </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                    <DialogTitle>Demande d'information</DialogTitle>
+                    <DialogDescription>Pour la formation "{training.title}"</DialogDescription>
+                </DialogHeader>
+                 <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                        <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom complet</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Téléphone (optionnel)</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="message" render={({ field }) => (<FormItem><FormLabel>Votre message (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                         <DialogFooter>
+                            <Button type="submit" className="w-full" disabled={isLoading}>
+                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Envoyer la demande
+                            </Button>
+                        </DialogFooter>
+                    </form>
+                </Form>
+            </DialogContent>
+        </Dialog>
+    );
 }
 
 export function TrainingDetailsClient({ training, modules }: TrainingDetailsClientProps) {
@@ -105,14 +188,12 @@ export function TrainingDetailsClient({ training, modules }: TrainingDetailsClie
                         )}
                     </ul>
                 </div>
-                 <Button asChild className="w-full">
-                    <Link href="/application">
-                        S'inscrire
-                    </Link>
-                </Button>
+                 <TrainingRegistrationForm training={training} />
             </div>
         </div>
       </div>
     </div>
   );
 }
+
+    

@@ -22,6 +22,7 @@ import {
   Bot,
   Wand,
   BookOpen,
+  GraduationCap,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -232,6 +233,14 @@ export default function DashboardLayout({
                         </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
+                     <SidebarMenuItem>
+                        <Link href="/dashboard/e-learning/requests">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/e-learning/requests")}>
+                            <GraduationCap />
+                            <span>Demandes Formations</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
                     {showPrisme && (
                         <SidebarMenuItem>
                             <Link href="/dashboard/prisme">
@@ -362,3 +371,5 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+    

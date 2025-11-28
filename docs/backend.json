@@ -1107,6 +1107,24 @@
         },
         "required": ["id", "name", "email", "liveDate", "wantsContact", "status", "createdAt", "counselorId"]
     },
+    "TrainingRequest": {
+        "title": "Training Request",
+        "type": "object",
+        "description": "A request from a user for more information about a training.",
+        "properties": {
+            "id": { "type": "string" },
+            "trainingId": { "type": "string" },
+            "trainingTitle": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" },
+            "message": { "type": "string" },
+            "status": { "type": "string", "enum": ["new", "processed"], "default": "new" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["id", "trainingId", "trainingTitle", "counselorId", "name", "email", "message", "status", "createdAt"]
+    },
     "TrainingCategory": {
       "title": "Training Category",
       "type": "object",
@@ -1131,14 +1149,15 @@
         "duration": { "type": "number", "description": "Estimated duration in hours." },
         "price": { "type": "number" },
         "isPublic": { "type": "boolean", "default": false },
+        "isPlatformPublic": { "type": "boolean", "default": false },
         "imageUrl": { "type": "string", "format": "uri" },
         "type": { "type": "string", "enum": ["internal", "external"] },
         "externalUrl": { "type": "string", "format": "uri" },
         "prerequisites": { "type": "array", "items": { "type": "string" } },
         "entryLevel": { "type": "array", "items": { "type": "string" } },
         "exitLevel": { "type": "array", "items": { "type": "string" } },
-        "moduleIds": { "type": "array", "items": { "type": "string" } },
-        "financingOptions": { "type": "array", "items": { "type": "string" } }
+        "financingOptions": { "type": "array", "items": { "type": "string" } },
+        "moduleIds": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "title", "authorId", "categoryId", "type"]
     },
@@ -1293,6 +1312,14 @@
             "entityName": "LiveFollowUpRequest",
             "schema": { "$ref": "#/entities/LiveFollowUpRequest" },
             "description": "Stores follow-up requests from participants after a live Prisme session."
+        }
+      },
+      {
+        "path": "/training_requests/{requestId}",
+        "definition": {
+            "entityName": "TrainingRequest",
+            "schema": { "$ref": "#/entities/TrainingRequest" },
+            "description": "Stores user requests for information about specific trainings."
         }
       },
       {
@@ -1491,3 +1518,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    
