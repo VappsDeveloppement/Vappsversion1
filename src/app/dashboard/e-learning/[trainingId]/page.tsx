@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
@@ -186,15 +186,34 @@ export default function TrainingCurriculumPage() {
         doc.setFont('helvetica', 'bold');
         doc.text(trainingTitle, 15, 20);
 
+        let y = 30;
+
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100);
-        doc.text(`Proposé par ${counselorName}`, 15, 28);
-        if (fullAddress) doc.text(fullAddress, 15, 33);
-        if (counselorData?.email) doc.text(counselorData.email, 15, 38);
-        if (counselorData?.phone) doc.text(counselorData.phone, 15, 43);
 
-        let y = 50;
+        if (training?.description) {
+            const descriptionLines = doc.splitTextToSize(training.description, 180);
+            doc.text(descriptionLines, 15, y);
+            y += descriptionLines.length * 5 + 5;
+        }
+
+        doc.text(`Proposé par ${counselorName}`, 15, y);
+        y += 5;
+        if (fullAddress) {
+            doc.text(fullAddress, 15, y);
+            y += 5;
+        }
+        if (counselorData?.email) {
+            doc.text(counselorData.email, 15, y);
+            y += 5;
+        }
+        if (counselorData?.phone) {
+            doc.text(counselorData.phone, 15, y);
+            y+= 5;
+        }
+
+        y += 5;
 
         doc.setDrawColor(230);
         doc.line(15, y, 195, y);
