@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -31,6 +30,7 @@ import Link from 'next/link';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Switch } from '@/components/ui/switch';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { Slider } from '@/components/ui/slider';
 
 
 const categorySchema = z.object({
@@ -930,5 +930,8 @@ export default function ElearningPage() {
 }
 
     
+
+    
+
 
     
