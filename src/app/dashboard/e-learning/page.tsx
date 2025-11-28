@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -14,7 +15,7 @@ import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose, SheetDescription } from "@/components/ui/sheet";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -204,7 +205,7 @@ function ModuleManager() {
     const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
     const [moduleToDelete, setModuleToDelete] = useState<TrainingModule | null>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const pdfInputRef = useRef<HTMLInputElement>(null);
+    const pdfInputRef = React.useRef<HTMLInputElement>(null);
 
     const modulesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -482,7 +483,7 @@ function TrainingManager() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingTraining, setEditingTraining] = useState<Training | null>(null);
     const [isUploading, setIsUploading] = useState(false);
-    const imageInputRef = useRef<HTMLInputElement>(null);
+    const imageInputRef = React.useRef<HTMLInputElement>(null);
 
     const categoriesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -612,7 +613,7 @@ function TrainingManager() {
                                                 <TooltipProvider>
                                                     <Tooltip>
                                                         <TooltipTrigger asChild>
-                                                            <Link href={`/dashboard/e-learning/${training.id}`} passHref>
+                                                            <Link href={`/dashboard/e-learning/path/${training.id}`} passHref>
                                                                 <Button variant="ghost" size="icon">
                                                                     <FileText className="h-4 w-4"/>
                                                                 </Button>
@@ -922,3 +923,5 @@ export default function ElearningPage() {
         </div>
     );
 }
+
+    
