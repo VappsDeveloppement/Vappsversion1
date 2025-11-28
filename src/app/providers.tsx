@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, ReactNode } from 'react';
+import * as React from 'react';
 import { AgencyProvider } from "@/context/agency-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseProvider } from '@/firebase/provider';
@@ -19,10 +19,10 @@ interface FirebaseServices {
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
-    const [firebaseServices, setFirebaseServices] = useState<FirebaseServices | null>(null);
-    const [error, setError] = useState<Error | null>(null);
+    const [firebaseServices, setFirebaseServices] = React.useState<FirebaseServices | null>(null);
+    const [error, setError] = React.useState<Error | null>(null);
 
-    useEffect(() => {
+    React.useEffect(() => {
       const init = async () => {
         try {
           const services = await initializeFirebase();
