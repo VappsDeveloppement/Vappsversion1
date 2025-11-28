@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -28,6 +29,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import Link from 'next/link';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Switch } from '@/components/ui/switch';
 
 
 const categorySchema = z.object({
@@ -701,7 +703,7 @@ function TrainingManager() {
                                     )}/>
                                 </div>
                                 </ScrollArea>
-                                <SheetFooter className="pt-6 border-t mt-4">
+                                <SheetFooter className="pt-4 border-t mt-4">
                                     <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                     <Button type="submit">Sauvegarder</Button>
                                 </SheetFooter>
@@ -925,5 +927,7 @@ export default function ElearningPage() {
         </div>
     );
 }
+
+    
 
     
