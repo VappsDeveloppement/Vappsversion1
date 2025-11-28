@@ -176,14 +176,10 @@ export default function EventsPage() {
   }, [userData, personalization]);
 
   const eventsQuery = useMemoFirebase(() => {
-    if (!user || !userData) return null;
-
-    if (userData.role === 'superadmin' && agency) {
-        return query(collection(firestore, 'events'), where('counselorId', 'in', [user.uid, agency.id]));
-    }
-    
+    if (!user) return null;
     return query(collection(firestore, 'events'), where('counselorId', '==', user.uid));
-  }, [user, userData, firestore, agency]);
+  }, [user, firestore]);
+
   const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
   const form = useForm<EventFormData>({
@@ -242,11 +238,9 @@ export default function EventsPage() {
     if (!user) return;
     setIsSubmitting(true);
     
-    const creatorId = userData?.role === 'superadmin' ? (agency?.id || user.uid) : user.uid;
-
     const eventData: Partial<Event> = {
       ...data,
-      counselorId: creatorId,
+      counselorId: user.uid, // Always assign to the current user
       imageUrl: imagePreview,
     };
     
