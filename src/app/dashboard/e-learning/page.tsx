@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -9,8 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, Wand2, X, Video, FileText, Upload, Link as LinkIcon, BookOpen, ScrollText, Users, CheckCircle, EyeOff } from 'lucide-react';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -197,6 +199,7 @@ type TrainingModule = ModuleFormData & {
 function ModuleManager() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -476,6 +479,7 @@ type Training = {
 function TrainingManager() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingTraining, setEditingTraining] = useState<Training | null>(null);
@@ -620,7 +624,7 @@ function TrainingManager() {
                                                         <TooltipTrigger asChild>
                                                             <Link href={`/dashboard/e-learning/path/${training.id}`} passHref>
                                                                 <Button variant="ghost" size="icon">
-                                                                    <FileText className="h-4 w-4"/>
+                                                                    <ScrollText className="h-4 w-4"/>
                                                                 </Button>
                                                             </Link>
                                                         </TooltipTrigger>
@@ -820,7 +824,7 @@ function MemberManagement() {
                                 <div className="space-y-2">
                                     <Label>Client</Label>
                                     <Select onValueChange={(value) => setSelectedClient(clients?.find(c => c.id === value) || null)} disabled={areClientsLoading}>
-                                        <SelectTrigger><SelectValue placeholder="Sélectionnez un client" /></SelectTrigger>
+                                        <SelectTrigger><SelectValue placeholder="Sélectionner un client" /></SelectTrigger>
                                         <SelectContent>
                                             {clients?.map(client => (
                                                 <SelectItem key={client.id} value={client.id}>{client.firstName} {client.lastName}</SelectItem>
@@ -831,7 +835,7 @@ function MemberManagement() {
                                 <div className="space-y-2">
                                     <Label>Formation</Label>
                                     <Select onValueChange={(value) => setSelectedTraining(trainings?.find(t => t.id === value) || null)} disabled={areTrainingsLoading}>
-                                        <SelectTrigger><SelectValue placeholder="Sélectionnez une formation" /></SelectTrigger>
+                                        <SelectTrigger><SelectValue placeholder="Sélectionner une formation" /></SelectTrigger>
                                         <SelectContent>
                                             {trainings?.map(training => (
                                                 <SelectItem key={training.id} value={training.id}>{training.title}</SelectItem>
@@ -928,10 +932,3 @@ export default function ElearningPage() {
         </div>
     );
 }
-
-    
-
-    
-
-
-    
