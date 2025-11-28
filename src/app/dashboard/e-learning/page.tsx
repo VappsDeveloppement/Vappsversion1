@@ -3,8 +3,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { BookCopy, CheckSquare, Users, Presentation, ScrollText, PlusCircle, Edit, Trash2, Loader2, Video, FileText } from "lucide-react";
-import React, { useState, useEffect } from 'react';
+import { BookCopy, CheckSquare, Users, Presentation, ScrollText, PlusCircle, Edit, Trash2, Loader2, Video, FileText, Upload } from "lucide-react";
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -15,7 +15,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useStorage } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,6 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Slider } from "@/components/ui/slider";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Schemas
 const questionSchema = z.object({
@@ -54,15 +55,26 @@ type TrainingModule = ModuleFormData & {
     counselorId: string;
 };
 
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+
 
 function ModuleManager() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingModule, setEditingModule] = useState<TrainingModule | null>(null);
     const [moduleToDelete, setModuleToDelete] = useState<TrainingModule | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const pdfInputRef = useRef<HTMLInputElement>(null);
 
     const modulesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -94,6 +106,30 @@ function ModuleManager() {
     
     const handleNew = () => { setEditingModule(null); setIsSheetOpen(true); };
     const handleEdit = (mod: TrainingModule) => { setEditingModule(mod); setIsSheetOpen(true); };
+
+    const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !storage) return;
+
+        setIsUploading(true);
+        toast({ title: 'Téléversement en cours...', description: 'Veuillez patienter.' });
+        
+        const filePath = `Formation/${Date.now()}-${file.name}`;
+        const fileRef = ref(storage, filePath);
+
+        try {
+            const snapshot = await uploadBytes(fileRef, file);
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            form.setValue('pdfUrl', downloadURL);
+            toast({ title: 'Téléversement réussi', description: 'Le fichier PDF a été ajouté.' });
+        } catch (error) {
+            console.error("PDF Upload Error:", error);
+            toast({ title: 'Erreur de téléversement', description: "Impossible d'envoyer le fichier.", variant: 'destructive' });
+        } finally {
+            setIsUploading(false);
+        }
+    }
+
 
     const onSubmit = (data: ModuleFormData) => {
         if (!user) return;
@@ -162,7 +198,24 @@ function ModuleManager() {
                                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du module</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                         <FormField control={form.control} name="videoUrl" render={({ field }) => (<FormItem><FormLabel>URL Vidéo (Optionnel)</FormLabel><FormControl><div className="flex items-center gap-2"><Video className="h-4 w-4 text-muted-foreground"/><Input {...field} placeholder="https://youtube.com/embed/..."/></div></FormControl><FormMessage/></FormItem>)}/>
-                                        <FormField control={form.control} name="pdfUrl" render={({ field }) => (<FormItem><FormLabel>URL PDF (Optionnel)</FormLabel><FormControl><div className="flex items-center gap-2"><FileText className="h-4 w-4 text-muted-foreground"/><Input {...field} placeholder="https://.../document.pdf"/></div></FormControl><FormMessage/></FormItem>)}/>
+                                        
+                                        <FormField control={form.control} name="pdfUrl" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Document PDF (Optionnel)</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center gap-2">
+                                                        <FileText className="h-4 w-4 text-muted-foreground"/>
+                                                        <Input {...field} placeholder="URL du PDF..." disabled />
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
+                                                          {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
+                                                        </Button>
+                                                        <input type="file" ref={pdfInputRef} onChange={handlePdfUpload} className="hidden" accept="application/pdf" />
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}/>
+
                                         <FormField control={form.control} name="content" render={({ field }) => (<FormItem><FormLabel>Contenu du cours</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange}/></FormControl><FormMessage/></FormItem>)}/>
                                         
                                         <div className="space-y-6 pt-6 border-t">
@@ -189,7 +242,7 @@ function ModuleManager() {
                                                                         <FormLabel>Options (cochez la bonne réponse)</FormLabel>
                                                                         <FormControl>
                                                                             <RadioGroup onValueChange={(value) => field.onChange(Number(value))} value={String(field.value)} className="space-y-2">
-                                                                                {form.getValues(`quiz.questions.${qIndex}.options`).map((_, oIndex) => (
+                                                                                {form.getValues(`quiz.questions.${qIndex}.options`)?.map((_, oIndex) => (
                                                                                     <div key={oIndex} className="flex items-center gap-2">
                                                                                          <RadioGroupItem value={String(oIndex)} id={`q${qIndex}-o${oIndex}`} />
                                                                                         <FormField control={form.control} name={`quiz.questions.${qIndex}.options.${oIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem>)}/>
@@ -309,5 +362,3 @@ export default function ElearningPage() {
         </div>
     );
 }
-
-    
