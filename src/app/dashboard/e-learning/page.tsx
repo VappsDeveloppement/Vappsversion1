@@ -175,7 +175,7 @@ const questionSchema = z.object({
 });
 
 const quizSchema = z.object({
-  title: z.string().min(1, "Le titre du quiz est requis."),
+  title: z.string().optional(),
   successPercentage: z.number().min(0).max(100).default(80),
   questions: z.array(questionSchema).optional(),
 });
