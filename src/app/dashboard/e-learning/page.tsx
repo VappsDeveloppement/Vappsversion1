@@ -203,8 +203,8 @@ function ModuleManager() {
                                                         <Button type="button" variant="outline" size="icon" className="h-10 w-10" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
                                                           {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
                                                         </Button>
-                                                        {field.value && (
-                                                            <a href={field.value} target="_blank" rel="noopener noreferrer">
+                                                        {watchPdfUrl && (
+                                                            <a href={watchPdfUrl} target="_blank" rel="noopener noreferrer">
                                                                 <Button type="button" variant="outline" size="icon" className="h-10 w-10">
                                                                     <LinkIcon className="h-4 w-4" />
                                                                 </Button>
@@ -363,5 +363,3 @@ export default function ElearningPage() {
         </div>
     );
 }
-
-    
