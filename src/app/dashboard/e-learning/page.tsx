@@ -446,9 +446,6 @@ const trainingFormSchema = z.object({
   isPublic: z.boolean().default(false),
   type: z.enum(['internal', 'external']).default('internal'),
   externalUrl: z.string().url("Veuillez entrer une URL valide.").optional().or(z.literal('')),
-  prerequisites: z.array(z.string()).optional(),
-  entryLevel: z.array(z.string()).optional(),
-  exitLevel: z.array(z.string()).optional(),
 }).refine((data) => {
     if (data.type === 'external' && !data.externalUrl) {
         return false;
@@ -474,51 +471,7 @@ type Training = {
     isPublic?: boolean;
     type?: 'internal' | 'external';
     externalUrl?: string;
-    prerequisites?: string[];
-    entryLevel?: string[];
-    exitLevel?: string[];
 };
-
-function TagInput({ value, onChange, placeholder }: { value: string[], onChange: (value: string[]) => void, placeholder: string }) {
-    const [inputValue, setInputValue] = useState('');
-
-    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && inputValue.trim()) {
-            e.preventDefault();
-            const currentValues = value || [];
-            if (!currentValues.includes(inputValue.trim())) {
-                onChange([...currentValues, inputValue.trim()]);
-            }
-            setInputValue('');
-        }
-    };
-
-    const removeTag = (tagToRemove: string) => {
-        onChange((value || []).filter(tag => tag !== tagToRemove));
-    };
-
-    return (
-        <div>
-            <div className="flex flex-wrap gap-2 mb-2">
-                {(value || []).map(tag => (
-                    <Badge key={tag} variant="secondary">
-                        {tag}
-                        <button type="button" onClick={() => removeTag(tag)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                          <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                        </button>
-                    </Badge>
-                ))}
-            </div>
-            <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder={placeholder}
-            />
-             <p className="text-xs text-muted-foreground mt-1">Appuyez sur Entrée pour ajouter un tag.</p>
-        </div>
-    );
-}
 
 function TrainingManager() {
     const { user } = useUser();
@@ -559,9 +512,6 @@ function TrainingManager() {
                     isPublic: false,
                     type: 'internal',
                     externalUrl: '',
-                    prerequisites: [],
-                    entryLevel: [],
-                    exitLevel: [],
                 });
             }
         }
@@ -658,6 +608,7 @@ function TrainingManager() {
                                             <TableCell>{training.price ? `${training.price}€` : '-'}</TableCell>
                                             <TableCell>{training.isPublic ? <CheckCircle className="h-5 w-5 text-green-500" /> : <EyeOff className="h-5 w-5 text-muted-foreground" />}</TableCell>
                                             <TableCell className="text-right">
+                                                <Button variant="ghost" size="icon" disabled><FileText className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(training)}><Edit className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(training.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                             </TableCell>
@@ -696,11 +647,6 @@ function TrainingManager() {
                                     <div className="grid grid-cols-2 gap-4">
                                         <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (heures)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    </div>
-                                    <div className="space-y-4">
-                                        <FormField control={form.control} name="prerequisites" render={({ field }) => ( <FormItem><FormLabel>Prérequis</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un prérequis..."/></FormControl><FormMessage/></FormItem> )}/>
-                                        <FormField control={form.control} name="entryLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau d'entrée</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..."/></FormControl><FormMessage/></FormItem> )}/>
-                                        <FormField control={form.control} name="exitLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau de sortie</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..."/></FormControl><FormMessage/></FormItem> )}/>
                                     </div>
                                     <div>
                                         <Label>Image de couverture</Label>

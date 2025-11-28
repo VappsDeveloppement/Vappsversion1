@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -1126,10 +1127,7 @@
         "isPublic": { "type": "boolean", "default": false },
         "imageUrl": { "type": "string", "format": "uri" },
         "type": { "type": "string", "enum": ["internal", "external"] },
-        "externalUrl": { "type": "string", "format": "uri" },
-        "prerequisites": { "type": "array", "items": { "type": "string" }, "description": "List of prerequisites for the training." },
-        "entryLevel": { "type": "array", "items": { "type": "string" }, "description": "Entry skill level for the training." },
-        "exitLevel": { "type": "array", "items": { "type": "string" }, "description": "Exit skill level after the training." }
+        "externalUrl": { "type": "string", "format": "uri" }
       },
       "required": ["id", "title", "authorId", "categoryId", "type"]
     },
