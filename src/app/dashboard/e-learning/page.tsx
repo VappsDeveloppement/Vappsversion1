@@ -30,6 +30,8 @@ import { Slider } from '@/components/ui/slider';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import Link from 'next/link';
 
 
 const categorySchema = z.object({
@@ -608,7 +610,20 @@ function TrainingManager() {
                                             <TableCell>{training.price ? `${training.price}€` : '-'}</TableCell>
                                             <TableCell>{training.isPublic ? <CheckCircle className="h-5 w-5 text-green-500" /> : <EyeOff className="h-5 w-5 text-muted-foreground" />}</TableCell>
                                             <TableCell className="text-right">
-                                                <Button variant="ghost" size="icon" disabled><FileText className="h-4 w-4"/></Button>
+                                                <TooltipProvider>
+                                                    <Tooltip>
+                                                        <TooltipTrigger asChild>
+                                                            <Link href={`/dashboard/e-learning/${training.id}`} passHref>
+                                                                <Button variant="ghost" size="icon">
+                                                                    <FileText className="h-4 w-4"/>
+                                                                </Button>
+                                                            </Link>
+                                                        </TooltipTrigger>
+                                                        <TooltipContent>
+                                                            <p>Gérer le parcours</p>
+                                                        </TooltipContent>
+                                                    </Tooltip>
+                                                </TooltipProvider>
                                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(training)}><Edit className="h-4 w-4"/></Button>
                                                 <Button variant="ghost" size="icon" onClick={() => handleDelete(training.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                             </TableCell>
@@ -678,7 +693,7 @@ function TrainingManager() {
                                     )}
                                     <FormField control={form.control} name="isPublic" render={({ field }) => (
                                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
-                                            <div className="space-y-1 leading-none"><FormLabel>Formation Publique</FormLabel></div>
+                                            <div className="space-y-1 leading-none"><FormLabel>Prestation Publique</FormLabel></div>
                                             <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                                         </FormItem>
                                     )}/>
@@ -696,6 +711,45 @@ function TrainingManager() {
         </Card>
     );
 }
+
+const TagInput = ({ value, onChange }: { value: string[]; onChange: (value: string[]) => void }) => {
+    const [inputValue, setInputValue] = useState('');
+
+    const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inputValue.trim()) {
+            e.preventDefault();
+            if (!value.includes(inputValue.trim())) {
+                onChange([...value, inputValue.trim()]);
+            }
+            setInputValue('');
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        onChange(value.filter(tag => tag !== tagToRemove));
+    };
+
+    return (
+        <div>
+            <div className="flex flex-wrap gap-2 mb-2">
+                {(value || []).map(tag => (
+                    <Badge key={tag} variant="secondary">
+                        {tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
+                    </Badge>
+                ))}
+            </div>
+            <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={addTag}
+                placeholder="Ajouter et appuyer sur Entrée..."
+            />
+        </div>
+    );
+};
 
 
 export default function ElearningPage() {
