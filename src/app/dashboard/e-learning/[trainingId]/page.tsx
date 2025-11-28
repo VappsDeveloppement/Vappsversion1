@@ -179,18 +179,26 @@ export default function TrainingCurriculumPage() {
         const doc = new jsPDF();
         const counselorName = counselorData?.commercialName || `${counselorData?.firstName} ${counselorData?.lastName}` || "Conseiller";
         const trainingTitle = training?.title || "Programme de Formation";
+        const fullAddress = [counselorData?.address, counselorData?.zipCode, counselorData?.city].filter(Boolean).join(', ');
         
+        // Header
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
         doc.text(trainingTitle, 15, 20);
-        doc.setFontSize(12);
+
+        doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(100);
         doc.text(`Proposé par ${counselorName}`, 15, 28);
-        doc.setDrawColor(230);
-        doc.line(15, 35, 195, 35);
+        if (fullAddress) doc.text(fullAddress, 15, 33);
+        if (counselorData?.email) doc.text(counselorData.email, 15, 38);
+        if (counselorData?.phone) doc.text(counselorData.phone, 15, 43);
 
-        let y = 45;
+        let y = 50;
+
+        doc.setDrawColor(230);
+        doc.line(15, y, 195, y);
+        y += 10;
         
         const addInfoLine = (label: string, value: string) => {
             if (value) {
