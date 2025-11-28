@@ -446,6 +446,7 @@ const trainingFormSchema = z.object({
   imageUrl: z.string().nullable().optional(),
   price: z.coerce.number().min(0, "Le prix doit être positif.").optional(),
   duration: z.coerce.number().min(0, "La durée doit être positive.").optional(),
+  financingOptions: z.array(z.string()).optional(),
   isPublic: z.boolean().default(false),
   type: z.enum(['internal', 'external']).default('internal'),
   externalUrl: z.string().url("Veuillez entrer une URL valide.").optional().or(z.literal('')),
@@ -471,10 +472,51 @@ type Training = {
     imageUrl?: string | null;
     price?: number;
     duration?: number;
+    financingOptions?: string[];
     isPublic?: boolean;
     type?: 'internal' | 'external';
     externalUrl?: string;
 };
+
+const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
+    const [inputValue, setInputValue] = useState('');
+    const currentValues = value || [];
+
+    const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inputValue.trim()) {
+            e.preventDefault();
+            const newTags = [...currentValues, inputValue.trim()];
+            onChange(newTags);
+            setInputValue('');
+        }
+    };
+
+    const removeTag = (tagToRemove: string) => {
+        onChange(currentValues.filter(tag => tag !== tagToRemove));
+    };
+
+    return (
+        <div>
+            <div className="flex flex-wrap gap-2 mb-2">
+                {currentValues.map(tag => (
+                    <Badge key={tag} variant="secondary">
+                        {tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
+                    </Badge>
+                ))}
+            </div>
+            <Input
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                onKeyDown={addTag}
+                placeholder={placeholder}
+            />
+        </div>
+    );
+};
+
 
 function TrainingManager() {
     const { user } = useUser();
@@ -512,6 +554,7 @@ function TrainingManager() {
                     imageUrl: null,
                     price: 0,
                     duration: 0,
+                    financingOptions: [],
                     isPublic: false,
                     type: 'internal',
                     externalUrl: '',
@@ -672,6 +715,15 @@ function TrainingManager() {
                                         <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (heures)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
+                                    <FormField control={form.control} name="financingOptions" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Modes de financement</FormLabel>
+                                            <FormControl>
+                                                <TagInput {...field} placeholder="Ajouter un financement (CPF, etc.)" />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
                                     <div>
                                         <Label>Image de couverture</Label>
                                         <div className="flex items-center gap-4 mt-2">
