@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Image from "next/image";
@@ -68,8 +67,8 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                          {featuredProducts.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                 {featuredProducts.map((product) => {
-                                    const ctaLink = product.ctaLink || (counselor.publicProfileName ? `/c/${counselor.publicProfileName}/boutique` : '#');
-                                    const target = product.ctaLink ? '_blank' : '_self';
+                                    const ctaLink = product.ctaLink;
+                                    const target = '_blank';
                                     
                                     return (
                                         <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
@@ -98,9 +97,11 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                                                 <p className="text-muted-foreground text-sm line-clamp-3">{product.description}</p>
                                             </CardContent>
                                             <CardFooter>
-                                                <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
-                                                   <Link href={ctaLink} target={target}>Voir le produit</Link>
-                                                </Button>
+                                                {ctaLink && (
+                                                    <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                                       <Link href={ctaLink} target={target}>Voir le produit</Link>
+                                                    </Button>
+                                                )}
                                             </CardFooter>
                                         </Card>
                                     );
@@ -113,15 +114,6 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                          )}
                     </div>
                 </div>
-                
-                {/* Centered Button at the bottom */}
-                 {counselor.publicProfileName && (
-                    <div className="text-center mt-16">
-                        <Button asChild size="lg">
-                            <Link href={`/c/${counselor.publicProfileName}/boutique`}>Voir toute la boutique</Link>
-                        </Button>
-                    </div>
-                )}
             </div>
         </section>
     );

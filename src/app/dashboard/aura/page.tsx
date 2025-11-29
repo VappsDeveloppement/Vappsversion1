@@ -291,9 +291,9 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
             ...data,
             counselorId: user.uid,
             versions: data.versions.map(v => ({ ...v, characteristics: v.characteristics?.map(c => c.text) })),
-            contraindications: data.contraindications || [],
-            holisticProfile: data.holisticProfile || [],
-            pathologies: data.pathologies || [],
+            contraindications: data.contraindications,
+            holisticProfile: data.holisticProfile,
+            pathologies: data.pathologies,
         };
 
         if (editingProduct) {
