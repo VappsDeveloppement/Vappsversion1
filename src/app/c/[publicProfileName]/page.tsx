@@ -121,6 +121,7 @@ export default function CounselorPublicProfilePage() {
         <CounselorPricingSection counselor={counselor} />
         <CounselorJobOffersSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
+        <CounselorActivitiesSection counselor={counselor} />
         {counselor.miniSite?.trainingCatalogSection?.enabled && (
           <TrainingCatalogSection 
             sectionData={counselor.miniSite.trainingCatalogSection} 
@@ -130,7 +131,6 @@ export default function CounselorPublicProfilePage() {
         )}
         <CounselorBlogSection counselor={counselor} />
         <CounselorTestimonialsSection counselor={counselor} />
-        <CounselorActivitiesSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
       </main>
       <footer className="py-6 text-center text-sm" style={{ backgroundColor: footerBgColor }}>
