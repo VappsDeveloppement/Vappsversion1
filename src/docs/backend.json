@@ -449,12 +449,8 @@
                     "title": { "type": "string" },
                     "subtitle": { "type": "string" },
                     "description": { "type": "string" },
-                    "products": {
-                        "type": "array",
-                        "items": {
-                          "$ref": "#/entities/Product"
-                        }
-                    }
+                    "buttonText": { "type": "string" },
+                    "buttonLink": { "type": "string", "format": "uri" }
                 }
             },
             "contactSection": {
@@ -1286,7 +1282,7 @@
         "title": { "type": "string" },
         "categoryId": { "type": "string", "description": "Reference to ProductCategory" },
         "description": { "type": "string" },
-        "isFeatured": { "type": "boolean", "description": "Whether the product is featured on the homepage." },
+        "isFeatured": { "type": "boolean" },
         "versions": {
           "type": "array",
           "items": {
@@ -1301,18 +1297,9 @@
             "required": ["id", "name"]
           }
         },
-        "contraindications": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "holisticProfile": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "pathologies": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
+        "contraindications": { "type": "array", "items": { "type": "string" } },
+        "holisticProfile": { "type": "array", "items": { "type": "string" } },
+        "pathologies": { "type": "array", "items": { "type": "string" } },
         "ctaLink": {
             "type": "string",
             "format": "uri",
@@ -1320,6 +1307,49 @@
         }
       },
       "required": ["counselorId", "title", "categoryId", "versions"]
+    },
+    "Protocole": {
+      "title": "Protocole",
+      "type": "object",
+      "description": "Represents a wellness or care protocol.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string" },
+        "contraindications": { "type": "array", "items": { "type": "string" } },
+        "pathologies": { "type": "array", "items": { "type": "string" } },
+        "holisticProfile": { "type": "array", "items": { "type": "string" } },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "imageUrl": { "type": "string", "format": "uri" }
+            },
+            "required": ["id", "title"]
+          }
+        }
+      },
+      "required": ["counselorId", "name"]
+    },
+     "WellnessSheet": {
+      "title": "Wellness Sheet",
+      "type": "object",
+      "description": "Represents a wellness sheet created for a client.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "contraindications": { "type": "array", "items": { "type": "string" } },
+        "holisticProfile": { "type": "array", "items": { "type": "string" } },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["counselorId", "clientId", "clientName", "createdAt", "updatedAt"]
     }
   },
   "auth": {
@@ -1346,6 +1376,14 @@
             "$ref": "#/backend/entities/User"
           },
           "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorIds is used for data segregation."
+        }
+      },
+       {
+        "path": "/users/{userId}/wellness_sheets/{sheetId}",
+        "definition": {
+          "entityName": "WellnessSheet",
+          "schema": { "$ref": "#/entities/WellnessSheet" },
+          "description": "Stores wellness sheets created by a counselor for their clients."
         }
       },
       {

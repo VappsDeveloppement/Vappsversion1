@@ -489,7 +489,19 @@ const wellnessSheetSchema = z.object({
 });
 
 type WellnessSheetFormData = z.infer<typeof wellnessSheetSchema>;
+
+type WellnessSheet = {
+    id: string;
+    counselorId: string;
+    clientId: string;
+    clientName: string;
+    contraindications: string[];
+    holisticProfile: string[];
+    createdAt: string;
+};
+
 type Client = { id: string; firstName: string; lastName: string; email: string; counselorIds?: string[] };
+
 const newUserSchema = z.object({
     firstName: z.string().min(1, 'Le prénom est requis.'),
     lastName: z.string().min(1, 'Le nom est requis.'),
@@ -519,6 +531,11 @@ function WellnessSheetGenerator() {
     const [selectedClient, setSelectedClient] = useState<Client | null>(null);
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [editingSheet, setEditingSheet] = useState<WellnessSheet | null>(null);
+
+    const wellnessSheetsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/wellness_sheets`)) : null, [user, firestore]);
+    const { data: wellnessSheets, isLoading: areSheetsLoading } = useCollection<WellnessSheet>(wellnessSheetsQuery);
+
 
     const wellnessForm = useForm<WellnessSheetFormData>({
         resolver: zodResolver(wellnessSheetSchema),
@@ -528,6 +545,19 @@ function WellnessSheetGenerator() {
     const newUserForm = useForm<NewUserFormData>({
         resolver: zodResolver(newUserSchema),
     });
+    
+    useEffect(() => {
+        if(isSheetOpen) {
+            if(editingSheet) {
+                setSelectedClient({ id: editingSheet.clientId, firstName: editingSheet.clientName.split(' ')[0], lastName: editingSheet.clientName.split(' ').slice(1).join(' '), email: '' });
+                wellnessForm.reset({
+                    contraindications: editingSheet.contraindications,
+                    holisticProfile: editingSheet.holisticProfile
+                });
+            }
+        }
+    }, [isSheetOpen, editingSheet, wellnessForm]);
+
 
     const resetAll = () => {
         setIsSheetOpen(false);
@@ -537,6 +567,7 @@ function WellnessSheetGenerator() {
         setShowCreateForm(false);
         wellnessForm.reset();
         newUserForm.reset();
+        setEditingSheet(null);
     };
 
     const handleSearchUser = async () => {
@@ -634,10 +665,37 @@ function WellnessSheetGenerator() {
     };
 
     const onWellnessSubmit = (data: WellnessSheetFormData) => {
-        console.log("Wellness Sheet Data for", selectedClient, data);
-        toast({ title: 'Fiche bien-être enregistrée (simulation)', description: 'La logique de sauvegarde est à implémenter.' });
+        if (!user || !selectedClient) return;
+
+        const sheetData = {
+            ...data,
+            counselorId: user.uid,
+            clientId: selectedClient.id,
+            clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
+            createdAt: editingSheet ? editingSheet.createdAt : new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+        };
+
+        const sheetRef = editingSheet ? doc(firestore, `users/${user.uid}/wellness_sheets`, editingSheet.id) : doc(collection(firestore, `users/${user.uid}/wellness_sheets`));
+        
+        setDocumentNonBlocking(sheetRef, sheetData, { merge: true });
+        
+        toast({ title: editingSheet ? 'Fiche mise à jour' : 'Fiche bien-être enregistrée' });
         resetAll();
     };
+
+    const handleEditSheet = (sheet: WellnessSheet) => {
+        setEditingSheet(sheet);
+        setIsSheetOpen(true);
+    };
+    
+    const handleDeleteSheet = (sheetId: string) => {
+        if (!user) return;
+        const sheetRef = doc(firestore, `users/${user.uid}/wellness_sheets`, sheetId);
+        deleteDocumentNonBlocking(sheetRef);
+        toast({title: "Fiche supprimée"});
+    };
+
 
     return (
         <Card>
@@ -645,14 +703,14 @@ function WellnessSheetGenerator() {
                 <CardTitle>Générateur de Fiche Bien-être</CardTitle>
                 <CardDescription>Créez des fiches de bien-être personnalisées pour vos clients.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-6">
                 <Sheet open={isSheetOpen} onOpenChange={(open) => {if (!open) resetAll(); setIsSheetOpen(open);}}>
                     <SheetTrigger asChild>
-                        <Button className="w-full"><PlusCircle className="mr-2 h-4 w-4" />Créer une nouvelle fiche</Button>
+                        <Button className="w-full" onClick={() => { setEditingSheet(null); setIsSheetOpen(true); }}><PlusCircle className="mr-2 h-4 w-4" />Créer une nouvelle fiche</Button>
                     </SheetTrigger>
                     <SheetContent className="sm:max-w-xl w-full">
                         <SheetHeader>
-                            <SheetTitle>Nouvelle Fiche Bien-être</SheetTitle>
+                            <SheetTitle>{editingSheet ? 'Modifier la' : 'Nouvelle'} Fiche Bien-être</SheetTitle>
                             <SheetDescription>
                                 {selectedClient ? `Fiche pour ${selectedClient.firstName} ${selectedClient.lastName}` : "Commencez par sélectionner ou créer un client."}
                             </SheetDescription>
@@ -733,6 +791,36 @@ function WellnessSheetGenerator() {
                         )}
                     </SheetContent>
                 </Sheet>
+                 <div className="border rounded-lg mt-6">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Client</TableHead>
+                                <TableHead>Date de création</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {areSheetsLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            : wellnessSheets && wellnessSheets.length > 0 ? (
+                                wellnessSheets.map(sheet => (
+                                    <TableRow key={sheet.id}>
+                                        <TableCell className="font-medium">{sheet.clientName}</TableCell>
+                                        <TableCell>{new Date(sheet.createdAt).toLocaleDateString()}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => handleEditSheet(sheet)}><Edit className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSheet(sheet.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">Aucune fiche bien-être créée.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
     );
