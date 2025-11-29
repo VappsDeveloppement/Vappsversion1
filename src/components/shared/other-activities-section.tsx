@@ -8,12 +8,12 @@ import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Calendar, CheckCircle } from 'lucide-react';
 import type { InterestItem } from '@/app/dashboard/settings/mini-site/page';
-import { Skeleton } from '../ui/skeleton';
-import { LiveFollowUpForm } from './live-follow-up-form';
-import { useAgency } from '@/context/agency-provider';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
+import { Skeleton } from '../ui/skeleton';
+import { LiveFollowUpForm } from './live-follow-up-form';
+import { useAgency } from '@/context/agency-provider';
 
 
 type Event = {
