@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Image from "next/image";
@@ -16,6 +17,8 @@ type CounselorProfile = {
             title?: string;
             subtitle?: string;
             description?: string;
+            buttonText?: string;
+            buttonLink?: string;
         }
     };
     dashboardTheme?: {
@@ -31,7 +34,7 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
         return null;
     }
 
-    const { title, subtitle, description } = productsConfig;
+    const { title, subtitle, description, buttonText, buttonLink } = productsConfig;
     
     // Filter for featured products only
     const featuredProducts = products.filter((product: Product) => product.isFeatured);
@@ -52,17 +55,17 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                 </div>
 
                 {/* Main Content with Columns */}
-                <div className="max-w-3xl mx-auto">
+                <div className="max-w-6xl mx-auto">
                      {featuredProducts.length > 0 ? (
-                        <div className="grid grid-cols-1 gap-8">
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                             {featuredProducts.map((product) => {
                                 const ctaLink = product.ctaLink;
                                 const target = '_blank';
                                 
                                 return (
-                                    <Card key={product.id} className="overflow-hidden group flex flex-col sm:flex-row shadow-md hover:shadow-xl transition-shadow duration-300">
+                                    <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
                                         {(product.versions && product.versions.length > 0 && product.versions[0].imageUrl) ? (
-                                            <div className="sm:w-1/3 relative h-48 sm:h-auto overflow-hidden flex-shrink-0">
+                                            <div className="w-full h-48 relative overflow-hidden flex-shrink-0">
                                                 <Image
                                                     src={product.versions[0].imageUrl}
                                                     alt={product.title}
@@ -71,23 +74,23 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                                                 />
                                             </div>
                                         ) : (
-                                            <div className="sm:w-1/3 h-48 sm:h-auto bg-muted flex-shrink-0" />
+                                            <div className="w-full h-48 bg-muted flex-shrink-0" />
                                         )}
-                                        <div className="flex flex-col flex-1">
-                                            <CardHeader>
-                                                <CardTitle>{product.title}</CardTitle>
+                                        <div className="flex flex-col flex-1 p-4">
+                                            <CardHeader className="p-0 mb-2">
+                                                <CardTitle className="line-clamp-2 text-lg">{product.title}</CardTitle>
                                                 {(product.versions && product.versions.length > 0 && product.versions[0].price != null) && (
                                                     <p className="text-xl font-bold" style={{ color: primaryColor }}>
                                                         {product.versions[0].price}€
                                                     </p>
                                                 )}
                                             </CardHeader>
-                                            <CardContent className="flex-1">
-                                                <p className="text-muted-foreground text-sm">{product.description}</p>
+                                            <CardContent className="p-0 flex-1 mb-4">
+                                                <p className="text-muted-foreground text-sm line-clamp-3">{product.description}</p>
                                             </CardContent>
-                                            <CardFooter>
+                                            <CardFooter className="p-0 mt-auto">
                                                 {ctaLink && (
-                                                    <Button asChild className="w-full sm:w-auto font-bold" style={{ backgroundColor: primaryColor }}>
+                                                    <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
                                                        <Link href={ctaLink} target={target}>Voir le produit</Link>
                                                     </Button>
                                                 )}
@@ -103,6 +106,14 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                         </div>
                      )}
                 </div>
+
+                 {buttonText && buttonLink && (
+                    <div className="text-center mt-12">
+                        <Button size="lg" asChild>
+                            <Link href={buttonLink} target="_blank">{buttonText}</Link>
+                        </Button>
+                    </div>
+                 )}
             </div>
         </section>
     );

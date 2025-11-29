@@ -192,22 +192,13 @@ const trainingCatalogSectionSchema = z.object({
     enabled: z.boolean().default(false),
 }).optional();
 
-const productItemSchema = z.object({
-    id: z.string(),
-    title: z.string().min(1, 'Le titre est requis'),
-    description: z.string().optional(),
-    imageUrl: z.string().nullable().optional(),
-    price: z.coerce.number().optional(),
-    ctaText: z.string().optional(),
-    ctaLink: z.string().url('URL invalide').optional().or(z.literal('')),
-});
-
 const productsSectionSchema = z.object({
     enabled: z.boolean().default(false),
     title: z.string().optional(),
     subtitle: z.string().optional(),
     description: z.string().optional(),
-    products: z.array(productItemSchema).optional(),
+    buttonText: z.string().optional(),
+    buttonLink: z.string().url('URL invalide').optional().or(z.literal('')),
 }).optional();
 
 
@@ -234,7 +225,6 @@ export type EventItem = z.infer<typeof eventItemSchema>;
 export type JobOffer = z.infer<typeof jobOfferSchema>;
 export type Testimonial = z.infer<typeof testimonialSchema>;
 export type InterestItem = z.infer<typeof interestItemSchema>;
-export type ProductItem = z.infer<typeof productItemSchema>;
 
 
 type UserProfile = {
@@ -277,7 +267,6 @@ export default function MiniSitePage() {
   const fileInputCtaRef = useRef<HTMLInputElement>(null);
   const fileInputActivitiesRef = useRef<HTMLInputElement>(null);
   const fileInputTestimonialRef = useRef<HTMLInputElement>(null);
-  const fileInputProductRef = useRef<HTMLInputElement>(null);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -397,10 +386,8 @@ export default function MiniSitePage() {
         title: 'Mes Produits',
         subtitle: 'Découvrez mes créations',
         description: 'Voici une sélection de produits que je propose à la vente.',
-        products: [
-            { id: `product-${Date.now()}-1`, title: 'E-book: Le guide de la reconversion', description: 'Un guide complet pour vous aider à changer de voie.', price: 19.99, ctaText: 'Acheter', ctaLink: '#', imageUrl: null },
-            { id: `product-${Date.now()}-2`, title: 'Kit Méditation Audio', description: 'Une série de méditations guidées pour la sérénité.', price: 29.99, ctaText: 'Acheter', ctaLink: '#', imageUrl: null },
-        ],
+        buttonText: 'Voir toute la boutique',
+        buttonLink: '',
       },
       contactSection: {
         enabled: false,
@@ -453,11 +440,6 @@ export default function MiniSitePage() {
     const { fields: interestFields, append: appendInterest, remove: removeInterest } = useFieldArray({
         control: form.control,
         name: "activitiesSection.interests",
-    });
-    
-     const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({
-        control: form.control,
-        name: "productsSection.products",
     });
 
 
@@ -512,7 +494,6 @@ export default function MiniSitePage() {
          productsSection: {
             ...form.getValues().productsSection,
             ...userData.miniSite.productsSection,
-            products: userData.miniSite.productsSection?.products || [],
          },
          contactSection: {
             ...form.getValues().contactSection,
@@ -597,14 +578,6 @@ export default function MiniSitePage() {
         if (file) {
             const base64 = await toBase64(file);
             form.setValue(`servicesSection.services.${index}.imageUrl`, base64);
-        }
-    };
-
-    const handleProductImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const base64 = await toBase64(file);
-            form.setValue(`productsSection.products.${index}.imageUrl`, base64);
         }
     };
     
@@ -1011,37 +984,9 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="productsSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="productsSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="productsSection.description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <div>
-                                <Label>Liste des produits</Label>
-                                <div className="space-y-4 mt-2">
-                                    {productFields.map((field, index) => (
-                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
-                                            <div className="flex justify-between items-center">
-                                                <h4 className="font-medium">Produit {index + 1}</h4>
-                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeProduct(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                            </div>
-                                            <FormField control={form.control} name={`productsSection.products.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            <FormField control={form.control} name={`productsSection.products.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            <FormField control={form.control} name={`productsSection.products.${index}.price`} render={({ field }) => (<FormItem><FormLabel>Prix</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            <FormField control={form.control} name={`productsSection.products.${index}.ctaText`} render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            <FormField control={form.control} name={`productsSection.products.${index}.ctaLink`} render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                            <div>
-                                                <Label>Image</Label>
-                                                <div className="flex items-center gap-4 mt-2">
-                                                    <div className="w-32 h-32 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
-                                                        {form.watch(`productsSection.products.${index}.imageUrl`) ? <Image src={form.watch(`productsSection.products.${index}.imageUrl`)!} alt="Aperçu" layout="fill" objectFit="cover" /> : <span className="text-xs text-muted-foreground">Aucune image</span>}
-                                                    </div>
-                                                    <input type="file" id={`product-image-${index}`} onChange={(e) => handleProductImageUpload(index, e)} className="hidden" accept="image/*" />
-                                                    <div className="flex flex-col gap-2">
-                                                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById(`product-image-${index}`)?.click()}><Upload className="mr-2 h-4 w-4"/>Uploader</Button>
-                                                        <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue(`productsSection.products.${index}.imageUrl`, null)}><Trash2 className="mr-2 h-4 w-4"/>Supprimer</Button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))}
-                                    <Button type="button" variant="outline" size="sm" onClick={() => appendProduct({ id: `product-${Date.now()}`, title: 'Nouveau Produit', description: '', price: 0, ctaText: 'Acheter', ctaLink: '#', imageUrl: null })} className="mt-4"><PlusCircle className="mr-2 h-4 w-4" />Ajouter un produit</Button>
-                                </div>
+                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <FormField control={form.control} name="productsSection.buttonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton "Toute la boutique"</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <FormField control={form.control} name="productsSection.buttonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton "Toute la boutique"</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             </div>
                         </div>
                     </AccordionContent>
