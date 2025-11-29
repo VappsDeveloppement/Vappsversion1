@@ -2,7 +2,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useParams } from 'next/navigation';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, limit } from 'firebase/firestore';
@@ -25,6 +25,7 @@ import { CounselorTestimonialsSection } from '@/components/shared/counselor-test
 import { TrainingCatalogSection } from '@/components/shared/training-catalog-section';
 import { CounselorBlogSection } from '@/components/shared/counselor-blog-section';
 import { ProductsSection } from '@/components/shared/products-section';
+import type { Product } from '@/app/dashboard/aura/page';
 
 type CounselorProfile = {
     id: string;
@@ -85,7 +86,14 @@ export default function CounselorPublicProfilePage() {
   // The document ID is the counselor's UID, which is needed for the contact form.
   const counselor = counselors?.[0];
 
-  if (isLoading) {
+  const productsQuery = useMemoFirebase(() => {
+    if (!counselor?.id) return null;
+    return query(collection(firestore, 'products'), where('counselorId', '==', counselor.id));
+  }, [counselor?.id, firestore]);
+  const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+
+
+  if (isLoading || areProductsLoading) {
     return (
         <div className="flex flex-col items-center justify-center min-h-screen text-center p-8 bg-muted">
             <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -132,7 +140,7 @@ export default function CounselorPublicProfilePage() {
             counselorId={counselor.id} 
           />
         )}
-        <ProductsSection counselor={counselor} />
+        <ProductsSection counselor={counselor} products={products || []} />
         <CounselorBlogSection counselor={counselor} />
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />

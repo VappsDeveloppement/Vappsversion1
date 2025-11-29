@@ -5,17 +5,17 @@ import Image from "next/image";
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import type { ProductItem } from "@/app/dashboard/settings/mini-site/page";
+import type { Product } from "@/app/dashboard/aura/page";
 
 type CounselorProfile = {
     publicProfileName?: string;
+    id: string; // Add id to counselor profile
     miniSite?: {
         productsSection?: {
             enabled?: boolean;
             title?: string;
             subtitle?: string;
             description?: string;
-            products?: ProductItem[];
         }
     };
     dashboardTheme?: {
@@ -23,22 +23,19 @@ type CounselorProfile = {
     };
 };
 
-export function ProductsSection({ counselor }: { counselor: CounselorProfile }) {
+export function ProductsSection({ counselor, products }: { counselor: CounselorProfile, products: Product[] }) {
     const productsConfig = counselor.miniSite?.productsSection;
     const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
-    if (!productsConfig?.enabled || !productsConfig.products || productsConfig.products.length === 0) {
+    if (!productsConfig?.enabled) {
         return null;
     }
 
-    const { title, subtitle, description, products } = productsConfig;
+    const { title, subtitle, description } = productsConfig;
     
     // Filter for featured products only
-    const featuredProducts = products.filter((product: any) => product.isFeatured);
+    const featuredProducts = products.filter((product: Product) => product.isFeatured);
 
-    if (featuredProducts.length === 0) {
-        return null; // Don't render the section if no products are featured
-    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
@@ -63,39 +60,47 @@ export function ProductsSection({ counselor }: { counselor: CounselorProfile }) 
 
                     {/* Right Column (Products Grid) */}
                     <div className="lg:col-span-2">
-                         <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {featuredProducts.map((product) => (
-                                <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
-                                    {product.imageUrl && (
-                                        <div className="h-48 relative overflow-hidden">
-                                            <Image
-                                                src={product.imageUrl}
-                                                alt={product.title}
-                                                fill
-                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-                                            />
-                                        </div>
-                                    )}
-                                    <CardHeader>
-                                        <CardTitle>{product.title}</CardTitle>
-                                        {product.price != null && (
-                                            <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                                                {product.price}€
-                                            </p>
+                         {featuredProducts.length > 0 ? (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                {featuredProducts.map((product) => (
+                                    <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
+                                        {(product.versions && product.versions.length > 0 && product.versions[0].imageUrl) ? (
+                                            <div className="h-48 relative overflow-hidden">
+                                                <Image
+                                                    src={product.versions[0].imageUrl}
+                                                    alt={product.title}
+                                                    fill
+                                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                    className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="h-48 bg-muted" />
                                         )}
-                                    </CardHeader>
-                                    <CardContent className="flex-1">
-                                        <p className="text-muted-foreground text-sm">{product.description}</p>
-                                    </CardContent>
-                                    <CardFooter>
-                                        <Button as="a" href={product.ctaLink || '#'} target="_blank" className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
-                                            {product.ctaText || 'Voir le produit'}
-                                        </Button>
-                                    </CardFooter>
-                                </Card>
-                            ))}
-                        </div>
+                                        <CardHeader>
+                                            <CardTitle>{product.title}</CardTitle>
+                                            {(product.versions && product.versions.length > 0 && product.versions[0].price != null) && (
+                                                <p className="text-xl font-bold" style={{ color: primaryColor }}>
+                                                    {product.versions[0].price}€
+                                                </p>
+                                            )}
+                                        </CardHeader>
+                                        <CardContent className="flex-1">
+                                            <p className="text-muted-foreground text-sm line-clamp-3">{product.description}</p>
+                                        </CardContent>
+                                        <CardFooter>
+                                            <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                               <Link href={`/c/${counselor.publicProfileName}/boutique`}>Voir le produit</Link>
+                                            </Button>
+                                        </CardFooter>
+                                    </Card>
+                                ))}
+                            </div>
+                         ) : (
+                            <div className="text-center text-muted-foreground py-16 col-span-2">
+                                <p>Aucun produit mis en vedette pour le moment.</p>
+                            </div>
+                         )}
                     </div>
                 </div>
                 
