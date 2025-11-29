@@ -59,7 +59,7 @@ function FollowUpRequestsSection() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { agency, isLoading: isAgencyLoading } = useAgency();
+    const { agency, personalization, isLoading: isAgencyLoading } = useAgency();
 
     const [requestToDelete, setRequestToDelete] = useState<FollowUpRequest | null>(null);
     const [isConverting, setIsConverting] = useState<string | null>(null);
@@ -87,6 +87,15 @@ function FollowUpRequestsSection() {
     }, [user, userData, isSuperAdmin, firestore, agency?.id]);
 
     const { data: allRequests, isLoading: areRequestsLoading } = useCollection<FollowUpRequest>(followUpRequestsQuery);
+
+    const userPlan = useMemo(() => {
+        if (!userData?.planId || !personalization?.whiteLabelSection?.plans) {
+          return null;
+        }
+        return personalization.whiteLabelSection.plans.find(p => p.id === userData.planId);
+    }, [userData, personalization]);
+
+    const showPrismeFeatures = isSuperAdmin || (userData?.role === 'conseiller' && userPlan?.hasPrismeAccess);
 
     const filteredRequests = useMemo(() => {
         if (!allRequests) return [];
@@ -237,7 +246,7 @@ function FollowUpRequestsSection() {
         ));
     };
 
-    if (userData?.role !== 'conseiller' && userData?.role !== 'superadmin') {
+    if (!showPrismeFeatures) {
         return null;
     }
 
