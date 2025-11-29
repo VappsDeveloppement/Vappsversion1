@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import type { ProductItem } from "@/app/dashboard/settings/mini-site/page";
 
 type CounselorProfile = {
+    publicProfileName?: string;
     miniSite?: {
         productsSection?: {
             enabled?: boolean;
@@ -99,11 +100,13 @@ export function ProductsSection({ counselor }: { counselor: CounselorProfile }) 
                 </div>
                 
                 {/* Centered Button at the bottom */}
-                <div className="text-center mt-16">
-                    <Button asChild size="lg">
-                        <Link href="/boutique">Voir la boutique</Link>
-                    </Button>
-                </div>
+                 {counselor.publicProfileName && (
+                    <div className="text-center mt-16">
+                        <Button asChild size="lg">
+                            <Link href={`/c/${counselor.publicProfileName}/boutique`}>Voir la boutique</Link>
+                        </Button>
+                    </div>
+                )}
             </div>
         </section>
     );
