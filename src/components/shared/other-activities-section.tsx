@@ -39,14 +39,11 @@ export function OtherActivitiesSection() {
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
     
     const eventsQuery = useMemoFirebase(() => {
-        // Query only for public events of the main agency
-        if (!agency?.id) return null;
         return query(
             collection(firestore, 'events'),
-            where('isPublic', '==', true),
-            where('counselorId', '==', agency.id)
+            where('isPublic', '==', true)
         );
-    }, [firestore, agency?.id]);
+    }, [firestore]);
 
     const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
 
