@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useForm, useFieldArray, useWatch, Control, UseFormSetValue, FormProvider } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -153,10 +153,11 @@ const productSchema = z.object({
   contraindications: z.array(z.string()).optional(),
   holisticProfile: z.array(z.string()).optional(),
   pathologies: z.array(z.string()).optional(),
+  ctaLink: z.string().url('URL invalide').optional().or(z.literal('')),
 });
 type ProductFormData = z.infer<typeof productSchema>;
 
-type Product = {
+export type Product = {
     id: string;
     counselorId: string;
     title: string;
@@ -167,6 +168,7 @@ type Product = {
     contraindications?: string[];
     holisticProfile?: string[];
     pathologies?: string[];
+    ctaLink?: string;
 }
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
@@ -275,7 +277,7 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                     versions: editingProduct.versions.map(v => ({ ...v, characteristics: (v.characteristics || []).map(c => ({ text: c as unknown as string })) }))
                 });
             } else {
-                form.reset({ title: '', categoryId: '', description: '', isFeatured: false, versions: [{ id: `v-${Date.now()}`, name: 'Version par défaut', price: 0, imageUrl: null, characteristics: [] }], contraindications: [], holisticProfile: [], pathologies: [] });
+                form.reset({ title: '', categoryId: '', description: '', isFeatured: false, versions: [{ id: `v-${Date.now()}`, name: 'Version par défaut', price: 0, imageUrl: null, characteristics: [] }], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
             }
         }
     }, [isSheetOpen, editingProduct, form]);
@@ -289,6 +291,9 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
             ...data,
             counselorId: user.uid,
             versions: data.versions.map(v => ({ ...v, characteristics: v.characteristics?.map(c => c.text) })),
+            contraindications: data.contraindications || [],
+            holisticProfile: data.holisticProfile || [],
+            pathologies: data.pathologies || [],
         };
 
         if (editingProduct) {
@@ -348,6 +353,7 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="categoryId" render={({ field }) => (<FormItem><FormLabel>Catégorie</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger disabled={areCategoriesLoading}><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent>{categories?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (publique)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien externe (optionnel)</FormLabel><FormControl><Input {...field} placeholder="https://..." /></FormControl><FormDescription>Si rempli, le bouton "Voir le produit" pointera vers ce lien.</FormDescription><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="isFeatured" render={({ field }) => (
                                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                                                 <div className="space-y-0.5">
@@ -422,9 +428,3 @@ export default function AuraPage() {
         </div>
     );
 }
-    
-
-    
-
-    
-

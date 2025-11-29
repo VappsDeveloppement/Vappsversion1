@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Image from "next/image";
@@ -36,6 +37,10 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
     // Filter for featured products only
     const featuredProducts = products.filter((product: Product) => product.isFeatured);
 
+    if (featuredProducts.length === 0) {
+        return null; // Don't render the section if there are no featured products
+    }
+
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
@@ -62,39 +67,44 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                     <div className="lg:col-span-2">
                          {featuredProducts.length > 0 ? (
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {featuredProducts.map((product) => (
-                                    <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
-                                        {(product.versions && product.versions.length > 0 && product.versions[0].imageUrl) ? (
-                                            <div className="h-48 relative overflow-hidden">
-                                                <Image
-                                                    src={product.versions[0].imageUrl}
-                                                    alt={product.title}
-                                                    fill
-                                                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                    className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-                                                />
-                                            </div>
-                                        ) : (
-                                            <div className="h-48 bg-muted" />
-                                        )}
-                                        <CardHeader>
-                                            <CardTitle>{product.title}</CardTitle>
-                                            {(product.versions && product.versions.length > 0 && product.versions[0].price != null) && (
-                                                <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                                                    {product.versions[0].price}€
-                                                </p>
+                                {featuredProducts.map((product) => {
+                                    const ctaLink = product.ctaLink || (counselor.publicProfileName ? `/c/${counselor.publicProfileName}/boutique` : '#');
+                                    const target = product.ctaLink ? '_blank' : '_self';
+                                    
+                                    return (
+                                        <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
+                                            {(product.versions && product.versions.length > 0 && product.versions[0].imageUrl) ? (
+                                                <div className="h-48 relative overflow-hidden">
+                                                    <Image
+                                                        src={product.versions[0].imageUrl}
+                                                        alt={product.title}
+                                                        fill
+                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                        className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                                                    />
+                                                </div>
+                                            ) : (
+                                                <div className="h-48 bg-muted" />
                                             )}
-                                        </CardHeader>
-                                        <CardContent className="flex-1">
-                                            <p className="text-muted-foreground text-sm line-clamp-3">{product.description}</p>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
-                                               <Link href={`/c/${counselor.publicProfileName}/boutique`}>Voir le produit</Link>
-                                            </Button>
-                                        </CardFooter>
-                                    </Card>
-                                ))}
+                                            <CardHeader>
+                                                <CardTitle>{product.title}</CardTitle>
+                                                {(product.versions && product.versions.length > 0 && product.versions[0].price != null) && (
+                                                    <p className="text-xl font-bold" style={{ color: primaryColor }}>
+                                                        {product.versions[0].price}€
+                                                    </p>
+                                                )}
+                                            </CardHeader>
+                                            <CardContent className="flex-1">
+                                                <p className="text-muted-foreground text-sm line-clamp-3">{product.description}</p>
+                                            </CardContent>
+                                            <CardFooter>
+                                                <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                                   <Link href={ctaLink} target={target}>Voir le produit</Link>
+                                                </Button>
+                                            </CardFooter>
+                                        </Card>
+                                    );
+                                })}
                             </div>
                          ) : (
                             <div className="text-center text-muted-foreground py-16 col-span-2">
@@ -108,7 +118,7 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                  {counselor.publicProfileName && (
                     <div className="text-center mt-16">
                         <Button asChild size="lg">
-                            <Link href={`/c/${counselor.publicProfileName}/boutique`}>Voir la boutique</Link>
+                            <Link href={`/c/${counselor.publicProfileName}/boutique`}>Voir toute la boutique</Link>
                         </Button>
                     </div>
                 )}

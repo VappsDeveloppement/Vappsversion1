@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo } from 'react';
@@ -12,16 +13,8 @@ import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Skeleton } from '@/components/ui/skeleton';
+import type { Product as ProductType } from '@/app/dashboard/aura/page';
 
-type Product = {
-    id: string;
-    title: string;
-    description?: string;
-    imageUrl?: string | null;
-    price?: number;
-    ctaText?: string;
-    ctaLink?: string;
-};
 
 type CounselorProfile = {
     id: string;
@@ -58,7 +51,7 @@ export default function CounselorBoutiquePage() {
         );
     }, [firestore, counselor?.id]);
 
-    const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+    const { data: products, isLoading: areProductsLoading } = useCollection<ProductType>(productsQuery);
 
     const isLoading = isCounselorLoading || areProductsLoading;
     const primaryColor = counselor?.dashboardTheme?.primaryColor || '#10B981';
@@ -110,37 +103,41 @@ export default function CounselorBoutiquePage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
                     {products && products.length > 0 ? (
-                        products.map((product) => (
-                             <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
-                                {product.imageUrl && (
-                                    <div className="h-48 relative overflow-hidden">
-                                        <Image
-                                            src={product.imageUrl}
-                                            alt={product.title}
-                                            fill
-                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                            className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-                                        />
-                                    </div>
-                                )}
-                                <CardHeader>
-                                    <CardTitle>{product.title}</CardTitle>
-                                    {product.price != null && (
-                                        <p className="text-xl font-bold" style={{ color: primaryColor }}>
-                                            {product.price}€
-                                        </p>
+                        products.map((product) => {
+                            const ctaLink = product.ctaLink || '#';
+                            const target = product.ctaLink ? '_blank' : '_self';
+                            return (
+                                <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
+                                    {(product.versions && product.versions.length > 0 && product.versions[0].imageUrl) && (
+                                        <div className="h-48 relative overflow-hidden">
+                                            <Image
+                                                src={product.versions[0].imageUrl}
+                                                alt={product.title}
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                                className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                                            />
+                                        </div>
                                     )}
-                                </CardHeader>
-                                <CardContent className="flex-1">
-                                    <p className="text-muted-foreground text-sm">{product.description}</p>
-                                </CardContent>
-                                <CardFooter>
-                                    <Button as="a" href={product.ctaLink || '#'} target="_blank" className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
-                                        {product.ctaText || 'Voir le produit'}
-                                    </Button>
-                                </CardFooter>
-                            </Card>
-                        ))
+                                    <CardHeader>
+                                        <CardTitle>{product.title}</CardTitle>
+                                        {(product.versions && product.versions.length > 0 && product.versions[0].price != null) && (
+                                            <p className="text-xl font-bold" style={{ color: primaryColor }}>
+                                                {product.versions[0].price}€
+                                            </p>
+                                        )}
+                                    </CardHeader>
+                                    <CardContent className="flex-1">
+                                        <p className="text-muted-foreground text-sm">{product.description}</p>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button as="a" href={ctaLink} target={target} className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                            Voir le produit
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            )
+                        })
                     ) : (
                         <p className="col-span-full text-center text-muted-foreground py-16">
                             Cette boutique est vide pour le moment.
