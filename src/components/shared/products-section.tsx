@@ -52,39 +52,28 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                 </div>
 
                 {/* Main Content with Columns */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-12">
-                    {/* Left Column (for future categories) */}
-                    <aside className="lg:col-span-1">
-                        {/* This column is reserved for future category navigation */}
-                        <div className="sticky top-24">
-                           {/* You can add a placeholder or a title here if you want */}
-                           {/* <h3 className="font-semibold mb-4">Catégories</h3> */}
-                        </div>
-                    </aside>
-
-                    {/* Right Column (Products Grid) */}
-                    <div className="lg:col-span-2">
-                         {featuredProducts.length > 0 ? (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                {featuredProducts.map((product) => {
-                                    const ctaLink = product.ctaLink;
-                                    const target = '_blank';
-                                    
-                                    return (
-                                        <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
-                                            {(product.versions && product.versions.length > 0 && product.versions[0].imageUrl) ? (
-                                                <div className="h-48 relative overflow-hidden">
-                                                    <Image
-                                                        src={product.versions[0].imageUrl}
-                                                        alt={product.title}
-                                                        fill
-                                                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                                                        className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
-                                                    />
-                                                </div>
-                                            ) : (
-                                                <div className="h-48 bg-muted" />
-                                            )}
+                <div className="max-w-3xl mx-auto">
+                     {featuredProducts.length > 0 ? (
+                        <div className="grid grid-cols-1 gap-8">
+                            {featuredProducts.map((product) => {
+                                const ctaLink = product.ctaLink;
+                                const target = '_blank';
+                                
+                                return (
+                                    <Card key={product.id} className="overflow-hidden group flex flex-col sm:flex-row shadow-md hover:shadow-xl transition-shadow duration-300">
+                                        {(product.versions && product.versions.length > 0 && product.versions[0].imageUrl) ? (
+                                            <div className="sm:w-1/3 relative h-48 sm:h-auto overflow-hidden flex-shrink-0">
+                                                <Image
+                                                    src={product.versions[0].imageUrl}
+                                                    alt={product.title}
+                                                    fill
+                                                    className="object-cover transition-transform duration-300 ease-in-out group-hover:scale-105"
+                                                />
+                                            </div>
+                                        ) : (
+                                            <div className="sm:w-1/3 h-48 sm:h-auto bg-muted flex-shrink-0" />
+                                        )}
+                                        <div className="flex flex-col flex-1">
                                             <CardHeader>
                                                 <CardTitle>{product.title}</CardTitle>
                                                 {(product.versions && product.versions.length > 0 && product.versions[0].price != null) && (
@@ -94,25 +83,25 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
                                                 )}
                                             </CardHeader>
                                             <CardContent className="flex-1">
-                                                <p className="text-muted-foreground text-sm line-clamp-3">{product.description}</p>
+                                                <p className="text-muted-foreground text-sm">{product.description}</p>
                                             </CardContent>
                                             <CardFooter>
                                                 {ctaLink && (
-                                                    <Button asChild className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                                    <Button asChild className="w-full sm:w-auto font-bold" style={{ backgroundColor: primaryColor }}>
                                                        <Link href={ctaLink} target={target}>Voir le produit</Link>
                                                     </Button>
                                                 )}
                                             </CardFooter>
-                                        </Card>
-                                    );
-                                })}
-                            </div>
-                         ) : (
-                            <div className="text-center text-muted-foreground py-16 col-span-2">
-                                <p>Aucun produit mis en vedette pour le moment.</p>
-                            </div>
-                         )}
-                    </div>
+                                        </div>
+                                    </Card>
+                                );
+                            })}
+                        </div>
+                     ) : (
+                        <div className="text-center text-muted-foreground py-16 col-span-2">
+                            <p>Aucun produit mis en vedette pour le moment.</p>
+                        </div>
+                     )}
                 </div>
             </div>
         </section>
