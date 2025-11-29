@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -121,9 +122,6 @@ export default function CounselorPublicProfilePage() {
         <CounselorServicesSection counselor={counselor} />
         <ParcoursSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
-        <CounselorJobOffersSection counselor={counselor} />
-        <CounselorCtaSection counselor={counselor} />
-        <CounselorActivitiesSection counselor={counselor} />
         {counselor.miniSite?.trainingCatalogSection?.enabled && (
           <TrainingCatalogSection 
             sectionData={counselor.miniSite.trainingCatalogSection} 
@@ -132,6 +130,9 @@ export default function CounselorPublicProfilePage() {
           />
         )}
         <ProductsSection counselor={counselor} />
+        <CounselorJobOffersSection counselor={counselor} />
+        <CounselorCtaSection counselor={counselor} />
+        <CounselorActivitiesSection counselor={counselor} />
         <CounselorBlogSection counselor={counselor} />
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />

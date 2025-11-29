@@ -36,8 +36,6 @@ const heroSchema = z.object({
   description: z.string().optional(),
   ctaText: z.string().optional(),
   ctaLink: z.string().optional(),
-  cta2Text: z.string().optional(),
-  cta2Link: z.string().optional(),
   showPhoto: z.boolean().default(true),
   showPhone: z.boolean().default(true),
   showLocation: z.boolean().default(true),
@@ -194,6 +192,24 @@ const trainingCatalogSectionSchema = z.object({
     enabled: z.boolean().default(false),
 }).optional();
 
+const productItemSchema = z.object({
+    id: z.string(),
+    title: z.string().min(1, 'Le titre est requis'),
+    description: z.string().optional(),
+    imageUrl: z.string().nullable().optional(),
+    price: z.coerce.number().optional(),
+    ctaText: z.string().optional(),
+    ctaLink: z.string().url('URL invalide').optional().or(z.literal('')),
+});
+
+const productsSectionSchema = z.object({
+    enabled: z.boolean().default(false),
+    title: z.string().optional(),
+    subtitle: z.string().optional(),
+    description: z.string().optional(),
+    products: z.array(productItemSchema).optional(),
+}).optional();
+
 
 const miniSiteSchema = z.object({
   hero: heroSchema.optional(),
@@ -206,8 +222,9 @@ const miniSiteSchema = z.object({
   activitiesSection: activitiesSchema,
   pricingSection: pricingSchema,
   jobOffersSection: jobOffersSectionSchema,
-  contactSection: contactSectionSchema,
   trainingCatalogSection: trainingCatalogSectionSchema,
+  productsSection: productsSectionSchema,
+  contactSection: contactSectionSchema,
 });
 
 type MiniSiteFormData = z.infer<typeof miniSiteSchema>;
@@ -217,6 +234,7 @@ export type EventItem = z.infer<typeof eventItemSchema>;
 export type JobOffer = z.infer<typeof jobOfferSchema>;
 export type Testimonial = z.infer<typeof testimonialSchema>;
 export type InterestItem = z.infer<typeof interestItemSchema>;
+export type ProductItem = z.infer<typeof productItemSchema>;
 
 
 type UserProfile = {
@@ -227,6 +245,17 @@ type UserProfile = {
   publicProfileName?: string;
   miniSite?: MiniSiteFormData;
   dashboardTheme?: any;
+  commercialName?: string;
+  siret?: string;
+  address?: string;
+  zipCode?: string;
+  city?: string;
+  phone?: string;
+  contactEmail?: string;
+  isVatSubject?: boolean;
+  vatRate?: number;
+  vatNumber?: string;
+  role?: string;
 };
 
 const toBase64 = (file: File): Promise<string> =>
@@ -248,6 +277,7 @@ export default function MiniSitePage() {
   const fileInputCtaRef = useRef<HTMLInputElement>(null);
   const fileInputActivitiesRef = useRef<HTMLInputElement>(null);
   const fileInputTestimonialRef = useRef<HTMLInputElement>(null);
+  const fileInputProductRef = useRef<HTMLInputElement>(null);
   
   const userDocRef = useMemoFirebase(() => {
     if (!user) return null;
@@ -277,8 +307,6 @@ export default function MiniSitePage() {
         description: '',
         ctaText: 'Prendre rendez-vous',
         ctaLink: '#contact',
-        cta2Text: 'Mon Espace',
-        cta2Link: '/application',
         showPhoto: true,
         showPhone: true,
         showLocation: true,
@@ -364,6 +392,16 @@ export default function MiniSitePage() {
       trainingCatalogSection: {
         enabled: false,
       },
+      productsSection: {
+        enabled: false,
+        title: 'Mes Produits',
+        subtitle: 'Découvrez mes créations',
+        description: 'Voici une sélection de produits que je propose à la vente.',
+        products: [
+            { id: `product-${Date.now()}-1`, title: 'E-book: Le guide de la reconversion', description: 'Un guide complet pour vous aider à changer de voie.', price: 19.99, ctaText: 'Acheter', ctaLink: '#', imageUrl: null },
+            { id: `product-${Date.now()}-2`, title: 'Kit Méditation Audio', description: 'Une série de méditations guidées pour la sérénité.', price: 29.99, ctaText: 'Acheter', ctaLink: '#', imageUrl: null },
+        ],
+      },
       contactSection: {
         enabled: false,
         title: "Contactez-moi",
@@ -416,6 +454,11 @@ export default function MiniSitePage() {
         control: form.control,
         name: "activitiesSection.interests",
     });
+    
+     const { fields: productFields, append: appendProduct, remove: removeProduct } = useFieldArray({
+        control: form.control,
+        name: "productsSection.products",
+    });
 
 
   useEffect(() => {
@@ -465,6 +508,11 @@ export default function MiniSitePage() {
          trainingCatalogSection: {
             ...form.getValues().trainingCatalogSection,
             ...userData.miniSite.trainingCatalogSection,
+         },
+         productsSection: {
+            ...form.getValues().productsSection,
+            ...userData.miniSite.productsSection,
+            products: userData.miniSite.productsSection?.products || [],
          },
          contactSection: {
             ...form.getValues().contactSection,
@@ -551,6 +599,14 @@ export default function MiniSitePage() {
             form.setValue(`servicesSection.services.${index}.imageUrl`, base64);
         }
     };
+
+    const handleProductImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            form.setValue(`productsSection.products.${index}.imageUrl`, base64);
+        }
+    };
     
   const isLoading = isUserLoading || isUserDataLoading;
 
@@ -631,8 +687,7 @@ export default function MiniSitePage() {
                         <div className="space-y-6 p-6">
                             <FormField control={form.control} name="hero.title" render={({ field }) => (<FormItem><FormLabel>Titre principal</FormLabel><FormControl><Textarea placeholder="Donnez un nouvel élan à votre carrière" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="hero.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Textarea placeholder="Un accompagnement personnalisé pour atteindre vos objectifs." {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="hero.description" render={({ field }) => (<FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea placeholder="Description complémentaire..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-
+                            
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField control={form.control} name="hero.ctaText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton principal</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="hero.ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton principal</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -948,6 +1003,50 @@ export default function MiniSitePage() {
                     </AccordionContent>
                 </AccordionItem>
 
+                 <AccordionItem value="products-section" className='border rounded-lg overflow-hidden'>
+                    <AccordionTrigger className='text-lg font-medium px-6 py-4 bg-muted/50'>Section "Nos Produits"</AccordionTrigger>
+                    <AccordionContent>
+                        <div className="space-y-6 p-6">
+                            <FormField control={form.control} name="productsSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
+                            <FormField control={form.control} name="productsSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="productsSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="productsSection.description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <div>
+                                <Label>Liste des produits</Label>
+                                <div className="space-y-4 mt-2">
+                                    {productFields.map((field, index) => (
+                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                            <div className="flex justify-between items-center">
+                                                <h4 className="font-medium">Produit {index + 1}</h4>
+                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeProduct(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                            </div>
+                                            <FormField control={form.control} name={`productsSection.products.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name={`productsSection.products.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name={`productsSection.products.${index}.price`} render={({ field }) => (<FormItem><FormLabel>Prix</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name={`productsSection.products.${index}.ctaText`} render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <FormField control={form.control} name={`productsSection.products.${index}.ctaLink`} render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                            <div>
+                                                <Label>Image</Label>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <div className="w-32 h-32 flex items-center justify-center rounded-md border bg-muted relative overflow-hidden">
+                                                        {form.watch(`productsSection.products.${index}.imageUrl`) ? <Image src={form.watch(`productsSection.products.${index}.imageUrl`)!} alt="Aperçu" layout="fill" objectFit="cover" /> : <span className="text-xs text-muted-foreground">Aucune image</span>}
+                                                    </div>
+                                                    <input type="file" id={`product-image-${index}`} onChange={(e) => handleProductImageUpload(index, e)} className="hidden" accept="image/*" />
+                                                    <div className="flex flex-col gap-2">
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById(`product-image-${index}`)?.click()}><Upload className="mr-2 h-4 w-4"/>Uploader</Button>
+                                                        <Button type="button" variant="destructive" size="sm" onClick={() => form.setValue(`productsSection.products.${index}.imageUrl`, null)}><Trash2 className="mr-2 h-4 w-4"/>Supprimer</Button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))}
+                                    <Button type="button" variant="outline" size="sm" onClick={() => appendProduct({ id: `product-${Date.now()}`, title: 'Nouveau Produit', description: '', price: 0, ctaText: 'Acheter', ctaLink: '#', imageUrl: null })} className="mt-4"><PlusCircle className="mr-2 h-4 w-4" />Ajouter un produit</Button>
+                                </div>
+                            </div>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
                 <AccordionItem value="testimonials-section" className="border rounded-lg overflow-hidden">
                     <AccordionTrigger className="text-lg font-medium px-6 py-4 bg-muted/50">Section "Témoignages"</AccordionTrigger>
                     <AccordionContent>
@@ -1091,7 +1190,6 @@ export default function MiniSitePage() {
                                     </Button>
                                 </div>
                                 <FormField control={form.control} name="activitiesSection.eventsButtonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="J'ai participé à un live" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                <FormField control={form.control} name="activitiesSection.eventsButtonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             </div>
                         </div>
                     </AccordionContent>
@@ -1141,8 +1239,3 @@ export default function MiniSitePage() {
     </div>
   );
 }
-
-    
-
-    
-
