@@ -275,7 +275,7 @@ export default function EventsPage() {
   };
 
   const handleSendConfirmations = async (event: Event) => {
-    const emailSettings = userData?.emailSettings || personalization?.emailSettings;
+    const emailSettings = (userData as any)?.emailSettings || personalization?.emailSettings;
      if (!emailSettings?.fromEmail) {
         toast({ title: "Configuration requise", description: "Veuillez configurer vos informations d'envoi d'e-mail dans vos paramètres.", variant: "destructive" });
         return;
@@ -295,7 +295,7 @@ export default function EventsPage() {
   };
 
   const isLoading = isUserLoading || areEventsLoading || isUserDataLoading;
-  const isSuperAdmin = user?.email === 'roussey.romain@gmail.com';
+  const isSuperAdmin = (userData as any)?.role === 'superadmin';
 
   const showPrismeButton = isSuperAdmin || (userData?.role === 'conseiller' && userPlan?.hasPrismeAccess);
 
