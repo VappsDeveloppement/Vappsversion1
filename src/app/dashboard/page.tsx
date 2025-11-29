@@ -501,6 +501,7 @@ function TrainingRequestsSection() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [requestToView, setRequestToView] = useState<TrainingRequest | null>(null);
+    const [requestToDelete, setRequestToDelete] = useState<TrainingRequest | null>(null);
 
     const requestsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -524,9 +525,22 @@ function TrainingRequestsSection() {
         if (requestToView?.id === requestId) setRequestToView(null);
     };
 
+    const handleDeleteRequest = async () => {
+        if (!requestToDelete) return;
+        const requestRef = doc(firestore, 'training_requests', requestToDelete.id);
+        try {
+            await deleteDocumentNonBlocking(requestRef);
+            toast({ title: 'Demande supprimée' });
+        } catch (error) {
+            toast({ title: 'Erreur', description: 'Impossible de supprimer la demande.', variant: 'destructive'});
+        } finally {
+            setRequestToDelete(null);
+        }
+    };
+
     const isLoading = isUserLoading || areRequestsLoading;
     
-    const renderTableRows = (requests: TrainingRequest[]) => {
+    const renderTableRows = (requests: TrainingRequest[], isProcessedTab: boolean) => {
         if (isLoading) {
             return [...Array(3)].map((_, i) => <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full"/></TableCell></TableRow>);
         }
@@ -543,9 +557,27 @@ function TrainingRequestsSection() {
                 <TableCell>{new Date(req.createdAt).toLocaleDateString('fr-FR')}</TableCell>
                 <TableCell><Badge variant={statusVariant[req.status]}>{statusText[req.status]}</Badge></TableCell>
                 <TableCell className="text-right">
-                    <Button variant="outline" size="sm" onClick={() => setRequestToView(req)}>
-                        <Mail className="mr-2 h-4 w-4" /> Voir la demande
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setRequestToView(req)}>
+                                <Mail className="mr-2 h-4 w-4" /> Voir la demande
+                            </DropdownMenuItem>
+                            {req.status === 'new' && (
+                                <DropdownMenuItem onClick={() => handleMarkAsProcessed(req.id)}>
+                                    <CheckCircle className="mr-2 h-4 w-4" /> Marquer comme traité
+                                </DropdownMenuItem>
+                            )}
+                            {isProcessedTab && (
+                                <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem className="text-destructive" onClick={() => setRequestToDelete(req)}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                    </DropdownMenuItem>
+                                </>
+                            )}
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </TableCell>
             </TableRow>
         ));
@@ -571,13 +603,13 @@ function TrainingRequestsSection() {
                         <TabsContent value="new">
                             <Table>
                                 <TableHeader><TableRow><TableHead>Demandeur</TableHead><TableHead>Formation</TableHead><TableHead>Date</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{renderTableRows(newRequests)}</TableBody>
+                                <TableBody>{renderTableRows(newRequests, false)}</TableBody>
                             </Table>
                         </TabsContent>
                          <TabsContent value="processed">
                              <Table>
                                 <TableHeader><TableRow><TableHead>Demandeur</TableHead><TableHead>Formation</TableHead><TableHead>Date</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                                <TableBody>{renderTableRows(processedRequests)}</TableBody>
+                                <TableBody>{renderTableRows(processedRequests, true)}</TableBody>
                             </Table>
                         </TabsContent>
                     </CardContent>
@@ -607,6 +639,23 @@ function TrainingRequestsSection() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+             <AlertDialog open={!!requestToDelete} onOpenChange={(open) => !open && setRequestToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer la demande ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Cette action est irréversible. La demande de {requestToDelete?.name} sera définitivement supprimée.
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteRequest} className="bg-destructive hover:bg-destructive/90">
+                            Supprimer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </>
     );
 }
