@@ -200,7 +200,7 @@ function ProductManager() {
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <div><CardTitle>Gestion des Produits</CardTitle><CardDescription>Ajoutez les produits de votre catalogue.</CardDescription></div>
+                    <div><CardTitle>Catalogue Produits</CardTitle><CardDescription>Ajoutez les produits de votre catalogue.</CardDescription></div>
                     <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouveau Produit</Button>
                 </div>
                  <div className="relative pt-4">
@@ -241,7 +241,7 @@ function ProductManager() {
                                     <div className="space-y-6 py-4 pr-6">
                                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (publique)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name="ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien externe (optionnel)</FormLabel><FormControl><Input {...field} placeholder="https://..." /></FormControl><FormDescription>Si rempli, le bouton "Voir le produit" pointera vers ce lien.</FormDescription><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien externe (optionnel)</FormLabel><FormControl><Input {...field} placeholder="https://..." value={field.value || ''}/></FormControl><FormDescription>Si rempli, le bouton "Voir le produit" pointera vers ce lien.</FormDescription><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="isFeatured" render={({ field }) => (
                                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                                                 <div className="space-y-0.5">
@@ -294,6 +294,206 @@ function ProductManager() {
     );
 }
 
+const protocoleSchema = z.object({
+  name: z.string().min(1, "Le nom du protocole est requis."),
+  contraindications: z.array(z.string()).optional(),
+  pathologies: z.array(z.string()).optional(),
+  holisticProfile: z.array(z.string()).optional(),
+  steps: z.array(z.object({
+    id: z.string(),
+    title: z.string().min(1, "Le titre de l'étape est requis."),
+    description: z.string().optional(),
+    imageUrl: z.string().nullable().optional(),
+  })).optional(),
+});
+type ProtocoleFormData = z.infer<typeof protocoleSchema>;
+
+type Protocole = {
+    id: string;
+    counselorId: string;
+    name: string;
+    contraindications?: string[];
+    pathologies?: string[];
+    holisticProfile?: string[];
+    steps?: { id: string; title: string; description?: string; imageUrl?: string | null; }[];
+}
+
+function ProtocoleManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingProtocole, setEditingProtocole] = useState<Protocole | null>(null);
+    const [protocoleToDelete, setProtocoleToDelete] = useState<Protocole | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
+
+    const protocolesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'protocols'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: protocoles, isLoading: areProtocolesLoading } = useCollection<Protocole>(protocolesQuery);
+
+    const filteredProtocoles = useMemo(() => {
+        if (!protocoles) return [];
+        if (!searchTerm) return protocoles;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return protocoles.filter(p => p.name.toLowerCase().includes(lowercasedTerm));
+    }, [protocoles, searchTerm]);
+
+    const form = useForm<ProtocoleFormData>({
+        resolver: zodResolver(protocoleSchema),
+        defaultValues: { name: '', contraindications: [], pathologies: [], holisticProfile: [], steps: [] },
+    });
+
+    const { fields: stepFields, append: appendStep, remove: removeStep } = useFieldArray({
+        control: form.control,
+        name: "steps"
+    });
+    
+    // State to manage image previews for each step
+    const [stepImagePreviews, setStepImagePreviews] = useState<Record<string, string | null>>({});
+
+    useEffect(() => {
+        if (isSheetOpen) {
+            if (editingProtocole) {
+                form.reset(editingProtocole);
+                const previews: Record<string, string | null> = {};
+                editingProtocole.steps?.forEach(step => {
+                    previews[step.id] = step.imageUrl || null;
+                });
+                setStepImagePreviews(previews);
+            } else {
+                form.reset({ name: '', contraindications: [], pathologies: [], holisticProfile: [], steps: [] });
+                setStepImagePreviews({});
+            }
+        }
+    }, [isSheetOpen, editingProtocole, form]);
+
+    const handleNew = () => { setEditingProtocole(null); setIsSheetOpen(true); };
+    const handleEdit = (protocole: Protocole) => { setEditingProtocole(protocole); setIsSheetOpen(true); };
+
+    const onSubmit = (data: ProtocoleFormData) => {
+        if (!user) return;
+
+        const stepsWithImages = data.steps?.map(step => ({
+            ...step,
+            imageUrl: stepImagePreviews[step.id] || null,
+        }));
+
+        const protocoleData = { ...data, counselorId: user.uid, steps: stepsWithImages };
+
+        if (editingProtocole) {
+            setDocumentNonBlocking(doc(firestore, 'protocols', editingProtocole.id), protocoleData, { merge: true });
+            toast({ title: 'Protocole mis à jour' });
+        } else {
+            addDocumentNonBlocking(collection(firestore, 'protocols'), protocoleData);
+            toast({ title: 'Protocole créé' });
+        }
+        setIsSheetOpen(false);
+    };
+    
+    const handleStepImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, stepId: string) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            setStepImagePreviews(prev => ({ ...prev, [stepId]: base64 }));
+        }
+    };
+
+    const handleDelete = () => {
+        if (!protocoleToDelete) return;
+        deleteDocumentNonBlocking(doc(firestore, 'protocols', protocoleToDelete.id));
+        toast({ title: 'Protocole supprimé' });
+        setProtocoleToDelete(null);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div><CardTitle>Gestion des Protocoles</CardTitle><CardDescription>Créez et gérez vos protocoles de soin.</CardDescription></div>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouveau Protocole</Button>
+                </div>
+                <div className="relative pt-4">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
+                    <Input
+                        placeholder="Rechercher un protocole..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader><TableRow><TableHead>Nom</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {areProtocolesLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            : filteredProtocoles && filteredProtocoles.length > 0 ? (
+                                filteredProtocoles.map(p => (
+                                    <TableRow key={p.id}>
+                                        <TableCell className="font-medium">{p.name}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}><Edit className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => setProtocoleToDelete(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : <TableRow><TableCell colSpan={2} className="h-24 text-center">Aucun protocole créé.</TableCell></TableRow>}
+                        </TableBody>
+                    </Table>
+                </div>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-2xl w-full">
+                        <SheetHeader><SheetTitle>{editingProtocole ? 'Modifier le' : 'Nouveau'} protocole</SheetTitle></SheetHeader>
+                         <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)}>
+                               <ScrollArea className="h-[calc(100vh-8rem)]">
+                                <div className="space-y-6 py-4 pr-6">
+                                     <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du protocole</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)} />
+                                     <div className="space-y-4">
+                                        <FormField control={form.control} name="contraindications" render={({ field }) => (<FormItem><FormLabel>Contre-indications</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
+                                        <FormField control={form.control} name="pathologies" render={({ field }) => (<FormItem><FormLabel>Pathologies</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
+                                        <FormField control={form.control} name="holisticProfile" render={({ field }) => (<FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
+                                    </div>
+                                    <div className="space-y-4 pt-4 border-t">
+                                        <h4 className="font-medium">Étapes du protocole</h4>
+                                        {stepFields.map((step, index) => (
+                                            <Card key={step.id} className="p-4">
+                                                <div className="flex justify-between items-center mb-4">
+                                                    <h5 className="font-semibold">Étape {index + 1}</h5>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeStep(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                                </div>
+                                                <div className="space-y-4">
+                                                    <FormField control={form.control} name={`steps.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name={`steps.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <div>
+                                                        <Label>Image (optionnel)</Label>
+                                                        <div className="flex items-center gap-4 mt-2">
+                                                            <Image src={stepImagePreviews[step.id] || '/placeholder.svg'} alt="Aperçu" width={80} height={80} className="rounded-md object-cover border" />
+                                                            <input type="file" id={`step-image-${step.id}`} onChange={(e) => handleStepImageUpload(e, step.id)} className="hidden" />
+                                                            <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById(`step-image-${step.id}`)?.click()}>Uploader</Button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </Card>
+                                        ))}
+                                         <Button type="button" variant="outline" size="sm" onClick={() => appendStep({ id: `step-${Date.now()}`, title: '', description: '', imageUrl: null })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter une étape</Button>
+                                    </div>
+                                </div>
+                               </ScrollArea>
+                                <SheetFooter className="pt-6 border-t mt-auto">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                         </Form>
+                    </SheetContent>
+                </Sheet>
+                 <AlertDialog open={!!protocoleToDelete} onOpenChange={(open) => !open && setProtocoleToDelete(null)}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Supprimer "{protocoleToDelete?.name}" ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function AuraPage() {
     return (
         <div className="space-y-8">
@@ -317,7 +517,7 @@ export default function AuraPage() {
                    </div>
                 </TabsContent>
                 <TabsContent value="protocoles">
-                    <Card><CardHeader><CardTitle>Générateur de Protocoles</CardTitle><CardDescription>Élaborez des protocoles de soin ou d'accompagnement sur mesure.</CardDescription></CardHeader><CardContent><div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96"><Beaker className="h-16 w-16 text-muted-foreground mb-4" /><h3 className="text-xl font-semibold">Contenu à venir</h3><p className="text-muted-foreground mt-2 max-w-2xl">L'outil de génération de protocoles sera bientôt disponible ici.</p></div></CardContent></Card>
+                    <ProtocoleManager />
                 </TabsContent>
                 <TabsContent value="test">
                     <Card><CardHeader><CardTitle>Zone de Test</CardTitle><CardDescription>Utilisez cet espace pour expérimenter librement avec les fonctionnalités d'Aura.</CardDescription></CardHeader><CardContent><div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96"><ClipboardList className="h-16 w-16 text-muted-foreground mb-4" /><h3 className="text-xl font-semibold">Contenu à venir</h3><p className="text-muted-foreground mt-2 max-w-2xl">La zone de test pour Aura sera bientôt disponible ici.</p></div></CardContent></Card>

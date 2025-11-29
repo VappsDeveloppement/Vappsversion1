@@ -449,12 +449,8 @@
                     "title": { "type": "string" },
                     "subtitle": { "type": "string" },
                     "description": { "type": "string" },
-                    "products": {
-                        "type": "array",
-                        "items": {
-                          "$ref": "#/entities/Product"
-                        }
-                    }
+                    "buttonText": { "type": "string" },
+                    "buttonLink": { "type": "string", "format": "uri" }
                 }
             },
             "contactSection": {
@@ -1265,17 +1261,6 @@
       },
       "required": ["id", "userId", "pathId", "enrolledAt"]
     },
-    "ProductCategory": {
-      "title": "Product Category",
-      "type": "object",
-      "description": "A category for products in the Aura tool.",
-      "properties": {
-        "id": { "type": "string" },
-        "name": { "type": "string" },
-        "counselorId": { "type": "string" }
-      },
-      "required": ["id", "name", "counselorId"]
-    },
     "Product": {
       "title": "Product",
       "type": "object",
@@ -1284,42 +1269,48 @@
         "id": { "type": "string" },
         "counselorId": { "type": "string" },
         "title": { "type": "string" },
-        "categoryId": { "type": "string", "description": "Reference to ProductCategory" },
         "description": { "type": "string" },
-        "isFeatured": { "type": "boolean", "description": "Whether the product is featured on the homepage." },
-        "versions": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "name": { "type": "string" },
-              "imageUrl": { "type": "string", "format": "uri" },
-              "price": { "type": "number" },
-              "characteristics": { "type": "array", "items": { "type": "string" } }
-            },
-            "required": ["id", "name"]
-          }
-        },
-        "contraindications": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "holisticProfile": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "pathologies": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
+        "isFeatured": { "type": "boolean" },
+        "imageUrl": { "type": "string", "format": "uri" },
+        "price": { "type": "number" },
+        "characteristics": { "type": "array", "items": { "type": "string" } },
+        "contraindications": { "type": "array", "items": { "type": "string" } },
+        "holisticProfile": { "type": "array", "items": { "type": "string" } },
+        "pathologies": { "type": "array", "items": { "type": "string" } },
         "ctaLink": {
             "type": "string",
             "format": "uri",
             "description": "Optional external link for the product CTA button."
         }
       },
-      "required": ["counselorId", "title", "categoryId", "versions"]
+      "required": ["counselorId", "title"]
+    },
+    "Protocole": {
+      "title": "Protocole",
+      "type": "object",
+      "description": "Represents a wellness or care protocol.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string" },
+        "contraindications": { "type": "array", "items": { "type": "string" } },
+        "pathologies": { "type": "array", "items": { "type": "string" } },
+        "holisticProfile": { "type": "array", "items": { "type": "string" } },
+        "steps": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "title": { "type": "string" },
+              "description": { "type": "string" },
+              "imageUrl": { "type": "string", "format": "uri" }
+            },
+            "required": ["id", "title"]
+          }
+        }
+      },
+      "required": ["counselorId", "name"]
     }
   },
   "auth": {
@@ -1591,19 +1582,19 @@
         }
       },
       {
-        "path": "/product_categories/{categoryId}",
-        "definition": {
-            "entityName": "ProductCategory",
-            "schema": { "$ref": "#/entities/ProductCategory" },
-            "description": "Stores categories for products in the Aura tool."
-        }
-      },
-      {
         "path": "/products/{productId}",
         "definition": {
           "entityName": "Product",
           "schema": { "$ref": "#/entities/Product" },
           "description": "Stores products for the Aura tool."
+        }
+      },
+      {
+        "path": "/protocols/{protocolId}",
+        "definition": {
+          "entityName": "Protocole",
+          "schema": { "$ref": "#/entities/Protocole" },
+          "description": "Stores wellness or care protocols."
         }
       }
     ],
