@@ -495,7 +495,6 @@ function WellnessSheetGenerator() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // Client selection state
     const [searchEmail, setSearchEmail] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     const [searchResult, setSearchResult] = useState<Client | 'not-found' | null>(null);
@@ -563,7 +562,6 @@ function WellnessSheetGenerator() {
     };
 
     const onWellnessSubmit = (data: WellnessSheetFormData) => {
-        // Here you would typically save the wellness sheet data associated with the selectedClient.id
         console.log("Wellness Sheet Data for", selectedClient, data);
         toast({ title: 'Fiche bien-être enregistrée (simulation)', description: 'La logique de sauvegarde est à implémenter.' });
         resetAll();
@@ -576,7 +574,7 @@ function WellnessSheetGenerator() {
                 <CardDescription>Créez des fiches de bien-être personnalisées pour vos clients.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Sheet open={isSheetOpen} onOpenChange={resetAll}>
+                <Sheet open={isSheetOpen} onOpenChange={(open) => {if (!open) resetAll(); setIsSheetOpen(open);}}>
                     <SheetTrigger asChild>
                         <Button className="w-full"><PlusCircle className="mr-2 h-4 w-4" />Créer une nouvelle fiche</Button>
                     </SheetTrigger>
@@ -640,7 +638,7 @@ export default function AuraPage() {
                 <h1 className="text-3xl font-bold font-headline">Aura</h1>
                 <p className="text-muted-foreground">Votre outil de création de contenu par IA.</p>
             </div>
-            <Tabs defaultValue="catalogue-produits" className="w-full">
+            <Tabs defaultValue="fiche-bien-etre" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 h-auto">
                     <TabsTrigger value="fiche-bien-etre"><FileText className="mr-2 h-4 w-4" />Fiche bien-être</TabsTrigger>
                     <TabsTrigger value="catalogue-produits"><ShoppingBag className="mr-2 h-4 w-4" />Catalogue Produits</TabsTrigger>
@@ -665,5 +663,7 @@ export default function AuraPage() {
         </div>
     );
 }
+
+    
 
     
