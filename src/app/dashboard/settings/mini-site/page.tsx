@@ -159,6 +159,7 @@ const jobOffersSectionSchema = z.object({
     enabled: z.boolean().default(false),
     title: z.string().optional(),
     subtitle: z.string().optional(),
+    description: z.string().optional(),
     offers: z.array(jobOfferSchema).optional(),
 }).optional();
 
@@ -230,7 +231,7 @@ const toBase64 = (file: File): Promise<string> =>
     reader.readAsDataURL(file);
     reader.onload = () => resolve(reader.result as string);
     reader.onerror = (error) => reject(error);
-  });
+});
 
 export default function MiniSitePage() {
   const { user, isUserLoading } = useUser();
@@ -349,6 +350,7 @@ export default function MiniSitePage() {
         enabled: false,
         title: 'Nos Offres d\'Emploi',
         subtitle: 'Rejoignez mon équipe',
+        description: '',
         offers: [],
       },
       trainingCatalogSection: {
@@ -773,7 +775,7 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="jobOffersSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="jobOffersSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Mes Offres d'Emploi" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="jobOffersSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Input placeholder="Rejoignez mon équipe" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            
+                             <FormField control={form.control} name="jobOffersSection.description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Une description pour la section des offres d'emploi..." {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <div>
                                 <Label>Liste des offres</Label>
                                 <div className="space-y-4 mt-2">

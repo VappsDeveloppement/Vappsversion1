@@ -12,40 +12,46 @@ type CounselorProfile = {
             enabled?: boolean;
             title?: string;
             subtitle?: string;
+            description?: string;
             offers?: { id: string; title: string; contractType: string; location: string }[];
         }
+    };
+    dashboardTheme?: {
+        primaryColor?: string;
     };
 };
 
 export function CounselorJobOffersSection({ counselor }: { counselor: CounselorProfile }) {
     const jobOffersSettings = counselor.miniSite?.jobOffersSection;
+    const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
     if (!jobOffersSettings?.enabled || !jobOffersSettings.offers || jobOffersSettings.offers.length === 0) {
         return null;
     }
     
-    const { title, subtitle, offers } = jobOffersSettings;
+    const { title, subtitle, description, offers } = jobOffersSettings;
 
     return (
-        <section className="bg-muted/30 text-foreground py-16 sm:py-24">
+        <section className="bg-background text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold">{title}</h2>
-                    <p className="text-lg text-muted-foreground mt-2">{subtitle}</p>
+                    {subtitle && <p className="text-lg font-semibold mt-2" style={{ color: primaryColor }}>{subtitle}</p>}
+                    {description && <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">{description}</p>}
                 </div>
 
                 <Carousel
                     opts={{
                         align: "start",
-                        loop: true,
+                        loop: offers.length > 2,
                     }}
                     className="w-full max-w-5xl mx-auto"
                 >
                     <CarouselContent>
                         {offers.map((offer) => (
                             <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3">
-                                <div className="p-1">
-                                    <Card className="flex flex-col h-full">
+                                <div className="p-1 h-full">
+                                    <Card className="flex flex-col h-full shadow-lg border-2 border-transparent hover:border-primary transition-all duration-300">
                                         <CardHeader>
                                             <CardTitle>{offer.title}</CardTitle>
                                         </CardHeader>
@@ -56,7 +62,9 @@ export function CounselorJobOffersSection({ counselor }: { counselor: CounselorP
                                             </div>
                                         </CardContent>
                                         <CardFooter>
-                                            <Button variant="outline" className="w-full">Voir l'offre</Button>
+                                            <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>
+                                                Postuler
+                                            </Button>
                                         </CardFooter>
                                     </Card>
                                 </div>
