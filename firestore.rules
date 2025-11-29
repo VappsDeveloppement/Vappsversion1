@@ -129,9 +129,9 @@ service cloud.firestore {
     match /events/{eventId} {
       allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
       
-      allow list: if request.query.get('isPublic') == true
-                  || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin')
-                  || (request.auth != null && request.query.get('counselorId') == request.auth.uid);
+      allow list: if request.auth != null && request.query.counselorId == request.auth.uid;
+                  // Allow public listing of events.
+                  // || request.query.get('isPublic') == true
 
       allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
