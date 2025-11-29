@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { useAgency } from '@/context/agency-provider';
 import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, useDoc, addDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2, Search, Mail, MessageSquare } from 'lucide-react';
+import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2, Search, Mail, MessageSquare, TrendingUp, Users, FileText, Receipt, Calendar as CalendarIcon } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -19,6 +19,15 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogHeader, DialogTitle, DialogDescription, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { DateRange } from "react-day-picker";
+import { addDays, format, subDays } from "date-fns";
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
+import { cn } from '@/lib/utils';
+import type { Quote } from '@/components/shared/quote-management';
+import type { Invoice } from '@/components/shared/invoice-management';
+import type { Client } from '@/app/dashboard/clients/page';
+
 
 type FollowUpRequest = {
     id: string;
@@ -54,6 +63,161 @@ const statusText: Record<FollowUpRequest['status'] | TrainingRequest['status'], 
   new: 'Nouveau',
   processed: 'Traité',
 };
+
+
+function DashboardStats() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const [date, setDate] = useState<DateRange | undefined>({
+        from: subDays(new Date(), 29),
+        to: new Date(),
+    });
+
+    const quotesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/quotes`));
+    }, [user, firestore]);
+
+    const invoicesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/invoices`));
+    }, [user, firestore]);
+    
+    const clientsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore]);
+
+    const { data: quotes, isLoading: areQuotesLoading } = useCollection<Quote>(quotesQuery);
+    const { data: invoices, isLoading: areInvoicesLoading } = useCollection<Invoice>(invoicesQuery);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
+    
+    const stats = useMemo(() => {
+        const from = date?.from;
+        const to = date?.to;
+
+        const filteredQuotes = quotes?.filter(q => {
+            const quoteDate = new Date(q.issueDate);
+            if(from && to) return quoteDate >= from && quoteDate <= to;
+            return true;
+        }) || [];
+
+        const filteredInvoices = invoices?.filter(i => {
+            const invoiceDate = new Date(i.issueDate);
+             if(from && to) return invoiceDate >= from && invoiceDate <= to;
+            return true;
+        }) || [];
+
+        const pendingQuotesAmount = filteredQuotes
+            .filter(q => q.status === 'sent' || q.status === 'draft')
+            .reduce((sum, q) => sum + q.total, 0);
+        
+        const paidInvoicesAmount = filteredInvoices
+            .filter(i => i.status === 'paid')
+            .reduce((sum, i) => sum + i.total, 0);
+            
+        const acceptedQuotes = filteredQuotes.filter(q => q.status === 'accepted').length;
+        const totalSentQuotes = filteredQuotes.filter(q => q.status === 'accepted' || q.status === 'rejected' || q.status === 'sent').length;
+        const conversionRate = totalSentQuotes > 0 ? (acceptedQuotes / totalSentQuotes) * 100 : 0;
+        
+        const clientCount = clients?.length || 0;
+
+        return {
+            pendingQuotesAmount,
+            paidInvoicesAmount,
+            conversionRate,
+            clientCount
+        }
+
+    }, [quotes, invoices, clients, date]);
+    
+    const isLoading = areQuotesLoading || areInvoicesLoading || areClientsLoading;
+
+    const StatCard = ({ title, value, icon, description, loading }: { title: string, value: string, icon: React.ReactNode, description: string, loading: boolean }) => (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{title}</CardTitle>
+                {icon}
+            </CardHeader>
+            <CardContent>
+                {loading ? <Skeleton className="h-8 w-3/4 mt-1" /> : <div className="text-2xl font-bold">{value}</div>}
+                <p className="text-xs text-muted-foreground">{description}</p>
+            </CardContent>
+        </Card>
+    );
+
+    return (
+         <div className="space-y-4">
+             <div className="flex justify-end">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                    <Button
+                        id="date"
+                        variant={"outline"}
+                        className={cn("w-[300px] justify-start text-left font-normal", !date && "text-muted-foreground")}
+                    >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {date?.from ? (
+                        date.to ? (
+                            <>
+                            {format(date.from, "LLL dd, y")} -{" "}
+                            {format(date.to, "LLL dd, y")}
+                            </>
+                        ) : (
+                            format(date.from, "LLL dd, y")
+                        )
+                        ) : (
+                        <span>Choisir une date</span>
+                        )}
+                    </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                    <Calendar
+                        initialFocus
+                        mode="range"
+                        defaultMonth={date?.from}
+                        selected={date}
+                        onSelect={setDate}
+                        numberOfMonths={2}
+                    />
+                    </PopoverContent>
+                </Popover>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <StatCard
+                    title="Devis en attente"
+                    value={`${stats.pendingQuotesAmount.toFixed(2)}€`}
+                    description="Montant total des devis en statut 'brouillon' ou 'envoyé'."
+                    icon={<FileText className="h-4 w-4 text-muted-foreground" />}
+                    loading={isLoading}
+                />
+                 <StatCard
+                    title="Factures Encaissées"
+                    value={`${stats.paidInvoicesAmount.toFixed(2)}€`}
+                    description="Montant total des factures marquées comme 'payées'."
+                    icon={<Receipt className="h-4 w-4 text-muted-foreground" />}
+                    loading={isLoading}
+                />
+                 <StatCard
+                    title="Taux de Conversion"
+                    value={`${stats.conversionRate.toFixed(1)}%`}
+                    description="Pourcentage de devis acceptés."
+                    icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
+                    loading={isLoading}
+                />
+                 <StatCard
+                    title="Nombre de Clients"
+                    value={stats.clientCount.toString()}
+                    description="Nombre total de clients qui vous sont assignés."
+                    icon={<Users className="h-4 w-4 text-muted-foreground" />}
+                    loading={isLoading}
+                />
+            </div>
+         </div>
+    )
+}
+
 
 function FollowUpRequestsSection() {
     const { user, isUserLoading } = useUser();
@@ -460,6 +624,7 @@ export default function DashboardPage() {
                 </p>
             </div>
             
+            <DashboardStats />
             <FollowUpRequestsSection />
             <TrainingRequestsSection />
 
