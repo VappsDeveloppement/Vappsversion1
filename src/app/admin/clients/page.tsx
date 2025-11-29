@@ -103,8 +103,8 @@ export default function ClientManagementPage() {
     const currentUserDocRef = useMemoFirebase(() => currentUser ? doc(firestore, 'users', currentUser.uid) : null, [currentUser, firestore]);
     const { data: currentUserData, isLoading: isCurrentUserDataLoading } = useDoc<User>(currentUserDocRef);
     
+    // Corrected query: Fetch all users. The security rules will enforce who can do this.
     const usersQuery = useMemoFirebase(() => query(collection(firestore, 'users')), [firestore]);
-
     const { data: allUsers, isLoading: areUsersLoading } = useCollection<User>(usersQuery);
 
     const plans = useMemo(() => personalization?.whiteLabelSection?.plans || [], [personalization]);
