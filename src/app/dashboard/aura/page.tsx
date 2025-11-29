@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control, UseFormSetValue, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -289,9 +289,6 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
             ...data,
             counselorId: user.uid,
             versions: data.versions.map(v => ({ ...v, characteristics: v.characteristics?.map(c => c.text) })),
-            contraindications: data.contraindications || [],
-            holisticProfile: data.holisticProfile || [],
-            pathologies: data.pathologies || [],
         };
 
         if (editingProduct) {
@@ -430,3 +427,4 @@ export default function AuraPage() {
     
 
     
+
