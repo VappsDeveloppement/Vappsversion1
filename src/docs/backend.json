@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -1278,6 +1279,17 @@
             "ctaLink": { "type": "string", "format": "uri" }
         },
         "required": ["id", "title"]
+    },
+    "ProductCategory": {
+        "title": "Product Category",
+        "type": "object",
+        "description": "A category for products in the Aura tool.",
+        "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "counselorId": { "type": "string" }
+        },
+        "required": ["id", "name", "counselorId"]
     }
   },
   "auth": {
@@ -1546,6 +1558,14 @@
           "entityName": "Training",
           "schema": { "$ref": "#/entities/Training" },
           "description": "Stores the main information for a training course."
+        }
+      },
+      {
+        "path": "/product_categories/{categoryId}",
+        "definition": {
+            "entityName": "ProductCategory",
+            "schema": { "$ref": "#/entities/ProductCategory" },
+            "description": "Stores categories for products in the Aura tool."
         }
       }
     ],
