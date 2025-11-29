@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -26,6 +26,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
 import Image from 'next/image';
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -147,6 +148,7 @@ const productSchema = z.object({
   title: z.string().min(1, "Le titre du produit est requis."),
   categoryId: z.string().min(1, "Veuillez sélectionner une catégorie."),
   description: z.string().optional(),
+  isFeatured: z.boolean().default(false),
   versions: z.array(productVersionSchema).min(1, "Un produit doit avoir au moins une version."),
   contraindications: z.array(z.string()).optional(),
   holisticProfile: z.array(z.string()).optional(),
@@ -160,6 +162,7 @@ type Product = {
     title: string;
     categoryId: string;
     description?: string;
+    isFeatured?: boolean;
     versions: ProductVersionFormData[];
     contraindications?: string[];
     holisticProfile?: string[];
@@ -272,7 +275,7 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                     versions: editingProduct.versions.map(v => ({ ...v, characteristics: (v.characteristics || []).map(c => ({ text: c as unknown as string })) }))
                 });
             } else {
-                form.reset({ title: '', categoryId: '', description: '', versions: [{ id: `v-${Date.now()}`, name: 'Version par défaut', price: 0, imageUrl: null, characteristics: [] }], contraindications: [], holisticProfile: [], pathologies: [] });
+                form.reset({ title: '', categoryId: '', description: '', isFeatured: false, versions: [{ id: `v-${Date.now()}`, name: 'Version par défaut', price: 0, imageUrl: null, characteristics: [] }], contraindications: [], holisticProfile: [], pathologies: [] });
             }
         }
     }, [isSheetOpen, editingProduct, form]);
@@ -318,18 +321,19 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
             <CardContent>
                 <div className="border rounded-lg">
                     <Table>
-                        <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Catégorie</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Catégorie</TableHead><TableHead>Vedette</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {areProductsLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            {areProductsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                             : products && products.length > 0 ? (
                                 products.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell className="font-medium">{p.title}</TableCell>
                                         <TableCell>{categoryMap.get(p.categoryId) || 'N/A'}</TableCell>
+                                        <TableCell>{p.isFeatured && <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />}</TableCell>
                                         <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleEdit(p)}><Edit className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setProductToDelete(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                     </TableRow>
                                 ))
-                            ) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucun produit créé.</TableCell></TableRow>}
+                            ) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucun produit créé.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </div>
@@ -344,6 +348,15 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="categoryId" render={({ field }) => (<FormItem><FormLabel>Catégorie</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger disabled={areCategoriesLoading}><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent>{categories?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (publique)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="isFeatured" render={({ field }) => (
+                                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                                <div className="space-y-0.5">
+                                                    <FormLabel className="text-base">Mettre en vedette</FormLabel>
+                                                    <FormDescription>Ce produit apparaîtra sur la page d'accueil de votre mini-site.</FormDescription>
+                                                </div>
+                                                <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
+                                            </FormItem>
+                                        )}/>
 
                                         <div className="space-y-4 pt-4 border-t">
                                             <h4 className="font-medium">Versions du produit</h4>
@@ -409,6 +422,8 @@ export default function AuraPage() {
         </div>
     );
 }
+    
+
     
 
     

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Image from "next/image";
@@ -30,6 +31,13 @@ export function ProductsSection({ counselor }: { counselor: CounselorProfile }) 
     }
 
     const { title, subtitle, description, products } = productsConfig;
+    
+    // Filter for featured products only
+    const featuredProducts = products.filter((product: any) => product.isFeatured);
+
+    if (featuredProducts.length === 0) {
+        return null; // Don't render the section if no products are featured
+    }
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">
@@ -55,7 +63,7 @@ export function ProductsSection({ counselor }: { counselor: CounselorProfile }) 
                     {/* Right Column (Products Grid) */}
                     <div className="lg:col-span-2">
                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {products.map((product) => (
+                            {featuredProducts.map((product) => (
                                 <Card key={product.id} className="overflow-hidden group flex flex-col shadow-md hover:shadow-xl transition-shadow duration-300">
                                     {product.imageUrl && (
                                         <div className="h-48 relative overflow-hidden">
@@ -100,3 +108,4 @@ export function ProductsSection({ counselor }: { counselor: CounselorProfile }) 
         </section>
     );
 }
+    
