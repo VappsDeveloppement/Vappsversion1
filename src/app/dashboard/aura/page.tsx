@@ -2,13 +2,13 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -42,7 +42,7 @@ const productSchema = z.object({
   isFeatured: z.boolean().default(false),
   imageUrl: z.string().nullable().optional(),
   price: z.coerce.number().optional(),
-  characteristics: z.array(z.object({ text: z.string() })).optional(),
+  characteristics: z.array(z.string()).optional(),
   contraindications: z.array(z.string()).optional(),
   holisticProfile: z.array(z.string()).optional(),
   pathologies: z.array(z.string()).optional(),
@@ -130,11 +130,6 @@ function ProductManager() {
         }
     });
 
-    const { fields: charFields, append: appendChar, remove: removeChar } = useFieldArray({
-        control: form.control,
-        name: "characteristics",
-    });
-
     useEffect(() => {
         if (isSheetOpen) {
             if (editingProduct) {
@@ -145,7 +140,7 @@ function ProductManager() {
                     contraindications: editingProduct.contraindications || [],
                     holisticProfile: editingProduct.holisticProfile || [],
                     pathologies: editingProduct.pathologies || [],
-                    characteristics: (editingProduct.characteristics || []).map(c => ({ text: c }))
+                    characteristics: editingProduct.characteristics || []
                 });
                 setImagePreview(editingProduct.imageUrl || null);
             } else {
@@ -164,7 +159,7 @@ function ProductManager() {
             ...data,
             counselorId: user.uid,
             imageUrl: imagePreview,
-            characteristics: data.characteristics?.map(c => c.text) || [],
+            characteristics: data.characteristics || [],
             contraindications: data.contraindications || [],
             holisticProfile: data.holisticProfile || [],
             pathologies: data.pathologies || [],
@@ -262,18 +257,7 @@ function ProductManager() {
                                                     <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('product-image-upload')?.click()}>Uploader</Button>
                                                 </div>
                                             </div>
-                                            <div>
-                                                <Label>Caractéristiques</Label>
-                                                <div className="space-y-2 mt-2">
-                                                    {charFields.map((char, cIndex) => (
-                                                        <div key={char.id} className="flex items-center gap-2">
-                                                            <FormField control={form.control} name={`characteristics.${cIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <Button type="button" size="icon" variant="ghost" onClick={() => removeChar(cIndex)}><X className="h-4 w-4" /></Button>
-                                                        </div>
-                                                    ))}
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendChar({ text: '' })} className="mt-2 text-xs">Ajouter une caractéristique</Button>
-                                                </div>
-                                            </div>
+                                            <FormField control={form.control} name="characteristics" render={({ field }) => (<FormItem><FormLabel>Caractéristiques</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une caractéristique..." /></FormControl></FormItem>)} />
                                         </div>
 
                                         <div className="space-y-4 pt-4 border-t"><h4 className="font-medium">Informations Internes</h4>
@@ -494,6 +478,159 @@ function ProtocoleManager() {
     );
 }
 
+const wellnessSheetSchema = z.object({
+    contraindications: z.array(z.string()).optional(),
+    holisticProfile: z.array(z.string()).optional(),
+});
+
+type WellnessSheetFormData = z.infer<typeof wellnessSheetSchema>;
+type Client = { id: string; firstName: string; lastName: string; email: string; };
+
+function WellnessSheetGenerator() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Client selection state
+    const [searchEmail, setSearchEmail] = useState('');
+    const [isSearching, setIsSearching] = useState(false);
+    const [searchResult, setSearchResult] = useState<Client | 'not-found' | null>(null);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+    const [showCreateForm, setShowCreateForm] = useState(false);
+
+    const wellnessForm = useForm<WellnessSheetFormData>({
+        resolver: zodResolver(wellnessSheetSchema),
+        defaultValues: { contraindications: [], holisticProfile: [] },
+    });
+    
+    const newUserForm = useForm<{firstName: string, lastName: string}>({
+        resolver: zodResolver(z.object({
+            firstName: z.string().min(1, 'Prénom requis.'),
+            lastName: z.string().min(1, 'Nom requis.'),
+        }))
+    });
+
+    const resetAll = () => {
+        setIsSheetOpen(false);
+        setSearchEmail('');
+        setSearchResult(null);
+        setSelectedClient(null);
+        setShowCreateForm(false);
+        wellnessForm.reset();
+        newUserForm.reset();
+    };
+
+    const handleSearchUser = async () => {
+        if (!searchEmail) return;
+        setIsSearching(true);
+        setSearchResult(null);
+        setShowCreateForm(false);
+        try {
+            const q = query(collection(firestore, 'users'), where('email', '==', searchEmail.trim()));
+            const querySnapshot = await getDocs(q);
+            if (querySnapshot.empty) {
+                setSearchResult('not-found');
+                newUserForm.reset({ firstName: '', lastName: '' });
+            } else {
+                const foundUser = { id: querySnapshot.docs[0].id, ...querySnapshot.docs[0].data() } as Client;
+                setSearchResult(foundUser);
+            }
+        } finally {
+            setIsSearching(false);
+        }
+    };
+    
+    const onCreateNewUser = async (values: {firstName: string, lastName: string}) => {
+        if (!user) return;
+        setIsSubmitting(true);
+        const newUserRef = doc(collection(firestore, 'users'));
+        const newUserData = {
+            id: newUserRef.id,
+            ...values,
+            email: searchEmail,
+            role: 'membre',
+            dateJoined: new Date().toISOString(),
+            counselorIds: [user.uid],
+        };
+        await addDocumentNonBlocking(newUserRef, newUserData);
+        toast({ title: 'Client créé' });
+        setSelectedClient({ ...newUserData, ...values });
+        setIsSubmitting(false);
+    };
+
+    const onWellnessSubmit = (data: WellnessSheetFormData) => {
+        // Here you would typically save the wellness sheet data associated with the selectedClient.id
+        console.log("Wellness Sheet Data for", selectedClient, data);
+        toast({ title: 'Fiche bien-être enregistrée (simulation)', description: 'La logique de sauvegarde est à implémenter.' });
+        resetAll();
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Générateur de Fiche Bien-être</CardTitle>
+                <CardDescription>Créez des fiches de bien-être personnalisées pour vos clients.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Sheet open={isSheetOpen} onOpenChange={resetAll}>
+                    <SheetTrigger asChild>
+                        <Button className="w-full"><PlusCircle className="mr-2 h-4 w-4" />Créer une nouvelle fiche</Button>
+                    </SheetTrigger>
+                    <SheetContent className="sm:max-w-xl w-full">
+                        <SheetHeader>
+                            <SheetTitle>Nouvelle Fiche Bien-être</SheetTitle>
+                            <SheetDescription>
+                                {selectedClient ? `Fiche pour ${selectedClient.firstName} ${selectedClient.lastName}` : "Commencez par sélectionner ou créer un client."}
+                            </SheetDescription>
+                        </SheetHeader>
+                        {!selectedClient ? (
+                            <div className="py-4 space-y-4">
+                                <div className="flex gap-2">
+                                    <Input placeholder="email@example.com" value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} />
+                                    <Button onClick={handleSearchUser} disabled={isSearching || !searchEmail}>
+                                        {isSearching ? <Loader2 className="h-4 w-4 animate-spin"/> : <Search className="h-4 w-4" />}
+                                    </Button>
+                                </div>
+                                {searchResult === 'not-found' && !showCreateForm && (
+                                    <Card className="p-4 bg-muted"><p className="text-sm text-center text-muted-foreground mb-4">Aucun utilisateur trouvé.</p><Button className="w-full" variant="secondary" onClick={() => setShowCreateForm(true)}><UserPlus className="mr-2 h-4 w-4" /> Créer une fiche client</Button></Card>
+                                )}
+                                {searchResult && searchResult !== 'not-found' && (
+                                    <Card className="p-4"><p className="font-semibold">{searchResult.firstName} {searchResult.lastName}</p><p className="text-sm text-muted-foreground">{searchResult.email}</p><Button className="w-full mt-4" onClick={() => setSelectedClient(searchResult)}>Sélectionner ce client</Button></Card>
+                                )}
+                                {showCreateForm && (
+                                    <Card className="p-6">
+                                        <div className="flex justify-between items-center mb-4"><h4 className="font-semibold">Nouveau client</h4><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowCreateForm(false)}><X className="h-4 w-4"/></Button></div>
+                                        <Form {...newUserForm}><form onSubmit={newUserForm.handleSubmit(onCreateNewUser)} className="space-y-4">
+                                            <FormField control={newUserForm.control} name="firstName" render={({ field }) => ( <FormItem><FormLabel>Prénom</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem> )}/>
+                                            <FormField control={newUserForm.control} name="lastName" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field}/></FormControl><FormMessage/></FormItem> )}/>
+                                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input value={searchEmail} disabled /></FormControl></FormItem>
+                                            <Button type="submit" disabled={isSubmitting} className="w-full">{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Créer et sélectionner</Button>
+                                        </form></Form>
+                                    </Card>
+                                )}
+                            </div>
+                        ) : (
+                             <Form {...wellnessForm}>
+                                <form onSubmit={wellnessForm.handleSubmit(onWellnessSubmit)} className="space-y-6 pt-4">
+                                    <FormField control={wellnessForm.control} name="contraindications" render={({ field }) => (<FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
+                                    <FormField control={wellnessForm.control} name="holisticProfile" render={({ field }) => (<FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
+                                     <SheetFooter>
+                                        <Button type="button" variant="ghost" onClick={resetAll}>Annuler</Button>
+                                        <Button type="submit">Enregistrer la fiche</Button>
+                                    </SheetFooter>
+                                </form>
+                            </Form>
+                        )}
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    );
+}
+
+
 export default function AuraPage() {
     return (
         <div className="space-y-8">
@@ -509,7 +646,7 @@ export default function AuraPage() {
                     <TabsTrigger value="test"><ClipboardList className="mr-2 h-4 w-4" />Test</TabsTrigger>
                 </TabsList>
                 <TabsContent value="fiche-bien-etre">
-                    <Card><CardHeader><CardTitle>Générateur de Fiche Bien-être</CardTitle><CardDescription>Créez des fiches de bien-être personnalisées pour vos clients.</CardDescription></CardHeader><CardContent><div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96"><FileText className="h-16 w-16 text-muted-foreground mb-4" /><h3 className="text-xl font-semibold">Contenu à venir</h3><p className="text-muted-foreground mt-2 max-w-2xl">L'outil de génération de fiches bien-être sera bientôt disponible ici.</p></div></CardContent></Card>
+                   <WellnessSheetGenerator />
                 </TabsContent>
                 <TabsContent value="catalogue-produits">
                    <div className="space-y-8">
