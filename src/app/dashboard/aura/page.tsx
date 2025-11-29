@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -20,7 +20,6 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDes
 import { Input } from "@/components/ui/input";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Label } from "@/components/ui/label";
@@ -37,102 +36,6 @@ const toBase64 = (file: File): Promise<string> =>
 });
 
 
-// Product Category Section
-const categorySchema = z.object({
-  name: z.string().min(1, "Le nom de la catégorie est requis."),
-});
-type CategoryFormData = z.infer<typeof categorySchema>;
-type ProductCategory = {
-    id: string;
-    counselorId: string;
-    name: string;
-};
-function ProductCategoryManager({ categories, isLoading }: { categories: ProductCategory[] | null, isLoading: boolean }) {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [editingCategory, setEditingCategory] = useState<ProductCategory | null>(null);
-    const [categoryToDelete, setCategoryToDelete] = useState<ProductCategory | null>(null);
-    
-    const form = useForm<CategoryFormData>({ resolver: zodResolver(categorySchema) });
-
-    useEffect(() => {
-        if (isSheetOpen) form.reset(editingCategory || { name: '' });
-    }, [isSheetOpen, editingCategory, form]);
-    
-    const handleNew = () => { setEditingCategory(null); setIsSheetOpen(true); };
-    const handleEdit = (category: ProductCategory) => { setEditingCategory(category); setIsSheetOpen(true); };
-    
-    const onSubmit = (data: CategoryFormData) => {
-        if (!user) return;
-        const categoryData = { counselorId: user.uid, ...data };
-        if (editingCategory) {
-            setDocumentNonBlocking(doc(firestore, 'product_categories', editingCategory.id), categoryData, { merge: true });
-            toast({ title: 'Catégorie mise à jour' });
-        } else {
-            addDocumentNonBlocking(collection(firestore, 'product_categories'), categoryData);
-            toast({ title: 'Catégorie créée' });
-        }
-        setIsSheetOpen(false);
-    };
-
-    const handleDelete = () => {
-        if (!categoryToDelete) return;
-        deleteDocumentNonBlocking(doc(firestore, 'product_categories', categoryToDelete.id));
-        toast({ title: 'Catégorie supprimée' });
-        setCategoryToDelete(null);
-    };
-
-    return (
-         <Card>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle>Catégories de Produits</CardTitle>
-                        <CardDescription>Organisez vos produits en différentes catégories.</CardDescription>
-                    </div>
-                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouvelle Catégorie</Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="border rounded-lg">
-                    <Table>
-                        <TableHeader><TableRow><TableHead>Nom</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                        <TableBody>
-                            {isLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                            : categories && categories.length > 0 ? (
-                                categories.map(cat => (
-                                    <TableRow key={cat.id}>
-                                        <TableCell className="font-medium">{cat.name}</TableCell>
-                                        <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(cat)}><Edit className="h-4 w-4" /></Button>
-                                            <Button variant="ghost" size="icon" onClick={() => setCategoryToDelete(cat)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
-                            ) : <TableRow><TableCell colSpan={2} className="h-24 text-center">Aucune catégorie créée.</TableCell></TableRow>}
-                        </TableBody>
-                    </Table>
-                </div>
-                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-lg w-full">
-                        <SheetHeader><SheetTitle>{editingCategory ? 'Modifier la' : 'Nouvelle'} catégorie</SheetTitle></SheetHeader>
-                        <Form {...form}><form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4"><FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} /><SheetFooter className="pt-6"><SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose><Button type="submit">Sauvegarder</Button></SheetFooter></form></Form>
-                    </SheetContent>
-                </Sheet>
-                 <AlertDialog open={!!categoryToDelete} onOpenChange={(open) => !open && setCategoryToDelete(null)}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Supprimer "{categoryToDelete?.name}" ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </CardContent>
-        </Card>
-    );
-}
-
-
 // Product Management Section
 
 const productVersionSchema = z.object({
@@ -146,7 +49,6 @@ type ProductVersionFormData = z.infer<typeof productVersionSchema>;
 
 const productSchema = z.object({
   title: z.string().min(1, "Le titre du produit est requis."),
-  categoryId: z.string().min(1, "Veuillez sélectionner une catégorie."),
   description: z.string().optional(),
   isFeatured: z.boolean().default(false),
   versions: z.array(productVersionSchema).min(1, "Un produit doit avoir au moins une version."),
@@ -161,7 +63,6 @@ export type Product = {
     id: string;
     counselorId: string;
     title: string;
-    categoryId: string;
     description?: string;
     isFeatured?: boolean;
     versions: ProductVersionFormData[];
@@ -255,16 +156,24 @@ const ProductVersionCard = ({ control, index, removeVersion, setValue }: { contr
     );
 };
 
-function ProductManager({ categories, isLoading: areCategoriesLoading }: { categories: ProductCategory[] | null, isLoading: boolean }) {
+function ProductManager() {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
     const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+
+    const filteredProducts = useMemo(() => {
+        if (!products) return [];
+        if (!searchTerm) return products;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return products.filter(product => product.title.toLowerCase().includes(lowercasedTerm));
+    }, [products, searchTerm]);
 
     const form = useForm<ProductFormData>({ resolver: zodResolver(productSchema) });
     const { fields, append, remove } = useFieldArray({ control: form.control, name: "versions" });
@@ -282,7 +191,7 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                     versions: editingProduct.versions.map(v => ({ ...v, characteristics: (v.characteristics || []).map(c => ({ text: c as unknown as string })) }))
                 });
             } else {
-                form.reset({ title: '', categoryId: '', description: '', isFeatured: false, versions: [{ id: `v-${Date.now()}`, name: 'Version par défaut', price: 0, imageUrl: null, characteristics: [] }], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
+                form.reset({ title: '', description: '', isFeatured: false, versions: [{ id: `v-${Date.now()}`, name: 'Version par défaut', price: 0, imageUrl: null, characteristics: [] }], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
             }
         }
     }, [isSheetOpen, editingProduct, form]);
@@ -318,8 +227,6 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
         setProductToDelete(null);
     };
 
-    const categoryMap = useMemo(() => new Map(categories?.map(c => [c.id, c.name])), [categories]);
-
     return (
         <Card>
             <CardHeader>
@@ -327,23 +234,31 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                     <div><CardTitle>Gestion des Produits</CardTitle><CardDescription>Ajoutez les produits de votre catalogue.</CardDescription></div>
                     <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouveau Produit</Button>
                 </div>
+                 <div className="relative pt-4">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Rechercher un produit..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="border rounded-lg">
                     <Table>
-                        <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Catégorie</TableHead><TableHead>Vedette</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Vedette</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {areProductsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                            : products && products.length > 0 ? (
-                                products.map(p => (
+                            {areProductsLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            : filteredProducts && filteredProducts.length > 0 ? (
+                                filteredProducts.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell className="font-medium">{p.title}</TableCell>
-                                        <TableCell>{categoryMap.get(p.categoryId) || 'N/A'}</TableCell>
                                         <TableCell>{p.isFeatured && <Star className="h-5 w-5 text-yellow-400 fill-yellow-400" />}</TableCell>
                                         <TableCell className="text-right"><Button variant="ghost" size="icon" onClick={() => handleEdit(p)}><Edit className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setProductToDelete(p)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell>
                                     </TableRow>
                                 ))
-                            ) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucun produit créé.</TableCell></TableRow>}
+                            ) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucun produit créé.</TableCell></TableRow>}
                         </TableBody>
                     </Table>
                 </div>
@@ -356,7 +271,6 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                                 <ScrollArea className="h-[calc(100vh-8rem)]">
                                     <div className="space-y-6 py-4 pr-6">
                                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name="categoryId" render={({ field }) => (<FormItem><FormLabel>Catégorie</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger disabled={areCategoriesLoading}><SelectValue placeholder="Choisir..." /></SelectTrigger></FormControl><SelectContent>{categories?.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (publique)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien externe (optionnel)</FormLabel><FormControl><Input {...field} placeholder="https://..." /></FormControl><FormDescription>Si rempli, le bouton "Voir le produit" pointera vers ce lien.</FormDescription><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="isFeatured" render={({ field }) => (
@@ -396,11 +310,6 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
 }
 
 export default function AuraPage() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const categoriesQuery = useMemoFirebase(() => user ? query(collection(firestore, 'product_categories'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
-    const { data: categories, isLoading: areCategoriesLoading } = useCollection<ProductCategory>(categoriesQuery);
-
     return (
         <div className="space-y-8">
             <div>
@@ -419,8 +328,7 @@ export default function AuraPage() {
                 </TabsContent>
                 <TabsContent value="catalogue-produits">
                    <div className="space-y-8">
-                       <ProductCategoryManager categories={categories} isLoading={areCategoriesLoading} />
-                       <ProductManager categories={categories} isLoading={areCategoriesLoading} />
+                       <ProductManager />
                    </div>
                 </TabsContent>
                 <TabsContent value="protocoles">
