@@ -9,7 +9,7 @@ import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'reac
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -628,6 +628,11 @@ function WellnessSheetGenerator() {
         }
     };
 
+    const handleSelectExistingClient = (client: Client) => {
+        setSelectedClient(client);
+        setSearchResult(null);
+    };
+
     const onWellnessSubmit = (data: WellnessSheetFormData) => {
         console.log("Wellness Sheet Data for", selectedClient, data);
         toast({ title: 'Fiche bien-être enregistrée (simulation)', description: 'La logique de sauvegarde est à implémenter.' });
@@ -666,11 +671,20 @@ function WellnessSheetGenerator() {
                                     <Card className="p-4 bg-muted"><p className="text-sm text-center text-muted-foreground mb-4">Aucun utilisateur trouvé.</p><Button className="w-full" variant="secondary" onClick={() => setShowCreateForm(true)}><UserPlus className="mr-2 h-4 w-4" /> Créer une fiche client</Button></Card>
                                 )}
                                 {searchResult && searchResult !== 'not-found' && (
-                                    <Card className="p-4"><p className="font-semibold">{searchResult.firstName} {searchResult.lastName}</p><p className="text-sm text-muted-foreground">{searchResult.email}</p>
-                                    <Button className="w-full mt-4" onClick={() => handleAddClient(searchResult)} disabled={isSubmitting || searchResult.counselorIds?.includes(user?.uid || '')}>
-                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                        {searchResult.counselorIds?.includes(user?.uid || '') ? "Déjà votre client" : "Ajouter comme client"}
-                                    </Button>
+                                    <Card className="p-4">
+                                        <p className="font-semibold">{searchResult.firstName} {searchResult.lastName}</p>
+                                        <p className="text-sm text-muted-foreground">{searchResult.email}</p>
+                                        
+                                        {searchResult.counselorIds?.includes(user?.uid || '') ? (
+                                             <Button className="w-full mt-4" onClick={() => handleSelectExistingClient(searchResult)}>
+                                                Déjà votre client
+                                            </Button>
+                                        ) : (
+                                            <Button className="w-full mt-4" onClick={() => handleAddClient(searchResult)} disabled={isSubmitting}>
+                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                                Ajouter comme client
+                                            </Button>
+                                        )}
                                     </Card>
                                 )}
                                 {showCreateForm && (
