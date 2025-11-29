@@ -64,6 +64,7 @@ export type Product = {
     holisticProfile?: string[];
     pathologies?: string[];
     ctaLink?: string;
+    versions?: any[];
 }
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
