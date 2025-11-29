@@ -86,6 +86,13 @@ service cloud.firestore {
                            (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
                            resource.data.counselorId == request.auth.uid);
     }
+    
+    match /training_requests/{requestId} {
+        allow create: if true;
+        allow read, write: if request.auth != null && 
+                           (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin' || 
+                           resource.data.counselorId == request.auth.uid);
+    }
 
     match /faq_items/{itemId} {
         allow read: if true;
@@ -122,9 +129,7 @@ service cloud.firestore {
     match /events/{eventId} {
       allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin'));
       
-      allow list: if request.query.get('isPublic') == true
-                  || (request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin')
-                  || (request.auth != null && request.query.get('counselorId') == request.auth.uid);
+      allow list: if request.query.isPublic == true || (request.auth != null && request.query.counselorId == request.auth.uid);
 
       allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
       
@@ -189,6 +194,10 @@ service cloud.firestore {
     match /products/{productId} {
         allow read: if true;
         allow create, update, delete: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
+    }
+
+    match /protocols/{protocolId} {
+        allow read, list, create, update, delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'superadmin');
     }
   }
 }
