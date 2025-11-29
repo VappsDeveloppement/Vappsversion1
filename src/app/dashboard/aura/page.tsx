@@ -274,6 +274,11 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
             if (editingProduct) {
                 form.reset({
                     ...editingProduct,
+                    ctaLink: editingProduct.ctaLink || '',
+                    description: editingProduct.description || '',
+                    contraindications: editingProduct.contraindications || [],
+                    holisticProfile: editingProduct.holisticProfile || [],
+                    pathologies: editingProduct.pathologies || [],
                     versions: editingProduct.versions.map(v => ({ ...v, characteristics: (v.characteristics || []).map(c => ({ text: c as unknown as string })) }))
                 });
             } else {
@@ -291,9 +296,9 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
             ...data,
             counselorId: user.uid,
             versions: data.versions.map(v => ({ ...v, characteristics: v.characteristics?.map(c => c.text) })),
-            contraindications: data.contraindications,
-            holisticProfile: data.holisticProfile,
-            pathologies: data.pathologies,
+            contraindications: data.contraindications || [],
+            holisticProfile: data.holisticProfile || [],
+            pathologies: data.pathologies || [],
         };
 
         if (editingProduct) {
