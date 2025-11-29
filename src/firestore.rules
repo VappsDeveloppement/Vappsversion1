@@ -117,8 +117,7 @@ service cloud.firestore {
     }
 
     match /articles/{articleId} {
-        allow read: if resource.data.status == 'published' || 
-                       (request.auth != null && (resource.data.authorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS'])));
+        allow read: if true;
         allow create: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
         allow update: if request.auth != null && 
                          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || 
@@ -127,10 +126,7 @@ service cloud.firestore {
     }
     
     match /events/{eventId} {
-      allow get: if resource.data.isPublic == true || (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS'])));
-      
-      allow list: if request.query.isPublic == true || (request.auth != null && request.query.counselorId == request.auth.uid);
-
+      allow read: if true;
       allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
       
       allow delete: if request.auth != null && (
@@ -143,7 +139,7 @@ service cloud.firestore {
 
       match /registrations/{registrationId} {
         allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-        allow create: if get(/databases/$(database)/documents/events/$(eventId)).data.isPublic == true;
+        allow create: if true;
         allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
       }
       
@@ -183,7 +179,7 @@ service cloud.firestore {
     }
     
     match /trainings/{trainingId} {
-        allow read: if resource.data.isPublic == true || resource.data.isPlatformPublic == true || (request.auth != null && resource.data.authorId == request.auth.uid);
+        allow read: if true;
         allow write: if request.auth != null && (request.resource.data.authorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
     }
     
