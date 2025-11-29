@@ -118,9 +118,9 @@ export default function CounselorPublicProfilePage() {
         <AboutMeSection counselor={counselor} />
         <CounselorServicesSection counselor={counselor} />
         <ParcoursSection counselor={counselor} />
+        <CounselorPricingSection counselor={counselor} />
         <CounselorJobOffersSection counselor={counselor} />
         <CounselorCtaSection counselor={counselor} />
-        <CounselorPricingSection counselor={counselor} />
         {counselor.miniSite?.trainingCatalogSection?.enabled && (
           <TrainingCatalogSection 
             sectionData={counselor.miniSite.trainingCatalogSection} 
