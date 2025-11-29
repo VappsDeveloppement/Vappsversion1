@@ -5,8 +5,8 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X } from "lucide-react";
-import React, { useState, useEffect, useMemo } from 'react';
-import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -195,7 +195,7 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
     );
 };
 
-const ProductVersionCard = ({ control, index, removeVersion }: { control: Control<ProductFormData>, index: number, removeVersion: (index: number) => void }) => {
+const ProductVersionCard = ({ control, index, removeVersion, setValue }: { control: Control<ProductFormData>, index: number, removeVersion: (index: number) => void, setValue: UseFormSetValue<ProductFormData> }) => {
     const { fields: charFields, append: appendChar, remove: removeChar } = useFieldArray({
         control,
         name: `versions.${index}.characteristics`,
@@ -207,11 +207,7 @@ const ProductVersionCard = ({ control, index, removeVersion }: { control: Contro
         const file = event.target.files?.[0];
         if (file) {
             const base64 = await toBase64(file);
-            // This component doesn't have direct access to `form.setValue`, so we pass it up or handle it differently.
-            // For now, we assume the parent component handles setting the value via `update`.
-            // A better approach would be using `useFormContext`.
-            const form = (control as any)._form; // Unsafe but works for now.
-            form.setValue(`versions.${index}.imageUrl`, base64);
+            setValue(`versions.${index}.imageUrl`, base64);
         }
     };
 
@@ -266,7 +262,7 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
     const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
     const form = useForm<ProductFormData>({ resolver: zodResolver(productSchema) });
-    const { fields, append, remove, update } = useFieldArray({ control: form.control, name: "versions" });
+    const { fields, append, remove } = useFieldArray({ control: form.control, name: "versions" });
 
     useEffect(() => {
         if (isSheetOpen) {
@@ -315,10 +311,7 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle>Gestion des Produits</CardTitle>
-                        <CardDescription>Ajoutez les produits de votre catalogue.</CardDescription>
-                    </div>
+                    <div><CardTitle>Gestion des Produits</CardTitle><CardDescription>Ajoutez les produits de votre catalogue.</CardDescription></div>
                     <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouveau Produit</Button>
                 </div>
             </CardHeader>
@@ -355,7 +348,7 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
                                         <div className="space-y-4 pt-4 border-t">
                                             <h4 className="font-medium">Versions du produit</h4>
                                             {fields.map((version, index) => (
-                                                <ProductVersionCard key={version.id} control={form.control} index={index} removeVersion={remove} />
+                                                <ProductVersionCard key={version.id} control={form.control} index={index} removeVersion={remove} setValue={form.setValue} />
                                             ))}
                                             <Button type="button" variant="outline" onClick={() => append({ id: `v-${Date.now()}`, name: '', price: 0, imageUrl: null, characteristics: [] })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter une version</Button>
                                         </div>
