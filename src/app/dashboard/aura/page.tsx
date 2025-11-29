@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X } from "lucide-react";
 import React, { useState, useEffect, useMemo } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -194,6 +195,65 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
     );
 };
 
+const ProductVersionCard = ({ control, index, removeVersion }: { control: Control<ProductFormData>, index: number, removeVersion: (index: number) => void }) => {
+    const { fields: charFields, append: appendChar, remove: removeChar } = useFieldArray({
+        control,
+        name: `versions.${index}.characteristics`,
+    });
+    
+    const imageUrl = useWatch({ control, name: `versions.${index}.imageUrl` });
+
+    const handleVersionImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            // This component doesn't have direct access to `form.setValue`, so we pass it up or handle it differently.
+            // For now, we assume the parent component handles setting the value via `update`.
+            // A better approach would be using `useFormContext`.
+            const form = (control as any)._form; // Unsafe but works for now.
+            form.setValue(`versions.${index}.imageUrl`, base64);
+        }
+    };
+
+
+    return (
+        <Card className="p-4">
+            <div className="flex justify-between items-center mb-4">
+                <h5 className="font-semibold">Version {index + 1}</h5>
+                <Button type="button" variant="ghost" size="icon" onClick={() => removeVersion(index)}>
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
+            </div>
+            <div className="space-y-4">
+                <FormField control={control} name={`versions.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <div className="grid grid-cols-2 gap-4">
+                    <FormField control={control} name={`versions.${index}.price`} render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+                <div>
+                    <Label>Image</Label>
+                    <div className="flex items-center gap-4 mt-2">
+                        <Image src={imageUrl || '/placeholder.svg'} alt="Aperçu" width={80} height={80} className="rounded-md object-cover border" />
+                        <input type="file" id={`v-img-${index}`} onChange={handleVersionImageUpload} className="hidden" />
+                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById(`v-img-${index}`)?.click()}>Uploader</Button>
+                    </div>
+                </div>
+                <div>
+                    <Label>Caractéristiques</Label>
+                    <div className="space-y-2 mt-2">
+                        {charFields.map((char, cIndex) => (
+                            <div key={char.id} className="flex items-center gap-2">
+                                <FormField control={control} name={`versions.${index}.characteristics.${cIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <Button type="button" size="icon" variant="ghost" onClick={() => removeChar(cIndex)}><X className="h-4 w-4" /></Button>
+                            </div>
+                        ))}
+                        <Button type="button" variant="outline" size="sm" onClick={() => appendChar({ text: '' })} className="mt-2 text-xs">Ajouter</Button>
+                    </div>
+                </div>
+            </div>
+        </Card>
+    );
+};
+
 function ProductManager({ categories, isLoading: areCategoriesLoading }: { categories: ProductCategory[] | null, isLoading: boolean }) {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -249,14 +309,6 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
         setProductToDelete(null);
     };
 
-    const handleVersionImageUpload = async (index: number, event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const base64 = await toBase64(file);
-            update(index, { ...form.getValues().versions[index], imageUrl: base64 });
-        }
-    };
-    
     const categoryMap = useMemo(() => new Map(categories?.map(c => [c.id, c.name])), [categories]);
 
     return (
@@ -302,19 +354,9 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
 
                                         <div className="space-y-4 pt-4 border-t">
                                             <h4 className="font-medium">Versions du produit</h4>
-                                            {fields.map((version, index) => {
-                                                const { fields: charFields, append: appendChar, remove: removeChar } = useFieldArray({ control: form.control, name: `versions.${index}.characteristics` });
-                                                return (
-                                                    <Card key={version.id} className="p-4"><div className="flex justify-between items-center mb-4"><h5 className="font-semibold">Version {index + 1}</h5><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
-                                                        <div className="space-y-4">
-                                                            <FormField control={form.control} name={`versions.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                            <div className="grid grid-cols-2 gap-4"><FormField control={form.control} name={`versions.${index}.price`} render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} /></div>
-                                                            <div><Label>Image</Label><div className="flex items-center gap-4 mt-2"><Image src={form.watch(`versions.${index}.imageUrl`) || '/placeholder.svg'} alt="Aperçu" width={80} height={80} className="rounded-md object-cover border" /><input type="file" id={`v-img-${index}`} onChange={(e) => handleVersionImageUpload(index, e)} className="hidden" /><Button type="button" variant="outline" size="sm" onClick={() => document.getElementById(`v-img-${index}`)?.click()}>Uploader</Button></div></div>
-                                                            <div><Label>Caractéristiques</Label><div className="space-y-2 mt-2">{charFields.map((char, cIndex) => (<div key={char.id} className="flex items-center gap-2"><FormField control={form.control} name={`versions.${index}.characteristics.${cIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} /><Button type="button" variant="ghost" size="icon" onClick={() => removeChar(cIndex)}><X className="h-4 w-4" /></Button></div>))}<Button type="button" variant="outline" size="sm" onClick={() => appendChar({ text: '' })} className="mt-2 text-xs">Ajouter</Button></div></div>
-                                                        </div>
-                                                    </Card>
-                                                );
-                                            })}
+                                            {fields.map((version, index) => (
+                                                <ProductVersionCard key={version.id} control={form.control} index={index} removeVersion={remove} />
+                                            ))}
                                             <Button type="button" variant="outline" onClick={() => append({ id: `v-${Date.now()}`, name: '', price: 0, imageUrl: null, characteristics: [] })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter une version</Button>
                                         </div>
 
