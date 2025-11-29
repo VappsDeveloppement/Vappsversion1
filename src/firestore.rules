@@ -14,26 +14,20 @@ service cloud.firestore {
       allow write: if request.auth != null && (request.auth.uid == counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
     }
 
-    // Secure user data:
-    // A user can read/write their own data.
-    // A user with FULLACCESS can read/write any user's data.
-    // A counselor can read data of their assigned users.
     match /users/{userId} {
       allow get: if request.auth != null && (
         request.auth.uid == userId 
         || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS'])
         || (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && userId in resource.data.counselorIds)
       );
-      // Allow FULLACCESS users and conseillers to list all users.
+      
       allow list: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller');
 
       allow write: if request.auth != null && (
           request.auth.uid == userId 
           || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS'])
-          || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller'
       );
       
-      // This rule allows users to access their own subcollections (quotes, invoices, etc.)
       match /{document=**} {
          allow read, write: if request.auth != null && request.auth.uid == userId;
       }
@@ -41,29 +35,24 @@ service cloud.firestore {
 
     match /contact_messages/{messageId} {
       allow create: if true;
-      allow read: if request.auth != null && 
-                      (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) && resource.data.recipientId == 'vapps-agency' ||
-                      get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' && resource.data.recipientId == request.auth.uid);
-      allow write: if request.auth != null && 
+      allow read, write: if request.auth != null && 
                       (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || 
                       get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller');
     }
 
     match /plans/{planId} {
-        allow read: if true; // Plans can be public for pricing pages
-        allow write: if request.auth != null; // Only authenticated (admin/conseiller) can write
+        allow read: if true; 
+        allow write: if request.auth != null; 
     }
 
     match /contracts/{contractId} {
       allow read, write: if request.auth != null;
     }
 
-    // Public validation page needs read. Delete should be restricted.
     match /quotes/{quoteId} {
         allow get: if true;
-        allow write: if request.auth != null && request.resource.data.counselorId == request.auth.uid;
-        allow delete: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || resource.data.counselorId == request.auth.uid);
-        allow update: if true; // Allow client to accept/reject
+        allow write: if request.auth != null;
+        allow update: if true; 
     }
     
     match /invoices/{invoiceId} {
@@ -71,27 +60,23 @@ service cloud.firestore {
     }
 
     match /gdpr_requests/{requestId} {
-        allow create: if true; // Allow public creation from contact forms
-        allow read, write: if request.auth != null; // Admins can manage them
+        allow create: if true;
+        allow read, write: if request.auth != null;
     }
 
     match /support_requests/{requestId} {
-        allow create: if true; // Allow public creation
+        allow create: if true;
         allow read, write: if request.auth != null;
     }
 
     match /live_follow_up_requests/{requestId} {
-        allow create: if true; // Anyone can create a request
-        allow read, write: if request.auth != null && 
-                           (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || 
-                           resource.data.counselorId == request.auth.uid);
+        allow create: if true;
+        allow read, write: if request.auth != null;
     }
     
     match /training_requests/{requestId} {
         allow create: if true;
-        allow read, write: if request.auth != null && 
-                           (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || 
-                           resource.data.counselorId == request.auth.uid);
+        allow read, write: if request.auth != null;
     }
 
     match /faq_items/{itemId} {
@@ -105,9 +90,8 @@ service cloud.firestore {
     }
 
     match /beta_tests_results/{resultId} {
-      allow create: if true; // Public testers can submit results
-      allow list: if true; // Allow public list for stats
-      allow get: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']);
+      allow create: if true;
+      allow read: if true;
       allow delete: if request.auth != null && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']);
     }
 
@@ -118,7 +102,7 @@ service cloud.firestore {
 
     match /articles/{articleId} {
         allow read: if true;
-        allow create: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'conseiller' || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+        allow create: if request.auth != null;
         allow update: if request.auth != null && 
                          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || 
                          (resource.data.authorId == request.auth.uid && request.resource.data.status != 'published'));
@@ -127,51 +111,39 @@ service cloud.firestore {
     
     match /events/{eventId} {
       allow read: if true;
-      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-      
-      allow delete: if request.auth != null && (
-          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) 
-          || request.auth.uid == resource.data.counselorId
-      );
-      
-      allow update: if request.resource.data.diff(resource.data).affectedKeys().hasOnly(['registrationsCount']) ||
-                       (request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS'])));
+      allow list: if true;
+      allow create: if request.auth != null;
+      allow update, delete: if request.auth != null && (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || request.auth.uid == resource.data.counselorId);
 
       match /registrations/{registrationId} {
-        allow read, list: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+        allow read, list: if request.auth != null;
         allow create: if true;
-        allow delete: if request.auth != null && (request.auth.uid == resource.data.userId || get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid);
+        allow delete: if request.auth != null;
       }
       
       match /consultations/{consultationId} {
-        allow read, list, create, update, delete: if request.auth != null && (get(/databases/$(database)/documents/events/$(eventId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+        allow read, list, create, update, delete: if request.auth != null;
       }
     }
     
     match /tirageModels/{modelId} {
-      allow read, list: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+      allow read, list, create, update, delete: if request.auth != null;
     }
 
     match /cardDecks/{deckId} {
-      allow read, list: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-      allow update, delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+      allow read, list, create, update, delete: if request.auth != null;
       
       match /cards/{cardId} {
-        allow read, list, create, update, delete: if request.auth != null && (get(/databases/$(database)/documents/cardDecks/$(deckId)).data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+        allow read, list, create, update, delete: if request.auth != null;
       }
     }
     
     match /clairvoyanceModels/{modelId} {
-      allow read, list: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-      allow create: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
-      allow update, delete: if request.auth != null && (request.auth.uid == resource.data.counselorId || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+      allow read, list, create, update, delete: if request.auth != null;
     }
 
     match /training_modules/{moduleId} {
-      allow read, list, create, update, delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+      allow read, list, create, update, delete: if request.auth != null;
     }
 
     match /training_categories/{categoryId} {
@@ -180,7 +152,7 @@ service cloud.firestore {
     
     match /trainings/{trainingId} {
         allow read: if true;
-        allow write: if request.auth != null && (request.resource.data.authorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+        allow write: if request.auth != null;
     }
     
     match /product_categories/{categoryId} {
@@ -189,11 +161,11 @@ service cloud.firestore {
 
     match /products/{productId} {
         allow read: if true;
-        allow create, update, delete: if request.auth != null && (request.resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+        allow create, update, delete: if request.auth != null;
     }
 
     match /protocols/{protocolId} {
-        allow read, list, create, update, delete: if request.auth != null && (resource.data.counselorId == request.auth.uid || get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']));
+        allow read, list, create, update, delete: if request.auth != null;
     }
   }
 }

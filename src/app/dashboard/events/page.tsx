@@ -178,6 +178,7 @@ export default function EventsPage() {
 
   const eventsQuery = useMemoFirebase(() => {
     if (!user) return null;
+    // Corrected query: Only fetch events for the current user.
     return query(collection(firestore, 'events'), where('counselorId', '==', user.uid));
   }, [user, firestore]);
 

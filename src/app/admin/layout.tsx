@@ -74,23 +74,36 @@ export default function AdminLayout({
   
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
-
-  // --- Temporary Fix Logic ---
-  // We fetch all users to check if the current user is the only one.
+  
+  // This is a temporary measure. We check if the user is the ONLY user.
+  // If so, we grant admin access to prevent lockout during initial setup.
   const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
   const { data: allUsers, isLoading: areUsersLoading } = useCollection(usersQuery);
-  
-  // TEMPORARY: Grant access unconditionally to allow self-assignment of permission.
-  const hasAdminAccess = true;
+
+  const hasAdminAccess = useMemo(() => {
+    if (!userData) return false;
+    // Direct permission check
+    if (userData.permissions?.includes('FULLACCESS')) return true;
+    // Check for superadmin role
+    if (userData.role === 'superadmin') return true;
+    // Fallback for the very first user in the system
+    if (allUsers && allUsers.length === 1 && allUsers[0].id === user?.uid) return true;
+
+    return false;
+  }, [userData, allUsers, user]);
 
 
   useEffect(() => {
-    // Wait for auth to finish loading before checking user status
-    if (!isUserLoading && !user) {
-        router.push('/application');
+    if (!isUserLoading && !isUserDataLoading && !areUsersLoading) {
+      if (!user) {
+          router.push('/application');
+      } else if (!hasAdminAccess) {
+          router.push('/dashboard');
+          // Optional: Show a toast message for unauthorized access
+          // toast({ title: "Accès refusé", description: "Vous n'avez pas les droits pour accéder à cette page.", variant: "destructive" });
+      }
     }
-    // The permission check redirect is temporarily disabled.
-  }, [isUserLoading, user, router]);
+  }, [isUserLoading, isUserDataLoading, areUsersLoading, user, hasAdminAccess, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -101,7 +114,7 @@ export default function AdminLayout({
 
   const isLoading = isUserLoading || isUserDataLoading || areUsersLoading;
   
-  if (isLoading) {
+  if (isLoading || !hasAdminAccess) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />

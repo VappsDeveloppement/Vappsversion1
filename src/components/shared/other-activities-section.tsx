@@ -38,6 +38,7 @@ export function OtherActivitiesSection() {
 
     const otherActivitiesSettings = personalization?.otherActivitiesSection;
     
+    // Corrected Query: Fetch only public events
     const eventsQuery = useMemoFirebase(() => {
         return query(
             collection(firestore, 'events'),
