@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Image from "next/image";
@@ -109,7 +108,7 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
 
                  {buttonText && buttonLink && (
                     <div className="text-center mt-12">
-                        <Button size="lg" asChild>
+                        <Button size="lg" asChild style={{ backgroundColor: primaryColor }}>
                             <Link href={buttonLink} target="_blank">{buttonText}</Link>
                         </Button>
                     </div>
@@ -118,4 +117,3 @@ export function ProductsSection({ counselor, products }: { counselor: CounselorP
         </section>
     );
 }
-    
