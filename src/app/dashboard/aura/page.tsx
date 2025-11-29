@@ -288,7 +288,10 @@ function ProductManager({ categories, isLoading: areCategoriesLoading }: { categ
         const productData = {
             ...data,
             counselorId: user.uid,
-            versions: data.versions.map(v => ({ ...v, characteristics: v.characteristics?.map(c => c.text) }))
+            versions: data.versions.map(v => ({ ...v, characteristics: v.characteristics?.map(c => c.text) })),
+            contraindications: data.contraindications || [],
+            holisticProfile: data.holisticProfile || [],
+            pathologies: data.pathologies || [],
         };
 
         if (editingProduct) {
