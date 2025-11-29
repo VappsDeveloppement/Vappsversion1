@@ -23,6 +23,7 @@ import { CounselorContactSection } from '@/components/shared/counselor-contact-s
 import { CounselorTestimonialsSection } from '@/components/shared/counselor-testimonials-section';
 import { TrainingCatalogSection } from '@/components/shared/training-catalog-section';
 import { CounselorBlogSection } from '@/components/shared/counselor-blog-section';
+import { ProductsSection } from '@/components/shared/products-section';
 
 type CounselorProfile = {
     id: string;
@@ -52,6 +53,7 @@ type CounselorProfile = {
         jobOffersSection?: any;
         contactSection?: any;
         blogSection?: any;
+        productsSection?: any;
         trainingCatalogSection?: {
             enabled?: boolean;
             title?: string;
@@ -129,6 +131,7 @@ export default function CounselorPublicProfilePage() {
             counselorId={counselor.id} 
           />
         )}
+        <ProductsSection counselor={counselor} />
         <CounselorBlogSection counselor={counselor} />
         <CounselorTestimonialsSection counselor={counselor} />
         <CounselorContactSection counselor={counselor} />
