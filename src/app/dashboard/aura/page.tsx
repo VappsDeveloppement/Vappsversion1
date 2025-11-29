@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,20 +36,13 @@ const toBase64 = (file: File): Promise<string> =>
 
 // Product Management Section
 
-const productVersionSchema = z.object({
-    id: z.string(),
-    name: z.string().min(1, "Le nom de la version est requis."),
-    imageUrl: z.string().nullable().optional(),
-    price: z.coerce.number().min(0, "Le prix doit être positif ou nul.").optional(),
-    characteristics: z.array(z.object({ text: z.string() })).optional(),
-});
-type ProductVersionFormData = z.infer<typeof productVersionSchema>;
-
 const productSchema = z.object({
   title: z.string().min(1, "Le titre du produit est requis."),
   description: z.string().optional(),
   isFeatured: z.boolean().default(false),
-  versions: z.array(productVersionSchema).min(1, "Un produit doit avoir au moins une version."),
+  imageUrl: z.string().nullable().optional(),
+  price: z.coerce.number().optional(),
+  characteristics: z.array(z.object({ text: z.string() })).optional(),
   contraindications: z.array(z.string()).optional(),
   holisticProfile: z.array(z.string()).optional(),
   pathologies: z.array(z.string()).optional(),
@@ -65,7 +56,9 @@ export type Product = {
     title: string;
     description?: string;
     isFeatured?: boolean;
-    versions: ProductVersionFormData[];
+    imageUrl?: string | null;
+    price?: number;
+    characteristics?: string[];
     contraindications?: string[];
     holisticProfile?: string[];
     pathologies?: string[];
@@ -101,61 +94,6 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
     );
 };
 
-const ProductVersionCard = ({ control, index, removeVersion, setValue }: { control: Control<ProductFormData>, index: number, removeVersion: (index: number) => void, setValue: UseFormSetValue<ProductFormData> }) => {
-    const { fields: charFields, append: appendChar, remove: removeChar } = useFieldArray({
-        control,
-        name: `versions.${index}.characteristics`,
-    });
-    
-    const imageUrl = useWatch({ control, name: `versions.${index}.imageUrl` });
-
-    const handleVersionImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const base64 = await toBase64(file);
-            setValue(`versions.${index}.imageUrl`, base64);
-        }
-    };
-
-
-    return (
-        <Card className="p-4">
-            <div className="flex justify-between items-center mb-4">
-                <h5 className="font-semibold">Version {index + 1}</h5>
-                <Button type="button" variant="ghost" size="icon" onClick={() => removeVersion(index)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                </Button>
-            </div>
-            <div className="space-y-4">
-                <FormField control={control} name={`versions.${index}.name`} render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div className="grid grid-cols-2 gap-4">
-                    <FormField control={control} name={`versions.${index}.price`} render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                </div>
-                <div>
-                    <Label>Image</Label>
-                    <div className="flex items-center gap-4 mt-2">
-                        <Image src={imageUrl || '/placeholder.svg'} alt="Aperçu" width={80} height={80} className="rounded-md object-cover border" />
-                        <input type="file" id={`v-img-${index}`} onChange={handleVersionImageUpload} className="hidden" />
-                        <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById(`v-img-${index}`)?.click()}>Uploader</Button>
-                    </div>
-                </div>
-                <div>
-                    <Label>Caractéristiques</Label>
-                    <div className="space-y-2 mt-2">
-                        {charFields.map((char, cIndex) => (
-                            <div key={char.id} className="flex items-center gap-2">
-                                <FormField control={control} name={`versions.${index}.characteristics.${cIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <Button type="button" size="icon" variant="ghost" onClick={() => removeChar(cIndex)}><X className="h-4 w-4" /></Button>
-                            </div>
-                        ))}
-                        <Button type="button" variant="outline" size="sm" onClick={() => appendChar({ text: '' })} className="mt-2 text-xs">Ajouter</Button>
-                    </div>
-                </div>
-            </div>
-        </Card>
-    );
-};
-
 function ProductManager() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -164,6 +102,7 @@ function ProductManager() {
     const [editingProduct, setEditingProduct] = useState<Product | null>(null);
     const [productToDelete, setProductToDelete] = useState<Product | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
 
     const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
     const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
@@ -175,8 +114,26 @@ function ProductManager() {
         return products.filter(product => product.title.toLowerCase().includes(lowercasedTerm));
     }, [products, searchTerm]);
 
-    const form = useForm<ProductFormData>({ resolver: zodResolver(productSchema) });
-    const { fields, append, remove } = useFieldArray({ control: form.control, name: "versions" });
+    const form = useForm<ProductFormData>({ 
+        resolver: zodResolver(productSchema),
+        defaultValues: {
+            title: '',
+            description: '',
+            isFeatured: false,
+            imageUrl: null,
+            price: 0,
+            characteristics: [],
+            contraindications: [],
+            holisticProfile: [],
+            pathologies: [],
+            ctaLink: '',
+        }
+    });
+
+    const { fields: charFields, append: appendChar, remove: removeChar } = useFieldArray({
+        control: form.control,
+        name: "characteristics",
+    });
 
     useEffect(() => {
         if (isSheetOpen) {
@@ -188,10 +145,12 @@ function ProductManager() {
                     contraindications: editingProduct.contraindications || [],
                     holisticProfile: editingProduct.holisticProfile || [],
                     pathologies: editingProduct.pathologies || [],
-                    versions: editingProduct.versions.map(v => ({ ...v, characteristics: (v.characteristics || []).map(c => ({ text: c as unknown as string })) }))
+                    characteristics: (editingProduct.characteristics || []).map(c => ({ text: c }))
                 });
+                setImagePreview(editingProduct.imageUrl || null);
             } else {
-                form.reset({ title: '', description: '', isFeatured: false, versions: [{ id: `v-${Date.now()}`, name: 'Version par défaut', price: 0, imageUrl: null, characteristics: [] }], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
+                form.reset({ title: '', description: '', isFeatured: false, imageUrl: null, price: 0, characteristics: [], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
+                setImagePreview(null);
             }
         }
     }, [isSheetOpen, editingProduct, form]);
@@ -204,7 +163,8 @@ function ProductManager() {
         const productData = {
             ...data,
             counselorId: user.uid,
-            versions: data.versions.map(v => ({ ...v, characteristics: v.characteristics?.map(c => c.text) })),
+            imageUrl: imagePreview,
+            characteristics: data.characteristics?.map(c => c.text) || [],
             contraindications: data.contraindications || [],
             holisticProfile: data.holisticProfile || [],
             pathologies: data.pathologies || [],
@@ -226,6 +186,15 @@ function ProductManager() {
         toast({ title: 'Produit supprimé' });
         setProductToDelete(null);
     };
+    
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            setImagePreview(base64);
+        }
+    };
+
 
     return (
         <Card>
@@ -235,7 +204,7 @@ function ProductManager() {
                     <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouveau Produit</Button>
                 </div>
                  <div className="relative pt-4">
-                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
                     <Input
                         placeholder="Rechercher un produit..."
                         value={searchTerm}
@@ -264,7 +233,7 @@ function ProductManager() {
                 </div>
 
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-4xl w-full">
+                    <SheetContent className="sm:max-w-2xl w-full">
                         <SheetHeader><SheetTitle>{editingProduct ? 'Modifier le' : 'Nouveau'} produit</SheetTitle></SheetHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -282,13 +251,29 @@ function ProductManager() {
                                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                                             </FormItem>
                                         )}/>
-
+                                        
                                         <div className="space-y-4 pt-4 border-t">
-                                            <h4 className="font-medium">Versions du produit</h4>
-                                            {fields.map((version, index) => (
-                                                <ProductVersionCard key={version.id} control={form.control} index={index} removeVersion={remove} setValue={form.setValue} />
-                                            ))}
-                                            <Button type="button" variant="outline" onClick={() => append({ id: `v-${Date.now()}`, name: '', price: 0, imageUrl: null, characteristics: [] })}><PlusCircle className="mr-2 h-4 w-4" />Ajouter une version</Button>
+                                             <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                             <div>
+                                                <Label>Image</Label>
+                                                <div className="flex items-center gap-4 mt-2">
+                                                    <Image src={imagePreview || '/placeholder.svg'} alt="Aperçu" width={80} height={80} className="rounded-md object-cover border" />
+                                                    <input type="file" id="product-image-upload" onChange={handleImageUpload} className="hidden" />
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('product-image-upload')?.click()}>Uploader</Button>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <Label>Caractéristiques</Label>
+                                                <div className="space-y-2 mt-2">
+                                                    {charFields.map((char, cIndex) => (
+                                                        <div key={char.id} className="flex items-center gap-2">
+                                                            <FormField control={form.control} name={`characteristics.${cIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                            <Button type="button" size="icon" variant="ghost" onClick={() => removeChar(cIndex)}><X className="h-4 w-4" /></Button>
+                                                        </div>
+                                                    ))}
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendChar({ text: '' })} className="mt-2 text-xs">Ajouter une caractéristique</Button>
+                                                </div>
+                                            </div>
                                         </div>
 
                                         <div className="space-y-4 pt-4 border-t"><h4 className="font-medium">Informations Internes</h4>
