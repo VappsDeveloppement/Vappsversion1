@@ -8,7 +8,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { doc, setDoc, query, collection, where, getDocs, limit, documentId } from 'firebase/firestore';
+import { doc, setDoc, query, collection, where, getDocs, limit, documentId, writeBatch } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
@@ -33,6 +33,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const heroSchema = z.object({
   title: z.string().optional(),
   subtitle: z.string().optional(),
+  description: z.string().optional(),
   ctaText: z.string().optional(),
   ctaLink: z.string().optional(),
   cta2Text: z.string().optional(),
@@ -51,6 +52,9 @@ const attentionSchema = z.object({
   title: z.string().optional(),
   subtitle: z.string().optional(),
   text: z.string().optional(),
+  titleColor: z.string().optional(),
+  subtitleColor: z.string().optional(),
+  bgColor: z.string().optional(),
 });
 
 const aboutSchema = z.object({
@@ -270,10 +274,11 @@ export default function MiniSitePage() {
       hero: {
         title: '',
         subtitle: '',
-        ctaText: '',
-        ctaLink: '',
-        cta2Text: '',
-        cta2Link: '',
+        description: '',
+        ctaText: 'Prendre rendez-vous',
+        ctaLink: '#contact',
+        cta2Text: 'Mon Espace',
+        cta2Link: '/application',
         showPhoto: true,
         showPhone: true,
         showLocation: true,
@@ -287,6 +292,9 @@ export default function MiniSitePage() {
         title: 'Attention',
         subtitle: '',
         text: '',
+        bgColor: '#FFFFFF',
+        titleColor: '#000000',
+        subtitleColor: '#10B981',
       },
       aboutSection: {
         enabled: false,
@@ -415,6 +423,14 @@ export default function MiniSitePage() {
        const initialMiniSiteData = {
          ...form.getValues(), // Start with default values
          ...userData.miniSite, // Override with saved data
+         hero: {
+            ...form.getValues().hero,
+            ...userData.miniSite.hero,
+         },
+         attentionSection: {
+            ...form.getValues().attentionSection,
+            ...userData.miniSite.attentionSection,
+         },
          servicesSection: {
             ...form.getValues().servicesSection,
             ...userData.miniSite.servicesSection,
@@ -615,13 +631,21 @@ export default function MiniSitePage() {
                         <div className="space-y-6 p-6">
                             <FormField control={form.control} name="hero.title" render={({ field }) => (<FormItem><FormLabel>Titre principal</FormLabel><FormControl><Textarea placeholder="Donnez un nouvel élan à votre carrière" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="hero.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre</FormLabel><FormControl><Textarea placeholder="Un accompagnement personnalisé pour atteindre vos objectifs." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="hero.description" render={({ field }) => (<FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea placeholder="Description complémentaire..." {...field} /></FormControl><FormMessage /></FormItem>)} />
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField control={form.control} name="hero.ctaText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton principal</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="hero.ctaLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton principal</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <FormField control={form.control} name="hero.cta2Text" render={({ field }) => (<FormItem><FormLabel>Texte du bouton secondaire</FormLabel><FormControl><Input placeholder="Mon Espace" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="hero.cta2Link" render={({ field }) => (<FormItem><FormLabel>Lien du bouton secondaire</FormLabel><FormControl><Input placeholder="/application" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <div className="space-y-2">
+                                  <Label>Texte du bouton secondaire</Label>
+                                  <Input value="Mon Espace" disabled />
+                                </div>
+                                <div className="space-y-2">
+                                  <Label>Lien du bouton secondaire</Label>
+                                  <Input value="/application" disabled />
+                                </div>
                             </div>
                             <div className="space-y-4 rounded-lg border p-4">
                                 <h4 className="text-sm font-medium">Options d'affichage</h4>
@@ -662,6 +686,14 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="attentionSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Titre de la section" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                              <FormField control={form.control} name="attentionSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre (optionnel)</FormLabel><FormControl><Input placeholder="Sous-titre" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="attentionSection.text" render={({ field }) => (<FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea placeholder="Contenu de la section..." {...field} rows={5} /></FormControl><FormMessage /></FormItem>)}/>
+                            <div className="space-y-6 rounded-lg border p-4">
+                                <h4 className="text-sm font-medium">Couleurs</h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <FormField control={form.control} name="attentionSection.titleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="attentionSection.subtitleColor" render={({ field }) => (<FormItem><FormLabel>Couleur du sous-titre</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="attentionSection.bgColor" render={({ field }) => (<FormItem><FormLabel>Couleur de fond</FormLabel><div className="flex items-center gap-2"><Input type="color" {...field} className="w-10 h-10 p-1" /><FormControl><Input {...field} /></FormControl></div><FormMessage /></FormItem>)} />
+                                </div>
+                            </div>
                         </div>
                     </AccordionContent>
                 </AccordionItem>
@@ -808,7 +840,7 @@ export default function MiniSitePage() {
                             <FormField control={form.control} name="ctaSection.enabled" render={({ field }) => (<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4"><div className="space-y-0.5"><FormLabel className="text-base">Afficher cette section</FormLabel></div><FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl></FormItem>)}/>
                             <FormField control={form.control} name="ctaSection.title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input placeholder="Prêt(e) à passer à l'action ?" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                             <FormField control={form.control} name="ctaSection.subtitle" render={({ field }) => (<FormItem><FormLabel>Sous-titre (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                            <FormField control={form.control} name="ctaSection.text" render={({ field }) => (<FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                            <FormField control={form.control} name="ctaSection.text" render={({ field }) => (<FormItem><FormLabel>Texte</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)}/>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <FormField control={form.control} name="ctaSection.buttonText" render={({ field }) => (<FormItem><FormLabel>Texte du bouton</FormLabel><FormControl><Input placeholder="Prendre rendez-vous" {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <FormField control={form.control} name="ctaSection.buttonLink" render={({ field }) => (<FormItem><FormLabel>Lien du bouton</FormLabel><FormControl><Input placeholder="#contact" {...field} /></FormControl><FormMessage /></FormItem>)}/>
@@ -1113,3 +1145,4 @@ export default function MiniSitePage() {
     
 
     
+
