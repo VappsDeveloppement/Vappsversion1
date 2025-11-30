@@ -133,7 +133,7 @@ function ProductManager() {
             description: '',
             isFeatured: false,
             imageUrl: null,
-            price: 0,
+            price: undefined,
             characteristics: [],
             contraindications: [],
             holisticProfile: [],
@@ -147,7 +147,7 @@ function ProductManager() {
             if (editingProduct) {
                 form.reset({
                     ...editingProduct,
-                    price: editingProduct.price ?? 0,
+                    price: editingProduct.price ?? undefined,
                     ctaLink: editingProduct.ctaLink || '',
                     description: editingProduct.description || '',
                     contraindications: editingProduct.contraindications || [],
@@ -157,7 +157,7 @@ function ProductManager() {
                 });
                 setImagePreview(editingProduct.imageUrl || null);
             } else {
-                form.reset({ title: '', description: '', isFeatured: false, imageUrl: null, price: 0, characteristics: [], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
+                form.reset({ title: '', description: '', isFeatured: false, imageUrl: null, price: undefined, characteristics: [], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
                 setImagePreview(null);
             }
         }
@@ -168,7 +168,7 @@ function ProductManager() {
     
     const onSubmit = (data: ProductFormData) => {
         if (!user) return;
-        const productData: Omit<Product, 'id' | 'versions'> = {
+        const productData: Partial<Omit<Product, 'id' | 'versions'>> = {
             counselorId: user.uid,
             title: data.title,
             description: data.description || '',
@@ -1017,54 +1017,55 @@ function AuraTestTool() {
     }, [selectedClientId, clients]);
     
     const recommendations = useMemo(() => {
-        const clientContraindications = new Set([
+        // 1. Initial Search
+        const pathologyProducts = (allProducts || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
+        const pathologyProtocols = (allProtocols || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
+        const emotionProducts = (allProducts || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
+        const emotionProtocols = (allProtocols || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
+
+        // 2. Safety Filter
+        const allContraindications = new Set([
             ...(selectedSheet?.contraindications || []),
             ...(selectedSheet?.allergies || []),
             ...contraindication,
         ]);
-
-        const filterItems = (items: (Product | Protocole)[]) => {
+        
+        const applySafetyFilter = (items: (Product | Protocole)[]) => {
+            if (allContraindications.size === 0) return items;
             return items.filter(item => {
                 const itemContraindications = new Set(item.contraindications || []);
-                for (const clientContra of clientContraindications) {
-                    if (itemContraindications.has(clientContra)) {
-                        return false;
-                    }
-                }
-                return true;
+                return ![...allContraindications].some(c => itemContraindications.has(c));
             });
         };
-
-        const searchTags = [...pathologie, ...emotion, ...holisticProfile];
-
-        if (searchTags.length === 0) {
-          return { pathology: { products: [], protocols: [] }, emotion: { products: [], protocols: [] }, holisticProfile: { products: [], protocols: [] } };
-        }
         
-        const pathologyProducts = (allProducts || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
-        const emotionProducts = (allProducts || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
-        const holisticProducts = (allProducts || []).filter(p => holisticProfile.some(tag => p.holisticProfile?.includes(tag)));
+        const safePathologyProducts = applySafetyFilter(pathologyProducts);
+        const safePathologyProtocols = applySafetyFilter(pathologyProtocols);
+        const safeEmotionProducts = applySafetyFilter(emotionProducts);
+        const safeEmotionProtocols = applySafetyFilter(emotionProtocols);
 
-        const pathologyProtocols = (allProtocols || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
-        const emotionProtocols = (allProtocols || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
-        const holisticProtocols = (allProtocols || []).filter(p => holisticProfile.some(tag => p.holisticProfile?.includes(tag)));
-
-        return {
-            pathology: {
-                products: filterItems(pathologyProducts),
-                protocols: filterItems(pathologyProtocols),
-            },
-            emotion: {
-                products: filterItems(emotionProducts),
-                protocols: filterItems(emotionProtocols),
-            },
-            holisticProfile: {
-                products: filterItems(holisticProducts),
-                protocols: filterItems(holisticProtocols),
-            }
+        // 3. Holistic Profile Filter
+        const applyHolisticFilter = (items: (Product | Protocole)[]) => {
+            if (holisticProfile.length === 0) return items;
+            return items.filter(item => holisticProfile.every(tag => item.holisticProfile?.includes(tag)));
         };
 
-    }, [pathologie, emotion, contraindication, selectedSheet, allProducts, allProtocols, holisticProfile]);
+        const finalPathologyProducts = applyHolisticFilter(safePathologyProducts);
+        const finalPathologyProtocols = applyHolisticFilter(safePathologyProtocols);
+        const finalEmotionProducts = applyHolisticFilter(safeEmotionProducts);
+        const finalEmotionProtocols = applyHolisticFilter(safeEmotionProtocols);
+        
+        const allFilteredItems = [...finalPathologyProducts, ...finalPathologyProtocols, ...finalEmotionProducts, ...finalEmotionProtocols];
+        const profileRecommendations = allFilteredItems.filter(item =>
+            holisticProfile.length > 0 && holisticProfile.some(tag => item.holisticProfile?.includes(tag))
+        );
+
+        return {
+            pathology: { products: finalPathologyProducts, protocols: finalPathologyProtocols },
+            emotion: { products: finalEmotionProducts, protocols: finalEmotionProtocols },
+            profile: profileRecommendations,
+        };
+
+    }, [pathologie, emotion, holisticProfile, contraindication, selectedSheet, allProducts, allProtocols]);
 
 
     const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
@@ -1079,36 +1080,53 @@ function AuraTestTool() {
         );
     };
     
-    const RecommendationList = ({ title, products, protocols }: { title: string, products: (Product[] | undefined), protocols: (Protocole[] | undefined)}) => {
-        if ((!products || products.length === 0) && (!protocols || protocols.length === 0)) {
+    type Item = (Product | Protocole) & { matchedTag: string };
+
+    const RecommendationList = ({ title, products, protocols, allTags }: { title: string, products: Product[], protocols: Protocole[], allTags: string[]}) => {
+        if (products.length === 0 && protocols.length === 0) {
             return null;
         }
 
-        const iconMap = {
+        const iconMap: Record<string, React.ReactNode> = {
             'Pathologie': <HeartPulse className="h-6 w-6 text-primary"/>,
             'Émotion': <BrainCircuit className="h-6 w-6 text-primary"/>,
             'Profil Holistique': <User className="h-6 w-6 text-primary"/>,
+        };
+        
+        const renderItem = (item: Product | Protocole) => {
+            const isProduct = 'title' in item;
+            const matchedTag = allTags.find(tag => (isProduct ? item.pathologies?.includes(tag) : item.pathologies?.includes(tag)) || (item.holisticProfile?.includes(tag)));
+
+            return (
+                <Card key={item.id} className="p-3">
+                    <p className="font-semibold">{isProduct ? item.title : item.name}</p>
+                    {matchedTag && <Badge variant="outline">{matchedTag}</Badge>}
+                    {isProduct && item.characteristics && item.characteristics.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
+                    )}
+                </Card>
+            );
         };
 
         return (
             <div className="space-y-4">
                 <h3 className="text-xl font-semibold flex items-center gap-2">
-                    {iconMap[title as keyof typeof iconMap]}
+                    {iconMap[title]}
                     Recommandations: {title}
                 </h3>
-                {products && products.length > 0 && (
+                {products.length > 0 && (
                     <div>
                         <h4 className="font-medium text-muted-foreground mb-2">Produits suggérés</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {products.map(p => <Card key={p.id} className="p-3"><p className="font-semibold">{p.title}</p></Card>)}
+                            {products.map(p => renderItem(p))}
                         </div>
                     </div>
                 )}
-                 {protocols && protocols.length > 0 && (
+                 {protocols.length > 0 && (
                     <div>
                         <h4 className="font-medium text-muted-foreground mb-2">Protocoles suggérés</h4>
                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {protocols.map(p => <Card key={p.id} className="p-3"><p className="font-semibold">{p.name}</p></Card>)}
+                            {protocols.map(p => renderItem(p))}
                         </div>
                     </div>
                 )}
@@ -1188,13 +1206,11 @@ function AuraTestTool() {
                     <TagInput value={contraindication} onChange={setContraindication} placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." />
                 </div>
 
-                {(pathologie.length > 0 || emotion.length > 0 || holisticProfile.length > 0) && (
-                    <div className="pt-6 mt-6 border-t space-y-8">
-                        <RecommendationList title="Pathologie" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} />
-                        <RecommendationList title="Émotion" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} />
-                        <RecommendationList title="Profil Holistique" products={recommendations.holisticProfile.products} protocols={recommendations.holisticProfile.protocols} />
-                    </div>
-                )}
+                <div className="pt-6 mt-6 border-t space-y-8">
+                     <RecommendationList title="Pathologie" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} allTags={pathologie}/>
+                     <RecommendationList title="Émotion" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} allTags={emotion}/>
+                     <RecommendationList title="Profil Holistique" products={recommendations.profile.filter(p => 'title' in p) as Product[]} protocols={recommendations.profile.filter(p => !('title' in p)) as Protocole[]} allTags={holisticProfile}/>
+                </div>
             </CardContent>
         </Card>
     );
@@ -1232,4 +1248,3 @@ export default function AuraPage() {
         </div>
     );
 }
-

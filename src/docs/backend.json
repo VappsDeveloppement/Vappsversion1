@@ -1344,8 +1344,26 @@
         "counselorId": { "type": "string" },
         "clientId": { "type": "string" },
         "clientName": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "dob": { "type": "string", "format": "date" },
+        "foodHabits": { "type": "array", "items": { "type": "string" } },
+        "allergies": { "type": "array", "items": { "type": "string" } },
         "contraindications": { "type": "array", "items": { "type": "string" } },
         "holisticProfile": { "type": "array", "items": { "type": "string" } },
+        "bmiRecords": {
+            "type": "array",
+            "description": "Stores the last 5 BMI calculations.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "date": { "type": "string", "format": "date-time" },
+                    "weight": { "type": "number" },
+                    "height": { "type": "number" },
+                    "bmi": { "type": "number" },
+                    "interpretation": { "type": "string" }
+                }
+            }
+        },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
