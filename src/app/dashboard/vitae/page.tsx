@@ -1,12 +1,10 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit } from "lucide-react";
-import { useForm, useFieldArray, useWatch } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -95,7 +93,7 @@ type CvProfile = CvProfileFormData & {
 
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
-    const currentValues = value || [];
+    const currentValues = Array.isArray(value) ? value : [];
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
             e.preventDefault();
@@ -457,21 +455,9 @@ function Cvtheque() {
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
-                                                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                                                          <Mail className="h-4 w-4" />
-                                                          <span>{selectedClient.email}</span>
-                                                        </div>
-                                                        {selectedClient.phone && (
-                                                          <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
-                                                            <Phone className="h-4 w-4" />
-                                                            <span>{selectedClient.phone}</span>
-                                                          </div>
-                                                        )}
-                                                         {selectedClient.address && (
-                                                            <div className="text-sm text-muted-foreground mt-1">
-                                                                <span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span>
-                                                            </div>
-                                                        )}
+                                                        {selectedClient.email && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Mail className="h-4 w-4" /><span>{selectedClient.email}</span></div>}
+                                                        {selectedClient.phone && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Phone className="h-4 w-4" /><span>{selectedClient.phone}</span></div>}
+                                                         {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span></div>}
                                                     </div>
                                                     {!editingProfile && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
                                                 </div>
@@ -704,3 +690,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
