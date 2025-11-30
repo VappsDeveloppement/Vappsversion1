@@ -33,6 +33,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronsUpDown, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 const toBase64 = (file: File): Promise<string> =>
@@ -1017,10 +1018,9 @@ function AuraTestTool() {
     
     const recommendations = useMemo(() => {
         if (!allProducts || !allProtocols) {
-            return { pathology: { products: [], protocols: [] }, emotion: { products: [], protocols: [] }, profile: { products: [], protocols: [] } };
+            return { pathology: [], emotion: [], profile: [] };
         }
 
-        // Safety Filter (Contraindications & Allergies from sheet and temporary input)
         const allContraindications = new Set([
             ...(selectedSheet?.contraindications || []),
             ...(selectedSheet?.allergies || []),
@@ -1035,33 +1035,27 @@ function AuraTestTool() {
             });
         };
 
-        // 1. Get initial lists for pathology and emotion
-        const pathologyProducts = pathologie.length > 0 ? allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
-        const pathologyProtocols = pathologie.length > 0 ? allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
-        
-        const emotionProducts = emotion.length > 0 ? allProducts.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag))) : [];
-        const emotionProtocols = emotion.length > 0 ? allProtocols.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag))) : [];
-        
-        // 2. Apply safety filter to both lists
-        const safePathologyProducts = applySafetyFilter(pathologyProducts);
-        const safePathologyProtocols = applySafetyFilter(pathologyProtocols);
-        const safeEmotionProducts = applySafetyFilter(emotionProducts);
-        const safeEmotionProtocols = applySafetyFilter(emotionProtocols);
+        const pathologyItems = pathologie.length > 0 ? 
+            [...allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))), ...allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)))]
+            : [];
 
-        // 3. Combine the safe lists to find profile recommendations from them
-        const allSafeRecommendations = [...new Set([...safePathologyProducts, ...safePathologyProtocols, ...safeEmotionProducts, ...safeEmotionProtocols])];
+        const emotionItems = emotion.length > 0 ?
+            [...allProducts.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag))), ...allProtocols.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)))]
+            : [];
+            
+        const safePathologyItems = applySafetyFilter(pathologyItems);
+        const safeEmotionItems = applySafetyFilter(emotionItems);
         
+        const allSafeRecommendations = [...new Set([...safePathologyItems, ...safeEmotionItems])];
+
         const profileRecommendedItems = holisticProfile.length > 0 
             ? allSafeRecommendations.filter(item => holisticProfile.every(tag => item.holisticProfile?.includes(tag)))
             : [];
-            
-        const profileRecommendedProducts = profileRecommendedItems.filter((item): item is Product => 'title' in item);
-        const profileRecommendedProtocols = profileRecommendedItems.filter((item): item is Protocole => 'name' in item);
 
         return {
-            pathology: { products: safePathologyProducts, protocols: safePathologyProtocols },
-            emotion: { products: safeEmotionProducts, protocols: safeEmotionProtocols },
-            profile: { products: profileRecommendedProducts, protocols: profileRecommendedProtocols },
+            pathology: safePathologyItems,
+            emotion: safeEmotionItems,
+            profile: profileRecommendedItems,
         };
 
     }, [pathologie, emotion, holisticProfile, contraindication, selectedSheet, allProducts, allProtocols]);
@@ -1078,34 +1072,15 @@ function AuraTestTool() {
             </div>
         );
     };
-    
-    type Item = (Product | Protocole) & { matchedTag: string };
 
-    const RecommendationList = ({ title, products, protocols, allTags }: { title: string, products: Product[], protocols: Protocole[], allTags: string[]}) => {
-        if (products.length === 0 && protocols.length === 0) {
+    const RecommendationList = ({ title, items, allTags }: { title: string, items: (Product | Protocole)[], allTags: string[] }) => {
+        if (items.length === 0) {
             return null;
         }
 
         const iconMap: Record<string, React.ReactNode> = {
             'Pathologie': <HeartPulse className="h-6 w-6 text-primary"/>,
             'Émotion': <BrainCircuit className="h-6 w-6 text-primary"/>,
-        };
-        
-        const renderItem = (item: Product | Protocole) => {
-            const isProduct = 'title' in item;
-            
-            const sourceTags = title === 'Pathologie' ? item.pathologies : item.holisticProfile;
-            const matchedTag = allTags.find(tag => sourceTags?.includes(tag));
-
-            return (
-                <Card key={item.id} className="p-3">
-                    <p className="font-semibold">{isProduct ? item.title : item.name}</p>
-                    {matchedTag && <Badge variant="outline">{matchedTag}</Badge>}
-                    {isProduct && item.characteristics && item.characteristics.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
-                    )}
-                </Card>
-            );
         };
 
         return (
@@ -1114,69 +1089,47 @@ function AuraTestTool() {
                     {iconMap[title]}
                     Recommandations: {title}
                 </h3>
-                {products.length > 0 && (
-                    <div>
-                        <h4 className="font-medium text-muted-foreground mb-2">Produits suggérés</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {products.map(p => renderItem(p))}
-                        </div>
-                    </div>
-                )}
-                 {protocols.length > 0 && (
-                    <div>
-                        <h4 className="font-medium text-muted-foreground mb-2">Protocoles suggérés</h4>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {protocols.map(p => renderItem(p))}
-                        </div>
-                    </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {items.map(item => {
+                         const isProduct = 'title' in item;
+                         const sourceTags = title === 'Pathologie' ? item.pathologies : item.holisticProfile;
+                         const matchedTag = allTags.find(tag => sourceTags?.includes(tag));
+                        return (
+                            <Card key={item.id} className="p-3">
+                                <p className="font-semibold">{isProduct ? item.title : item.name}</p>
+                                {matchedTag && <Badge variant="outline">{matchedTag}</Badge>}
+                                {isProduct && item.characteristics && item.characteristics.length > 0 && (
+                                    <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
+                                )}
+                            </Card>
+                        )
+                    })}
+                </div>
             </div>
-        )
+        );
     };
-    
-    const RecommendationHighlightList = ({ title, products, protocols }: { title: string, products: (Product)[], protocols: (Protocole)[]}) => {
-         if (products.length === 0 && protocols.length === 0) {
-            return null;
-        }
-        
-        const renderItem = (item: Product | Protocole) => {
-            const isProduct = 'title' in item;
-            return (
-                 <Card key={item.id} className="p-3 bg-primary/5 border-primary/20">
-                    <p className="font-semibold">{isProduct ? item.title : item.name}</p>
-                    {isProduct && item.characteristics && item.characteristics.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
-                    )}
-                </Card>
-            )
-        }
 
+    const RecommendationHighlightList = ({ items }: { items: (Product | Protocole)[] }) => {
+        if (items.length === 0) return null;
         return (
             <div className="space-y-4">
                 <h3 className="text-xl font-semibold flex items-center gap-2">
                     <Star className="h-6 w-6 text-primary"/>
                     Recommandations selon le Profil
                 </h3>
-                 {products.length > 0 && (
-                    <div>
-                        <h4 className="font-medium text-muted-foreground mb-2">Produits suggérés</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {products.map(p => renderItem(p))}
-                        </div>
-                    </div>
-                )}
-                 {protocols.length > 0 && (
-                    <div>
-                        <h4 className="font-medium text-muted-foreground mb-2">Protocoles suggérés</h4>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {protocols.map(p => renderItem(p))}
-                        </div>
-                    </div>
-                )}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    {items.map(item => (
+                        <Card key={item.id} className="p-3 bg-primary/5 border-primary/20">
+                            <p className="font-semibold">{'title' in item ? item.title : item.name}</p>
+                            {'title' in item && item.characteristics && item.characteristics.length > 0 && (
+                                <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
+                            )}
+                        </Card>
+                    ))}
+                </div>
             </div>
-        )
+        );
     };
-
 
     return (
         <Card>
@@ -1251,9 +1204,9 @@ function AuraTestTool() {
                 </div>
 
                 <div className="pt-6 mt-6 border-t space-y-8">
-                     <RecommendationList title="Pathologie" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} allTags={pathologie}/>
-                     <RecommendationList title="Émotion" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} allTags={emotion}/>
-                     <RecommendationHighlightList title="Profil Holistique" products={recommendations.profile.products} protocols={recommendations.profile.protocols} />
+                     <RecommendationList title="Pathologie" items={recommendations.pathology} allTags={pathologie}/>
+                     <RecommendationList title="Émotion" items={recommendations.emotion} allTags={emotion}/>
+                     <RecommendationHighlightList items={recommendations.profile} />
                 </div>
             </CardContent>
         </Card>
