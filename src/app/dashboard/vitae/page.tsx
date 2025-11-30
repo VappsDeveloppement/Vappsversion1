@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -72,8 +71,11 @@ const cvProfileSchema = z.object({
   duration: z.array(z.string()).optional(),
   workEnvironment: z.array(z.string()).optional(),
   highestFormation: z.array(z.string()).optional(),
+  highestFormationSkills: z.array(z.string()).optional(),
   currentJobFormation: z.array(z.string()).optional(),
+  currentJobFormationSkills: z.array(z.string()).optional(),
   projectFormation: z.array(z.string()).optional(),
+  projectFormationSkills: z.array(z.string()).optional(),
   fundingOptions: z.array(z.string()).optional(),
   experiences: z.array(experienceSchema).optional(),
   otherInterests: z.array(z.string()).optional(),
@@ -144,8 +146,11 @@ function Cvtheque() {
         duration: [],
         workEnvironment: [],
         highestFormation: [],
+        highestFormationSkills: [],
         currentJobFormation: [],
+        currentJobFormationSkills: [],
         projectFormation: [],
+        projectFormationSkills: [],
         fundingOptions: [],
         experiences: [],
         otherInterests: [],
@@ -231,11 +236,11 @@ function Cvtheque() {
                 zipCode: values.zipCode || '',
                 city: values.city || '',
                 counselorIds: [user.uid],
+                dateJoined: new Date().toISOString(),
             };
             await setDocumentNonBlocking(userDocRef, {
                 ...newUserData,
                 role: 'membre',
-                dateJoined: new Date().toISOString(),
             });
 
             if (personalization.emailSettings.fromEmail) {
@@ -293,21 +298,7 @@ function Cvtheque() {
             counselorId: user.uid,
             clientId: selectedClient.id,
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
-            mobility: data.mobility || [],
-            drivingLicence: data.drivingLicence || [],
-            lastJob: data.lastJob || [],
-            lastJobTitle: data.lastJobTitle || [],
-            searchedJob: data.searchedJob || [],
-            searchedJobTitle: data.searchedJobTitle || [],
-            contractType: data.contractType || [],
-            duration: data.duration || [],
-            workEnvironment: data.workEnvironment || [],
-            highestFormation: data.highestFormation || [],
-            currentJobFormation: data.currentJobFormation || [],
-            projectFormation: data.projectFormation || [],
-            fundingOptions: data.fundingOptions || [],
-            experiences: data.experiences || [],
-            otherInterests: data.otherInterests || [],
+            ...data,
         };
         
         addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), cvProfileData);
@@ -437,10 +428,19 @@ function Cvtheque() {
 
                                              <Card>
                                                 <CardHeader><CardTitle>Formation</CardTitle></CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="highestFormation" render={({ field }) => ( <FormItem><FormLabel>Formation la plus élevée</FormLabel><FormControl><TagInput {...field} placeholder="Code RNCP, Niveau, Libellé..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="currentJobFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec métier actuel</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="projectFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec projet</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                <CardContent className="space-y-6">
+                                                    <div className="space-y-2">
+                                                        <FormField control={cvForm.control} name="highestFormation" render={({ field }) => ( <FormItem><FormLabel>Formation la plus élevée</FormLabel><FormControl><TagInput {...field} placeholder="Code RNCP, Niveau, Libellé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                        <FormField control={cvForm.control} name="highestFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <FormField control={cvForm.control} name="currentJobFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec métier actuel</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                        <FormField control={cvForm.control} name="currentJobFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                    </div>
+                                                    <div className="space-y-2">
+                                                        <FormField control={cvForm.control} name="projectFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec projet</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                        <FormField control={cvForm.control} name="projectFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                    </div>
                                                     <FormField control={cvForm.control} name="fundingOptions" render={({ field }) => ( <FormItem><FormLabel>Financement possible</FormLabel><FormControl><TagInput {...field} placeholder="CPF, Pôle Emploi..."/></FormControl><FormMessage/></FormItem> )}/>
                                                 </CardContent>
                                             </Card>
@@ -590,4 +590,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
