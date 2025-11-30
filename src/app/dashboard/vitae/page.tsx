@@ -1,11 +1,10 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2 } from "lucide-react";
+import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2 } from "lucide-react";
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -37,19 +36,6 @@ type Client = {
     city?: string;
     counselorIds?: string[];
 };
-
-type CvProfile = {
-    id: string;
-    clientId: string;
-    clientName: string;
-    mobility?: string[];
-    drivingLicence?: string[];
-    currentJob?: string[];
-    searchedJob?: string[];
-    contractType?: string[];
-    duration?: string[];
-    workEnvironment?: string[];
-}
 
 const newUserSchema = z.object({
     firstName: z.string().min(1, 'Le prénom est requis.'),
@@ -444,8 +430,8 @@ function Cvtheque() {
                                                     <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
                                                 </CardContent>
                                             </Card>
-                                            
-                                            <Card>
+
+                                             <Card>
                                                 <CardHeader><CardTitle>Formation</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
                                                     <FormField control={cvForm.control} name="highestFormation" render={({ field }) => ( <FormItem><FormLabel>Formation la plus élevée</FormLabel><FormControl><TagInput {...field} placeholder="Code RNCP, Niveau, Libellé..."/></FormControl><FormMessage/></FormItem> )}/>
@@ -454,8 +440,8 @@ function Cvtheque() {
                                                     <FormField control={cvForm.control} name="fundingOptions" render={({ field }) => ( <FormItem><FormLabel>Financement possible</FormLabel><FormControl><TagInput {...field} placeholder="CPF, Pôle Emploi..."/></FormControl><FormMessage/></FormItem> )}/>
                                                 </CardContent>
                                             </Card>
-
-                                             <Card>
+                                            
+                                            <Card>
                                                 <CardHeader><CardTitle>Expériences</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
                                                     {experienceFields.map((field, index) => {
@@ -487,7 +473,7 @@ function Cvtheque() {
                                                     </Button>
                                                 </CardContent>
                                             </Card>
-                                            
+
                                             <SheetFooter className="pt-6 border-t">
                                               <SheetClose asChild><Button type="button" variant="outline">Fermer</Button></SheetClose>
                                               <Button type="submit">Enregistrer le profil</Button>
