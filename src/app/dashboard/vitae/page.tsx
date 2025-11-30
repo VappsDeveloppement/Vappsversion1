@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -98,20 +99,40 @@ type CvProfile = CvProfileFormData & {
     clientName: string;
 };
 
+const rncpFormSchema = z.object({
+    formationName: z.string().min(1, "Le nom est requis."),
+    formationLevel: z.array(z.string()).optional(),
+    rncpCode: z.array(z.string()).optional(),
+    formationTitle: z.array(z.string()).optional(),
+    skills: z.array(z.string()).optional(),
+    activities: z.array(z.string()).optional(),
+});
+type RncpFormData = z.infer<typeof rncpFormSchema>;
+
+type FicheRNCP = RncpFormData & {
+    id: string;
+    counselorId: string;
+};
+
 
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
     const currentValues = Array.isArray(value) ? value : [];
-    const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' && inputValue.trim()) {
+
+    const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter') {
             e.preventDefault();
-            if (!currentValues.includes(inputValue.trim())) {
+            if (inputValue.trim() && !currentValues.includes(inputValue.trim())) {
                 onChange([...currentValues, inputValue.trim()]);
             }
             setInputValue('');
         }
     };
-    const removeTag = (tagToRemove: string) => onChange(currentValues.filter(tag => tag !== tagToRemove));
+    
+    const removeTag = (tagToRemove: string) => {
+        onChange(currentValues.filter(tag => tag !== tagToRemove));
+    };
+
     return (
         <div className="border p-2 rounded-md">
             <div className="flex flex-wrap gap-1 mb-2">
@@ -124,7 +145,13 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
                     </Badge>
                 ))}
             </div>
-            <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={addTag} placeholder={placeholder} className="border-none shadow-none focus-visible:ring-0 h-8" />
+            <Input 
+                value={inputValue} 
+                onChange={(e) => setInputValue(e.target.value)} 
+                onKeyDown={handleKeyDown} 
+                placeholder={placeholder} 
+                className="border-none shadow-none focus-visible:ring-0 h-8" 
+            />
         </div>
     );
 };
@@ -407,13 +434,13 @@ function Cvtheque() {
             toast({ title: "Erreur", description: "Données client introuvables.", variant: "destructive" });
             return;
         }
-    
+
         const doc = new jsPDF();
         let y = 20;
-    
+
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(' • ');
-    
+
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
         doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
@@ -423,11 +450,11 @@ function Cvtheque() {
         const contactInfo = [client.email, client.phone, client.address].filter(Boolean).join(' | ');
         doc.text(contactInfo, 105, y, { align: 'center' });
         y += 10;
-        
+
         doc.setDrawColor(220, 220, 220);
         doc.line(15, y, 195, y);
         y += 10;
-    
+
         const addSection = (title: string, content?: string | string[], options?: { isList?: boolean }) => {
             if (!content || (Array.isArray(content) && content.length === 0)) return;
             if (y > 260) { doc.addPage(); y = 20; }
@@ -438,28 +465,30 @@ function Cvtheque() {
             doc.setDrawColor(180, 180, 180);
             doc.line(15, y, 60, y);
             y += 8;
-    
+
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             
-            const textToRender = Array.isArray(content) ? (options?.isList ? content : content.join(' • ')) : content;
-            const lines = doc.splitTextToSize(textToRender, 180);
-            doc.text(lines, 15, y);
+            const textToRender = Array.isArray(content) ? content : [content];
             
-            y += (lines.length * 5) + 10;
+            if (options?.isList) {
+                 textToRender.forEach(item => {
+                    const lines = doc.splitTextToSize(`- ${item}`, 180);
+                    doc.text(lines, 15, y);
+                    y += (lines.length * 5) + 2;
+                 });
+            } else {
+                 const lines = doc.splitTextToSize(textToRender.join(' • '), 180);
+                 doc.text(lines, 15, y);
+                 y += (lines.length * 5);
+            }
+            y += 10;
         };
-    
+
         const addExperienceSection = (exps?: CvProfile['experiences']) => {
             if (!exps || exps.length === 0) return;
-            if (y > 250) { doc.addPage(); y = 20; }
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text("Expériences Professionnelles", 15, y);
-            y += 2;
-            doc.setDrawColor(180, 180, 180);
-            doc.line(15, y, 60, y);
-            y += 8;
-    
+            addSection("Expériences Professionnelles", ""); // Just for the title
+
             exps.forEach(exp => {
                 if (y > 260) { doc.addPage(); y = 20; }
                 doc.setFontSize(11);
@@ -483,7 +512,7 @@ function Cvtheque() {
                 y += 4;
             });
         };
-        
+
         addSection("Projet Professionnel", [
             `Dernier métier: ${join(profile.lastJob)}`,
             `Métier recherché: ${join(profile.searchedJob)}`,
@@ -491,7 +520,7 @@ function Cvtheque() {
             `Durée: ${join(profile.duration)}`,
             `Environnement: ${join(profile.workEnvironment)}`,
         ], { isList: true });
-    
+
         addSection("Formations", [
             `Niveau le plus élevé: ${join(profile.highestFormation)} - Compétences: ${join(profile.highestFormationSkills)}`,
             `En lien avec le métier actuel: ${join(profile.currentJobFormation)} - Compétences: ${join(profile.currentJobFormationSkills)}`,
@@ -499,11 +528,11 @@ function Cvtheque() {
         ].filter(line => !line.endsWith(': ') && !line.endsWith(':  - Compétences: ')), { isList: true });
         
         addExperienceSection(profile.experiences);
-    
+
         addSection("Softskills", join(profile.softskills));
         addSection("Centres d'intérêt", join(profile.otherInterests));
         addSection("Mobilité & Permis", `${join(profile.mobility)} | ${join(profile.drivingLicence)}`);
-    
+
         doc.save(`CV_${client.firstName}_${client.lastName}.pdf`);
     };
 
@@ -844,11 +873,40 @@ function RncpManager() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingFiche, setEditingFiche] = useState<FicheRNCP | null>(null);
 
-    const form = useForm(); // Replace with your form logic
+    const fichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_sheets`)) : null, [user, firestore]);
+    const { data: fiches, isLoading } = useCollection<FicheRNCP>(fichesQuery);
 
-    const handleNew = () => setIsSheetOpen(true);
+    const form = useForm<RncpFormData>({
+        resolver: zodResolver(rncpFormSchema),
+        defaultValues: { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], skills: [], activities: [] }
+    });
+
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingFiche || { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], skills: [], activities: [] });
+        }
+    }, [isSheetOpen, editingFiche, form]);
+
+    const handleNew = () => {
+        setEditingFiche(null);
+        setIsSheetOpen(true);
+    };
     
+    const onSubmit = (data: RncpFormData) => {
+        if (!user) return;
+        const ficheData = { counselorId: user.uid, ...data };
+        if (editingFiche) {
+            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rncp_sheets`, editingFiche.id), ficheData, { merge: true });
+            toast({ title: 'Fiche RNCP mise à jour' });
+        } else {
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/rncp_sheets`), ficheData);
+            toast({ title: 'Fiche RNCP créée' });
+        }
+        setIsSheetOpen(false);
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -862,44 +920,32 @@ function RncpManager() {
             </CardHeader>
             <CardContent>
                 <div className="text-center p-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                    La gestion des fiches RNCP sera bientôt disponible ici.
+                    La gestion des fiches RNCP est en cours de développement.
                 </div>
 
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                     <SheetContent className="sm:max-w-2xl w-full">
                          <SheetHeader>
-                            <SheetTitle>Nouvelle Fiche RNCP</SheetTitle>
+                            <SheetTitle>{editingFiche ? 'Modifier la' : 'Nouvelle'} fiche RNCP</SheetTitle>
                         </SheetHeader>
-                        <div className="py-4 space-y-4">
-                            <div className="space-y-2">
-                                <Label>Nom de la formation</Label>
-                                <Input placeholder="Ex: Développeur Web et Web Mobile" />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Niveau de formation</Label>
-                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter un niveau (ex: 5, 6...)" />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Code RNCP</Label>
-                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter un code (ex: RNCP31114...)" />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Intitulé de formation</Label>
-                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter un intitulé..." />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Compétences</Label>
-                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter une compétence..." />
-                            </div>
-                             <div className="space-y-2">
-                                <Label>Activités</Label>
-                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter une activité..." />
-                            </div>
-                        </div>
-                        <SheetFooter>
-                            <SheetClose asChild><Button variant="outline">Annuler</Button></SheetClose>
-                            <Button>Enregistrer</Button>
-                        </SheetFooter>
+                        <Form {...form}>
+                          <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                            <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
+                                <div className="space-y-4">
+                                    <FormField control={form.control} name="formationName" render={({ field }) => ( <FormItem><FormLabel>Nom de la formation</FormLabel><FormControl><Input placeholder="Ex: Développeur Web et Web Mobile" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="formationLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau (ex: 5, 6...)" /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="rncpCode" render={({ field }) => ( <FormItem><FormLabel>Code RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code (ex: RNCP31114...)" /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="formationTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="activities" render={({ field }) => ( <FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
+                                </div>
+                            </ScrollArea>
+                            <SheetFooter className="pt-6 border-t mt-auto">
+                                <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                <Button type="submit">Enregistrer</Button>
+                            </SheetFooter>
+                          </form>
+                        </Form>
                     </SheetContent>
                 </Sheet>
             </CardContent>
@@ -975,4 +1021,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
