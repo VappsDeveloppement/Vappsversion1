@@ -64,9 +64,7 @@ const cvProfileSchema = z.object({
   mobility: z.array(z.string()).optional(),
   drivingLicence: z.array(z.string()).optional(),
   lastJob: z.array(z.string()).optional(),
-  lastJobTitle: z.array(z.string()).optional(),
   searchedJob: z.array(z.string()).optional(),
-  searchedJobTitle: z.array(z.string()).optional(),
   contractType: z.array(z.string()).optional(),
   duration: z.array(z.string()).optional(),
   workEnvironment: z.array(z.string()).optional(),
@@ -139,9 +137,7 @@ function Cvtheque() {
         mobility: [],
         drivingLicence: [],
         lastJob: [],
-        lastJobTitle: [],
         searchedJob: [],
-        searchedJobTitle: [],
         contractType: [],
         duration: [],
         workEnvironment: [],
@@ -416,10 +412,8 @@ function Cvtheque() {
                                             <Card>
                                                 <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="lastJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                     <FormField control={cvForm.control} name="searchedJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste recherché</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                     <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                     <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
