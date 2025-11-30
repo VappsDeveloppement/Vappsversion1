@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -24,6 +25,9 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { differenceInMonths, differenceInYears } from 'date-fns';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Edit } from 'lucide-react';
+
 
 type Client = {
     id: string;
@@ -35,6 +39,7 @@ type Client = {
     zipCode?: string;
     city?: string;
     counselorIds?: string[];
+    dateJoined: string;
 };
 
 const newUserSchema = z.object({
@@ -54,9 +59,9 @@ const experienceSchema = z.object({
     id: z.string(),
     startDate: z.string().optional(),
     endDate: z.string().optional(),
-    romeCode: z.array(z.string()).optional(),
     jobTitle: z.array(z.string()).optional(),
     characteristics: z.array(z.string()).optional(),
+    activities: z.array(z.string()).optional(),
 });
 
 
@@ -79,6 +84,13 @@ const cvProfileSchema = z.object({
   otherInterests: z.array(z.string()).optional(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
+
+type CvProfile = CvProfileFormData & {
+    id: string;
+    counselorId: string;
+    clientId: string;
+    clientName: string;
+};
 
 
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
@@ -126,6 +138,10 @@ function Cvtheque() {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    
+    const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
+    const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
+
     
     const newUserForm = useForm<NewUserFormData>({
         resolver: zodResolver(newUserSchema),
@@ -301,6 +317,11 @@ function Cvtheque() {
         
         toast({title: "Profil CV enregistré"});
         resetSheet();
+    };
+
+    const handleEdit = (profile: CvProfile) => {
+        // This function will need implementation when edit functionality is added
+        toast({title: "Fonctionnalité à venir", description: "La modification des profils sera bientôt disponible."})
     }
 
     return (
@@ -315,7 +336,7 @@ function Cvtheque() {
                         <SheetTrigger asChild>
                             <Button><PlusCircle className="mr-2 h-4 w-4" />Nouveau Profil CV</Button>
                         </SheetTrigger>
-                        <SheetContent className="sm:max-w-2xl w-full">
+                        <SheetContent className="sm:max-w-3xl w-full">
                             <SheetHeader>
                                 <SheetTitle>Nouveau profil CV</SheetTitle>
                                 <SheetDescription>
@@ -421,8 +442,8 @@ function Cvtheque() {
                                             <Card>
                                                 <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
-                                                     <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                     <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
@@ -470,12 +491,12 @@ function Cvtheque() {
                                                                 </div>
                                                                 {seniority && <p className="text-sm font-medium text-muted-foreground">Ancienneté: {seniority}</p>}
                                                                 <FormField control={cvForm.control} name={`experiences.${index}.jobTitle`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
-                                                                <FormField control={cvForm.control} name={`experiences.${index}.romeCode`} render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
                                                                 <FormField control={cvForm.control} name={`experiences.${index}.characteristics`} render={({ field }) => (<FormItem><FormLabel>Compétences exercées / développées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..."/></FormControl></FormItem>)}/>
                                                             </div>
                                                         );
                                                     })}
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}`, startDate: '', endDate: '', romeCode:[], jobTitle:[], characteristics: [] })}>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}`, startDate: '', endDate: '', jobTitle:[], characteristics: [], activities: [] })}>
                                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une expérience
                                                     </Button>
                                                 </CardContent>
@@ -509,8 +530,40 @@ function Cvtheque() {
                     </Sheet>
                 </div>
             </CardHeader>
-            <CardContent className="text-center p-12 text-muted-foreground">
-                <p>La liste des profils CV sera bientôt disponible ici.</p>
+            <CardContent>
+                 <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Nom du Candidat</TableHead>
+                                <TableHead>Dernier Métier</TableHead>
+                                <TableHead>Métier Recherché</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {areCvProfilesLoading ? (
+                                <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            ) : cvProfiles && cvProfiles.length > 0 ? (
+                                cvProfiles.map(p => (
+                                    <TableRow key={p.id}>
+                                        <TableCell>{p.clientName}</TableCell>
+                                        <TableCell>{(p.lastJob || []).join(', ')}</TableCell>
+                                        <TableCell>{(p.searchedJob || []).join(', ')}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}><Edit className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => {}}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={4} className="h-24 text-center">Aucun profil CV créé.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
             </CardContent>
         </Card>
     );
