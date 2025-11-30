@@ -163,6 +163,23 @@
         "dateJoined"
       ]
     },
+    "Partner": {
+      "title": "Partner",
+      "type": "object",
+      "description": "Represents a professional partner of a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "specialties": { "type": "array", "items": { "type": "string" } },
+        "sectors": { "type": "array", "items": { "type": "string" } },
+        "postalCode": { "type": "string" },
+        "department": { "type": "string" }
+      },
+      "required": ["name", "counselorId"]
+    },
     "ContactMessage": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Contact Message",
@@ -1394,6 +1411,14 @@
             "$ref": "#/backend/entities/User"
           },
           "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorIds is used for data segregation."
+        }
+      },
+      {
+        "path": "/users/{userId}/partners/{partnerId}",
+        "definition": {
+          "entityName": "Partner",
+          "schema": { "$ref": "#/entities/Partner" },
+          "description": "Stores professional partners for a specific counselor."
         }
       },
        {

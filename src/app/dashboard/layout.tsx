@@ -1,5 +1,5 @@
 
-"use client";
+'use client';
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -206,7 +206,7 @@ export default function DashboardLayout({
                   </Link>
                 </SidebarMenuItem>
               ))}
-               {(isConseiller) && (
+               {(isConseiller || hasAdminAccess) && (
                  <>
                     <SidebarMenuItem>
                         <Link href="/dashboard/events">
@@ -264,13 +264,21 @@ export default function DashboardLayout({
                     )}
                  </>
                )}
-              {(isConseiller) && (
+              {(isConseiller || hasAdminAccess) && (
                   <>
                     <SidebarMenuItem>
                         <Link href="/dashboard/clients">
                         <SidebarMenuButton isActive={pathname.startsWith("/dashboard/clients")}>
                             <Users />
                             <span>Mes Clients</span>
+                        </SidebarMenuButton>
+                        </Link>
+                    </SidebarMenuItem>
+                    <SidebarMenuItem>
+                        <Link href="/dashboard/partenaires">
+                        <SidebarMenuButton isActive={pathname.startsWith("/dashboard/partenaires")}>
+                            <Users />
+                            <span>Partenaires</span>
                         </SidebarMenuButton>
                         </Link>
                     </SidebarMenuItem>
@@ -291,7 +299,7 @@ export default function DashboardLayout({
                             <span className="truncate flex-1">Mon Profil</span>
                         </AccordionTrigger>
                         <AccordionContent className="p-0 pl-6 space-y-1">
-                            {(isConseiller) ? (
+                            {(isConseiller || hasAdminAccess) ? (
                                 profileMenuItems.map(item => (
                                    <Link key={item.href} href={item.href} className="flex items-center gap-2 p-2 rounded-md text-sm hover:bg-sidebar-accent" data-active={pathname.startsWith(item.href)}>
                                      {React.cloneElement(item.icon, { className: "h-4 w-4"})}
