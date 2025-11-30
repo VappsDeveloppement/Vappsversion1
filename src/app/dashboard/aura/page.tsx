@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -1018,10 +1018,7 @@ function AuraTestTool() {
     
     const recommendations = useMemo(() => {
         if (!allProducts || !allProtocols) {
-            return {
-                pathology: { products: [], protocols: [] },
-                emotion: { products: [], protocols: [] },
-            };
+            return { pathology: { products: [], protocols: [] }, emotion: { products: [], protocols: [] } };
         }
 
         const allContraindications = new Set([
@@ -1040,7 +1037,7 @@ function AuraTestTool() {
 
         const productsByPatho = pathologie.length > 0 ? allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
         const protocolsByPatho = pathologie.length > 0 ? allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
-
+        
         const productsByEmotion = emotion.length > 0 ? allProducts.filter(p => emotion.some(tag => p.pathologies?.includes(tag))) : [];
         const protocolsByEmotion = emotion.length > 0 ? allProtocols.filter(p => emotion.some(tag => p.pathologies?.includes(tag))) : [];
 
@@ -1049,6 +1046,27 @@ function AuraTestTool() {
             emotion: { products: applySafetyFilter(productsByEmotion), protocols: applySafetyFilter(protocolsByEmotion) },
         };
     }, [pathologie, emotion, contraindication, selectedSheet, allProducts, allProtocols]);
+    
+    const profileRecommendations = useMemo(() => {
+        if (holisticProfile.length === 0) {
+            return { products: [], protocols: [] };
+        }
+
+        const allRecommendedProducts = [...recommendations.pathology.products, ...recommendations.emotion.products];
+        const allRecommendedProtocols = [...recommendations.pathology.protocols, ...recommendations.emotion.protocols];
+        
+        const uniqueProducts = Array.from(new Map(allRecommendedProducts.map(item => [item.id, item])).values());
+        const uniqueProtocols = Array.from(new Map(allRecommendedProtocols.map(item => [item.id, item])).values());
+
+        const profileFilteredProducts = uniqueProducts.filter(p => 
+            holisticProfile.some(tag => p.holisticProfile?.includes(tag))
+        );
+        const profileFilteredProtocols = uniqueProtocols.filter(p => 
+            holisticProfile.some(tag => p.holisticProfile?.includes(tag))
+        );
+
+        return { products: profileFilteredProducts, protocols: profileFilteredProtocols };
+    }, [holisticProfile, recommendations]);
 
 
     const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
@@ -1063,16 +1081,24 @@ function AuraTestTool() {
         );
     };
 
-    const RecommendationList = ({ title, products, protocols, icon: Icon }: { title: string; products: Product[]; protocols: Protocole[]; icon: React.ElementType }) => {
+    const RecommendationList = ({ title, products, protocols, icon: Icon, emptyMessage }: { title: string; products: Product[]; protocols: Protocole[]; icon: React.ElementType, emptyMessage: string }) => {
         if (products.length === 0 && protocols.length === 0) {
-            return null;
+            return (
+                <div className="space-y-4">
+                    <h3 className="text-xl font-semibold flex items-center gap-2">
+                        <Icon className="h-6 w-6 text-primary"/>
+                        {title}
+                    </h3>
+                    <p className="text-sm text-muted-foreground pl-8">{emptyMessage}</p>
+                </div>
+            );
         }
 
         return (
             <div className="space-y-4">
                 <h3 className="text-xl font-semibold flex items-center gap-2">
                     <Icon className="h-6 w-6 text-primary"/>
-                    Recommandations : {title}
+                    {title}
                 </h3>
                 {products.length > 0 && (
                     <div className="pl-8 space-y-4">
@@ -1169,15 +1195,19 @@ function AuraTestTool() {
                     <Label>Émotion du moment</Label>
                     <TagInput value={emotion} onChange={setEmotion} placeholder="Ajouter une émotion (ex: Tristesse, Colère)..." />
                 </div>
-                
+                 <div className="space-y-2">
+                    <Label>Profil Holistique (pré-rempli par la fiche)</Label>
+                    <TagInput value={holisticProfile} onChange={setHolisticProfile} placeholder="Ajouter un profil (ex: Sportif, Sédentaire)..." />
+                </div>
                 <div className="space-y-2">
                     <Label>Contre-indication temporaire</Label>
                     <TagInput value={contraindication} onChange={setContraindication} placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." />
                 </div>
 
                 <div className="pt-6 mt-6 border-t space-y-8">
-                     <RecommendationList title="Pathologie(s)" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} icon={HeartPulse} />
-                     <RecommendationList title="Émotion(s)" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} icon={BrainCircuit} />
+                     <RecommendationList title="Recommandation Pathologie(s)" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} icon={HeartPulse} emptyMessage="Aucune recommandation pour les pathologies renseignées."/>
+                     <RecommendationList title="Recommandation Émotion(s)" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} icon={BrainCircuit} emptyMessage="Aucune recommandation pour les émotions renseignées."/>
+                     <RecommendationList title="Conseillé pour le Profil" products={profileRecommendations.products} protocols={profileRecommendations.protocols} icon={Brain} emptyMessage="Aucune des recommandations ne correspond spécifiquement au profil holistique."/>
                 </div>
             </CardContent>
         </Card>
