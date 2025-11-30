@@ -798,7 +798,7 @@ function WellnessSheetGenerator() {
                     <SheetTrigger asChild>
                         <Button className="w-full" onClick={() => { setEditingSheet(null); setIsSheetOpen(true); }}><PlusCircle className="mr-2 h-4 w-4" />Créer une nouvelle fiche</Button>
                     </SheetTrigger>
-                    <SheetContent className="sm:max-w-xl w-full">
+                    <SheetContent className="sm:max-w-xl w-full flex flex-col">
                         <SheetHeader>
                             <SheetTitle>{editingSheet ? 'Modifier la' : 'Nouvelle'} Fiche Bien-être</SheetTitle>
                             <SheetDescription>
@@ -870,8 +870,8 @@ function WellnessSheetGenerator() {
                         ) : (
                              <Form {...wellnessForm}>
                                 <form onSubmit={wellnessForm.handleSubmit(onWellnessSubmit)} className="flex flex-col h-full overflow-hidden">
-                                     <ScrollArea className="flex-1 pr-6 -mr-6">
-                                        <div className="space-y-6 pt-4">
+                                    <ScrollArea className="flex-grow pr-6 -mr-6">
+                                        <div className="space-y-6 py-4">
                                             <FormField control={wellnessForm.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage/></FormItem>)}/>
                                             <FormField control={wellnessForm.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Genre</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="female" /></FormControl><FormLabel>Femme</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="male" /></FormControl><FormLabel>Homme</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="other" /></FormControl><FormLabel>Autre</FormLabel></FormItem></RadioGroup></FormControl><FormMessage/></FormItem>)}/>
                                             <FormField control={wellnessForm.control} name="foodHabits" render={({ field }) => (<FormItem><FormLabel>Habitudes alimentaires</FormLabel><FormControl><TagInput {...field} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>)} />
@@ -908,7 +908,7 @@ function WellnessSheetGenerator() {
                                             </div>
                                         </div>
                                     </ScrollArea>
-                                    <SheetFooter className="pt-6 border-t mt-auto">
+                                    <SheetFooter className="pt-4 border-t">
                                         <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                         <Button type="submit">Enregistrer la fiche</Button>
                                     </SheetFooter>
@@ -984,3 +984,5 @@ export default function AuraPage() {
         </div>
     );
 }
+
+    
