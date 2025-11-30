@@ -217,7 +217,7 @@ export default function PartnersPage() {
                                            <div className="text-sm text-muted-foreground">{partner.phone}</div>
                                            {partner.website && (
                                                 <a href={partner.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline flex items-center gap-1">
-                                                   <LinkIcon className="h-3 w-3" /> Site Web
+                                                   <LinkIcon className="h-3 w-3" /> {partner.website}
                                                 </a>
                                            )}
                                        </TableCell>
