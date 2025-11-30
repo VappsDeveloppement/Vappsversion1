@@ -148,7 +148,7 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
             <Input 
                 value={inputValue} 
                 onChange={(e) => setInputValue(e.target.value)} 
-                onKeyDown={handleKeyDown} 
+                onKeyDown={handleKeyDown}
                 placeholder={placeholder} 
                 className="border-none shadow-none focus-visible:ring-0 h-8" 
             />
@@ -463,7 +463,7 @@ function Cvtheque() {
             doc.text(title, 15, y);
             y += 2;
             doc.setDrawColor(180, 180, 180);
-            doc.line(15, y, 60, y);
+            doc.line(15, 60, y);
             y += 8;
 
             doc.setFontSize(10);
@@ -484,13 +484,45 @@ function Cvtheque() {
             }
             y += 10;
         };
+        
+        const addSectionWithColumns = (title: string, leftColumn: string[], rightColumn: string[]) => {
+            if (leftColumn.length === 0 && rightColumn.length === 0) return;
+            if (y > 240) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 2;
+            doc.setDrawColor(180, 180, 180);
+            doc.line(15, 60, y);
+            y += 8;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            
+            let leftY = y;
+            let rightY = y;
+
+            if (leftColumn.length > 0) {
+                const leftLines = doc.splitTextToSize(leftColumn, 85);
+                doc.text(leftLines, 15, leftY);
+                leftY += leftLines.length * 5;
+            }
+
+            if (rightColumn.length > 0) {
+                 const rightLines = doc.splitTextToSize(rightColumn, 85);
+                doc.text(rightLines, 110, rightY);
+                rightY += rightLines.length * 5;
+            }
+            
+            y = Math.max(leftY, rightY) + 10;
+        }
 
         const addExperienceSection = (exps?: CvProfile['experiences']) => {
             if (!exps || exps.length === 0) return;
-            addSection("Expériences Professionnelles", ""); // Just for the title
+            addSection("Expériences Professionnelles", ""); 
 
             exps.forEach(exp => {
-                if (y > 260) { doc.addPage(); y = 20; }
+                if (y > 250) { doc.addPage(); y = 20; }
                 doc.setFontSize(11);
                 doc.setFont('helvetica', 'bold');
                 const expTitle = `${join(exp.jobTitle)} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
@@ -528,10 +560,14 @@ function Cvtheque() {
         ].filter(line => !line.endsWith(': ') && !line.endsWith(':  - Compétences: ')), { isList: true });
         
         addExperienceSection(profile.experiences);
+        
+        addSectionWithColumns("Compétences & Intérêts", 
+            [`Softskills: ${join(profile.softskills)}`],
+            [`Centres d'intérêt: ${join(profile.otherInterests)}`]
+        );
 
-        addSection("Softskills", join(profile.softskills));
-        addSection("Centres d'intérêt", join(profile.otherInterests));
         addSection("Mobilité & Permis", `${join(profile.mobility)} | ${join(profile.drivingLicence)}`);
+
 
         doc.save(`CV_${client.firstName}_${client.lastName}.pdf`);
     };
@@ -730,29 +766,23 @@ function Cvtheque() {
                                                 </CardContent>
                                             </Card>
 
-                                             <Card>
-                                                <CardHeader><CardTitle>Autres et centres d'intérêt</CardTitle></CardHeader>
+                                            <Card>
+                                                <CardHeader><CardTitle>Softskills & Centres d'intérêt</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
+                                                    <FormField control={cvForm.control} name="softskills" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Compétences comportementales (Softskills)</FormLabel>
+                                                            <FormControl>
+                                                                <TagInput {...field} placeholder="Ajouter une compétence..."/>
+                                                            </FormControl>
+                                                            <FormMessage/>
+                                                        </FormItem>
+                                                    )}/>
                                                     <FormField control={cvForm.control} name="otherInterests" render={({ field }) => (
                                                         <FormItem>
                                                             <FormLabel>Centres d'intérêt, activités extra-professionnelles, etc.</FormLabel>
                                                             <FormControl>
                                                                 <TagInput {...field} placeholder="Ajouter un intérêt..."/>
-                                                            </FormControl>
-                                                            <FormMessage/>
-                                                        </FormItem>
-                                                    )}/>
-                                                </CardContent>
-                                            </Card>
-                                            
-                                            <Card>
-                                                <CardHeader><CardTitle>Softskills</CardTitle></CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="softskills" render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Compétences comportementales</FormLabel>
-                                                            <FormControl>
-                                                                <TagInput {...field} placeholder="Ajouter une compétence..."/>
                                                             </FormControl>
                                                             <FormMessage/>
                                                         </FormItem>
@@ -894,6 +924,17 @@ function RncpManager() {
         setIsSheetOpen(true);
     };
     
+    const handleEdit = (fiche: FicheRNCP) => {
+        setEditingFiche(fiche);
+        setIsSheetOpen(true);
+    };
+
+    const handleDelete = (ficheId: string) => {
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/rncp_sheets`, ficheId));
+        toast({ title: 'Fiche RNCP supprimée' });
+    };
+
     const onSubmit = (data: RncpFormData) => {
         if (!user) return;
         const ficheData = { counselorId: user.uid, ...data };
@@ -919,8 +960,36 @@ function RncpManager() {
                 </div>
             </CardHeader>
             <CardContent>
-                <div className="text-center p-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                    La gestion des fiches RNCP est en cours de développement.
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Nom de la Formation</TableHead>
+                                <TableHead>Code(s) RNCP</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            ) : fiches && fiches.length > 0 ? (
+                                fiches.map((fiche) => (
+                                    <TableRow key={fiche.id}>
+                                        <TableCell className="font-medium">{fiche.formationName}</TableCell>
+                                        <TableCell>{Array.isArray(fiche.rncpCode) ? fiche.rncpCode.join(', ') : ''}</TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDelete(fiche.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">Aucune fiche RNCP créée.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
                 </div>
 
                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -1021,5 +1090,6 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
 
