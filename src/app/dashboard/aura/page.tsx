@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -31,7 +32,6 @@ import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronsUpDown, Check } from "lucide-react";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 
 
@@ -132,7 +132,7 @@ function ProductManager() {
             description: '',
             isFeatured: false,
             imageUrl: null,
-            price: undefined,
+            price: 0,
             characteristics: [],
             contraindications: [],
             holisticProfile: [],
@@ -146,7 +146,7 @@ function ProductManager() {
             if (editingProduct) {
                 form.reset({
                     ...editingProduct,
-                    price: editingProduct.price ?? undefined,
+                    price: editingProduct.price ?? 0,
                     ctaLink: editingProduct.ctaLink || '',
                     description: editingProduct.description || '',
                     contraindications: editingProduct.contraindications || [],
@@ -995,11 +995,9 @@ function AuraTestTool() {
         if (sheets && sheets.length > 0) {
             const sheet = sheets[0];
             setSelectedSheet(sheet);
-            // Auto-fill holistic profile from the sheet
             setHolisticProfile(sheet.holisticProfile || []);
         } else {
             setSelectedSheet(null);
-            // Reset if no sheet is found
             setHolisticProfile([]);
         }
     }, [sheets]);
@@ -1018,41 +1016,47 @@ function AuraTestTool() {
     }, [selectedClientId, clients]);
     
     const recommendations = useMemo(() => {
-        // 1. Initial Searches for pathologies and emotions
-        const pathologyProducts = (allProducts || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
-        const pathologyProtocols = (allProtocols || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
-        const emotionProducts = (allProducts || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
-        const emotionProtocols = (allProtocols || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
+        if (!allProducts || !allProtocols) {
+            return { pathology: { products: [], protocols: [] }, emotion: { products: [], protocols: [] }, profile: { products: [], protocols: [] } };
+        }
 
-        // 2. Safety Filter (Contraindications & Allergies)
+        // Safety Filter (Contraindications & Allergies from sheet and temporary input)
         const allContraindications = new Set([
             ...(selectedSheet?.contraindications || []),
             ...(selectedSheet?.allergies || []),
             ...contraindication,
         ]);
         
-        const applySafetyFilter = (items: (Product | Protocole)[]) => {
+        const applySafetyFilter = <T extends Product | Protocole>(items: T[]): T[] => {
             if (allContraindications.size === 0) return items;
             return items.filter(item => {
                 const itemContraindications = new Set(item.contraindications || []);
                 return ![...allContraindications].some(c => itemContraindications.has(c));
             });
         };
+
+        // 1. Get initial lists for pathology and emotion
+        const pathologyProducts = pathologie.length > 0 ? allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
+        const pathologyProtocols = pathologie.length > 0 ? allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
         
+        const emotionProducts = emotion.length > 0 ? allProducts.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag))) : [];
+        const emotionProtocols = emotion.length > 0 ? allProtocols.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag))) : [];
+        
+        // 2. Apply safety filter to both lists
         const safePathologyProducts = applySafetyFilter(pathologyProducts);
         const safePathologyProtocols = applySafetyFilter(pathologyProtocols);
         const safeEmotionProducts = applySafetyFilter(emotionProducts);
         const safeEmotionProtocols = applySafetyFilter(emotionProtocols);
 
-        // 3. Holistic Profile Highlight (not a primary filter)
-        const applyHolisticHighlight = (items: (Product | Protocole)[]) => {
-            if (holisticProfile.length === 0) return [];
-            return items.filter(item => holisticProfile.every(tag => item.holisticProfile?.includes(tag)));
-        };
-
-        const profileRecommendedProducts = applyHolisticHighlight([...safePathologyProducts, ...safeEmotionProducts]);
-        const profileRecommendedProtocols = applyHolisticHighlight([...safePathologyProtocols, ...safeEmotionProtocols]);
-
+        // 3. Combine the safe lists to find profile recommendations from them
+        const allSafeRecommendations = [...new Set([...safePathologyProducts, ...safePathologyProtocols, ...safeEmotionProducts, ...safeEmotionProtocols])];
+        
+        const profileRecommendedItems = holisticProfile.length > 0 
+            ? allSafeRecommendations.filter(item => holisticProfile.every(tag => item.holisticProfile?.includes(tag)))
+            : [];
+            
+        const profileRecommendedProducts = profileRecommendedItems.filter((item): item is Product => 'title' in item);
+        const profileRecommendedProtocols = profileRecommendedItems.filter((item): item is Protocole => 'name' in item);
 
         return {
             pathology: { products: safePathologyProducts, protocols: safePathologyProtocols },
@@ -1085,13 +1089,11 @@ function AuraTestTool() {
         const iconMap: Record<string, React.ReactNode> = {
             'Pathologie': <HeartPulse className="h-6 w-6 text-primary"/>,
             'Émotion': <BrainCircuit className="h-6 w-6 text-primary"/>,
-            'Profil Holistique': <User className="h-6 w-6 text-primary"/>,
         };
         
         const renderItem = (item: Product | Protocole) => {
             const isProduct = 'title' in item;
             
-            // Find which of the user-entered tags this item matches
             const sourceTags = title === 'Pathologie' ? item.pathologies : item.holisticProfile;
             const matchedTag = allTags.find(tag => sourceTags?.includes(tag));
 
