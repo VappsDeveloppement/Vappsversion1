@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2 } from "lucide-react";
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -23,6 +24,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
+import { differenceInMonths, differenceInYears } from 'date-fns';
 
 type Client = {
     id: string;
@@ -61,13 +63,22 @@ const newUserSchema = z.object({
 });
 type NewUserFormData = z.infer<typeof newUserSchema>;
 
+
+const experienceSchema = z.object({
+    id: z.string(),
+    startDate: z.string().optional(),
+    endDate: z.string().optional(),
+    romeCode: z.array(z.string()).optional(),
+    jobTitle: z.array(z.string()).optional(),
+    characteristics: z.array(z.string()).optional(),
+});
+
+
 const cvProfileSchema = z.object({
   mobility: z.array(z.string()).optional(),
   drivingLicence: z.array(z.string()).optional(),
   currentJob: z.array(z.string()).optional(),
-  currentJobTitle: z.array(z.string()).optional(),
   searchedJob: z.array(z.string()).optional(),
-  searchedJobTitle: z.array(z.string()).optional(),
   contractType: z.array(z.string()).optional(),
   duration: z.array(z.string()).optional(),
   workEnvironment: z.array(z.string()).optional(),
@@ -75,6 +86,9 @@ const cvProfileSchema = z.object({
   currentJobFormation: z.array(z.string()).optional(),
   projectFormation: z.array(z.string()).optional(),
   fundingOptions: z.array(z.string()).optional(),
+  lastJob: z.array(z.string()).optional(),
+  lastJobTitle: z.array(z.string()).optional(),
+  experiences: z.array(experienceSchema).optional(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 
@@ -135,9 +149,7 @@ function Cvtheque() {
         mobility: [],
         drivingLicence: [],
         currentJob: [],
-        currentJobTitle: [],
         searchedJob: [],
-        searchedJobTitle: [],
         contractType: [],
         duration: [],
         workEnvironment: [],
@@ -145,8 +157,38 @@ function Cvtheque() {
         currentJobFormation: [],
         projectFormation: [],
         fundingOptions: [],
+        lastJob: [],
+        lastJobTitle: [],
+        experiences: [],
       }
     });
+
+    const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
+        control: cvForm.control,
+        name: "experiences"
+    });
+
+    const calculateSeniority = (startDate?: string, endDate?: string) => {
+        if (!startDate) return null;
+        const start = new Date(startDate);
+        const end = endDate ? new Date(endDate) : new Date(); // Use today if no end date
+        
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+
+        const years = differenceInYears(end, start);
+        const months = differenceInMonths(end, start) % 12;
+
+        let result = '';
+        if (years > 0) {
+            result += `${years} an${years > 1 ? 's' : ''}`;
+        }
+        if (months > 0) {
+            result += `${years > 0 ? ' et ' : ''}${months} mois`;
+        }
+
+        return result || 'Moins d\'un mois';
+    };
+
 
     const resetSheet = () => {
         setIsSheetOpen(false);
@@ -195,10 +237,10 @@ function Cvtheque() {
                 firstName: values.firstName,
                 lastName: values.lastName,
                 email: values.email,
-                phone: values.phone,
-                address: values.address,
-                zipCode: values.zipCode,
-                city: values.city,
+                phone: values.phone || '',
+                address: values.address || '',
+                zipCode: values.zipCode || '',
+                city: values.city || '',
                 counselorIds: [user.uid],
             };
             await setDocumentNonBlocking(userDocRef, {
@@ -257,12 +299,25 @@ function Cvtheque() {
 
     const onCvProfileSubmit = (data: CvProfileFormData) => {
         if (!user || !selectedClient) return;
-
+    
         const cvProfileData = {
             counselorId: user.uid,
             clientId: selectedClient.id,
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
-            ...data,
+            mobility: data.mobility || [],
+            drivingLicence: data.drivingLicence || [],
+            currentJob: data.currentJob || [],
+            searchedJob: data.searchedJob || [],
+            contractType: data.contractType || [],
+            duration: data.duration || [],
+            workEnvironment: data.workEnvironment || [],
+            highestFormation: data.highestFormation || [],
+            currentJobFormation: data.currentJobFormation || [],
+            projectFormation: data.projectFormation || [],
+            fundingOptions: data.fundingOptions || [],
+            lastJob: data.lastJob || [],
+            lastJobTitle: data.lastJobTitle || [],
+            experiences: data.experiences || [],
         };
         
         addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), cvProfileData);
@@ -364,56 +419,26 @@ function Cvtheque() {
                                                     <div>
                                                         <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
                                                         <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
-                                                        <p className="text-sm text-muted-foreground">{selectedClient.phone}</p>
-                                                        <p className="text-sm text-muted-foreground">{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</p>
                                                     </div>
                                                     <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>
                                                 </div>
                                             </Card>
 
                                             <Card>
-                                                <CardHeader>
-                                                    <CardTitle>Mobilité</CardTitle>
-                                                </CardHeader>
+                                                <CardHeader><CardTitle>Mobilité</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
-                                                    <FormField
-                                                        control={cvForm.control}
-                                                        name="mobility"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Mobilité Géographique</FormLabel>
-                                                                <FormControl>
-                                                                    <TagInput {...field} placeholder="Ajouter une ville, région..." />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
-                                                    <FormField
-                                                        control={cvForm.control}
-                                                        name="drivingLicence"
-                                                        render={({ field }) => (
-                                                            <FormItem>
-                                                                <FormLabel>Moyen de locomotion et permis</FormLabel>
-                                                                <FormControl>
-                                                                    <TagInput {...field} placeholder="Permis B, Véhicule personnel..." />
-                                                                </FormControl>
-                                                                <FormMessage />
-                                                            </FormItem>
-                                                        )}
-                                                    />
+                                                    <FormField control={cvForm.control} name="mobility" render={({ field }) => (<FormItem><FormLabel>Mobilité Géographique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une ville, région..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                    <FormField control={cvForm.control} name="drivingLicence" render={({ field }) => (<FormItem><FormLabel>Moyen de locomotion et permis</FormLabel><FormControl><TagInput {...field} placeholder="Permis B, Véhicule personnel..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 </CardContent>
                                             </Card>
 
                                             <Card>
-                                                <CardHeader>
-                                                    <CardTitle>Projet Professionnel</CardTitle>
-                                                </CardHeader>
+                                                <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="currentJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="currentJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="lastJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="searchedJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                     <FormField control={cvForm.control} name="searchedJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste recherché</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
@@ -421,14 +446,45 @@ function Cvtheque() {
                                             </Card>
                                             
                                             <Card>
-                                                <CardHeader>
-                                                    <CardTitle>Formation</CardTitle>
-                                                </CardHeader>
+                                                <CardHeader><CardTitle>Formation</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
                                                     <FormField control={cvForm.control} name="highestFormation" render={({ field }) => ( <FormItem><FormLabel>Formation la plus élevée</FormLabel><FormControl><TagInput {...field} placeholder="Code RNCP, Niveau, Libellé..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="currentJobFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec métier actuel</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="projectFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec projet</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="fundingOptions" render={({ field }) => ( <FormItem><FormLabel>Financement possible</FormLabel><FormControl><TagInput {...field} placeholder="CPF, Pôle Emploi..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                </CardContent>
+                                            </Card>
+
+                                             <Card>
+                                                <CardHeader><CardTitle>Expériences</CardTitle></CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    {experienceFields.map((field, index) => {
+                                                        const startDate = cvForm.watch(`experiences.${index}.startDate`);
+                                                        const endDate = cvForm.watch(`experiences.${index}.endDate`);
+                                                        const seniority = calculateSeniority(startDate, endDate);
+                                                        
+                                                        return (
+                                                            <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                                                <div className="flex justify-between items-center">
+                                                                    <h4 className="font-medium">Expérience {index + 1}</h4>
+                                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeExperience(index)}>
+                                                                        <Trash2 className="h-4 w-4 text-destructive" />
+                                                                    </Button>
+                                                                </div>
+                                                                <div className="grid grid-cols-2 gap-4">
+                                                                    <FormField control={cvForm.control} name={`experiences.${index}.startDate`} render={({ field }) => (<FormItem><FormLabel>Date de début</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''}/></FormControl></FormItem>)}/>
+                                                                    <FormField control={cvForm.control} name={`experiences.${index}.endDate`} render={({ field }) => (<FormItem><FormLabel>Date de fin</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''}/></FormControl></FormItem>)}/>
+                                                                </div>
+                                                                {seniority && <p className="text-sm font-medium text-muted-foreground">Ancienneté: {seniority}</p>}
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.jobTitle`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.romeCode`} render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.characteristics`} render={({ field }) => (<FormItem><FormLabel>Compétences exercées / développées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}`, startDate: '', endDate: '', romeCode:[], jobTitle:[], characteristics: [] })}>
+                                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une expérience
+                                                    </Button>
                                                 </CardContent>
                                             </Card>
                                             
@@ -529,7 +585,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
-
-    
