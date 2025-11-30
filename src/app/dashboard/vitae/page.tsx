@@ -65,10 +65,16 @@ const cvProfileSchema = z.object({
   mobility: z.array(z.string()).optional(),
   drivingLicence: z.array(z.string()).optional(),
   currentJob: z.array(z.string()).optional(),
+  currentJobTitle: z.array(z.string()).optional(),
   searchedJob: z.array(z.string()).optional(),
+  searchedJobTitle: z.array(z.string()).optional(),
   contractType: z.array(z.string()).optional(),
   duration: z.array(z.string()).optional(),
   workEnvironment: z.array(z.string()).optional(),
+  highestFormation: z.array(z.string()).optional(),
+  currentJobFormation: z.array(z.string()).optional(),
+  projectFormation: z.array(z.string()).optional(),
+  fundingOptions: z.array(z.string()).optional(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 
@@ -129,10 +135,16 @@ function Cvtheque() {
         mobility: [],
         drivingLicence: [],
         currentJob: [],
+        currentJobTitle: [],
         searchedJob: [],
+        searchedJobTitle: [],
         contractType: [],
         duration: [],
         workEnvironment: [],
+        highestFormation: [],
+        currentJobFormation: [],
+        projectFormation: [],
+        fundingOptions: [],
       }
     });
 
@@ -398,11 +410,25 @@ function Cvtheque() {
                                                     <CardTitle>Projet Professionnel</CardTitle>
                                                 </CardHeader>
                                                 <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="currentJob" render={({ field }) => ( <FormItem><FormLabel>Métier Actuel</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="currentJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="currentJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="searchedJobTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                </CardContent>
+                                            </Card>
+                                            
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle>Formation</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    <FormField control={cvForm.control} name="highestFormation" render={({ field }) => ( <FormItem><FormLabel>Formation la plus élevée</FormLabel><FormControl><TagInput {...field} placeholder="Code RNCP, Niveau, Libellé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="currentJobFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec métier actuel</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="projectFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec projet</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="fundingOptions" render={({ field }) => ( <FormItem><FormLabel>Financement possible</FormLabel><FormControl><TagInput {...field} placeholder="CPF, Pôle Emploi..."/></FormControl><FormMessage/></FormItem> )}/>
                                                 </CardContent>
                                             </Card>
                                             
@@ -503,5 +529,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
 
     
