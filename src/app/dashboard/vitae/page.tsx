@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -20,6 +19,8 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAgency } from '@/context/agency-provider';
 import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 
 type Client = {
     id: string;
@@ -45,6 +46,43 @@ const newUserSchema = z.object({
 });
 type NewUserFormData = z.infer<typeof newUserSchema>;
 
+const cvProfileSchema = z.object({
+  mobility: z.array(z.string()).optional(),
+  drivingLicence: z.array(z.string()).optional(),
+});
+type CvProfileFormData = z.infer<typeof cvProfileSchema>;
+
+
+const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
+    const [inputValue, setInputValue] = useState('');
+    const currentValues = value || [];
+    const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === 'Enter' && inputValue.trim()) {
+            e.preventDefault();
+            if (!currentValues.includes(inputValue.trim())) {
+                onChange([...currentValues, inputValue.trim()]);
+            }
+            setInputValue('');
+        }
+    };
+    const removeTag = (tagToRemove: string) => onChange(currentValues.filter(tag => tag !== tagToRemove));
+    return (
+        <div className="border p-2 rounded-md">
+            <div className="flex flex-wrap gap-1 mb-2">
+                {currentValues.map(tag => (
+                    <Badge key={tag} variant="secondary">
+                        {tag}
+                        <button type="button" onClick={() => removeTag(tag)} className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                        </button>
+                    </Badge>
+                ))}
+            </div>
+            <Input value={inputValue} onChange={(e) => setInputValue(e.target.value)} onKeyDown={addTag} placeholder={placeholder} className="border-none shadow-none focus-visible:ring-0 h-8" />
+        </div>
+    );
+};
+
 function Cvtheque() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -65,6 +103,14 @@ function Cvtheque() {
         resolver: zodResolver(newUserSchema),
     });
 
+    const cvForm = useForm<CvProfileFormData>({
+      resolver: zodResolver(cvProfileSchema),
+      defaultValues: {
+        mobility: [],
+        drivingLicence: [],
+      }
+    });
+
     const resetSheet = () => {
         setIsSheetOpen(false);
         setSearchEmail('');
@@ -72,6 +118,7 @@ function Cvtheque() {
         setSelectedClient(null);
         setShowCreateForm(false);
         newUserForm.reset();
+        cvForm.reset();
     };
 
     const handleSearchUser = async () => {
@@ -171,6 +218,12 @@ function Cvtheque() {
         setSearchResult(null);
     };
 
+    const onCvProfileSubmit = (data: CvProfileFormData) => {
+      console.log(data);
+      // Logic to save the CV profile will be added here
+      toast({title: "Profil CV enregistré (simulation)", description: "La logique d'enregistrement sera implémentée."})
+      resetSheet();
+    }
 
     return (
         <Card>
@@ -258,7 +311,8 @@ function Cvtheque() {
                                     </div>
                                 ) : (
                                     <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
-                                        <div className="space-y-6">
+                                      <Form {...cvForm}>
+                                        <form onSubmit={cvForm.handleSubmit(onCvProfileSubmit)} className="space-y-6">
                                             <Card className="p-4 bg-secondary">
                                                 <div className="flex justify-between items-start">
                                                     <div>
@@ -270,8 +324,47 @@ function Cvtheque() {
                                                     <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>
                                                 </div>
                                             </Card>
-                                            {/* Future form fields will go here */}
-                                        </div>
+
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle>Mobilité</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    <FormField
+                                                        control={cvForm.control}
+                                                        name="mobility"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Mobilité Géographique</FormLabel>
+                                                                <FormControl>
+                                                                    <TagInput {...field} placeholder="Ajouter une ville, région..." />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                    <FormField
+                                                        control={cvForm.control}
+                                                        name="drivingLicence"
+                                                        render={({ field }) => (
+                                                            <FormItem>
+                                                                <FormLabel>Moyen de locomotion et permis</FormLabel>
+                                                                <FormControl>
+                                                                    <TagInput {...field} placeholder="Permis B, Véhicule personnel..." />
+                                                                </FormControl>
+                                                                <FormMessage />
+                                                            </FormItem>
+                                                        )}
+                                                    />
+                                                </CardContent>
+                                            </Card>
+                                            
+                                            <SheetFooter className="pt-6 border-t">
+                                              <SheetClose asChild><Button type="button" variant="outline">Fermer</Button></SheetClose>
+                                              <Button type="submit">Enregistrer le profil</Button>
+                                            </SheetFooter>
+                                        </form>
+                                      </Form>
                                     </ScrollArea>
                                 )}
                             </div>
@@ -363,5 +456,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
