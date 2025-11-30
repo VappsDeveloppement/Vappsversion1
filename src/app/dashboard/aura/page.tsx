@@ -957,7 +957,7 @@ export default function AuraPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold font-headline">Aura</h1>
-                <p className="text-muted-foreground">Votre outil de création de contenu par IA.</p>
+                <p className="text-muted-foreground">Votre outil de gestion de votre activité bien-être.</p>
             </div>
             <Tabs defaultValue="fiche-bien-etre" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 h-auto">
