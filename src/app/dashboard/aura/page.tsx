@@ -509,13 +509,13 @@ type WellnessSheet = {
     counselorId: string;
     clientId: string;
     clientName: string;
-    contraindications: string[];
-    holisticProfile: string[];
     gender?: 'male' | 'female' | 'other';
     dob?: string;
     foodHabits?: string[];
     allergies?: string[];
     bmiRecords?: z.infer<typeof bmiRecordSchema>[];
+    contraindications: string[];
+    holisticProfile: string[];
     createdAt: string;
     updatedAt: string;
 };
@@ -952,12 +952,60 @@ function WellnessSheetGenerator() {
     );
 }
 
+function AuraTestTool() {
+  const [pathologie, setPathologie] = useState<string[]>([]);
+  const [emotion, setEmotion] = useState<string[]>([]);
+  const [contraindication, setContraindication] = useState<string[]>([]);
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Outil de Test Aura</CardTitle>
+        <CardDescription>
+          Renseignez les informations pour obtenir des recommandations personnalisées.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="space-y-2">
+            <Label>Rechercher une fiche bien-être (Optionnel)</Label>
+            <Input placeholder="Rechercher par nom ou email du client..." />
+        </div>
+        <div className="space-y-2">
+            <Label>Pathologie à traiter</Label>
+            <TagInput 
+                value={pathologie} 
+                onChange={setPathologie} 
+                placeholder="Ajouter une pathologie (ex: Stress, Anxiété)..." 
+            />
+        </div>
+        <div className="space-y-2">
+            <Label>Émotion du moment</Label>
+             <TagInput 
+                value={emotion} 
+                onChange={setEmotion} 
+                placeholder="Ajouter une émotion (ex: Colère, Tristesse)..." 
+            />
+        </div>
+        <div className="space-y-2">
+            <Label>Contre-indication temporaire</Label>
+             <TagInput 
+                value={contraindication} 
+                onChange={setContraindication} 
+                placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." 
+            />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 export default function AuraPage() {
     return (
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold font-headline">Aura</h1>
-                <p className="text-muted-foreground">Votre outil de gestion de votre activité bien-être.</p>
+                <p className="text-muted-foreground">Votre outils de gestion de votre activité bien-être.</p>
             </div>
             <Tabs defaultValue="fiche-bien-etre" className="w-full">
                 <TabsList className="grid w-full grid-cols-4 h-auto">
@@ -978,11 +1026,9 @@ export default function AuraPage() {
                     <ProtocoleManager />
                 </TabsContent>
                 <TabsContent value="test">
-                    <Card><CardHeader><CardTitle>Zone de Test</CardTitle><CardDescription>Utilisez cet espace pour expérimenter librement avec les fonctionnalités d'Aura.</CardDescription></CardHeader><CardContent><div className="flex flex-col items-center justify-center text-center p-12 border-2 border-dashed rounded-lg h-96"><ClipboardList className="h-16 w-16 text-muted-foreground mb-4" /><h3 className="text-xl font-semibold">Contenu à venir</h3><p className="text-muted-foreground mt-2 max-w-2xl">La zone de test pour Aura sera bientôt disponible ici.</p></div></CardContent></Card>
+                    <AuraTestTool />
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
-
-    
