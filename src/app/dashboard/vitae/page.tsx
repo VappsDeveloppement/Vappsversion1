@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -181,8 +182,8 @@ function Cvtheque() {
                     id: editingProfile.clientId,
                     firstName: editingProfile.clientName.split(' ')[0],
                     lastName: editingProfile.clientName.split(' ').slice(1).join(' '),
-                    email: '', // Not needed for display
-                    dateJoined: '', // Not needed for display
+                    email: '', 
+                    dateJoined: '', 
                 };
                 setSelectedClient(client);
                 cvForm.reset(editingProfile);
@@ -690,5 +691,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
 
     
