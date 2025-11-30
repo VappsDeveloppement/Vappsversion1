@@ -163,6 +163,24 @@
         "dateJoined"
       ]
     },
+    "Partner": {
+      "title": "Partner",
+      "type": "object",
+      "description": "Represents a professional partner of a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "phone": { "type": "string" },
+        "website": { "type": "string", "format": "uri" },
+        "specialties": { "type": "array", "items": { "type": "string" } },
+        "sectors": { "type": "array", "items": { "type": "string" } },
+        "postalCode": { "type": "string" },
+        "department": { "type": "string" }
+      },
+      "required": ["name", "counselorId"]
+    },
     "ContactMessage": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Contact Message",
@@ -1368,6 +1386,22 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["counselorId", "clientId", "clientName", "createdAt", "updatedAt"]
+    },
+    "FicheRNCP": {
+        "title": "Fiche RNCP",
+        "type": "object",
+        "description": "Represents a sheet for the Répertoire National des Certifications Professionnelles.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "formationName": { "type": "string" },
+            "formationLevel": { "type": "array", "items": { "type": "string" } },
+            "rncpCode": { "type": "array", "items": { "type": "string" } },
+            "formationTitle": { "type": "array", "items": { "type": "string" } },
+            "skills": { "type": "array", "items": { "type": "string" } },
+            "activities": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["counselorId", "formationName"]
     }
   },
   "auth": {
@@ -1396,12 +1430,36 @@
           "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorIds is used for data segregation."
         }
       },
+      {
+        "path": "/users/{userId}/partners/{partnerId}",
+        "definition": {
+          "entityName": "Partner",
+          "schema": { "$ref": "#/entities/Partner" },
+          "description": "Stores professional partners for a specific counselor."
+        }
+      },
        {
         "path": "/users/{userId}/wellness_sheets/{sheetId}",
         "definition": {
           "entityName": "WellnessSheet",
           "schema": { "$ref": "#/entities/WellnessSheet" },
           "description": "Stores wellness sheets created by a counselor for their clients."
+        }
+      },
+      {
+        "path": "/users/{userId}/cv_profiles/{profileId}",
+        "definition": {
+            "entityName": "CvProfile",
+            "schema": { "$ref": "#/entities/CvProfile" },
+            "description": "Stores CV profiles created by a counselor for their clients."
+        }
+      },
+       {
+        "path": "/users/{userId}/rncp_sheets/{sheetId}",
+        "definition": {
+            "entityName": "FicheRNCP",
+            "schema": { "$ref": "#/entities/FicheRNCP" },
+            "description": "Stores RNCP sheets created by a counselor."
         }
       },
       {

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -31,7 +30,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoreHorizontal } from 'lucide-react';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 
 
 type Client = {
@@ -402,20 +401,19 @@ function Cvtheque() {
         toast({ title: "Statut mis à jour" });
     };
 
-    const generateCvPdf = (profile: CvProfile) => {
+    const generateCvPdf = async (profile: CvProfile) => {
         const client = clients?.find(c => c.id === profile.clientId);
         if (!client) {
             toast({ title: "Erreur", description: "Données client introuvables.", variant: "destructive" });
             return;
         }
-
+    
         const doc = new jsPDF();
         let y = 20;
-
+    
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(' • ');
-
-        // --- Header ---
+    
         doc.setFontSize(24);
         doc.setFont('helvetica', 'bold');
         doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
@@ -426,11 +424,11 @@ function Cvtheque() {
         doc.text(contactInfo, 105, y, { align: 'center' });
         y += 10;
         
-        doc.setDrawColor(220, 220, 220); // light grey
-        doc.line(15, y, 195, y); // horizontal line
+        doc.setDrawColor(220, 220, 220);
+        doc.line(15, y, 195, y);
         y += 10;
-
-        const addSection = (title: string, content?: string | string[]) => {
+    
+        const addSection = (title: string, content?: string | string[], options?: { isList?: boolean }) => {
             if (!content || (Array.isArray(content) && content.length === 0)) return;
             if (y > 260) { doc.addPage(); y = 20; }
             doc.setFontSize(14);
@@ -440,17 +438,17 @@ function Cvtheque() {
             doc.setDrawColor(180, 180, 180);
             doc.line(15, y, 60, y);
             y += 8;
-
+    
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             
-            const textToRender = Array.isArray(content) ? content.join(' • ') : content;
+            const textToRender = Array.isArray(content) ? (options?.isList ? content : content.join(' • ')) : content;
             const lines = doc.splitTextToSize(textToRender, 180);
             doc.text(lines, 15, y);
             
             y += (lines.length * 5) + 10;
         };
-
+    
         const addExperienceSection = (exps?: CvProfile['experiences']) => {
             if (!exps || exps.length === 0) return;
             if (y > 250) { doc.addPage(); y = 20; }
@@ -461,7 +459,7 @@ function Cvtheque() {
             doc.setDrawColor(180, 180, 180);
             doc.line(15, y, 60, y);
             y += 8;
-
+    
             exps.forEach(exp => {
                 if (y > 260) { doc.addPage(); y = 20; }
                 doc.setFontSize(11);
@@ -473,41 +471,39 @@ function Cvtheque() {
                 doc.setFontSize(10);
                 doc.setFont('helvetica', 'normal');
                 if (checkArray(exp.activities).length > 0) {
-                     doc.text(`Activités: ${join(exp.activities)}`, 20, y, { maxWidth: 175 });
-                     y += doc.getTextDimensions(`Activités: ${join(exp.activities)}`, { maxWidth: 175 }).h + 4;
+                     const activitiesLines = doc.splitTextToSize(`Activités: ${join(exp.activities)}`, 175);
+                     doc.text(activitiesLines, 20, y);
+                     y += (activitiesLines.length * 5) + 4;
                 }
                 if (checkArray(exp.characteristics).length > 0) {
-                    doc.text(`Compétences: ${join(exp.characteristics)}`, 20, y, { maxWidth: 175 });
-                     y += doc.getTextDimensions(`Compétences: ${join(exp.characteristics)}`, { maxWidth: 175 }).h + 6;
+                    const skillsLines = doc.splitTextToSize(`Compétences: ${join(exp.characteristics)}`, 175);
+                    doc.text(skillsLines, 20, y);
+                    y += (skillsLines.length * 5) + 6;
                 }
                 y += 4;
             });
         };
         
-        // --- Sections ---
         addSection("Projet Professionnel", [
             `Dernier métier: ${join(profile.lastJob)}`,
             `Métier recherché: ${join(profile.searchedJob)}`,
             `Type de contrat: ${join(profile.contractType)}`,
             `Durée: ${join(profile.duration)}`,
             `Environnement: ${join(profile.workEnvironment)}`,
-        ].join('\n'));
-
+        ], { isList: true });
+    
         addSection("Formations", [
-          `Niveau le plus élevé: ${join(profile.highestFormation)}`,
-          `Compétences associées: ${join(profile.highestFormationSkills)}`,
-          `En lien avec le métier actuel: ${join(profile.currentJobFormation)}`,
-          `Compétences associées: ${join(profile.currentJobFormationSkills)}`,
-          `En lien avec le projet: ${join(profile.projectFormation)}`,
-          `Compétences associées: ${join(profile.projectFormationSkills)}`
-        ].filter(line => !line.endsWith(': ')).join('\n'));
+            `Niveau le plus élevé: ${join(profile.highestFormation)} - Compétences: ${join(profile.highestFormationSkills)}`,
+            `En lien avec le métier actuel: ${join(profile.currentJobFormation)} - Compétences: ${join(profile.currentJobFormationSkills)}`,
+            `En lien avec le projet: ${join(profile.projectFormation)} - Compétences: ${join(profile.projectFormationSkills)}`
+        ].filter(line => !line.endsWith(': ') && !line.endsWith(':  - Compétences: ')), { isList: true });
         
         addExperienceSection(profile.experiences);
-
+    
         addSection("Softskills", join(profile.softskills));
         addSection("Centres d'intérêt", join(profile.otherInterests));
         addSection("Mobilité & Permis", `${join(profile.mobility)} | ${join(profile.drivingLicence)}`);
-
+    
         doc.save(`CV_${client.firstName}_${client.lastName}.pdf`);
     };
 
@@ -843,6 +839,74 @@ function Cvtheque() {
 }
 
 
+function RncpManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+
+    const form = useForm(); // Replace with your form logic
+
+    const handleNew = () => setIsSheetOpen(true);
+    
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Fiches RNCP</CardTitle>
+                        <CardDescription>Gérez vos fiches de Répertoire National des Certifications Professionnelles.</CardDescription>
+                    </div>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouvelle Fiche RNCP</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="text-center p-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                    La gestion des fiches RNCP sera bientôt disponible ici.
+                </div>
+
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-2xl w-full">
+                         <SheetHeader>
+                            <SheetTitle>Nouvelle Fiche RNCP</SheetTitle>
+                        </SheetHeader>
+                        <div className="py-4 space-y-4">
+                            <div className="space-y-2">
+                                <Label>Nom de la formation</Label>
+                                <Input placeholder="Ex: Développeur Web et Web Mobile" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Niveau de formation</Label>
+                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter un niveau (ex: 5, 6...)" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Code RNCP</Label>
+                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter un code (ex: RNCP31114...)" />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Intitulé de formation</Label>
+                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter un intitulé..." />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Compétences</Label>
+                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter une compétence..." />
+                            </div>
+                             <div className="space-y-2">
+                                <Label>Activités</Label>
+                                <TagInput value={[]} onChange={() => {}} placeholder="Ajouter une activité..." />
+                            </div>
+                        </div>
+                        <SheetFooter>
+                            <SheetClose asChild><Button variant="outline">Annuler</Button></SheetClose>
+                            <Button>Enregistrer</Button>
+                        </SheetFooter>
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function VitaePage() {
     return (
         <div className="space-y-8">
@@ -872,15 +936,7 @@ export default function VitaePage() {
                     <Cvtheque />
                 </TabsContent>
                 <TabsContent value="rncp">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Fiches RNCP</CardTitle>
-                            <CardDescription>Recherchez et consultez les fiches du Répertoire National des Certifications Professionnelles.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="text-center p-12 text-muted-foreground">
-                             <p>La recherche de fiches RNCP sera bientôt disponible ici.</p>
-                        </CardContent>
-                    </Card>
+                    <RncpManager />
                 </TabsContent>
                  <TabsContent value="rome">
                     <Card>
