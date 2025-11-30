@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -157,7 +156,7 @@ function ProductManager() {
                 });
                 setImagePreview(editingProduct.imageUrl || null);
             } else {
-                form.reset({ title: '', description: '', isFeatured: false, imageUrl: null, price: undefined, characteristics: [], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
+                form.reset({ title: '', description: '', isFeatured: false, imageUrl: null, price: 0, characteristics: [], contraindications: [], holisticProfile: [], pathologies: [], ctaLink: '' });
                 setImagePreview(null);
             }
         }
@@ -265,7 +264,7 @@ function ProductManager() {
                                         )}/>
                                         
                                         <div className="space-y-4 pt-4 border-t">
-                                             <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
+                                             <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
                                              <div>
                                                 <Label>Image</Label>
                                                 <div className="flex items-center gap-4 mt-2">
@@ -996,9 +995,11 @@ function AuraTestTool() {
         if (sheets && sheets.length > 0) {
             const sheet = sheets[0];
             setSelectedSheet(sheet);
+            // Auto-fill holistic profile from the sheet
             setHolisticProfile(sheet.holisticProfile || []);
         } else {
             setSelectedSheet(null);
+            // Reset if no sheet is found
             setHolisticProfile([]);
         }
     }, [sheets]);
@@ -1017,13 +1018,13 @@ function AuraTestTool() {
     }, [selectedClientId, clients]);
     
     const recommendations = useMemo(() => {
-        // 1. Initial Search
+        // 1. Initial Searches for pathologies and emotions
         const pathologyProducts = (allProducts || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
         const pathologyProtocols = (allProtocols || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
         const emotionProducts = (allProducts || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
         const emotionProtocols = (allProtocols || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
 
-        // 2. Safety Filter
+        // 2. Safety Filter (Contraindications & Allergies)
         const allContraindications = new Set([
             ...(selectedSheet?.contraindications || []),
             ...(selectedSheet?.allergies || []),
@@ -1043,26 +1044,20 @@ function AuraTestTool() {
         const safeEmotionProducts = applySafetyFilter(emotionProducts);
         const safeEmotionProtocols = applySafetyFilter(emotionProtocols);
 
-        // 3. Holistic Profile Filter
-        const applyHolisticFilter = (items: (Product | Protocole)[]) => {
-            if (holisticProfile.length === 0) return items;
+        // 3. Holistic Profile Highlight (not a primary filter)
+        const applyHolisticHighlight = (items: (Product | Protocole)[]) => {
+            if (holisticProfile.length === 0) return [];
             return items.filter(item => holisticProfile.every(tag => item.holisticProfile?.includes(tag)));
         };
 
-        const finalPathologyProducts = applyHolisticFilter(safePathologyProducts);
-        const finalPathologyProtocols = applyHolisticFilter(safePathologyProtocols);
-        const finalEmotionProducts = applyHolisticFilter(safeEmotionProducts);
-        const finalEmotionProtocols = applyHolisticFilter(safeEmotionProtocols);
-        
-        const allFilteredItems = [...finalPathologyProducts, ...finalPathologyProtocols, ...finalEmotionProducts, ...finalEmotionProtocols];
-        const profileRecommendations = allFilteredItems.filter(item =>
-            holisticProfile.length > 0 && holisticProfile.some(tag => item.holisticProfile?.includes(tag))
-        );
+        const profileRecommendedProducts = applyHolisticHighlight([...safePathologyProducts, ...safeEmotionProducts]);
+        const profileRecommendedProtocols = applyHolisticHighlight([...safePathologyProtocols, ...safeEmotionProtocols]);
+
 
         return {
-            pathology: { products: finalPathologyProducts, protocols: finalPathologyProtocols },
-            emotion: { products: finalEmotionProducts, protocols: finalEmotionProtocols },
-            profile: profileRecommendations,
+            pathology: { products: safePathologyProducts, protocols: safePathologyProtocols },
+            emotion: { products: safeEmotionProducts, protocols: safeEmotionProtocols },
+            profile: { products: profileRecommendedProducts, protocols: profileRecommendedProtocols },
         };
 
     }, [pathologie, emotion, holisticProfile, contraindication, selectedSheet, allProducts, allProtocols]);
@@ -1095,7 +1090,10 @@ function AuraTestTool() {
         
         const renderItem = (item: Product | Protocole) => {
             const isProduct = 'title' in item;
-            const matchedTag = allTags.find(tag => (isProduct ? item.pathologies?.includes(tag) : item.pathologies?.includes(tag)) || (item.holisticProfile?.includes(tag)));
+            
+            // Find which of the user-entered tags this item matches
+            const sourceTags = title === 'Pathologie' ? item.pathologies : item.holisticProfile;
+            const matchedTag = allTags.find(tag => sourceTags?.includes(tag));
 
             return (
                 <Card key={item.id} className="p-3">
@@ -1133,6 +1131,50 @@ function AuraTestTool() {
             </div>
         )
     };
+    
+    const RecommendationHighlightList = ({ title, products, protocols }: { title: string, products: (Product)[], protocols: (Protocole)[]}) => {
+         if (products.length === 0 && protocols.length === 0) {
+            return null;
+        }
+        
+        const renderItem = (item: Product | Protocole) => {
+            const isProduct = 'title' in item;
+            return (
+                 <Card key={item.id} className="p-3 bg-primary/5 border-primary/20">
+                    <p className="font-semibold">{isProduct ? item.title : item.name}</p>
+                    {isProduct && item.characteristics && item.characteristics.length > 0 && (
+                        <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
+                    )}
+                </Card>
+            )
+        }
+
+        return (
+            <div className="space-y-4">
+                <h3 className="text-xl font-semibold flex items-center gap-2">
+                    <Star className="h-6 w-6 text-primary"/>
+                    Recommandations selon le Profil
+                </h3>
+                 {products.length > 0 && (
+                    <div>
+                        <h4 className="font-medium text-muted-foreground mb-2">Produits suggérés</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {products.map(p => renderItem(p))}
+                        </div>
+                    </div>
+                )}
+                 {protocols.length > 0 && (
+                    <div>
+                        <h4 className="font-medium text-muted-foreground mb-2">Protocoles suggérés</h4>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {protocols.map(p => renderItem(p))}
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
+    };
+
 
     return (
         <Card>
@@ -1209,7 +1251,7 @@ function AuraTestTool() {
                 <div className="pt-6 mt-6 border-t space-y-8">
                      <RecommendationList title="Pathologie" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} allTags={pathologie}/>
                      <RecommendationList title="Émotion" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} allTags={emotion}/>
-                     <RecommendationList title="Profil Holistique" products={recommendations.profile.filter(p => 'title' in p) as Product[]} protocols={recommendations.profile.filter(p => !('title' in p)) as Protocole[]} allTags={holisticProfile}/>
+                     <RecommendationHighlightList title="Profil Holistique" products={recommendations.profile.products} protocols={recommendations.profile.protocols} />
                 </div>
             </CardContent>
         </Card>
