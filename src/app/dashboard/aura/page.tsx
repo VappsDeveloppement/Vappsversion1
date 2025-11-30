@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -977,6 +977,13 @@ function AuraTestTool() {
         return query(collection(firestore, `users/${user.uid}/wellness_sheets`), where('clientId', '==', selectedClientId));
     }, [user, firestore, selectedClientId]);
     const { data: sheets } = useCollection<WellnessSheet>(wellnessSheetQuery);
+    
+    const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: allProducts, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+
+    const protocolsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'protocols'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: allProtocols, isLoading: areProtocolsLoading } = useCollection<Protocole>(protocolsQuery);
+
 
     useEffect(() => {
         if (sheets && sheets.length > 0) {
@@ -998,6 +1005,53 @@ function AuraTestTool() {
         const client = clients.find(c => c.id === selectedClientId);
         return client ? `${client.firstName} ${client.lastName}` : "Sélectionner un client...";
     }, [selectedClientId, clients]);
+    
+    const recommendations = useMemo(() => {
+        const clientContraindications = new Set([
+            ...(selectedSheet?.contraindications || []),
+            ...(selectedSheet?.allergies || []),
+            ...contraindication,
+        ]);
+
+        const filterItems = (items: (Product | Protocole)[]) => {
+            return items.filter(item => {
+                const itemContraindications = new Set(item.contraindications || []);
+                for (const clientContra of clientContraindications) {
+                    if (itemContraindications.has(clientContra)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        };
+
+        const pathologyProducts = (allProducts || []).filter(p =>
+            pathologie.some(tag => p.pathologies?.includes(tag))
+        );
+        const emotionProducts = (allProducts || []).filter(p =>
+            emotion.some(tag => p.holisticProfile?.includes(tag))
+        );
+
+        const pathologyProtocols = (allProtocols || []).filter(p =>
+            pathologie.some(tag => p.pathologies?.includes(tag))
+        );
+        const emotionProtocols = (allProtocols || []).filter(p =>
+            emotion.some(tag => p.holisticProfile?.includes(tag))
+        );
+        
+        return {
+            pathology: {
+                products: filterItems(pathologyProducts),
+                protocols: filterItems(pathologyProtocols),
+            },
+            emotion: {
+                products: filterItems(emotionProducts),
+                protocols: filterItems(emotionProtocols),
+            },
+        };
+
+    }, [pathologie, emotion, contraindication, selectedSheet, allProducts, allProtocols]);
+
 
     const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
         if (!tags || tags.length === 0) return null;
@@ -1009,6 +1063,37 @@ function AuraTestTool() {
                 </div>
             </div>
         );
+    };
+    
+    const RecommendationList = ({ title, products, protocols }: { title: string, products: (Product[] | undefined), protocols: (Protocole[] | undefined)}) => {
+        if ((!products || products.length === 0) && (!protocols || protocols.length === 0)) {
+            return null;
+        }
+
+        return (
+            <div className="space-y-4">
+                <h3 className="text-xl font-semibold flex items-center gap-2">
+                    {title === 'Pathologie' ? <HeartPulse className="h-6 w-6 text-primary"/> : <BrainCircuit className="h-6 w-6 text-primary"/>}
+                    Recommandations: {title}
+                </h3>
+                {products && products.length > 0 && (
+                    <div>
+                        <h4 className="font-medium text-muted-foreground mb-2">Produits suggérés</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {products.map(p => <Card key={p.id} className="p-3"><p className="font-semibold">{p.title}</p></Card>)}
+                        </div>
+                    </div>
+                )}
+                 {protocols && protocols.length > 0 && (
+                    <div>
+                        <h4 className="font-medium text-muted-foreground mb-2">Protocoles suggérés</h4>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {protocols.map(p => <Card key={p.id} className="p-3"><p className="font-semibold">{p.name}</p></Card>)}
+                        </div>
+                    </div>
+                )}
+            </div>
+        )
     };
 
     return (
@@ -1078,6 +1163,13 @@ function AuraTestTool() {
                     <Label>Contre-indication temporaire</Label>
                     <TagInput value={contraindication} onChange={setContraindication} placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." />
                 </div>
+
+                {(pathologie.length > 0 || emotion.length > 0) && (
+                    <div className="pt-6 mt-6 border-t space-y-8">
+                        <RecommendationList title="Pathologie" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} />
+                        <RecommendationList title="Émotion" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} />
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
