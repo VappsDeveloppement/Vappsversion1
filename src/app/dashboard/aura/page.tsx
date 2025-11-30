@@ -3,12 +3,12 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -29,6 +29,11 @@ import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAgency } from "@/context/agency-provider";
 import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ChevronsUpDown, Check } from "lucide-react";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -520,7 +525,7 @@ type WellnessSheet = {
     updatedAt: string;
 };
 
-type Client = { id: string; firstName: string; lastName: string; email: string; counselorIds?: string[] };
+type Client = { id: string; firstName: string; lastName: string; email: string; phone?: string; counselorIds?: string[] };
 
 const newUserSchema = z.object({
     firstName: z.string().min(1, 'Le prénom est requis.'),
@@ -953,52 +958,130 @@ function WellnessSheetGenerator() {
 }
 
 function AuraTestTool() {
-  const [pathologie, setPathologie] = useState<string[]>([]);
-  const [emotion, setEmotion] = useState<string[]>([]);
-  const [contraindication, setContraindication] = useState<string[]>([]);
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [pathologie, setPathologie] = useState<string[]>([]);
+    const [emotion, setEmotion] = useState<string[]>([]);
+    const [contraindication, setContraindication] = useState<string[]>([]);
+    
+    const [open, setOpen] = useState(false);
+    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
+    const [selectedSheet, setSelectedSheet] = useState<WellnessSheet | null>(null);
+    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Outil de Test Aura</CardTitle>
-        <CardDescription>
-          Renseignez les informations pour obtenir des recommandations personnalisées.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-            <Label>Rechercher une fiche bien-être (Optionnel)</Label>
-            <Input placeholder="Rechercher par nom ou email du client..." />
-        </div>
-        <div className="space-y-2">
-            <Label>Pathologie à traiter</Label>
-            <TagInput 
-                value={pathologie} 
-                onChange={setPathologie} 
-                placeholder="Ajouter une pathologie (ex: Stress, Anxiété)..." 
-            />
-        </div>
-        <div className="space-y-2">
-            <Label>Émotion du moment</Label>
-             <TagInput 
-                value={emotion} 
-                onChange={setEmotion} 
-                placeholder="Ajouter une émotion (ex: Colère, Tristesse)..." 
-            />
-        </div>
-        <div className="space-y-2">
-            <Label>Contre-indication temporaire</Label>
-             <TagInput 
-                value={contraindication} 
-                onChange={setContraindication} 
-                placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." 
-            />
-        </div>
-      </CardContent>
-    </Card>
-  );
+    const clientsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid)) : null, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
+
+    const wellnessSheetQuery = useMemoFirebase(() => {
+        if (!user || !selectedClientId) return null;
+        return query(collection(firestore, `users/${user.uid}/wellness_sheets`), where('clientId', '==', selectedClientId));
+    }, [user, firestore, selectedClientId]);
+    const { data: sheets } = useCollection<WellnessSheet>(wellnessSheetQuery);
+
+    useEffect(() => {
+        if (sheets && sheets.length > 0) {
+            setSelectedSheet(sheets[0]);
+        } else {
+            setSelectedSheet(null);
+        }
+    }, [sheets]);
+
+    const handleClientSelect = (clientId: string) => {
+        setSelectedClientId(clientId);
+        const client = clients?.find(c => c.id === clientId);
+        setSelectedClient(client || null);
+        setOpen(false);
+    };
+
+    const selectedClientName = useMemo(() => {
+        if (!selectedClientId || !clients) return "Sélectionner un client...";
+        const client = clients.find(c => c.id === selectedClientId);
+        return client ? `${client.firstName} ${client.lastName}` : "Sélectionner un client...";
+    }, [selectedClientId, clients]);
+
+    const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
+        if (!tags || tags.length === 0) return null;
+        return (
+            <div className="text-sm">
+                <h4 className="font-semibold text-foreground">{title}</h4>
+                <div className="flex flex-wrap gap-1 mt-1">
+                    {tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
+                </div>
+            </div>
+        );
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Outil de Test Aura</CardTitle>
+                <CardDescription>Renseignez les informations pour obtenir des recommandations personnalisées.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="space-y-2">
+                    <Label>Rechercher une fiche bien-être (Optionnel)</Label>
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between" disabled={areClientsLoading}>
+                                {areClientsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : selectedClientName}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Rechercher un client..." />
+                                <CommandList><CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                                    <CommandGroup>
+                                        {clients?.map((client) => (
+                                            <CommandItem key={client.id} value={`${client.firstName} ${client.lastName} ${client.email}`} onSelect={() => handleClientSelect(client.id)}>
+                                                <Check className={cn("mr-2 h-4 w-4", selectedClientId === client.id ? "opacity-100" : "opacity-0")}/>
+                                                {client.firstName} {client.lastName}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                </div>
+                
+                {selectedClient && (
+                    <Card className="bg-muted/50 p-4 space-y-4">
+                        <div className="flex items-center justify-between">
+                             <h3 className="font-semibold flex items-center gap-2"><User className="h-5 w-5 text-primary" />{selectedClient.firstName} {selectedClient.lastName}</h3>
+                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setSelectedClientId(null); setSelectedClient(null); setSelectedSheet(null); }}><X className="h-4 w-4" /></Button>
+                        </div>
+                        <div className="space-y-3 text-sm text-muted-foreground">
+                            <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> {selectedClient.email}</p>
+                            {selectedClient.phone && <p className="flex items-center gap-2"><Phone className="h-4 w-4" /> {selectedClient.phone}</p>}
+                        </div>
+                        {selectedSheet && (
+                            <div className="border-t pt-4 space-y-3">
+                               <InfoBlock title="Habitudes Alimentaires" tags={selectedSheet.foodHabits} />
+                               <InfoBlock title="Allergies" tags={selectedSheet.allergies} />
+                               <InfoBlock title="Contre-indications (Fiche)" tags={selectedSheet.contraindications} />
+                               <InfoBlock title="Profil Holistique (Fiche)" tags={selectedSheet.holisticProfile} />
+                            </div>
+                        )}
+                    </Card>
+                )}
+
+                <div className="space-y-2">
+                    <Label>Pathologie à traiter</Label>
+                    <TagInput value={pathologie} onChange={setPathologie} placeholder="Ajouter une pathologie (ex: Stress, Anxiété)..." />
+                </div>
+                <div className="space-y-2">
+                    <Label>Émotion du moment</Label>
+                    <TagInput value={emotion} onChange={setEmotion} placeholder="Ajouter une émotion (ex: Colère, Tristesse)..." />
+                </div>
+                <div className="space-y-2">
+                    <Label>Contre-indication temporaire</Label>
+                    <TagInput value={contraindication} onChange={setContraindication} placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." />
+                </div>
+            </CardContent>
+        </Card>
+    );
 }
-
 
 export default function AuraPage() {
     return (
