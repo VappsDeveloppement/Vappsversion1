@@ -14,7 +14,7 @@ import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Button } from "@/components/ui/button";
-import { Loader2, Edit, Trash2, MoreHorizontal, PlusCircle } from 'lucide-react';
+import { Loader2, Edit, Trash2, MoreHorizontal, PlusCircle, Link as LinkIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter, SheetDescription, SheetClose } from '@/components/ui/sheet';
@@ -28,6 +28,7 @@ type Partner = {
     name: string;
     email?: string;
     phone?: string;
+    website?: string;
     specialties: string[];
     sectors: string[];
     postalCode?: string;
@@ -38,6 +39,7 @@ const partnerSchema = z.object({
     name: z.string().min(1, "Le nom est requis."),
     email: z.string().email("L'email est invalide.").optional().or(z.literal('')),
     phone: z.string().optional(),
+    website: z.string().url("L'URL du site web est invalide.").optional().or(z.literal('')),
     specialties: z.array(z.string()).optional(),
     sectors: z.array(z.string()).optional(),
     postalCode: z.string().optional(),
@@ -103,7 +105,7 @@ export default function PartnersPage() {
                 form.reset(editingPartner);
             } else {
                 form.reset({
-                    name: '', email: '', phone: '', specialties: [], sectors: [], postalCode: '', department: ''
+                    name: '', email: '', phone: '', website: '', specialties: [], sectors: [], postalCode: '', department: ''
                 });
             }
         }
@@ -213,6 +215,11 @@ export default function PartnersPage() {
                                            <div className="font-medium">{partner.name}</div>
                                            <div className="text-sm text-muted-foreground">{partner.email}</div>
                                            <div className="text-sm text-muted-foreground">{partner.phone}</div>
+                                           {partner.website && (
+                                                <a href={partner.website} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-500 hover:underline flex items-center gap-1">
+                                                   <LinkIcon className="h-3 w-3" /> Site Web
+                                                </a>
+                                           )}
                                        </TableCell>
                                        <TableCell><div className="flex flex-wrap gap-1">{partner.specialties?.map(s => <Badge key={s} variant="outline">{s}</Badge>)}</div></TableCell>
                                        <TableCell><div className="flex flex-wrap gap-1">{partner.sectors?.map(s => <Badge key={s} variant="secondary">{s}</Badge>)}</div></TableCell>
@@ -251,6 +258,7 @@ export default function PartnersPage() {
                                     <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="phone" render={({ field }) => (<FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="website" render={({ field }) => (<FormItem><FormLabel>Site Web</FormLabel><FormControl><Input type="url" placeholder="https://..." {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="specialties" render={({ field }) => (<FormItem><FormLabel>Spécialités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une spécialité..." /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="sectors" render={({ field }) => (<FormItem><FormLabel>Secteurs</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un secteur..." /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="postalCode" render={({ field }) => (<FormItem><FormLabel>Code Postal</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />

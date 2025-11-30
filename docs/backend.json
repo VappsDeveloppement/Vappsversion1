@@ -173,6 +173,7 @@
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "phone": { "type": "string" },
+        "website": { "type": "string", "format": "uri" },
         "specialties": { "type": "array", "items": { "type": "string" } },
         "sectors": { "type": "array", "items": { "type": "string" } },
         "postalCode": { "type": "string" },
