@@ -1261,7 +1261,7 @@
       },
       "required": ["id", "userId", "pathId", "enrolledAt"]
     },
-     "ProductCategory": {
+    "ProductCategory": {
       "title": "Product Category",
       "type": "object",
       "description": "A category for products in the Aura tool.",
@@ -1334,6 +1334,40 @@
         }
       },
       "required": ["counselorId", "name"]
+    },
+     "WellnessSheet": {
+      "title": "Wellness Sheet",
+      "type": "object",
+      "description": "Represents a wellness sheet created for a client.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "gender": { "type": "string", "enum": ["male", "female", "other"] },
+        "dob": { "type": "string", "format": "date" },
+        "foodHabits": { "type": "array", "items": { "type": "string" } },
+        "allergies": { "type": "array", "items": { "type": "string" } },
+        "contraindications": { "type": "array", "items": { "type": "string" } },
+        "holisticProfile": { "type": "array", "items": { "type": "string" } },
+        "bmiRecords": {
+            "type": "array",
+            "description": "Stores the last 5 BMI calculations.",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "date": { "type": "string", "format": "date-time" },
+                    "weight": { "type": "number" },
+                    "height": { "type": "number" },
+                    "bmi": { "type": "number" },
+                    "interpretation": { "type": "string" }
+                }
+            }
+        },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["counselorId", "clientId", "clientName", "createdAt", "updatedAt"]
     }
   },
   "auth": {
@@ -1360,6 +1394,14 @@
             "$ref": "#/backend/entities/User"
           },
           "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorIds is used for data segregation."
+        }
+      },
+       {
+        "path": "/users/{userId}/wellness_sheets/{sheetId}",
+        "definition": {
+          "entityName": "WellnessSheet",
+          "schema": { "$ref": "#/entities/WellnessSheet" },
+          "description": "Stores wellness sheets created by a counselor for their clients."
         }
       },
       {

@@ -28,6 +28,7 @@ import { Switch } from "@/components/ui/switch";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAgency } from "@/context/agency-provider";
 import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
 const toBase64 = (file: File): Promise<string> =>
   new Promise((resolve, reject) => {
@@ -483,9 +484,22 @@ function ProtocoleManager() {
     );
 }
 
+const bmiRecordSchema = z.object({
+    date: z.string(),
+    weight: z.number(),
+    height: z.number(),
+    bmi: z.number(),
+    interpretation: z.string(),
+});
+
 const wellnessSheetSchema = z.object({
     contraindications: z.array(z.string()).optional(),
     holisticProfile: z.array(z.string()).optional(),
+    gender: z.enum(['male', 'female', 'other']).optional(),
+    dob: z.string().optional(),
+    foodHabits: z.array(z.string()).optional(),
+    allergies: z.array(z.string()).optional(),
+    bmiRecords: z.array(bmiRecordSchema).optional(),
 });
 
 type WellnessSheetFormData = z.infer<typeof wellnessSheetSchema>;
@@ -497,7 +511,13 @@ type WellnessSheet = {
     clientName: string;
     contraindications: string[];
     holisticProfile: string[];
+    gender?: 'male' | 'female' | 'other';
+    dob?: string;
+    foodHabits?: string[];
+    allergies?: string[];
+    bmiRecords?: z.infer<typeof bmiRecordSchema>[];
     createdAt: string;
+    updatedAt: string;
 };
 
 type Client = { id: string; firstName: string; lastName: string; email: string; counselorIds?: string[] };
@@ -532,6 +552,10 @@ function WellnessSheetGenerator() {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [editingSheet, setEditingSheet] = useState<WellnessSheet | null>(null);
+    
+    const [height, setHeight] = useState('');
+    const [weight, setWeight] = useState('');
+    const [bmiResult, setBmiResult] = useState<{ bmi: number; interpretation: string } | null>(null);
 
     const wellnessSheetsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/wellness_sheets`)) : null, [user, firestore]);
     const { data: wellnessSheets, isLoading: areSheetsLoading } = useCollection<WellnessSheet>(wellnessSheetsQuery);
@@ -539,7 +563,15 @@ function WellnessSheetGenerator() {
 
     const wellnessForm = useForm<WellnessSheetFormData>({
         resolver: zodResolver(wellnessSheetSchema),
-        defaultValues: { contraindications: [], holisticProfile: [] },
+        defaultValues: { 
+            contraindications: [], 
+            holisticProfile: [], 
+            gender: undefined,
+            dob: '',
+            foodHabits: [],
+            allergies: [],
+            bmiRecords: [],
+        },
     });
     
     const newUserForm = useForm<NewUserFormData>({
@@ -552,7 +584,22 @@ function WellnessSheetGenerator() {
                 setSelectedClient({ id: editingSheet.clientId, firstName: editingSheet.clientName.split(' ')[0], lastName: editingSheet.clientName.split(' ').slice(1).join(' '), email: '' });
                 wellnessForm.reset({
                     contraindications: editingSheet.contraindications,
-                    holisticProfile: editingSheet.holisticProfile
+                    holisticProfile: editingSheet.holisticProfile,
+                    gender: editingSheet.gender,
+                    dob: editingSheet.dob,
+                    foodHabits: editingSheet.foodHabits,
+                    allergies: editingSheet.allergies,
+                    bmiRecords: editingSheet.bmiRecords,
+                });
+            } else {
+                 wellnessForm.reset({ 
+                    contraindications: [], 
+                    holisticProfile: [], 
+                    gender: undefined,
+                    dob: '',
+                    foodHabits: [],
+                    allergies: [],
+                    bmiRecords: [],
                 });
             }
         }
@@ -568,6 +615,9 @@ function WellnessSheetGenerator() {
         wellnessForm.reset();
         newUserForm.reset();
         setEditingSheet(null);
+        setBmiResult(null);
+        setHeight('');
+        setWeight('');
     };
 
     const handleSearchUser = async () => {
@@ -664,16 +714,57 @@ function WellnessSheetGenerator() {
         setSearchResult(null);
     };
 
+    const handleCalculateBmi = () => {
+        const h = parseFloat(height) / 100;
+        const w = parseFloat(weight);
+        if (h > 0 && w > 0) {
+            const bmi = w / (h * h);
+            let interpretation = '';
+            if (bmi < 18.5) interpretation = "Insuffisance pondérale";
+            else if (bmi < 25) interpretation = "Poids normal";
+            else if (bmi < 30) interpretation = "Surpoids";
+            else if (bmi < 35) interpretation = "Obésité de classe I";
+            else if (bmi < 40) interpretation = "Obésité de classe II";
+            else interpretation = "Obésité de classe III";
+            setBmiResult({ bmi: parseFloat(bmi.toFixed(2)), interpretation });
+        }
+    };
+    
+    const handleAddBmiRecord = () => {
+        if (bmiResult) {
+            const newRecord = {
+                date: new Date().toISOString(),
+                weight: parseFloat(weight),
+                height: parseFloat(height),
+                bmi: bmiResult.bmi,
+                interpretation: bmiResult.interpretation,
+            };
+            const currentRecords = wellnessForm.getValues('bmiRecords') || [];
+            const updatedRecords = [newRecord, ...currentRecords].slice(0, 5);
+            wellnessForm.setValue('bmiRecords', updatedRecords, { shouldDirty: true });
+            setBmiResult(null);
+            setHeight('');
+            setWeight('');
+        }
+    };
+
+
     const onWellnessSubmit = (data: WellnessSheetFormData) => {
         if (!user || !selectedClient) return;
 
-        const sheetData = {
-            ...data,
+        const sheetData: Omit<WellnessSheet, 'id'> = {
             counselorId: user.uid,
             clientId: selectedClient.id,
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
             createdAt: editingSheet ? editingSheet.createdAt : new Date().toISOString(),
             updatedAt: new Date().toISOString(),
+            contraindications: data.contraindications || [],
+            holisticProfile: data.holisticProfile || [],
+            gender: data.gender,
+            dob: data.dob,
+            foodHabits: data.foodHabits || [],
+            allergies: data.allergies || [],
+            bmiRecords: data.bmiRecords || [],
         };
 
         const sheetRef = editingSheet ? doc(firestore, `users/${user.uid}/wellness_sheets`, editingSheet.id) : doc(collection(firestore, `users/${user.uid}/wellness_sheets`));
@@ -695,8 +786,7 @@ function WellnessSheetGenerator() {
         deleteDocumentNonBlocking(sheetRef);
         toast({title: "Fiche supprimée"});
     };
-
-
+    
     return (
         <Card>
             <CardHeader>
@@ -779,11 +869,47 @@ function WellnessSheetGenerator() {
                             </div>
                         ) : (
                              <Form {...wellnessForm}>
-                                <form onSubmit={wellnessForm.handleSubmit(onWellnessSubmit)} className="space-y-6 pt-4">
-                                    <FormField control={wellnessForm.control} name="contraindications" render={({ field }) => (<FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
-                                    <FormField control={wellnessForm.control} name="holisticProfile" render={({ field }) => (<FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
-                                     <SheetFooter>
-                                        <Button type="button" variant="ghost" onClick={resetAll}>Annuler</Button>
+                                <form onSubmit={wellnessForm.handleSubmit(onWellnessSubmit)} className="flex flex-col h-full overflow-hidden">
+                                     <ScrollArea className="flex-1 pr-6 -mr-6">
+                                        <div className="space-y-6 pt-4">
+                                            <FormField control={wellnessForm.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage/></FormItem>)}/>
+                                            <FormField control={wellnessForm.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Genre</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="female" /></FormControl><FormLabel>Femme</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="male" /></FormControl><FormLabel>Homme</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="other" /></FormControl><FormLabel>Autre</FormLabel></FormItem></RadioGroup></FormControl><FormMessage/></FormItem>)}/>
+                                            <FormField control={wellnessForm.control} name="foodHabits" render={({ field }) => (<FormItem><FormLabel>Habitudes alimentaires</FormLabel><FormControl><TagInput {...field} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>)} />
+                                            <FormField control={wellnessForm.control} name="allergies" render={({ field }) => (<FormItem><FormLabel>Allergies</FormLabel><FormControl><TagInput {...field} placeholder="Arachides, lactose..." /></FormControl></FormItem>)} />
+                                            <FormField control={wellnessForm.control} name="contraindications" render={({ field }) => (<FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
+                                            <FormField control={wellnessForm.control} name="holisticProfile" render={({ field }) => (<FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..." /></FormControl></FormItem>)} />
+
+                                            <div className="space-y-4 pt-4 border-t">
+                                                <h4 className="font-medium">Calculateur d'IMC</h4>
+                                                <div className="grid grid-cols-2 gap-4">
+                                                    <div className="space-y-2"><Label htmlFor="height">Taille (cm)</Label><Input id="height" type="number" value={height} onChange={e => setHeight(e.target.value)} /></div>
+                                                    <div className="space-y-2"><Label htmlFor="weight">Poids (kg)</Label><Input id="weight" type="number" value={weight} onChange={e => setWeight(e.target.value)} /></div>
+                                                </div>
+                                                <Button type="button" variant="secondary" onClick={handleCalculateBmi} disabled={!height || !weight}>Calculer l'IMC</Button>
+                                                {bmiResult && (
+                                                    <Card className="bg-muted/50 p-4">
+                                                        <p>IMC calculé : <span className="font-bold">{bmiResult.bmi}</span></p>
+                                                        <p>Interprétation : <span className="font-bold">{bmiResult.interpretation}</span></p>
+                                                        <Button type="button" size="sm" className="mt-2" onClick={handleAddBmiRecord}>Ajouter au suivi</Button>
+                                                    </Card>
+                                                )}
+                                                <FormField control={wellnessForm.control} name="bmiRecords" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Historique IMC (5 derniers)</FormLabel>
+                                                        <div className="space-y-2">
+                                                            {field.value?.map(record => (
+                                                                <div key={record.date} className="text-xs p-2 border rounded-md">
+                                                                    <p><strong>{new Date(record.date).toLocaleDateString('fr-FR')}:</strong> IMC de {record.bmi} ({record.interpretation}) - {record.weight}kg pour {record.height}cm</p>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </FormItem>
+                                                )}/>
+                                            </div>
+                                        </div>
+                                    </ScrollArea>
+                                    <SheetFooter className="pt-6 border-t mt-auto">
+                                        <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                         <Button type="submit">Enregistrer la fiche</Button>
                                     </SheetFooter>
                                 </form>
@@ -825,7 +951,6 @@ function WellnessSheetGenerator() {
         </Card>
     );
 }
-
 
 export default function AuraPage() {
     return (
