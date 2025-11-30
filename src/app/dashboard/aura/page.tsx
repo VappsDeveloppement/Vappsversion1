@@ -147,6 +147,7 @@ function ProductManager() {
             if (editingProduct) {
                 form.reset({
                     ...editingProduct,
+                    price: editingProduct.price ?? 0,
                     ctaLink: editingProduct.ctaLink || '',
                     description: editingProduct.description || '',
                     contraindications: editingProduct.contraindications || [],
