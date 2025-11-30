@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -8,7 +9,7 @@ import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -32,6 +33,10 @@ import { MoreHorizontal } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ChevronsUpDown, Check } from 'lucide-react';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 
 type Client = {
@@ -141,6 +146,22 @@ type Training = {
     title: string;
 };
 
+const jobOfferFormSchema = z.object({
+  id: z.string().optional(),
+  title: z.string().min(1, "Le titre du poste est requis."),
+  description: z.string().optional(),
+  contractType: z.string().optional(),
+  workingHours: z.string().optional(),
+  location: z.string().optional(),
+  salary: z.string().optional(),
+});
+
+type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
+
+export type JobOffer = JobOfferFormData & {
+  id: string;
+};
+
 
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
@@ -151,8 +172,8 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
             e.preventDefault();
             if (inputValue.trim() && !currentValues.includes(inputValue.trim())) {
                 onChange([...currentValues, inputValue.trim()]);
+                setInputValue('');
             }
-            setInputValue('');
         }
     };
     
@@ -1273,6 +1294,132 @@ function RomeManager() {
     );
 }
 
+function JobOfferManager() {
+    const { user } = useUser();
+    const { toast } = useToast();
+    const firestore = useFirestore();
+
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingOffer, setEditingOffer] = useState<JobOffer | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+    const { data: userData, isLoading: isUserLoading } = useDoc<{miniSite: { jobOffersSection?: { offers: JobOffer[] }}}>(userDocRef);
+
+    const offers = userData?.miniSite?.jobOffersSection?.offers || [];
+    
+    const form = useForm<JobOfferFormData>({
+        resolver: zodResolver(jobOfferFormSchema),
+        defaultValues: { title: '', description: '', contractType: '', workingHours: '', location: '', salary: '' },
+    });
+    
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingOffer || { title: '', description: '', contractType: '', workingHours: '', location: '', salary: '' });
+        }
+    }, [isSheetOpen, editingOffer, form]);
+
+    const handleNew = () => {
+        setEditingOffer(null);
+        setIsSheetOpen(true);
+    };
+
+    const handleEdit = (offer: JobOffer) => {
+        setEditingOffer(offer);
+        setIsSheetOpen(true);
+    };
+    
+    const handleDelete = (offerId: string) => {
+        if (!userDocRef) return;
+        const updatedOffers = offers.filter(o => o.id !== offerId);
+        setDocumentNonBlocking(userDocRef, { 'miniSite.jobOffersSection.offers': updatedOffers }, { merge: true });
+        toast({ title: "Offre d'emploi supprimée" });
+    };
+
+    const onSubmit = async (data: JobOfferFormData) => {
+        if (!userDocRef) return;
+        setIsSubmitting(true);
+        let updatedOffers: JobOffer[];
+        if (editingOffer) {
+            updatedOffers = offers.map(o => o.id === editingOffer.id ? { ...o, ...data } : o);
+        } else {
+            updatedOffers = [...offers, { id: `job-${Date.now()}`, ...data }];
+        }
+
+        try {
+            await setDocumentNonBlocking(userDocRef, { 'miniSite.jobOffersSection.offers': updatedOffers }, { merge: true });
+            toast({ title: editingOffer ? "Offre mise à jour" : "Offre créée" });
+            setIsSheetOpen(false);
+        } catch(e) {
+            toast({ title: "Erreur", description: "Impossible de sauvegarder l'offre.", variant: "destructive"});
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Offres d'emploi</CardTitle>
+                        <CardDescription>Gérez les offres d'emploi pour votre mini-site.</CardDescription>
+                    </div>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouvelle offre</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="border rounded-lg">
+                    <Table>
+                        <TableHeader><TableRow><TableHead>Titre du poste</TableHead><TableHead>Lieu</TableHead><TableHead>Contrat</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableBody>
+                            {isUserLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            : offers.length > 0 ? (
+                                offers.map((offer) => (
+                                    <TableRow key={offer.id}>
+                                        <TableCell className="font-medium">{offer.title}</TableCell>
+                                        <TableCell>{offer.location}</TableCell>
+                                        <TableCell>{offer.contractType}</TableCell>
+                                        <TableCell className="text-right">
+                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
+                                             <Button variant="ghost" size="icon" onClick={() => handleDelete(offer.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucune offre d'emploi créée.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </div>
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-2xl w-full">
+                        <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} offre d'emploi</SheetTitle></SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                                <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><Input placeholder="CDI, CDD, Alternance..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="workingHours" render={({ field }) => ( <FormItem><FormLabel>Temps de travail</FormLabel><FormControl><Input placeholder="Temps plein, Temps partiel..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="location" render={({ field }) => ( <FormItem><FormLabel>Lieu</FormLabel><FormControl><Input placeholder="Paris, France" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <FormField control={form.control} name="salary" render={({ field }) => ( <FormItem><FormLabel>Salaire</FormLabel><FormControl><Input placeholder="À négocier, 45k€ - 55k€..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit" disabled={isSubmitting}>
+                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                        {editingOffer ? 'Sauvegarder' : 'Créer'}
+                                    </Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function VitaePage() {
     return (
         <div className="space-y-8">
@@ -1308,15 +1455,7 @@ export default function VitaePage() {
                     <RomeManager />
                 </TabsContent>
                 <TabsContent value="jobs">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Offres d'emploi</CardTitle>
-                            <CardDescription>Consultez et gérez les offres d'emploi.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="text-center p-12 text-muted-foreground">
-                            <p>La gestion des offres d'emploi sera bientôt disponible ici.</p>
-                        </CardContent>
-                    </Card>
+                    <JobOfferManager />
                 </TabsContent>
                 <TabsContent value="test">
                     <Card>
