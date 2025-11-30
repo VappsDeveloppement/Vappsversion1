@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain, Download } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -1082,7 +1082,10 @@ function AuraTestTool() {
     };
 
     const RecommendationList = ({ title, products, protocols, icon: Icon, emptyMessage }: { title: string; products: Product[]; protocols: Protocole[]; icon: React.ElementType, emptyMessage: string }) => {
-        if (products.length === 0 && protocols.length === 0) {
+        const hasProducts = products.length > 0;
+        const hasProtocols = protocols.length > 0;
+
+        if (!hasProducts && !hasProtocols) {
             return (
                 <div className="space-y-4">
                     <h3 className="text-xl font-semibold flex items-center gap-2">
@@ -1100,7 +1103,7 @@ function AuraTestTool() {
                     <Icon className="h-6 w-6 text-primary"/>
                     {title}
                 </h3>
-                {products.length > 0 && (
+                {hasProducts && (
                     <div className="pl-8 space-y-4">
                         <h4 className="font-semibold mb-2">Produits</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1115,7 +1118,7 @@ function AuraTestTool() {
                         </div>
                     </div>
                 )}
-                 {protocols.length > 0 && (
+                 {hasProtocols && (
                     <div className="pl-8 mt-4 space-y-4">
                         <h4 className="font-semibold mb-2">Protocoles</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -1131,6 +1134,67 @@ function AuraTestTool() {
         );
     };
 
+    const generatePDF = async () => {
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
+        const doc = new jsPDF();
+        let y = 15;
+
+        doc.setFontSize(18);
+        doc.text("Recommandations Bien-être", 15, y);
+        y += 10;
+        doc.setFontSize(12);
+        if (selectedClient) {
+            doc.text(`Pour: ${selectedClient.firstName} ${selectedClient.lastName}`, 15, y);
+            y += 7;
+        }
+        doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 15, y);
+        y += 10;
+
+        const addSectionToPdf = (title: string, products: Product[], protocols: Protocole[]) => {
+            if (products.length === 0 && protocols.length === 0) return;
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 8;
+
+            if (products.length > 0) {
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text("Produits", 20, y);
+                y += 6;
+                autoTable(doc, {
+                    startY: y,
+                    head: [['Nom', 'Caractéristiques']],
+                    body: products.map(p => [p.title, p.characteristics?.join(', ') || '']),
+                    theme: 'grid',
+                    styles: { fontSize: 10 },
+                });
+                y = (doc as any).lastAutoTable.finalY + 10;
+            }
+
+            if (protocols.length > 0) {
+                doc.setFontSize(12);
+                doc.setFont('helvetica', 'bold');
+                doc.text("Protocoles", 20, y);
+                y += 6;
+                autoTable(doc, {
+                    startY: y,
+                    head: [['Nom']],
+                    body: protocols.map(p => [p.name]),
+                    theme: 'grid',
+                    styles: { fontSize: 10 },
+                });
+                y = (doc as any).lastAutoTable.finalY + 10;
+            }
+        };
+
+        addSectionToPdf("Recommandation(s) Pathologie(s)", recommendations.pathology.products, recommendations.pathology.protocols);
+        addSectionToPdf("Recommandation(s) Émotion(s)", recommendations.emotion.products, recommendations.emotion.protocols);
+        addSectionToPdf("Conseillé pour le Profil", profileRecommendations.products, profileRecommendations.protocols);
+        
+        doc.save(`recommandation-${selectedClient?.firstName || 'test'}.pdf`);
+    };
 
     return (
         <Card>
@@ -1205,8 +1269,11 @@ function AuraTestTool() {
                 </div>
 
                 <div className="pt-6 mt-6 border-t space-y-8">
-                     <RecommendationList title="Recommandation Pathologie(s)" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} icon={HeartPulse} emptyMessage="Aucune recommandation pour les pathologies renseignées."/>
-                     <RecommendationList title="Recommandation Émotion(s)" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} icon={BrainCircuit} emptyMessage="Aucune recommandation pour les émotions renseignées."/>
+                     <div className="flex justify-end">
+                        <Button onClick={generatePDF}><Download className="mr-2 h-4 w-4" /> Générer PDF</Button>
+                    </div>
+                     <RecommendationList title="Recommandation(s) Pathologie(s)" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} icon={HeartPulse} emptyMessage="Aucune recommandation pour les pathologies renseignées."/>
+                     <RecommendationList title="Recommandation(s) Émotion(s)" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} icon={BrainCircuit} emptyMessage="Aucune recommandation pour les émotions renseignées."/>
                      <RecommendationList title="Conseillé pour le Profil" products={profileRecommendations.products} protocols={profileRecommendations.protocols} icon={Brain} emptyMessage="Aucune des recommandations ne correspond spécifiquement au profil holistique."/>
                 </div>
             </CardContent>
