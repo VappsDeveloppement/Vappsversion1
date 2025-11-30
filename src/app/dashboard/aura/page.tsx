@@ -168,15 +168,18 @@ function ProductManager() {
     
     const onSubmit = (data: ProductFormData) => {
         if (!user) return;
-        const productData = {
-            ...data,
-            price: data.price === undefined || isNaN(data.price) ? null : data.price,
+        const productData: Omit<Product, 'id' | 'versions'> = {
             counselorId: user.uid,
+            title: data.title,
+            description: data.description || '',
+            isFeatured: data.isFeatured,
             imageUrl: imagePreview,
+            price: data.price === undefined || isNaN(data.price) ? null : data.price,
             characteristics: data.characteristics || [],
             contraindications: data.contraindications || [],
             holisticProfile: data.holisticProfile || [],
             pathologies: data.pathologies || [],
+            ctaLink: data.ctaLink || '',
         };
 
         if (editingProduct) {
@@ -262,7 +265,7 @@ function ProductManager() {
                                         )}/>
                                         
                                         <div className="space-y-4 pt-4 border-t">
-                                             <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                             <FormField control={form.control} name="price" render={({ field }) => (<FormItem><FormLabel>Prix (€)</FormLabel><FormControl><Input type="number" step="0.01" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
                                              <div>
                                                 <Label>Image</Label>
                                                 <div className="flex items-center gap-4 mt-2">
@@ -461,8 +464,8 @@ function ProtocoleManager() {
                                                     <Button type="button" variant="ghost" size="icon" onClick={() => removeStep(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                                 </div>
                                                 <div className="space-y-4">
-                                                    <FormField control={form.control} name={`steps.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                    <FormField control={form.control} name={`steps.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={form.control} name={`steps.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)} />
+                                                    <FormField control={form.control} name={`steps.${index}.description`} render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage/></FormItem>)} />
                                                     <div>
                                                         <Label>Image (optionnel)</Label>
                                                         <div className="flex items-center gap-4 mt-2">
@@ -965,6 +968,7 @@ function AuraTestTool() {
     const firestore = useFirestore();
     const [pathologie, setPathologie] = useState<string[]>([]);
     const [emotion, setEmotion] = useState<string[]>([]);
+    const [holisticProfile, setHolisticProfile] = useState<string[]>([]);
     const [contraindication, setContraindication] = useState<string[]>([]);
     
     const [open, setOpen] = useState(false);
@@ -990,9 +994,12 @@ function AuraTestTool() {
 
     useEffect(() => {
         if (sheets && sheets.length > 0) {
-            setSelectedSheet(sheets[0]);
+            const sheet = sheets[0];
+            setSelectedSheet(sheet);
+            setHolisticProfile(sheet.holisticProfile || []);
         } else {
             setSelectedSheet(null);
+            setHolisticProfile([]);
         }
     }, [sheets]);
 
@@ -1028,20 +1035,20 @@ function AuraTestTool() {
             });
         };
 
-        const pathologyProducts = (allProducts || []).filter(p =>
-            pathologie.some(tag => p.pathologies?.includes(tag))
-        );
-        const emotionProducts = (allProducts || []).filter(p =>
-            emotion.some(tag => p.holisticProfile?.includes(tag))
-        );
+        const searchTags = [...pathologie, ...emotion, ...holisticProfile];
 
-        const pathologyProtocols = (allProtocols || []).filter(p =>
-            pathologie.some(tag => p.pathologies?.includes(tag))
-        );
-        const emotionProtocols = (allProtocols || []).filter(p =>
-            emotion.some(tag => p.holisticProfile?.includes(tag))
-        );
+        if (searchTags.length === 0) {
+          return { pathology: { products: [], protocols: [] }, emotion: { products: [], protocols: [] }, holisticProfile: { products: [], protocols: [] } };
+        }
         
+        const pathologyProducts = (allProducts || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
+        const emotionProducts = (allProducts || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
+        const holisticProducts = (allProducts || []).filter(p => holisticProfile.some(tag => p.holisticProfile?.includes(tag)));
+
+        const pathologyProtocols = (allProtocols || []).filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
+        const emotionProtocols = (allProtocols || []).filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)));
+        const holisticProtocols = (allProtocols || []).filter(p => holisticProfile.some(tag => p.holisticProfile?.includes(tag)));
+
         return {
             pathology: {
                 products: filterItems(pathologyProducts),
@@ -1051,9 +1058,13 @@ function AuraTestTool() {
                 products: filterItems(emotionProducts),
                 protocols: filterItems(emotionProtocols),
             },
+            holisticProfile: {
+                products: filterItems(holisticProducts),
+                protocols: filterItems(holisticProtocols),
+            }
         };
 
-    }, [pathologie, emotion, contraindication, selectedSheet, allProducts, allProtocols]);
+    }, [pathologie, emotion, contraindication, selectedSheet, allProducts, allProtocols, holisticProfile]);
 
 
     const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
@@ -1073,10 +1084,16 @@ function AuraTestTool() {
             return null;
         }
 
+        const iconMap = {
+            'Pathologie': <HeartPulse className="h-6 w-6 text-primary"/>,
+            'Émotion': <BrainCircuit className="h-6 w-6 text-primary"/>,
+            'Profil Holistique': <User className="h-6 w-6 text-primary"/>,
+        };
+
         return (
             <div className="space-y-4">
                 <h3 className="text-xl font-semibold flex items-center gap-2">
-                    {title === 'Pathologie' ? <HeartPulse className="h-6 w-6 text-primary"/> : <BrainCircuit className="h-6 w-6 text-primary"/>}
+                    {iconMap[title as keyof typeof iconMap]}
                     Recommandations: {title}
                 </h3>
                 {products && products.length > 0 && (
@@ -1163,14 +1180,19 @@ function AuraTestTool() {
                     <TagInput value={emotion} onChange={setEmotion} placeholder="Ajouter une émotion (ex: Colère, Tristesse)..." />
                 </div>
                 <div className="space-y-2">
+                    <Label>Profil Holistique (Complément)</Label>
+                    <TagInput value={holisticProfile} onChange={setHolisticProfile} placeholder="Ajouter un tag de profil..." />
+                </div>
+                <div className="space-y-2">
                     <Label>Contre-indication temporaire</Label>
                     <TagInput value={contraindication} onChange={setContraindication} placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." />
                 </div>
 
-                {(pathologie.length > 0 || emotion.length > 0) && (
+                {(pathologie.length > 0 || emotion.length > 0 || holisticProfile.length > 0) && (
                     <div className="pt-6 mt-6 border-t space-y-8">
                         <RecommendationList title="Pathologie" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} />
                         <RecommendationList title="Émotion" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} />
+                        <RecommendationList title="Profil Holistique" products={recommendations.holisticProfile.products} protocols={recommendations.holisticProfile.protocols} />
                     </div>
                 )}
             </CardContent>
@@ -1210,3 +1232,4 @@ export default function AuraPage() {
         </div>
     );
 }
+
