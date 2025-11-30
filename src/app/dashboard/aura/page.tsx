@@ -1020,6 +1020,7 @@ function AuraTestTool() {
         if (!allProducts || !allProtocols) {
             return {
                 pathology: { products: [], protocols: [] },
+                emotion: { products: [], protocols: [] },
             };
         }
 
@@ -1037,16 +1038,17 @@ function AuraTestTool() {
             });
         };
 
-        const productsByPatho = allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
-        const protocolsByPatho = allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
+        const productsByPatho = pathologie.length > 0 ? allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
+        const protocolsByPatho = pathologie.length > 0 ? allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
 
-        const safePathologyProducts = applySafetyFilter(productsByPatho);
-        const safePathologyProtocols = applySafetyFilter(protocolsByPatho);
+        const productsByEmotion = emotion.length > 0 ? allProducts.filter(p => emotion.some(tag => p.pathologies?.includes(tag))) : [];
+        const protocolsByEmotion = emotion.length > 0 ? allProtocols.filter(p => emotion.some(tag => p.pathologies?.includes(tag))) : [];
 
         return {
-            pathology: { products: safePathologyProducts, protocols: safePathologyProtocols },
+            pathology: { products: applySafetyFilter(productsByPatho), protocols: applySafetyFilter(protocolsByPatho) },
+            emotion: { products: applySafetyFilter(productsByEmotion), protocols: applySafetyFilter(protocolsByEmotion) },
         };
-    }, [pathologie, contraindication, selectedSheet, allProducts, allProtocols]);
+    }, [pathologie, emotion, contraindication, selectedSheet, allProducts, allProtocols]);
 
 
     const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
@@ -1073,7 +1075,7 @@ function AuraTestTool() {
                     Recommandations : {title}
                 </h3>
                 {products.length > 0 && (
-                    <div className="pl-8">
+                    <div className="pl-8 space-y-4">
                         <h4 className="font-semibold mb-2">Produits</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {products.map(item => (
@@ -1088,7 +1090,7 @@ function AuraTestTool() {
                     </div>
                 )}
                  {protocols.length > 0 && (
-                    <div className="pl-8 mt-4">
+                    <div className="pl-8 mt-4 space-y-4">
                         <h4 className="font-semibold mb-2">Protocoles</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {protocols.map(item => (
@@ -1163,6 +1165,10 @@ function AuraTestTool() {
                     <Label>Pathologie à traiter</Label>
                     <TagInput value={pathologie} onChange={setPathologie} placeholder="Ajouter une pathologie (ex: Stress, Anxiété)..." />
                 </div>
+                 <div className="space-y-2">
+                    <Label>Émotion du moment</Label>
+                    <TagInput value={emotion} onChange={setEmotion} placeholder="Ajouter une émotion (ex: Tristesse, Colère)..." />
+                </div>
                 
                 <div className="space-y-2">
                     <Label>Contre-indication temporaire</Label>
@@ -1171,6 +1177,7 @@ function AuraTestTool() {
 
                 <div className="pt-6 mt-6 border-t space-y-8">
                      <RecommendationList title="Pathologie(s)" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} icon={HeartPulse} />
+                     <RecommendationList title="Émotion(s)" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} icon={BrainCircuit} />
                 </div>
             </CardContent>
         </Card>
