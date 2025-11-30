@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2 } from "lucide-react";
+import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone } from "lucide-react";
 import { useForm, useFieldArray, useWatch } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -161,7 +161,7 @@ function Cvtheque() {
     const calculateSeniority = (startDate?: string, endDate?: string) => {
         if (!startDate) return null;
         const start = new Date(startDate);
-        const end = endDate ? new Date(endDate) : new Date(); // Use today if no end date
+        const end = endDate ? new Date(endDate) : new Date();
         
         if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
 
@@ -395,7 +395,16 @@ function Cvtheque() {
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
-                                                        <p className="text-sm text-muted-foreground">{selectedClient.email}</p>
+                                                        <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                                          <Mail className="h-4 w-4" />
+                                                          <span>{selectedClient.email}</span>
+                                                        </div>
+                                                        {selectedClient.phone && (
+                                                          <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1">
+                                                            <Phone className="h-4 w-4" />
+                                                            <span>{selectedClient.phone}</span>
+                                                          </div>
+                                                        )}
                                                     </div>
                                                     <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>
                                                 </div>
@@ -408,7 +417,7 @@ function Cvtheque() {
                                                     <FormField control={cvForm.control} name="drivingLicence" render={({ field }) => (<FormItem><FormLabel>Moyen de locomotion et permis</FormLabel><FormControl><TagInput {...field} placeholder="Permis B, Véhicule personnel..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 </CardContent>
                                             </Card>
-
+                                            
                                             <Card>
                                                 <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
@@ -438,7 +447,7 @@ function Cvtheque() {
                                                     <FormField control={cvForm.control} name="fundingOptions" render={({ field }) => ( <FormItem><FormLabel>Financement possible</FormLabel><FormControl><TagInput {...field} placeholder="CPF, Pôle Emploi..."/></FormControl><FormMessage/></FormItem> )}/>
                                                 </CardContent>
                                             </Card>
-                                            
+
                                             <Card>
                                                 <CardHeader><CardTitle>Expériences</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
@@ -472,7 +481,7 @@ function Cvtheque() {
                                                 </CardContent>
                                             </Card>
 
-                                            <Card>
+                                             <Card>
                                                 <CardHeader><CardTitle>Autres et centres d'intérêt</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
                                                     <FormField control={cvForm.control} name="otherInterests" render={({ field }) => (
