@@ -104,6 +104,8 @@ const rncpFormSchema = z.object({
     formationLevel: z.array(z.string()).optional(),
     rncpCode: z.array(z.string()).optional(),
     formationTitle: z.array(z.string()).optional(),
+    codeRomeCompatible: z.array(z.string()).optional(),
+    metierCompatible: z.array(z.string()).optional(),
     skills: z.array(z.string()).optional(),
     activities: z.array(z.string()).optional(),
 });
@@ -440,8 +442,9 @@ function Cvtheque() {
 
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(' • ');
-
-        doc.setFontSize(24);
+        
+        // Header
+        doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
         doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
         y += 8;
@@ -450,76 +453,50 @@ function Cvtheque() {
         const contactInfo = [client.email, client.phone, client.address].filter(Boolean).join(' | ');
         doc.text(contactInfo, 105, y, { align: 'center' });
         y += 10;
-
         doc.setDrawColor(220, 220, 220);
         doc.line(15, y, 195, y);
         y += 10;
 
-        const addSection = (title: string, content?: string | string[], options?: { isList?: boolean }) => {
-            if (!content || (Array.isArray(content) && content.length === 0)) return;
+        const addSection = (title: string, content: string[] = [], isList = false) => {
+            if (content.length === 0) return;
             if (y > 260) { doc.addPage(); y = 20; }
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
             doc.text(title, 15, y);
             y += 2;
             doc.setDrawColor(180, 180, 180);
-            doc.line(15, 60, y);
+            doc.line(15, y, 195, y);
             y += 8;
 
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-            
-            const textToRender = Array.isArray(content) ? content : [content];
-            
-            if (options?.isList) {
-                 textToRender.forEach(item => {
+
+            if (isList) {
+                content.forEach(item => {
                     const lines = doc.splitTextToSize(`- ${item}`, 180);
+                    if (y + (lines.length * 5) > 280) { doc.addPage(); y = 20; }
                     doc.text(lines, 15, y);
                     y += (lines.length * 5) + 2;
-                 });
+                });
             } else {
-                 const lines = doc.splitTextToSize(textToRender.join(' • '), 180);
-                 doc.text(lines, 15, y);
-                 y += (lines.length * 5);
+                const lines = doc.splitTextToSize(content.join(' • '), 180);
+                if (y + (lines.length * 5) > 280) { doc.addPage(); y = 20; }
+                doc.text(lines, 15, y);
+                y += (lines.length * 5);
             }
             y += 10;
         };
-        
-        const addSectionWithColumns = (title: string, leftColumn: string[], rightColumn: string[]) => {
-            if (leftColumn.length === 0 && rightColumn.length === 0) return;
-            if (y > 240) { doc.addPage(); y = 20; }
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(title, 15, y);
-            y += 2;
-            doc.setDrawColor(180, 180, 180);
-            doc.line(15, 60, y);
-            y += 8;
-
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            
-            let leftY = y;
-            let rightY = y;
-
-            if (leftColumn.length > 0) {
-                const leftLines = doc.splitTextToSize(leftColumn, 85);
-                doc.text(leftLines, 15, leftY);
-                leftY += leftLines.length * 5;
-            }
-
-            if (rightColumn.length > 0) {
-                 const rightLines = doc.splitTextToSize(rightColumn, 85);
-                doc.text(rightLines, 110, rightY);
-                rightY += rightLines.length * 5;
-            }
-            
-            y = Math.max(leftY, rightY) + 10;
-        }
 
         const addExperienceSection = (exps?: CvProfile['experiences']) => {
             if (!exps || exps.length === 0) return;
-            addSection("Expériences Professionnelles", ""); 
+            if (y > 250) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text("Expériences Professionnelles", 15, y);
+            y += 2;
+            doc.setDrawColor(180, 180, 180);
+            doc.line(15, y, 195, y);
+            y += 8;
 
             exps.forEach(exp => {
                 if (y > 250) { doc.addPage(); y = 20; }
@@ -543,6 +520,7 @@ function Cvtheque() {
                 }
                 y += 4;
             });
+             y += 10;
         };
 
         addSection("Projet Professionnel", [
@@ -551,23 +529,19 @@ function Cvtheque() {
             `Type de contrat: ${join(profile.contractType)}`,
             `Durée: ${join(profile.duration)}`,
             `Environnement: ${join(profile.workEnvironment)}`,
-        ], { isList: true });
+        ], true);
+        
+        addExperienceSection(profile.experiences);
 
         addSection("Formations", [
             `Niveau le plus élevé: ${join(profile.highestFormation)} - Compétences: ${join(profile.highestFormationSkills)}`,
             `En lien avec le métier actuel: ${join(profile.currentJobFormation)} - Compétences: ${join(profile.currentJobFormationSkills)}`,
             `En lien avec le projet: ${join(profile.projectFormation)} - Compétences: ${join(profile.projectFormationSkills)}`
-        ].filter(line => !line.endsWith(': ') && !line.endsWith(':  - Compétences: ')), { isList: true });
+        ].filter(line => !line.endsWith(': ') && !line.endsWith(':  - Compétences: ')), true);
         
-        addExperienceSection(profile.experiences);
-        
-        addSectionWithColumns("Compétences & Intérêts", 
-            [`Softskills: ${join(profile.softskills)}`],
-            [`Centres d'intérêt: ${join(profile.otherInterests)}`]
-        );
-
-        addSection("Mobilité & Permis", `${join(profile.mobility)} | ${join(profile.drivingLicence)}`);
-
+        addSection("Compétences comportementales (Softskills)", checkArray(profile.softskills));
+        addSection("Centres d'intérêt", checkArray(profile.otherInterests));
+        addSection("Mobilité & Permis", [`${join(profile.mobility)}`, `${join(profile.drivingLicence)}`].filter(Boolean));
 
         doc.save(`CV_${client.firstName}_${client.lastName}.pdf`);
     };
@@ -850,9 +824,7 @@ function Cvtheque() {
                                         </TableCell>
                                         <TableCell className="text-right">
                                              <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                                                </DropdownMenuTrigger>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => handleEdit(p)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
                                                      <DropdownMenuItem onClick={() => generateCvPdf(p)}><Download className="mr-2 h-4 w-4" /> Exporter en PDF</DropdownMenuItem>
@@ -910,12 +882,12 @@ function RncpManager() {
 
     const form = useForm<RncpFormData>({
         resolver: zodResolver(rncpFormSchema),
-        defaultValues: { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], skills: [], activities: [] }
+        defaultValues: { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], codeRomeCompatible: [], metierCompatible: [], skills: [], activities: [] }
     });
 
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingFiche || { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], skills: [], activities: [] });
+            form.reset(editingFiche || { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], codeRomeCompatible: [], metierCompatible: [], skills: [], activities: [] });
         }
     }, [isSheetOpen, editingFiche, form]);
 
@@ -1005,6 +977,8 @@ function RncpManager() {
                                     <FormField control={form.control} name="formationLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau (ex: 5, 6...)" /></FormControl><FormMessage /></FormItem> )}/>
                                     <FormField control={form.control} name="rncpCode" render={({ field }) => ( <FormItem><FormLabel>Code RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code (ex: RNCP31114...)" /></FormControl><FormMessage /></FormItem> )}/>
                                     <FormField control={form.control} name="formationTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="codeRomeCompatible" render={({ field }) => ( <FormItem><FormLabel>Code ROME compatible</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code ROME..." /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField control={form.control} name="metierCompatible" render={({ field }) => ( <FormItem><FormLabel>Métier compatible</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl><FormMessage /></FormItem> )}/>
                                     <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
                                     <FormField control={form.control} name="activities" render={({ field }) => ( <FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
                                 </div>
@@ -1090,6 +1064,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
 
 

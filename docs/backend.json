@@ -1386,6 +1386,24 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["counselorId", "clientId", "clientName", "createdAt", "updatedAt"]
+    },
+    "FicheRNCP": {
+        "title": "Fiche RNCP",
+        "type": "object",
+        "description": "Represents a sheet for the Répertoire National des Certifications Professionnelles.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "formationName": { "type": "string" },
+            "formationLevel": { "type": "array", "items": { "type": "string" } },
+            "rncpCode": { "type": "array", "items": { "type": "string" } },
+            "formationTitle": { "type": "array", "items": { "type": "string" } },
+            "skills": { "type": "array", "items": { "type": "string" } },
+            "activities": { "type": "array", "items": { "type": "string" } },
+            "codeRomeCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible ROME codes." },
+            "metierCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible job titles." }
+        },
+        "required": ["counselorId", "formationName"]
     }
   },
   "auth": {
@@ -1428,6 +1446,22 @@
           "entityName": "WellnessSheet",
           "schema": { "$ref": "#/entities/WellnessSheet" },
           "description": "Stores wellness sheets created by a counselor for their clients."
+        }
+      },
+      {
+        "path": "/users/{userId}/cv_profiles/{profileId}",
+        "definition": {
+            "entityName": "CvProfile",
+            "schema": { "$ref": "#/entities/CvProfile" },
+            "description": "Stores CV profiles created by a counselor for their clients."
+        }
+      },
+       {
+        "path": "/users/{userId}/rncp_sheets/{sheetId}",
+        "definition": {
+            "entityName": "FicheRNCP",
+            "schema": { "$ref": "#/entities/FicheRNCP" },
+            "description": "Stores RNCP sheets created by a counselor."
         }
       },
       {
