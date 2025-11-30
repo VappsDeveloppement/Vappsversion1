@@ -1020,8 +1020,6 @@ function AuraTestTool() {
         if (!allProducts || !allProtocols) {
             return {
                 pathology: { products: [], protocols: [] },
-                emotion: { products: [], protocols: [] },
-                profile: { products: [], protocols: [] },
             };
         }
 
@@ -1041,34 +1039,14 @@ function AuraTestTool() {
 
         const productsByPatho = allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
         const protocolsByPatho = allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
-        
-        const productsByEmotion = allProducts.filter(p => emotion.some(tag => p.pathologies?.includes(tag)));
-        const protocolsByEmotion = allProtocols.filter(p => emotion.some(tag => p.pathologies?.includes(tag)));
 
         const safePathologyProducts = applySafetyFilter(productsByPatho);
         const safePathologyProtocols = applySafetyFilter(protocolsByPatho);
-        const safeEmotionProducts = applySafetyFilter(productsByEmotion);
-        const safeEmotionProtocols = applySafetyFilter(protocolsByEmotion);
-
-        const allSafeRecommendations = [
-            ...safePathologyProducts,
-            ...safePathologyProtocols,
-            ...safeEmotionProducts,
-            ...safeEmotionProtocols,
-        ];
-        
-        const uniqueRecommendations = Array.from(new Map(allSafeRecommendations.map(item => [item.id, item])).values());
-        
-        const profileProducts = uniqueRecommendations.filter(item => 'title' in item && holisticProfile.some(tag => item.holisticProfile?.includes(tag))) as Product[];
-        const profileProtocols = uniqueRecommendations.filter(item => 'name' in item && holisticProfile.some(tag => item.holisticProfile?.includes(tag))) as Protocole[];
-
 
         return {
             pathology: { products: safePathologyProducts, protocols: safePathologyProtocols },
-            emotion: { products: safeEmotionProducts, protocols: safeEmotionProtocols },
-            profile: { products: profileProducts, protocols: profileProtocols },
         };
-    }, [pathologie, emotion, contraindication, holisticProfile, selectedSheet, allProducts, allProtocols]);
+    }, [pathologie, contraindication, selectedSheet, allProducts, allProtocols]);
 
 
     const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
@@ -1083,13 +1061,10 @@ function AuraTestTool() {
         );
     };
 
-    const RecommendationList = ({ title, items, icon: Icon }: { title: string; items: (Product | Protocole)[]; icon: React.ElementType }) => {
-        if (items.length === 0) {
+    const RecommendationList = ({ title, products, protocols, icon: Icon }: { title: string; products: Product[]; protocols: Protocole[]; icon: React.ElementType }) => {
+        if (products.length === 0 && protocols.length === 0) {
             return null;
         }
-
-        const products = items.filter(item => 'title' in item) as Product[];
-        const protocols = items.filter(item => 'name' in item) as Protocole[];
 
         return (
             <div className="space-y-4">
@@ -1113,7 +1088,7 @@ function AuraTestTool() {
                     </div>
                 )}
                  {protocols.length > 0 && (
-                    <div className="pl-8">
+                    <div className="pl-8 mt-4">
                         <h4 className="font-semibold mb-2">Protocoles</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             {protocols.map(item => (
@@ -1188,11 +1163,6 @@ function AuraTestTool() {
                     <Label>Pathologie à traiter</Label>
                     <TagInput value={pathologie} onChange={setPathologie} placeholder="Ajouter une pathologie (ex: Stress, Anxiété)..." />
                 </div>
-
-                <div className="space-y-2">
-                    <Label>Émotion du moment</Label>
-                    <TagInput value={emotion} onChange={setEmotion} placeholder="Ajouter une émotion (ex: Colère, Tristesse)..." />
-                </div>
                 
                 <div className="space-y-2">
                     <Label>Contre-indication temporaire</Label>
@@ -1200,9 +1170,7 @@ function AuraTestTool() {
                 </div>
 
                 <div className="pt-6 mt-6 border-t space-y-8">
-                     <RecommendationList title="Pathologie(s)" items={[...recommendations.pathology.products, ...recommendations.pathology.protocols]} icon={HeartPulse} />
-                     <RecommendationList title="Émotion(s)" items={[...recommendations.emotion.products, ...recommendations.emotion.protocols]} icon={BrainCircuit} />
-                     <RecommendationList title="Selon le Profil" items={[...recommendations.profile.products, ...recommendations.profile.protocols]} icon={Check} />
+                     <RecommendationList title="Pathologie(s)" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} icon={HeartPulse} />
                 </div>
             </CardContent>
         </Card>
