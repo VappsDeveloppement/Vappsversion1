@@ -5,7 +5,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit } from "lucide-react";
+import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit, Download } from "lucide-react";
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -30,6 +30,8 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoreHorizontal } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 
 type Client = {
@@ -152,6 +154,11 @@ function Cvtheque() {
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
     const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
 
+    const clientsQuery = useMemoFirebase(() => {
+        if(!user) return null;
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
     
     const newUserForm = useForm<NewUserFormData>({
         resolver: zodResolver(newUserSchema),
@@ -189,20 +196,16 @@ function Cvtheque() {
     useEffect(() => {
         if (isSheetOpen) {
             if (editingProfile) {
-                const client: Client = {
-                    id: editingProfile.clientId,
-                    firstName: editingProfile.clientName.split(' ')[0],
-                    lastName: editingProfile.clientName.split(' ').slice(1).join(' '),
-                    email: '', 
-                    dateJoined: '', 
-                };
-                setSelectedClient(client);
+                const client: Client | undefined = clients?.find(c => c.id === editingProfile.clientId);
+                if (client) {
+                    setSelectedClient(client);
+                }
                 cvForm.reset(editingProfile);
             } else {
                  resetSheet();
             }
         }
-    }, [isSheetOpen, editingProfile, cvForm]);
+    }, [isSheetOpen, editingProfile, cvForm, clients]);
 
 
     const calculateSeniority = (startDate?: string, endDate?: string) => {
@@ -293,7 +296,7 @@ function Cvtheque() {
                     recipientEmail: values.email,
                     recipientName: `${values.firstName} ${values.lastName}`,
                     subject: `Bienvenue ! Vos accès à votre espace client`,
-                    textBody: `Bonjour ${values.firstName},\n\nUn compte client a été créé pour vous. Vous pouvez vous connecter en utilisant les identifiants suivants:\nEmail: ${values.email}\nMot de passe: ${values.password}\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
+                    textBody: `Bonjour ${values.firstName},\n\nUn compte client a été créé pour vous. Vous pouvez vous connecter à votre espace en utilisant les identifiants suivants:\nEmail: ${values.email}\nMot de passe: ${values.password}\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
                     htmlBody: `<p>Bonjour ${values.firstName},</p><p>Un compte client a été créé pour vous. Vous pouvez vous connecter à votre espace en utilisant les identifiants suivants :</p><ul><li><strong>Email :</strong> ${values.email}</li><li><strong>Mot de passe :</strong> ${values.password}</li></ul><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
                 });
             }
@@ -382,6 +385,120 @@ function Cvtheque() {
         toast({ title: "Statut mis à jour" });
     };
 
+    const generateCvPdf = (profile: CvProfile) => {
+        const client = clients?.find(c => c.id === profile.clientId);
+        if (!client) {
+            toast({ title: "Erreur", description: "Données client introuvables.", variant: "destructive" });
+            return;
+        }
+
+        const doc = new jsPDF();
+        let y = 15;
+
+        // Header
+        doc.setFontSize(22);
+        doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
+        y += 8;
+        doc.setFontSize(10);
+        const contactInfo = [client.email, client.phone, client.address].filter(Boolean).join(' | ');
+        doc.text(contactInfo, 105, y, { align: 'center' });
+        y += 10;
+
+        // Projet Pro
+        doc.setFontSize(16);
+        doc.text("Projet Professionnel", 15, y);
+        y += 7;
+        autoTable(doc, {
+            startY: y,
+            theme: 'plain',
+            body: [
+                ['Dernier métier', (profile.lastJob || []).join(', ')],
+                ['Métier recherché', (profile.searchedJob || []).join(', ')],
+                ['Contrat', (profile.contractType || []).join(', ')],
+                ['Durée', (profile.duration || []).join(', ')],
+                ['Environnement', (profile.workEnvironment || []).join(', ')],
+            ],
+            styles: { fontSize: 10 },
+            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
+        });
+        y = (doc as any).lastAutoTable.finalY + 10;
+        doc.setDrawColor(220);
+        doc.line(15, y - 5, 195, y - 5);
+
+        // Two columns
+        const leftColumnX = 15;
+        const rightColumnX = 90;
+        const columnWidth = 80;
+        let leftY = y;
+        let rightY = y;
+
+        const addSection = (column: 'left' | 'right', title: string, content: string[] | undefined) => {
+            if (!content || content.length === 0) return;
+            let startX = column === 'left' ? leftColumnX : rightColumnX;
+            let startY = column === 'left' ? leftY : rightY;
+            
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, startX, startY);
+            startY += 6;
+            
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const lines = doc.splitTextToSize(content.join(' • '), columnWidth);
+            doc.text(lines, startX, startY);
+            
+            if (column === 'left') {
+                leftY = startY + lines.length * 5 + 8;
+            } else {
+                rightY = startY + lines.length * 5 + 8;
+            }
+        };
+
+        addSection('left', 'Mobilité', profile.mobility);
+        addSection('left', 'Permis', profile.drivingLicence);
+        addSection('left', 'Formation la plus élevée', profile.highestFormation);
+        addSection('left', 'Compétences (Formation élevée)', profile.highestFormationSkills);
+        addSection('left', 'Formation (Métier actuel)', profile.currentJobFormation);
+        addSection('left', 'Compétences (Métier actuel)', profile.currentJobFormationSkills);
+        addSection('left', 'Formation (Projet)', profile.projectFormation);
+        addSection('left', 'Compétences (Projet)', profile.projectFormationSkills);
+        addSection('left', 'Financements possibles', profile.fundingOptions);
+        addSection('left', 'Centres d\'intérêt', profile.otherInterests);
+        addSection('left', 'Softskills', profile.softskills);
+        
+        // Experiences
+        doc.setFontSize(12);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Expériences Professionnelles', rightColumnX, rightY);
+        rightY += 8;
+
+        profile.experiences?.forEach(exp => {
+             if (rightY > 260) {
+                doc.addPage();
+                rightY = 15;
+            }
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            const expTitle = `${exp.jobTitle?.join(', ')} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
+            doc.text(expTitle, rightColumnX, rightY, { maxWidth: columnWidth });
+            rightY += 5;
+
+            doc.setFont('helvetica', 'normal');
+            const activitiesText = `Activités: ${exp.activities?.join(', ')}`;
+            const activitiesLines = doc.splitTextToSize(activitiesText, columnWidth);
+            doc.text(activitiesLines, rightColumnX, rightY);
+            rightY += activitiesLines.length * 5 + 2;
+
+            const skillsText = `Compétences: ${exp.characteristics?.join(', ')}`;
+            const skillsLines = doc.splitTextToSize(skillsText, columnWidth);
+            doc.text(skillsLines, rightColumnX, rightY);
+            rightY += skillsLines.length * 5 + 6;
+        });
+
+
+        doc.save(`CV_${client.firstName}_${client.lastName}.pdf`);
+    };
+
     const filteredProfiles = useMemo(() => {
         return (cvProfiles || []).filter(p => {
             const statusMatch = statusFilter === 'all' || p.status === statusFilter;
@@ -435,8 +552,13 @@ function Cvtheque() {
                                         )}
                                         {searchResult && searchResult !== 'not-found' && (
                                             <Card className="p-4">
-                                                <p className="font-semibold">{searchResult.firstName} {searchResult.lastName}</p>
-                                                <p className="text-sm text-muted-foreground">{searchResult.email}</p>
+                                                <div className='flex items-start justify-between'>
+                                                  <div>
+                                                    <p className="font-semibold">{searchResult.firstName} {searchResult.lastName}</p>
+                                                    <p className="text-sm text-muted-foreground">{searchResult.email}</p>
+                                                  </div>
+                                                   <p className='text-xs text-muted-foreground'>Client depuis: {new Date(searchResult.dateJoined).toLocaleDateString()}</p>
+                                                </div>
                                                 
                                                 {searchResult.counselorIds?.includes(user?.uid || '') ? (
                                                      <Button className="w-full mt-4" onClick={() => handleSelectExistingClient(searchResult)}>
@@ -666,6 +788,7 @@ function Cvtheque() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuItem onClick={() => handleEdit(p)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
+                                                     <DropdownMenuItem onClick={() => generateCvPdf(p)}><Download className="mr-2 h-4 w-4" /> Exporter en PDF</DropdownMenuItem>
                                                     <DropdownMenuSub>
                                                         <DropdownMenuSubTrigger>Changer statut</DropdownMenuSubTrigger>
                                                         <DropdownMenuPortal>
