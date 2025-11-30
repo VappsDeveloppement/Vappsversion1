@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
@@ -21,6 +22,7 @@ import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 
 type Client = {
     id: string;
@@ -33,6 +35,19 @@ type Client = {
     city?: string;
     counselorIds?: string[];
 };
+
+type CvProfile = {
+    id: string;
+    clientId: string;
+    clientName: string;
+    mobility?: string[];
+    drivingLicence?: string[];
+    currentJob?: string[];
+    searchedJob?: string[];
+    contractType?: string[];
+    duration?: string[];
+    workEnvironment?: string[];
+}
 
 const newUserSchema = z.object({
     firstName: z.string().min(1, 'Le prénom est requis.'),
@@ -49,6 +64,11 @@ type NewUserFormData = z.infer<typeof newUserSchema>;
 const cvProfileSchema = z.object({
   mobility: z.array(z.string()).optional(),
   drivingLicence: z.array(z.string()).optional(),
+  currentJob: z.array(z.string()).optional(),
+  searchedJob: z.array(z.string()).optional(),
+  contractType: z.array(z.string()).optional(),
+  duration: z.array(z.string()).optional(),
+  workEnvironment: z.array(z.string()).optional(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 
@@ -108,6 +128,11 @@ function Cvtheque() {
       defaultValues: {
         mobility: [],
         drivingLicence: [],
+        currentJob: [],
+        searchedJob: [],
+        contractType: [],
+        duration: [],
+        workEnvironment: [],
       }
     });
 
@@ -219,10 +244,19 @@ function Cvtheque() {
     };
 
     const onCvProfileSubmit = (data: CvProfileFormData) => {
-      console.log(data);
-      // Logic to save the CV profile will be added here
-      toast({title: "Profil CV enregistré (simulation)", description: "La logique d'enregistrement sera implémentée."})
-      resetSheet();
+        if (!user || !selectedClient) return;
+
+        const cvProfileData = {
+            counselorId: user.uid,
+            clientId: selectedClient.id,
+            clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
+            ...data,
+        };
+        
+        addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), cvProfileData);
+        
+        toast({title: "Profil CV enregistré"});
+        resetSheet();
     }
 
     return (
@@ -358,6 +392,19 @@ function Cvtheque() {
                                                     />
                                                 </CardContent>
                                             </Card>
+
+                                            <Card>
+                                                <CardHeader>
+                                                    <CardTitle>Projet Professionnel</CardTitle>
+                                                </CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    <FormField control={cvForm.control} name="currentJob" render={({ field }) => ( <FormItem><FormLabel>Métier Actuel</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, Intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                </CardContent>
+                                            </Card>
                                             
                                             <SheetFooter className="pt-6 border-t">
                                               <SheetClose asChild><Button type="button" variant="outline">Fermer</Button></SheetClose>
@@ -456,3 +503,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
