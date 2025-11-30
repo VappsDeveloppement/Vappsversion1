@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -12,7 +13,7 @@ import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDoc
 import { collection, query, where, doc, getDocs, arrayUnion } from 'firebase/firestore';
 import { useFirestore, useAuth } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
+import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -26,6 +27,9 @@ import { differenceInMonths, differenceInYears } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal } from '@/components/ui/dropdown-menu';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { MoreHorizontal } from 'lucide-react';
 
 
 type Client = {
@@ -82,6 +86,7 @@ const cvProfileSchema = z.object({
   experiences: z.array(experienceSchema).optional(),
   otherInterests: z.array(z.string()).optional(),
   softskills: z.array(z.string()).optional(),
+  status: z.enum(['disponible', 'en_mission', 'en_emploi']).default('disponible').optional(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 
@@ -140,6 +145,9 @@ function Cvtheque() {
     const [showPassword, setShowPassword] = useState(false);
     const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
     const [profileToDelete, setProfileToDelete] = useState<CvProfile | null>(null);
+
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('all');
     
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
     const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
@@ -169,6 +177,7 @@ function Cvtheque() {
         experiences: [],
         otherInterests: [],
         softskills: [],
+        status: 'disponible',
       }
     });
     
@@ -366,6 +375,31 @@ function Cvtheque() {
         }
     };
 
+    const handleStatusUpdate = (profileId: string, status: 'disponible' | 'en_mission' | 'en_emploi') => {
+        if (!user) return;
+        const profileRef = doc(firestore, `users/${user.uid}/cv_profiles`, profileId);
+        setDocumentNonBlocking(profileRef, { status }, { merge: true });
+        toast({ title: "Statut mis à jour" });
+    };
+
+    const filteredProfiles = useMemo(() => {
+        return (cvProfiles || []).filter(p => {
+            const statusMatch = statusFilter === 'all' || p.status === statusFilter;
+            const searchMatch = !searchTerm ||
+                p.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                (p.lastJob || []).some(job => job.toLowerCase().includes(searchTerm.toLowerCase())) ||
+                (p.searchedJob || []).some(job => job.toLowerCase().includes(searchTerm.toLowerCase()));
+            return statusMatch && searchMatch;
+        });
+    }, [cvProfiles, searchTerm, statusFilter]);
+
+    const statusConfig = {
+        disponible: { text: "Disponible", variant: "default" as const },
+        en_mission: { text: "En mission", variant: "secondary" as const },
+        en_emploi: { text: "En emploi", variant: "outline" as const },
+    };
+
+
     return (
         <Card>
             <CardHeader>
@@ -477,8 +511,8 @@ function Cvtheque() {
                                             <Card>
                                                 <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
                                                     <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
@@ -579,6 +613,25 @@ function Cvtheque() {
                         </SheetContent>
                     </Sheet>
                 </div>
+                 <div className="flex flex-col md:flex-row gap-2 mt-4">
+                    <Input
+                        placeholder="Rechercher par nom ou métier..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="flex-grow"
+                    />
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="w-full md:w-[180px]">
+                            <SelectValue placeholder="Filtrer par statut" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">Tous les statuts</SelectItem>
+                            <SelectItem value="disponible">Disponible</SelectItem>
+                            <SelectItem value="en_mission">En mission</SelectItem>
+                            <SelectItem value="en_emploi">En emploi</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </CardHeader>
             <CardContent>
                  <div className="border rounded-lg">
@@ -588,27 +641,50 @@ function Cvtheque() {
                                 <TableHead>Nom du Candidat</TableHead>
                                 <TableHead>Dernier Métier</TableHead>
                                 <TableHead>Métier Recherché</TableHead>
+                                <TableHead>Statut</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {areCvProfilesLoading ? (
-                                <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                            ) : cvProfiles && cvProfiles.length > 0 ? (
-                                cvProfiles.map(p => (
+                                <TableRow><TableCell colSpan={5}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            ) : filteredProfiles && filteredProfiles.length > 0 ? (
+                                filteredProfiles.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell>{p.clientName}</TableCell>
-                                        <TableCell>{Array.isArray(p.lastJob) ? p.lastJob.join(', ') : p.lastJob}</TableCell>
-                                        <TableCell>{Array.isArray(p.searchedJob) ? p.searchedJob.join(', ') : p.searchedJob}</TableCell>
+                                        <TableCell>{Array.isArray(p.lastJob) ? p.lastJob.join(', ') : p.lastJob || '-'}</TableCell>
+                                        <TableCell>{Array.isArray(p.searchedJob) ? p.searchedJob.join(', ') : p.searchedJob || '-'}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={statusConfig[p.status || 'disponible'].variant}>
+                                                {statusConfig[p.status || 'disponible'].text}
+                                            </Badge>
+                                        </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}><Edit className="h-4 w-4"/></Button>
-                                            <Button variant="ghost" size="icon" onClick={() => setProfileToDelete(p)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                             <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => handleEdit(p)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
+                                                    <DropdownMenuSub>
+                                                        <DropdownMenuSubTrigger>Changer statut</DropdownMenuSubTrigger>
+                                                        <DropdownMenuPortal>
+                                                            <DropdownMenuSubContent>
+                                                                <DropdownMenuItem onClick={() => handleStatusUpdate(p.id, 'disponible')}>Disponible</DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleStatusUpdate(p.id, 'en_mission')}>En mission</DropdownMenuItem>
+                                                                <DropdownMenuItem onClick={() => handleStatusUpdate(p.id, 'en_emploi')}>En emploi</DropdownMenuItem>
+                                                            </DropdownMenuSubContent>
+                                                        </DropdownMenuPortal>
+                                                    </DropdownMenuSub>
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => setProfileToDelete(p)}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
                                         </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">Aucun profil CV créé.</TableCell>
+                                    <TableCell colSpan={5} className="h-24 text-center">Aucun profil CV créé.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -708,9 +784,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
-
-    
-
-    
