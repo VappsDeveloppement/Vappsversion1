@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -168,6 +169,7 @@ function ProductManager() {
         if (!user) return;
         const productData = {
             ...data,
+            price: data.price === undefined || isNaN(data.price) ? null : data.price,
             counselorId: user.uid,
             imageUrl: imagePreview,
             characteristics: data.characteristics || [],
