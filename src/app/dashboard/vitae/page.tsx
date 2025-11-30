@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -63,8 +64,10 @@ const experienceSchema = z.object({
 const cvProfileSchema = z.object({
   mobility: z.array(z.string()).optional(),
   drivingLicence: z.array(z.string()).optional(),
-  currentJob: z.array(z.string()).optional(),
+  lastJob: z.array(z.string()).optional(),
+  lastJobTitle: z.array(z.string()).optional(),
   searchedJob: z.array(z.string()).optional(),
+  searchedJobTitle: z.array(z.string()).optional(),
   contractType: z.array(z.string()).optional(),
   duration: z.array(z.string()).optional(),
   workEnvironment: z.array(z.string()).optional(),
@@ -72,9 +75,8 @@ const cvProfileSchema = z.object({
   currentJobFormation: z.array(z.string()).optional(),
   projectFormation: z.array(z.string()).optional(),
   fundingOptions: z.array(z.string()).optional(),
-  lastJob: z.array(z.string()).optional(),
-  lastJobTitle: z.array(z.string()).optional(),
   experiences: z.array(experienceSchema).optional(),
+  otherInterests: z.array(z.string()).optional(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 
@@ -134,8 +136,10 @@ function Cvtheque() {
       defaultValues: {
         mobility: [],
         drivingLicence: [],
-        currentJob: [],
+        lastJob: [],
+        lastJobTitle: [],
         searchedJob: [],
+        searchedJobTitle: [],
         contractType: [],
         duration: [],
         workEnvironment: [],
@@ -143,9 +147,8 @@ function Cvtheque() {
         currentJobFormation: [],
         projectFormation: [],
         fundingOptions: [],
-        lastJob: [],
-        lastJobTitle: [],
         experiences: [],
+        otherInterests: [],
       }
     });
 
@@ -292,8 +295,10 @@ function Cvtheque() {
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
             mobility: data.mobility || [],
             drivingLicence: data.drivingLicence || [],
-            currentJob: data.currentJob || [],
+            lastJob: data.lastJob || [],
+            lastJobTitle: data.lastJobTitle || [],
             searchedJob: data.searchedJob || [],
+            searchedJobTitle: data.searchedJobTitle || [],
             contractType: data.contractType || [],
             duration: data.duration || [],
             workEnvironment: data.workEnvironment || [],
@@ -301,9 +306,8 @@ function Cvtheque() {
             currentJobFormation: data.currentJobFormation || [],
             projectFormation: data.projectFormation || [],
             fundingOptions: data.fundingOptions || [],
-            lastJob: data.lastJob || [],
-            lastJobTitle: data.lastJobTitle || [],
             experiences: data.experiences || [],
+            otherInterests: data.otherInterests || [],
         };
         
         addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), cvProfileData);
@@ -474,6 +478,21 @@ function Cvtheque() {
                                                 </CardContent>
                                             </Card>
 
+                                            <Card>
+                                                <CardHeader><CardTitle>Autres et centres d'intérêt</CardTitle></CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    <FormField control={cvForm.control} name="otherInterests" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Centres d'intérêt, activités extra-professionnelles, etc.</FormLabel>
+                                                            <FormControl>
+                                                                <TagInput {...field} placeholder="Ajouter un intérêt..."/>
+                                                            </FormControl>
+                                                            <FormMessage/>
+                                                        </FormItem>
+                                                    )}/>
+                                                </CardContent>
+                                            </Card>
+
                                             <SheetFooter className="pt-6 border-t">
                                               <SheetClose asChild><Button type="button" variant="outline">Fermer</Button></SheetClose>
                                               <Button type="submit">Enregistrer le profil</Button>
@@ -571,3 +590,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
