@@ -1401,7 +1401,8 @@
             "skills": { "type": "array", "items": { "type": "string" } },
             "activities": { "type": "array", "items": { "type": "string" } },
             "codeRomeCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible ROME codes." },
-            "metierCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible job titles." }
+            "metierCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible job titles." },
+            "trainingIds": { "type": "array", "items": { "type": "string" }, "description": "Associated e-learning trainings." }
         },
         "required": ["counselorId", "formationName"]
     }

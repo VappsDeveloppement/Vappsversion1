@@ -32,6 +32,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { MoreHorizontal } from 'lucide-react';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { Checkbox } from '@/components/ui/checkbox';
 
 
 type Client = {
@@ -108,12 +109,18 @@ const rncpFormSchema = z.object({
     metierCompatible: z.array(z.string()).optional(),
     skills: z.array(z.string()).optional(),
     activities: z.array(z.string()).optional(),
+    trainingIds: z.array(z.string()).optional(),
 });
 type RncpFormData = z.infer<typeof rncpFormSchema>;
 
 type FicheRNCP = RncpFormData & {
     id: string;
     counselorId: string;
+};
+
+type Training = {
+    id: string;
+    title: string;
 };
 
 
@@ -369,7 +376,7 @@ function Cvtheque() {
     const onCvProfileSubmit = (data: CvProfileFormData) => {
         if (!user || !selectedClient) return;
     
-        const cvProfileData = {
+        const cvProfileData: Omit<CvProfile, 'id'> = {
             counselorId: user.uid,
             clientId: selectedClient.id,
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
@@ -443,7 +450,6 @@ function Cvtheque() {
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(' • ');
         
-        // Header
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
         doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
@@ -467,7 +473,7 @@ function Cvtheque() {
             doc.setDrawColor(180, 180, 180);
             doc.line(15, y, 195, y);
             y += 8;
-
+            
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
 
@@ -880,14 +886,18 @@ function RncpManager() {
     const fichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_sheets`)) : null, [user, firestore]);
     const { data: fiches, isLoading } = useCollection<FicheRNCP>(fichesQuery);
 
+    const trainingsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'trainings'), where('authorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+
+
     const form = useForm<RncpFormData>({
         resolver: zodResolver(rncpFormSchema),
-        defaultValues: { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], codeRomeCompatible: [], metierCompatible: [], skills: [], activities: [] }
+        defaultValues: { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], codeRomeCompatible: [], metierCompatible: [], skills: [], activities: [], trainingIds: [] }
     });
 
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingFiche || { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], codeRomeCompatible: [], metierCompatible: [], skills: [], activities: [] });
+            form.reset(editingFiche || { formationName: '', formationLevel: [], rncpCode: [], formationTitle: [], codeRomeCompatible: [], metierCompatible: [], skills: [], activities: [], trainingIds: [] });
         }
     }, [isSheetOpen, editingFiche, form]);
 
@@ -938,17 +948,19 @@ function RncpManager() {
                             <TableRow>
                                 <TableHead>Nom de la Formation</TableHead>
                                 <TableHead>Code(s) RNCP</TableHead>
+                                <TableHead>Formations Associées</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             {isLoading ? (
-                                <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                                <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                             ) : fiches && fiches.length > 0 ? (
                                 fiches.map((fiche) => (
                                     <TableRow key={fiche.id}>
                                         <TableCell className="font-medium">{fiche.formationName}</TableCell>
                                         <TableCell>{Array.isArray(fiche.rncpCode) ? fiche.rncpCode.join(', ') : ''}</TableCell>
+                                        <TableCell>{fiche.trainingIds?.length || 0}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
                                             <Button variant="ghost" size="icon" onClick={() => handleDelete(fiche.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
@@ -957,7 +969,7 @@ function RncpManager() {
                                 ))
                             ) : (
                                 <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">Aucune fiche RNCP créée.</TableCell>
+                                    <TableCell colSpan={4} className="h-24 text-center">Aucune fiche RNCP créée.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -981,6 +993,54 @@ function RncpManager() {
                                     <FormField control={form.control} name="metierCompatible" render={({ field }) => ( <FormItem><FormLabel>Métier compatible</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl><FormMessage /></FormItem> )}/>
                                     <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
                                     <FormField control={form.control} name="activities" render={({ field }) => ( <FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
+                                    <FormField
+                                        control={form.control}
+                                        name="trainingIds"
+                                        render={() => (
+                                            <FormItem>
+                                                <div className="mb-4">
+                                                    <FormLabel className="text-base">Formations associées</FormLabel>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        Liez une ou plusieurs de vos formations à cette fiche RNCP.
+                                                    </p>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    {areTrainingsLoading ? <Skeleton className="h-20 w-full" /> : trainings && trainings.length > 0 ? (
+                                                        trainings.map((training) => (
+                                                            <FormField
+                                                                key={training.id}
+                                                                control={form.control}
+                                                                name="trainingIds"
+                                                                render={({ field }) => {
+                                                                    return (
+                                                                        <FormItem
+                                                                            key={training.id}
+                                                                            className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md"
+                                                                        >
+                                                                            <FormControl>
+                                                                                <Checkbox
+                                                                                    checked={field.value?.includes(training.id)}
+                                                                                    onCheckedChange={(checked) => {
+                                                                                        return checked
+                                                                                            ? field.onChange([...(field.value || []), training.id])
+                                                                                            : field.onChange(field.value?.filter((value) => value !== training.id));
+                                                                                    }}
+                                                                                />
+                                                                            </FormControl>
+                                                                            <FormLabel className="font-normal">{training.title}</FormLabel>
+                                                                        </FormItem>
+                                                                    );
+                                                                }}
+                                                            />
+                                                        ))
+                                                    ) : (
+                                                        <p className="text-sm text-muted-foreground">Aucune formation créée. Allez dans l'onglet E-learning pour en ajouter.</p>
+                                                    )}
+                                                </div>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </div>
                             </ScrollArea>
                             <SheetFooter className="pt-6 border-t mt-auto">
@@ -1064,6 +1124,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
 
 
