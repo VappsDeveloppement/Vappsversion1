@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +31,7 @@ import { useAgency } from "@/context/agency-provider";
 import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { ChevronsUpDown, Check } from "lucide-react";
+import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
@@ -1018,47 +1018,41 @@ function AuraTestTool() {
     
     const recommendations = useMemo(() => {
         if (!allProducts || !allProtocols) {
-            return { pathology: [], emotion: [], profile: [] };
+            return { pathology: [] };
         }
-
+    
+        // 1. Combine all contraindications for the safety filter
         const allContraindications = new Set([
             ...(selectedSheet?.contraindications || []),
             ...(selectedSheet?.allergies || []),
             ...contraindication,
         ]);
-        
+    
+        // 2. Create the safety filter function
         const applySafetyFilter = <T extends Product | Protocole>(items: T[]): T[] => {
             if (allContraindications.size === 0) return items;
             return items.filter(item => {
                 const itemContraindications = new Set(item.contraindications || []);
+                // Return true (keep item) if there's NO overlap
                 return ![...allContraindications].some(c => itemContraindications.has(c));
             });
         };
-
-        const pathologyItems = pathologie.length > 0 ? 
-            [...allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))), ...allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)))]
-            : [];
-
-        const emotionItems = emotion.length > 0 ?
-            [...allProducts.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag))), ...allProtocols.filter(p => emotion.some(tag => p.holisticProfile?.includes(tag)))]
-            : [];
-            
-        const safePathologyItems = applySafetyFilter(pathologyItems);
-        const safeEmotionItems = applySafetyFilter(emotionItems);
+    
+        // 3. Initial search based on pathologies
+        let pathologyItems: (Product | Protocole)[] = [];
+        if (pathologie.length > 0) {
+            const productsByPatho = allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
+            const protocolsByPatho = allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag)));
+            pathologyItems = [...productsByPatho, ...protocolsByPatho];
+        }
         
-        const allSafeRecommendations = [...new Set([...safePathologyItems, ...safeEmotionItems])];
-
-        const profileRecommendedItems = holisticProfile.length > 0 
-            ? allSafeRecommendations.filter(item => holisticProfile.every(tag => item.holisticProfile?.includes(tag)))
-            : [];
-
+        // 4. Apply the safety filter to the pathology results
+        const safePathologyItems = applySafetyFilter(pathologyItems);
+    
         return {
             pathology: safePathologyItems,
-            emotion: safeEmotionItems,
-            profile: profileRecommendedItems,
         };
-
-    }, [pathologie, emotion, holisticProfile, contraindication, selectedSheet, allProducts, allProtocols]);
+    }, [pathologie, contraindication, selectedSheet, allProducts, allProtocols]);
 
 
     const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
@@ -1073,14 +1067,13 @@ function AuraTestTool() {
         );
     };
 
-    const RecommendationList = ({ title, items, allTags }: { title: string, items: (Product | Protocole)[], allTags: string[] }) => {
+    const RecommendationList = ({ title, items }: { title: string, items: (Product | Protocole)[] }) => {
         if (items.length === 0) {
             return null;
         }
 
         const iconMap: Record<string, React.ReactNode> = {
             'Pathologie': <HeartPulse className="h-6 w-6 text-primary"/>,
-            'Émotion': <BrainCircuit className="h-6 w-6 text-primary"/>,
         };
 
         return (
@@ -1092,12 +1085,9 @@ function AuraTestTool() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {items.map(item => {
                          const isProduct = 'title' in item;
-                         const sourceTags = title === 'Pathologie' ? item.pathologies : item.holisticProfile;
-                         const matchedTag = allTags.find(tag => sourceTags?.includes(tag));
-                        return (
+                         return (
                             <Card key={item.id} className="p-3">
                                 <p className="font-semibold">{isProduct ? item.title : item.name}</p>
-                                {matchedTag && <Badge variant="outline">{matchedTag}</Badge>}
                                 {isProduct && item.characteristics && item.characteristics.length > 0 && (
                                     <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
                                 )}
@@ -1109,27 +1099,6 @@ function AuraTestTool() {
         );
     };
 
-    const RecommendationHighlightList = ({ items }: { items: (Product | Protocole)[] }) => {
-        if (items.length === 0) return null;
-        return (
-            <div className="space-y-4">
-                <h3 className="text-xl font-semibold flex items-center gap-2">
-                    <Star className="h-6 w-6 text-primary"/>
-                    Recommandations selon le Profil
-                </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {items.map(item => (
-                        <Card key={item.id} className="p-3 bg-primary/5 border-primary/20">
-                            <p className="font-semibold">{'title' in item ? item.title : item.name}</p>
-                            {'title' in item && item.characteristics && item.characteristics.length > 0 && (
-                                <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
-                            )}
-                        </Card>
-                    ))}
-                </div>
-            </div>
-        );
-    };
 
     return (
         <Card>
@@ -1190,23 +1159,14 @@ function AuraTestTool() {
                     <Label>Pathologie à traiter</Label>
                     <TagInput value={pathologie} onChange={setPathologie} placeholder="Ajouter une pathologie (ex: Stress, Anxiété)..." />
                 </div>
-                <div className="space-y-2">
-                    <Label>Émotion du moment</Label>
-                    <TagInput value={emotion} onChange={setEmotion} placeholder="Ajouter une émotion (ex: Colère, Tristesse)..." />
-                </div>
-                <div className="space-y-2">
-                    <Label>Profil Holistique (Complément)</Label>
-                    <TagInput value={holisticProfile} onChange={setHolisticProfile} placeholder="Ajouter un tag de profil..." />
-                </div>
+                
                 <div className="space-y-2">
                     <Label>Contre-indication temporaire</Label>
                     <TagInput value={contraindication} onChange={setContraindication} placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." />
                 </div>
 
                 <div className="pt-6 mt-6 border-t space-y-8">
-                     <RecommendationList title="Pathologie" items={recommendations.pathology} allTags={pathologie}/>
-                     <RecommendationList title="Émotion" items={recommendations.emotion} allTags={emotion}/>
-                     <RecommendationHighlightList items={recommendations.profile} />
+                     <RecommendationList title="Pathologie" items={recommendations.pathology}/>
                 </div>
             </CardContent>
         </Card>
@@ -1245,3 +1205,4 @@ export default function AuraPage() {
         </div>
     );
 }
+
