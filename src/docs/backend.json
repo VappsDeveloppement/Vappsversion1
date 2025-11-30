@@ -1399,9 +1399,31 @@
             "rncpCode": { "type": "array", "items": { "type": "string" } },
             "formationTitle": { "type": "array", "items": { "type": "string" } },
             "skills": { "type": "array", "items": { "type": "string" } },
-            "activities": { "type": "array", "items": { "type": "string" } }
+            "activities": { "type": "array", "items": { "type": "string" } },
+            "codeRomeCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible ROME codes." },
+            "metierCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible job titles." },
+            "trainingIds": { "type": "array", "items": { "type": "string" }, "description": "Associated e-learning trainings." }
         },
         "required": ["counselorId", "formationName"]
+    },
+    "FicheROME": {
+      "title": "Fiche ROME",
+      "type": "object",
+      "description": "Represents a sheet for the Répertoire Opérationnel des Métiers et des Emplois.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string" },
+        "associatedRomeCode": { "type": "array", "items": { "type": "string" } },
+        "associatedJobs": { "type": "array", "items": { "type": "string" } },
+        "mission": { "type": "array", "items": { "type": "string" } },
+        "skills": { "type": "array", "items": { "type": "string" } },
+        "accessConditions": { "type": "array", "items": { "type": "string" }, "description": "IDs of associated FicheRNCP." },
+        "knowledge": { "type": "array", "items": { "type": "string" } },
+        "knowHowAndActivities": { "type": "array", "items": { "type": "string" } },
+        "softSkills": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["counselorId", "name"]
     }
   },
   "auth": {
@@ -1460,6 +1482,14 @@
             "entityName": "FicheRNCP",
             "schema": { "$ref": "#/entities/FicheRNCP" },
             "description": "Stores RNCP sheets created by a counselor."
+        }
+      },
+      {
+        "path": "/users/{userId}/rome_sheets/{sheetId}",
+        "definition": {
+            "entityName": "FicheROME",
+            "schema": { "$ref": "#/entities/FicheROME" },
+            "description": "Stores ROME sheets created by a counselor."
         }
       },
       {

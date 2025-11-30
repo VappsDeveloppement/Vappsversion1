@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -117,6 +116,25 @@ type FicheRNCP = RncpFormData & {
     id: string;
     counselorId: string;
 };
+
+const romeFormSchema = z.object({
+    name: z.string().min(1, "Le nom est requis."),
+    associatedRomeCode: z.array(z.string()).optional(),
+    associatedJobs: z.array(z.string()).optional(),
+    mission: z.array(z.string()).optional(),
+    skills: z.array(z.string()).optional(),
+    accessConditions: z.array(z.string()).optional(),
+    knowledge: z.array(z.string()).optional(),
+    knowHowAndActivities: z.array(z.string()).optional(),
+    softSkills: z.array(z.string()).optional(),
+});
+type RomeFormData = z.infer<typeof romeFormSchema>;
+
+type FicheROME = RomeFormData & {
+    id: string;
+    counselorId: string;
+};
+
 
 type Training = {
     id: string;
@@ -1056,6 +1074,164 @@ function RncpManager() {
     );
 }
 
+function RomeManager() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingFiche, setEditingFiche] = useState<FicheROME | null>(null);
+
+  const fichesRomeQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_sheets`)) : null, [user, firestore]);
+  const { data: fiches, isLoading } = useCollection<FicheROME>(fichesRomeQuery);
+
+  const fichesRncpQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_sheets`)) : null, [user, firestore]);
+  const { data: fichesRncp, isLoading: areFichesRncpLoading } = useCollection<FicheRNCP>(fichesRncpQuery);
+
+  const form = useForm<RomeFormData>({
+    resolver: zodResolver(romeFormSchema),
+    defaultValues: { name: '', associatedRomeCode: [], associatedJobs: [], mission: [], skills: [], accessConditions: [], knowledge: [], knowHowAndActivities: [], softSkills: [] }
+  });
+
+  useEffect(() => {
+    if (isSheetOpen) {
+      form.reset(editingFiche || { name: '', associatedRomeCode: [], associatedJobs: [], mission: [], skills: [], accessConditions: [], knowledge: [], knowHowAndActivities: [], softSkills: [] });
+    }
+  }, [isSheetOpen, editingFiche, form]);
+
+  const handleNew = () => {
+    setEditingFiche(null);
+    setIsSheetOpen(true);
+  };
+    
+  const onSubmit = (data: RomeFormData) => {
+    if (!user) return;
+    const ficheData = { counselorId: user.uid, ...data };
+    if (editingFiche) {
+        setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rome_sheets`, editingFiche.id), ficheData, { merge: true });
+        toast({ title: 'Fiche ROME mise à jour' });
+    } else {
+        addDocumentNonBlocking(collection(firestore, `users/${user.uid}/rome_sheets`), ficheData);
+        toast({ title: 'Fiche ROME créée' });
+    }
+    setIsSheetOpen(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+            <div>
+                <CardTitle>Fiches ROME</CardTitle>
+                <CardDescription>Gérez vos fiches du Répertoire Opérationnel des Métiers et des Emplois.</CardDescription>
+            </div>
+            <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouvelle Fiche ROME</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+         <div className="border rounded-lg">
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>Nom</TableHead>
+                        <TableHead>Code(s) ROME</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                     {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                    : fiches && fiches.length > 0 ? (
+                        fiches.map((fiche) => (
+                            <TableRow key={fiche.id}>
+                                <TableCell className="font-medium">{fiche.name}</TableCell>
+                                <TableCell>{Array.isArray(fiche.associatedRomeCode) ? fiche.associatedRomeCode.join(', ') : ''}</TableCell>
+                                <TableCell className="text-right">
+                                    {/* Actions to be implemented */}
+                                </TableCell>
+                            </TableRow>
+                        ))
+                    ) : (
+                        <TableRow>
+                            <TableCell colSpan={3} className="h-24 text-center">Aucune fiche ROME créée.</TableCell>
+                        </TableRow>
+                    )}
+                </TableBody>
+            </Table>
+         </div>
+         <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetContent className="sm:max-w-2xl w-full">
+                <SheetHeader>
+                    <SheetTitle>{editingFiche ? 'Modifier la' : 'Nouvelle'} fiche ROME</SheetTitle>
+                </SheetHeader>
+                <Form {...form}>
+                    <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                         <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
+                            <div className="space-y-4">
+                                 <FormField control={form.control} name="name" render={({ field }) => ( <FormItem><FormLabel>Nom</FormLabel><FormControl><Input placeholder="Ex: Études et développement informatique" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                 <FormField control={form.control} name="associatedRomeCode" render={({ field }) => ( <FormItem><FormLabel>Code ROME associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code (ex: M1805...)" /></FormControl><FormMessage /></FormItem> )}/>
+                                 <FormField control={form.control} name="associatedJobs" render={({ field }) => ( <FormItem><FormLabel>Métiers associés</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl><FormMessage /></FormItem> )}/>
+                                 <FormField control={form.control} name="mission" render={({ field }) => ( <FormItem><FormLabel>Mission</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une mission..." /></FormControl><FormMessage /></FormItem> )}/>
+                                 <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
+                                  <FormField control={form.control} name="knowledge" render={({ field }) => ( <FormItem><FormLabel>Savoir</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir..." /></FormControl><FormMessage /></FormItem> )}/>
+                                  <FormField control={form.control} name="knowHowAndActivities" render={({ field }) => ( <FormItem><FormLabel>Savoir-faire et Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-faire..." /></FormControl><FormMessage /></FormItem> )}/>
+                                  <FormField control={form.control} name="softSkills" render={({ field }) => ( <FormItem><FormLabel>Savoir-être et Softskills</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl><FormMessage /></FormItem> )}/>
+                                 <FormField
+                                    control={form.control}
+                                    name="accessConditions"
+                                    render={() => (
+                                        <FormItem>
+                                            <div className="mb-4">
+                                                <FormLabel className="text-base">Condition d'accès (Fiches RNCP)</FormLabel>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {areFichesRncpLoading ? <Skeleton className="h-20 w-full" /> : fichesRncp && fichesRncp.length > 0 ? (
+                                                    fichesRncp.map((fiche) => (
+                                                        <FormField
+                                                            key={fiche.id}
+                                                            control={form.control}
+                                                            name="accessConditions"
+                                                            render={({ field }) => {
+                                                                return (
+                                                                    <FormItem key={fiche.id} className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md">
+                                                                        <FormControl>
+                                                                            <Checkbox
+                                                                                checked={field.value?.includes(fiche.id)}
+                                                                                onCheckedChange={(checked) => {
+                                                                                    return checked
+                                                                                        ? field.onChange([...(field.value || []), fiche.id])
+                                                                                        : field.onChange(field.value?.filter((value) => value !== fiche.id));
+                                                                                }}
+                                                                            />
+                                                                        </FormControl>
+                                                                        <FormLabel className="font-normal">{fiche.formationName}</FormLabel>
+                                                                    </FormItem>
+                                                                );
+                                                            }}
+                                                        />
+                                                    ))
+                                                ) : (
+                                                    <p className="text-sm text-muted-foreground">Aucune fiche RNCP créée.</p>
+                                                )}
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                            </div>
+                         </ScrollArea>
+                        <SheetFooter className="pt-6 border-t mt-auto">
+                            <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                            <Button type="submit">Enregistrer</Button>
+                        </SheetFooter>
+                    </form>
+                </Form>
+            </SheetContent>
+         </Sheet>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 export default function VitaePage() {
     return (
         <div className="space-y-8">
@@ -1088,15 +1264,7 @@ export default function VitaePage() {
                     <RncpManager />
                 </TabsContent>
                  <TabsContent value="rome">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Fiches ROME</CardTitle>
-                            <CardDescription>Recherchez et consultez les fiches du Répertoire Opérationnel des Métiers et des Emplois.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="text-center p-12 text-muted-foreground">
-                            <p>La recherche de fiches ROME sera bientôt disponible ici.</p>
-                        </CardContent>
-                    </Card>
+                    <RomeManager />
                 </TabsContent>
                 <TabsContent value="jobs">
                     <Card>
@@ -1124,8 +1292,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-
-
-
-
