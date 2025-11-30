@@ -246,13 +246,13 @@ export default function PartnersPage() {
                 </CardContent>
             </Card>
             <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                <SheetContent className="sm:max-w-lg w-full">
+                <SheetContent className="sm:max-w-lg w-full flex flex-col">
                     <SheetHeader>
                         <SheetTitle>{editingPartner ? "Modifier le" : "Nouveau"} partenaire</SheetTitle>
                         <SheetDescription>Ajoutez ou modifiez les informations de votre partenaire.</SheetDescription>
                     </SheetHeader>
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col flex-1 overflow-hidden">
                             <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
                                 <div className="space-y-4">
                                     <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
