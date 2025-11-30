@@ -16,7 +16,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Input } from "@/components/ui/input";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAgency } from '@/context/agency-provider';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -345,7 +345,24 @@ function Cvtheque() {
             counselorId: user.uid,
             clientId: selectedClient.id,
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
-            ...data,
+            mobility: data.mobility || [],
+            drivingLicence: data.drivingLicence || [],
+            lastJob: data.lastJob || [],
+            searchedJob: data.searchedJob || [],
+            contractType: data.contractType || [],
+            duration: data.duration || [],
+            workEnvironment: data.workEnvironment || [],
+            highestFormation: data.highestFormation || [],
+            highestFormationSkills: data.highestFormationSkills || [],
+            currentJobFormation: data.currentJobFormation || [],
+            currentJobFormationSkills: data.currentJobFormationSkills || [],
+            projectFormation: data.projectFormation || [],
+            projectFormationSkills: data.projectFormationSkills || [],
+            fundingOptions: data.fundingOptions || [],
+            experiences: data.experiences || [],
+            otherInterests: data.otherInterests || [],
+            softskills: data.softskills || [],
+            status: data.status || 'disponible',
         };
 
         if (editingProfile) {
@@ -907,6 +924,8 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
 
     
 
