@@ -489,10 +489,12 @@ function Cvtheque() {
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(' • ');
         
+        // --- HEADER ---
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
         doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
         y += 8;
+
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
         const contactInfo = [client.email, client.phone, client.address].filter(Boolean).join(' | ');
@@ -502,8 +504,9 @@ function Cvtheque() {
         doc.line(15, y, 195, y);
         y += 10;
 
-        const addSection = (title: string, content: string[] = [], isList = false) => {
-            if (content.length === 0) return;
+        const addSection = (title: string, content: (string | null | undefined)[]) => {
+            const filteredContent = content.filter(Boolean);
+            if (filteredContent.length === 0) return;
             if (y > 260) { doc.addPage(); y = 20; }
             doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
@@ -515,21 +518,13 @@ function Cvtheque() {
             
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-
-            if (isList) {
-                content.forEach(item => {
-                    const lines = doc.splitTextToSize(`- ${item}`, 180);
-                    if (y + (lines.length * 5) > 280) { doc.addPage(); y = 20; }
-                    doc.text(lines, 15, y);
-                    y += (lines.length * 5) + 2;
-                });
-            } else {
-                const lines = doc.splitTextToSize(content.join(' • '), 180);
+            filteredContent.forEach(item => {
+                const lines = doc.splitTextToSize(`• ${item}`, 180);
                 if (y + (lines.length * 5) > 280) { doc.addPage(); y = 20; }
                 doc.text(lines, 15, y);
-                y += (lines.length * 5);
-            }
-            y += 10;
+                y += (lines.length * 5) + 2;
+            });
+            y += 6;
         };
 
         const addExperienceSection = (exps?: CvProfile['experiences']) => {
@@ -571,10 +566,10 @@ function Cvtheque() {
         addSection("Projet Professionnel", [
             `Dernier métier: ${join(profile.lastJob)}`,
             `Métier recherché: ${join(profile.searchedJob)}`,
-            `Type de contrat: ${join(profile.contractType)}`,
+            `Contrat: ${join(profile.contractType)}`,
             `Durée: ${join(profile.duration)}`,
             `Environnement: ${join(profile.workEnvironment)}`,
-        ], true);
+        ]);
         
         addExperienceSection(profile.experiences);
 
@@ -582,7 +577,7 @@ function Cvtheque() {
             `Niveau le plus élevé: ${join(profile.highestFormation)} - Compétences: ${join(profile.highestFormationSkills)}`,
             `En lien avec le métier actuel: ${join(profile.currentJobFormation)} - Compétences: ${join(profile.currentJobFormationSkills)}`,
             `En lien avec le projet: ${join(profile.projectFormation)} - Compétences: ${join(profile.projectFormationSkills)}`
-        ].filter(line => !line.endsWith(': ') && !line.endsWith(':  - Compétences: ')), true);
+        ].filter(line => !line.endsWith(': ') && !line.endsWith(':  - Compétences: ')));
         
         addSection("Compétences comportementales (Softskills)", checkArray(profile.softskills));
         addSection("Centres d'intérêt", checkArray(profile.otherInterests));
@@ -1315,7 +1310,14 @@ function JobOfferManager() {
     
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingOffer || { title: '', description: '', contractType: '', workingHours: '', location: '', salary: '' });
+            form.reset({
+                title: editingOffer?.title || '',
+                description: editingOffer?.description || '',
+                contractType: editingOffer?.contractType || '',
+                workingHours: editingOffer?.workingHours || '',
+                location: editingOffer?.location || '',
+                salary: editingOffer?.salary || '',
+            });
         }
     }, [isSheetOpen, editingOffer, form]);
 
