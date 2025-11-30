@@ -412,11 +412,11 @@ function Cvtheque() {
             startY: y,
             theme: 'plain',
             body: [
-                ['Dernier métier', (profile.lastJob || []).join(', ')],
-                ['Métier recherché', (profile.searchedJob || []).join(', ')],
-                ['Contrat', (profile.contractType || []).join(', ')],
-                ['Durée', (profile.duration || []).join(', ')],
-                ['Environnement', (profile.workEnvironment || []).join(', ')],
+                ['Dernier métier', (Array.isArray(profile.lastJob) ? profile.lastJob : []).join(', ')],
+                ['Métier recherché', (Array.isArray(profile.searchedJob) ? profile.searchedJob : []).join(', ')],
+                ['Contrat', (Array.isArray(profile.contractType) ? profile.contractType : []).join(', ')],
+                ['Durée', (Array.isArray(profile.duration) ? profile.duration : []).join(', ')],
+                ['Environnement', (Array.isArray(profile.workEnvironment) ? profile.workEnvironment : []).join(', ')],
             ],
             styles: { fontSize: 10 },
             columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
@@ -444,7 +444,7 @@ function Cvtheque() {
             
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-            const lines = doc.splitTextToSize(content.join(' • '), columnWidth);
+            const lines = doc.splitTextToSize((Array.isArray(content) ? content : []).join(' • '), columnWidth);
             doc.text(lines, startX, startY);
             
             if (column === 'left') {
@@ -479,17 +479,17 @@ function Cvtheque() {
             }
             doc.setFontSize(10);
             doc.setFont('helvetica', 'bold');
-            const expTitle = `${exp.jobTitle?.join(', ')} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
+            const expTitle = `${(Array.isArray(exp.jobTitle) ? exp.jobTitle : []).join(', ')} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
             doc.text(expTitle, rightColumnX, rightY, { maxWidth: columnWidth });
             rightY += 5;
 
             doc.setFont('helvetica', 'normal');
-            const activitiesText = `Activités: ${exp.activities?.join(', ')}`;
+            const activitiesText = `Activités: ${(Array.isArray(exp.activities) ? exp.activities : []).join(', ')}`;
             const activitiesLines = doc.splitTextToSize(activitiesText, columnWidth);
             doc.text(activitiesLines, rightColumnX, rightY);
             rightY += activitiesLines.length * 5 + 2;
 
-            const skillsText = `Compétences: ${exp.characteristics?.join(', ')}`;
+            const skillsText = `Compétences: ${(Array.isArray(exp.characteristics) ? exp.characteristics : []).join(', ')}`;
             const skillsLines = doc.splitTextToSize(skillsText, columnWidth);
             doc.text(skillsLines, rightColumnX, rightY);
             rightY += skillsLines.length * 5 + 6;
@@ -504,8 +504,8 @@ function Cvtheque() {
             const statusMatch = statusFilter === 'all' || p.status === statusFilter;
             const searchMatch = !searchTerm ||
                 p.clientName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                (p.lastJob || []).some(job => job.toLowerCase().includes(searchTerm.toLowerCase())) ||
-                (p.searchedJob || []).some(job => job.toLowerCase().includes(searchTerm.toLowerCase()));
+                (Array.isArray(p.lastJob) && p.lastJob.some(job => job.toLowerCase().includes(searchTerm.toLowerCase()))) ||
+                (Array.isArray(p.searchedJob) && p.searchedJob.some(job => job.toLowerCase().includes(searchTerm.toLowerCase())));
             return statusMatch && searchMatch;
         });
     }, [cvProfiles, searchTerm, statusFilter]);
@@ -774,8 +774,8 @@ function Cvtheque() {
                                 filteredProfiles.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell>{p.clientName}</TableCell>
-                                        <TableCell>{Array.isArray(p.lastJob) ? p.lastJob.join(', ') : p.lastJob || '-'}</TableCell>
-                                        <TableCell>{Array.isArray(p.searchedJob) ? p.searchedJob.join(', ') : p.searchedJob || '-'}</TableCell>
+                                        <TableCell>{(Array.isArray(p.lastJob) ? p.lastJob : []).join(', ')}</TableCell>
+                                        <TableCell>{(Array.isArray(p.searchedJob) ? p.searchedJob : []).join(', ')}</TableCell>
                                         <TableCell>
                                             <Badge variant={statusConfig[p.status || 'disponible'].variant}>
                                                 {statusConfig[p.status || 'disponible'].text}
@@ -907,3 +907,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
+
+    
