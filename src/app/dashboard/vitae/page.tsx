@@ -412,105 +412,106 @@ function Cvtheque() {
         const doc = new jsPDF();
         let y = 15;
 
-        // Header
-        doc.setFontSize(22);
+        // --- Helper Functions ---
+        const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
+        const join = (arr: any) => checkArray(arr).join(' • ');
+
+        // --- Header ---
+        doc.setFontSize(24);
+        doc.setFont('helvetica', 'bold');
         doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
         y += 8;
         doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
         const contactInfo = [client.email, client.phone, client.address].filter(Boolean).join(' | ');
         doc.text(contactInfo, 105, y, { align: 'center' });
         y += 10;
+        
+        doc.setDrawColor(220, 220, 220); // light grey
+        doc.line(15, y, 195, y); // horizontal line
+        y += 10;
 
-        // Projet Pro
-        doc.setFontSize(16);
-        doc.text("Projet Professionnel", 15, y);
-        y += 7;
+        // --- Main Content ---
+        const addSection = (title: string, content: string | string[], options: { y?: number, isList?: boolean } = {}) => {
+            if (!content || (Array.isArray(content) && content.length === 0)) return options.y || y;
+            let currentY = options.y || y;
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, currentY);
+            currentY += 6;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            
+            const textToRender = Array.isArray(content) ? content.join(' • ') : content;
+            const lines = doc.splitTextToSize(textToRender, 180);
+            doc.text(lines, 15, currentY);
+            
+            return currentY + (lines.length * 5) + 8;
+        };
+
+        // --- Projet Professionnel ---
+        y = addSection("Projet Professionnel", "");
         autoTable(doc, {
             startY: y,
             theme: 'plain',
             body: [
-                ['Dernier métier', (Array.isArray(profile.lastJob) ? profile.lastJob : []).join(', ')],
-                ['Métier recherché', (Array.isArray(profile.searchedJob) ? profile.searchedJob : []).join(', ')],
-                ['Contrat', (Array.isArray(profile.contractType) ? profile.contractType : []).join(', ')],
-                ['Durée', (Array.isArray(profile.duration) ? profile.duration : []).join(', ')],
-                ['Environnement', (Array.isArray(profile.workEnvironment) ? profile.workEnvironment : []).join(', ')],
+                ['Dernier métier', join(profile.lastJob)],
+                ['Métier recherché', join(profile.searchedJob)],
+                ['Contrat', join(profile.contractType)],
+                ['Durée', join(profile.duration)],
+                ['Environnement', join(profile.workEnvironment)],
             ],
-            styles: { fontSize: 10 },
+            styles: { fontSize: 10, cellPadding: {top: 1, right: 2, bottom: 1, left: 2} },
             columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
         });
         y = (doc as any).lastAutoTable.finalY + 10;
-        doc.setDrawColor(220);
-        doc.line(15, y - 5, 195, y - 5);
-
-        // Two columns
-        const leftColumnX = 15;
-        const rightColumnX = 90;
-        const columnWidth = 80;
-        let leftY = y;
-        let rightY = y;
-
-        const addSection = (column: 'left' | 'right', title: string, content: string[] | undefined) => {
-            if (!content || content.length === 0) return;
-            let startX = column === 'left' ? leftColumnX : rightColumnX;
-            let startY = column === 'left' ? leftY : rightY;
-            
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'bold');
-            doc.text(title, startX, startY);
-            startY += 6;
-            
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            const lines = doc.splitTextToSize((Array.isArray(content) ? content : []).join(' • '), columnWidth);
-            doc.text(lines, startX, startY);
-            
-            if (column === 'left') {
-                leftY = startY + lines.length * 5 + 8;
-            } else {
-                rightY = startY + lines.length * 5 + 8;
-            }
-        };
-
-        addSection('left', 'Mobilité', profile.mobility);
-        addSection('left', 'Permis', profile.drivingLicence);
-        addSection('left', 'Formation la plus élevée', profile.highestFormation);
-        addSection('left', 'Compétences (Formation élevée)', profile.highestFormationSkills);
-        addSection('left', 'Formation (Métier actuel)', profile.currentJobFormation);
-        addSection('left', 'Compétences (Métier actuel)', profile.currentJobFormationSkills);
-        addSection('left', 'Formation (Projet)', profile.projectFormation);
-        addSection('left', 'Compétences (Projet)', profile.projectFormationSkills);
-        addSection('left', 'Financements possibles', profile.fundingOptions);
-        addSection('left', 'Centres d\'intérêt', profile.otherInterests);
-        addSection('left', 'Softskills', profile.softskills);
         
-        // Experiences
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Expériences Professionnelles', rightColumnX, rightY);
-        rightY += 8;
+        // --- Formations ---
+        y = addSection("Formations", "");
+        let formationsText = [
+          `Niveau le plus élevé: ${join(profile.highestFormation)}`,
+          `Compétences associées: ${join(profile.highestFormationSkills)}`,
+          `En lien avec le métier actuel: ${join(profile.currentJobFormation)}`,
+          `Compétences associées: ${join(profile.currentJobFormationSkills)}`,
+          `En lien avec le projet: ${join(profile.projectFormation)}`,
+          `Compétences associées: ${join(profile.projectFormationSkills)}`
+        ].filter(line => !line.endsWith(': ')).join('\n');
+        let lines = doc.splitTextToSize(formationsText, 180);
+        doc.text(lines, 15, y);
+        y += lines.length * 5 + 8;
 
+
+        // --- Expériences ---
+        y = addSection("Expériences Professionnelles", "");
         profile.experiences?.forEach(exp => {
-             if (rightY > 260) {
-                doc.addPage();
-                rightY = 15;
-            }
-            doc.setFontSize(10);
+            if (y > 250) { doc.addPage(); y = 15; }
+            doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
-            const expTitle = `${(Array.isArray(exp.jobTitle) ? exp.jobTitle : []).join(', ')} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
-            doc.text(expTitle, rightColumnX, rightY, { maxWidth: columnWidth });
-            rightY += 5;
-
+            const expTitle = `${join(exp.jobTitle)} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
+            doc.text(expTitle, 15, y);
+            y += 6;
+            
+            doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-            const activitiesText = `Activités: ${(Array.isArray(exp.activities) ? exp.activities : []).join(', ')}`;
-            const activitiesLines = doc.splitTextToSize(activitiesText, columnWidth);
-            doc.text(activitiesLines, rightColumnX, rightY);
-            rightY += activitiesLines.length * 5 + 2;
-
-            const skillsText = `Compétences: ${(Array.isArray(exp.characteristics) ? exp.characteristics : []).join(', ')}`;
-            const skillsLines = doc.splitTextToSize(skillsText, columnWidth);
-            doc.text(skillsLines, rightColumnX, rightY);
-            rightY += skillsLines.length * 5 + 6;
+            if (checkArray(exp.activities).length > 0) {
+                 doc.text(`Activités: ${join(exp.activities)}`, 20, y, { maxWidth: 175 });
+                 y += doc.getTextDimensions(`Activités: ${join(exp.activities)}`, { maxWidth: 175 }).h + 4;
+            }
+            if (checkArray(exp.characteristics).length > 0) {
+                doc.text(`Compétences: ${join(exp.characteristics)}`, 20, y, { maxWidth: 175 });
+                 y += doc.getTextDimensions(`Compétences: ${join(exp.characteristics)}`, { maxWidth: 175 }).h + 6;
+            }
+            y += 2;
         });
+
+        // --- Softskills & Others in a new page if needed ---
+        if (y > 220) { doc.addPage(); y = 15; }
+        y = addSection("Softskills", join(profile.softskills));
+        y = addSection("Centres d'intérêt", join(profile.otherInterests));
+        
+        if (y > 260) { doc.addPage(); y = 15; }
+        y = addSection("Mobilité & Permis", `${join(profile.mobility)} \n ${join(profile.drivingLicence)}`);
 
 
         doc.save(`CV_${client.firstName}_${client.lastName}.pdf`);
@@ -699,8 +700,8 @@ function Cvtheque() {
                                                                 </div>
                                                                 {seniority && <p className="text-sm font-medium text-muted-foreground">Ancienneté: {seniority}</p>}
                                                                 <FormField control={cvForm.control} name={`experiences.${index}.jobTitle`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl></FormItem>)}/>
-                                                                <FormField control={cvForm.control} name={`experiences.${index}.characteristics`} render={({ field }) => (<FormItem><FormLabel>Compétences exercées / développées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
                                                                 <FormField control={cvForm.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..."/></FormControl></FormItem>)}/>
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.characteristics`} render={({ field }) => (<FormItem><FormLabel>Compétences exercées / développées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
                                                             </div>
                                                         );
                                                     })}
@@ -791,8 +792,8 @@ function Cvtheque() {
                                 filteredProfiles.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell>{p.clientName}</TableCell>
-                                        <TableCell>{(Array.isArray(p.lastJob) ? p.lastJob : []).join(', ')}</TableCell>
-                                        <TableCell>{(Array.isArray(p.searchedJob) ? p.searchedJob : []).join(', ')}</TableCell>
+                                        <TableCell>{Array.isArray(p.lastJob) ? p.lastJob.join(', ') : ''}</TableCell>
+                                        <TableCell>{Array.isArray(p.searchedJob) ? p.searchedJob.join(', ') : ''}</TableCell>
                                         <TableCell>
                                             <Badge variant={statusConfig[p.status || 'disponible'].variant}>
                                                 {statusConfig[p.status || 'disponible'].text}
@@ -924,9 +925,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
-
-    
-
-    
