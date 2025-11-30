@@ -81,6 +81,7 @@ const cvProfileSchema = z.object({
   fundingOptions: z.array(z.string()).optional(),
   experiences: z.array(experienceSchema).optional(),
   otherInterests: z.array(z.string()).optional(),
+  softskills: z.array(z.string()).optional(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 
@@ -167,6 +168,7 @@ function Cvtheque() {
         fundingOptions: [],
         experiences: [],
         otherInterests: [],
+        softskills: [],
       }
     });
     
@@ -458,7 +460,7 @@ function Cvtheque() {
                                                         <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
                                                         {selectedClient.email && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Mail className="h-4 w-4" /><span>{selectedClient.email}</span></div>}
                                                         {selectedClient.phone && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Phone className="h-4 w-4" /><span>{selectedClient.phone}</span></div>}
-                                                         {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span></div>}
+                                                        {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span></div>}
                                                     </div>
                                                     {!editingProfile && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
                                                 </div>
@@ -543,6 +545,21 @@ function Cvtheque() {
                                                             <FormLabel>Centres d'intérêt, activités extra-professionnelles, etc.</FormLabel>
                                                             <FormControl>
                                                                 <TagInput {...field} placeholder="Ajouter un intérêt..."/>
+                                                            </FormControl>
+                                                            <FormMessage/>
+                                                        </FormItem>
+                                                    )}/>
+                                                </CardContent>
+                                            </Card>
+                                            
+                                            <Card>
+                                                <CardHeader><CardTitle>Softskills</CardTitle></CardHeader>
+                                                <CardContent className="space-y-4">
+                                                    <FormField control={cvForm.control} name="softskills" render={({ field }) => (
+                                                        <FormItem>
+                                                            <FormLabel>Compétences comportementales</FormLabel>
+                                                            <FormControl>
+                                                                <TagInput {...field} placeholder="Ajouter une compétence..."/>
                                                             </FormControl>
                                                             <FormMessage/>
                                                         </FormItem>
@@ -691,6 +708,8 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
 
     
 
