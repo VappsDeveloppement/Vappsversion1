@@ -425,6 +425,11 @@ function Cvtheque() {
                                                             <span>{selectedClient.phone}</span>
                                                           </div>
                                                         )}
+                                                         {selectedClient.address && (
+                                                            <div className="text-sm text-muted-foreground mt-1">
+                                                                <span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                     <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>
                                                 </div>
@@ -489,7 +494,7 @@ function Cvtheque() {
                                                                     <FormField control={cvForm.control} name={`experiences.${index}.endDate`} render={({ field }) => (<FormItem><FormLabel>Date de fin</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''}/></FormControl></FormItem>)}/>
                                                                 </div>
                                                                 {seniority && <p className="text-sm font-medium text-muted-foreground">Ancienneté: {seniority}</p>}
-                                                                <FormField control={cvForm.control} name={`experiences.${index}.jobTitle`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl></FormItem>)}/>
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.jobTitle`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl></FormItem>)}/>
                                                                 <FormField control={cvForm.control} name={`experiences.${index}.characteristics`} render={({ field }) => (<FormItem><FormLabel>Compétences exercées / développées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
                                                                 <FormField control={cvForm.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..."/></FormControl></FormItem>)}/>
                                                             </div>
@@ -547,8 +552,8 @@ function Cvtheque() {
                                 cvProfiles.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell>{p.clientName}</TableCell>
-                                        <TableCell>{(p.lastJob || []).join(', ')}</TableCell>
-                                        <TableCell>{(p.searchedJob || []).join(', ')}</TableCell>
+                                        <TableCell>{Array.isArray(p.lastJob) ? p.lastJob.join(', ') : ''}</TableCell>
+                                        <TableCell>{Array.isArray(p.searchedJob) ? p.searchedJob.join(', ') : ''}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}><Edit className="h-4 w-4"/></Button>
                                             <Button variant="ghost" size="icon" onClick={() => {}}><Trash2 className="h-4 w-4 text-destructive"/></Button>
