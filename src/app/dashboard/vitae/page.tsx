@@ -146,6 +146,18 @@ type Training = {
     title: string;
 };
 
+const infoMatchingSchema = z.object({
+    yearsExperience: z.string().optional(),
+    desiredTraining: z.string().optional(),
+    romeCode: z.array(z.string()).optional(),
+    otherNames: z.array(z.string()).optional(),
+    geographicSector: z.array(z.string()).optional(),
+    workingConditions: z.array(z.string()).optional(),
+    environment: z.array(z.string()).optional(),
+    desiredSkills: z.array(z.string()).optional(),
+    softSkills: z.array(z.string()).optional(),
+});
+
 const jobOfferFormSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(1, "Le titre du poste est requis."),
@@ -154,7 +166,9 @@ const jobOfferFormSchema = z.object({
   workingHours: z.string().optional(),
   location: z.string().optional(),
   salary: z.string().optional(),
+  infoMatching: infoMatchingSchema.optional(),
 });
+
 
 type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
 
@@ -489,7 +503,6 @@ function Cvtheque() {
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(' • ');
         
-        // --- HEADER ---
         doc.setFontSize(22);
         doc.setFont('helvetica', 'bold');
         doc.text(`${client.firstName} ${client.lastName}`, 105, y, { align: 'center' });
@@ -1305,7 +1318,7 @@ function JobOfferManager() {
     
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferFormSchema),
-        defaultValues: { title: '', description: '', contractType: '', workingHours: '', location: '', salary: '' },
+        defaultValues: { title: '', description: '', contractType: '', workingHours: '', location: '', salary: '', infoMatching: {} },
     });
     
     useEffect(() => {
@@ -1317,6 +1330,7 @@ function JobOfferManager() {
                 workingHours: editingOffer?.workingHours || '',
                 location: editingOffer?.location || '',
                 salary: editingOffer?.salary || '',
+                infoMatching: editingOffer?.infoMatching || {},
             });
         }
     }, [isSheetOpen, editingOffer, form]);
@@ -1399,14 +1413,37 @@ function JobOfferManager() {
                     <SheetContent className="sm:max-w-2xl w-full">
                         <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} offre d'emploi</SheetTitle></SheetHeader>
                         <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-                                <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><Input placeholder="CDI, CDD, Alternance..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="workingHours" render={({ field }) => ( <FormItem><FormLabel>Temps de travail</FormLabel><FormControl><Input placeholder="Temps plein, Temps partiel..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="location" render={({ field }) => ( <FormItem><FormLabel>Lieu</FormLabel><FormControl><Input placeholder="Paris, France" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <FormField control={form.control} name="salary" render={({ field }) => ( <FormItem><FormLabel>Salaire</FormLabel><FormControl><Input placeholder="À négocier, 45k€ - 55k€..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                <SheetFooter className="pt-6">
+                            <form onSubmit={form.handleSubmit(onSubmit)}>
+                                <ScrollArea className="h-[calc(100vh-8rem)]">
+                                    <div className="space-y-6 py-4 pr-6">
+                                        <section>
+                                            <h3 className="text-lg font-medium border-b pb-2 mb-4">Annonce Publique</h3>
+                                            <div className="space-y-4">
+                                                <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><Input placeholder="CDI, CDD, Alternance..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="workingHours" render={({ field }) => ( <FormItem><FormLabel>Temps de travail</FormLabel><FormControl><Input placeholder="Temps plein, Temps partiel..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="location" render={({ field }) => ( <FormItem><FormLabel>Lieu</FormLabel><FormControl><Input placeholder="Paris, France" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="salary" render={({ field }) => ( <FormItem><FormLabel>Salaire</FormLabel><FormControl><Input placeholder="À négocier, 45k€ - 55k€..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                            </div>
+                                        </section>
+                                        <section className="pt-6 border-t">
+                                            <h3 className="text-lg font-medium border-b pb-2 mb-4">Info Matching (Interne)</h3>
+                                            <div className="space-y-4">
+                                                <FormField control={form.control} name="infoMatching.yearsExperience" render={({ field }) => ( <FormItem><FormLabel>Années d'expérience souhaitées</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="infoMatching.desiredTraining" render={({ field }) => ( <FormItem><FormLabel>Formation souhaitée</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="infoMatching.romeCode" render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code ROME..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.otherNames" render={({ field }) => (<FormItem><FormLabel>Autres appellations</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une appellation..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.geographicSector" render={({ field }) => (<FormItem><FormLabel>Secteur géographique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un secteur..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.workingConditions" render={({ field }) => (<FormItem><FormLabel>Conditions de travail</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une condition..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.environment" render={({ field }) => (<FormItem><FormLabel>Environnement</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag d'environnement..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.desiredSkills" render={({ field }) => (<FormItem><FormLabel>Mission/Compétences recherchées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être et Softskills</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un softskill..." /></FormControl><FormMessage /></FormItem>)}/>
+                                            </div>
+                                        </section>
+                                    </div>
+                                </ScrollArea>
+                                <SheetFooter className="pt-6 border-t mt-auto">
                                     <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                     <Button type="submit" disabled={isSubmitting}>
                                         {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}

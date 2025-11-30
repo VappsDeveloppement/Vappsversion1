@@ -899,19 +899,34 @@
       "required": ["id", "category", "question", "content", "scope"]
     },
     "JobOffer": {
-        "title": "Job Offer",
-        "type": "object",
-        "description": "Represents a single job offer.",
-        "properties": {
-            "id": { "type": "string" },
-            "title": { "type": "string" },
-            "description": { "type": "string" },
-            "contractType": { "type": "string" },
-            "workingHours": { "type": "string" },
-            "location": { "type": "string" },
-            "salary": { "type": "string" }
-        },
-        "required": ["id", "title", "contractType", "location"]
+      "title": "Job Offer",
+      "type": "object",
+      "description": "Represents a single job offer.",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "contractType": { "type": "string" },
+        "workingHours": { "type": "string" },
+        "location": { "type": "string" },
+        "salary": { "type": "string" },
+        "infoMatching": {
+          "type": "object",
+          "description": "Internal data for matching candidates.",
+          "properties": {
+            "yearsExperience": { "type": "string" },
+            "desiredTraining": { "type": "string" },
+            "romeCode": { "type": "array", "items": { "type": "string" } },
+            "otherNames": { "type": "array", "items": { "type": "string" } },
+            "geographicSector": { "type": "array", "items": { "type": "string" } },
+            "workingConditions": { "type": "array", "items": { "type": "string" } },
+            "environment": { "type": "array", "items": { "type": "string" } },
+            "desiredSkills": { "type": "array", "items": { "type": "string" } },
+            "softSkills": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      },
+      "required": ["id", "title"]
     },
     "BetaScenario": {
       "title": "Beta Scenario",
