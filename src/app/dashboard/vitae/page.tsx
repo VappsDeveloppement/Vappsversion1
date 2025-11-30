@@ -410,9 +410,8 @@ function Cvtheque() {
         }
 
         const doc = new jsPDF();
-        let y = 15;
+        let y = 20;
 
-        // --- Helper Functions ---
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(' • ');
 
@@ -431,88 +430,83 @@ function Cvtheque() {
         doc.line(15, y, 195, y); // horizontal line
         y += 10;
 
-        // --- Main Content ---
-        const addSection = (title: string, content: string | string[], options: { y?: number, isList?: boolean } = {}) => {
-            if (!content || (Array.isArray(content) && content.length === 0)) return options.y || y;
-            let currentY = options.y || y;
-            doc.setFontSize(12);
+        const addSection = (title: string, content?: string | string[]) => {
+            if (!content || (Array.isArray(content) && content.length === 0)) return;
+            if (y > 260) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
             doc.setFont('helvetica', 'bold');
-            doc.text(title, 15, currentY);
-            currentY += 6;
+            doc.text(title, 15, y);
+            y += 2;
+            doc.setDrawColor(180, 180, 180);
+            doc.line(15, y, 60, y);
+            y += 8;
 
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             
             const textToRender = Array.isArray(content) ? content.join(' • ') : content;
             const lines = doc.splitTextToSize(textToRender, 180);
-            doc.text(lines, 15, currentY);
+            doc.text(lines, 15, y);
             
-            return currentY + (lines.length * 5) + 8;
+            y += (lines.length * 5) + 10;
         };
 
-        // --- Projet Professionnel ---
-        y = addSection("Projet Professionnel", "");
-        autoTable(doc, {
-            startY: y,
-            theme: 'plain',
-            body: [
-                ['Dernier métier', join(profile.lastJob)],
-                ['Métier recherché', join(profile.searchedJob)],
-                ['Contrat', join(profile.contractType)],
-                ['Durée', join(profile.duration)],
-                ['Environnement', join(profile.workEnvironment)],
-            ],
-            styles: { fontSize: 10, cellPadding: {top: 1, right: 2, bottom: 1, left: 2} },
-            columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 } },
-        });
-        y = (doc as any).lastAutoTable.finalY + 10;
+        const addExperienceSection = (exps?: CvProfile['experiences']) => {
+            if (!exps || exps.length === 0) return;
+            if (y > 250) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text("Expériences Professionnelles", 15, y);
+            y += 2;
+            doc.setDrawColor(180, 180, 180);
+            doc.line(15, y, 60, y);
+            y += 8;
+
+            exps.forEach(exp => {
+                if (y > 260) { doc.addPage(); y = 20; }
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                const expTitle = `${join(exp.jobTitle)} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
+                doc.text(expTitle, 15, y);
+                y += 6;
+                
+                doc.setFontSize(10);
+                doc.setFont('helvetica', 'normal');
+                if (checkArray(exp.activities).length > 0) {
+                     doc.text(`Activités: ${join(exp.activities)}`, 20, y, { maxWidth: 175 });
+                     y += doc.getTextDimensions(`Activités: ${join(exp.activities)}`, { maxWidth: 175 }).h + 4;
+                }
+                if (checkArray(exp.characteristics).length > 0) {
+                    doc.text(`Compétences: ${join(exp.characteristics)}`, 20, y, { maxWidth: 175 });
+                     y += doc.getTextDimensions(`Compétences: ${join(exp.characteristics)}`, { maxWidth: 175 }).h + 6;
+                }
+                y += 4;
+            });
+        };
         
-        // --- Formations ---
-        y = addSection("Formations", "");
-        let formationsText = [
+        // --- Sections ---
+        addSection("Projet Professionnel", [
+            `Dernier métier: ${join(profile.lastJob)}`,
+            `Métier recherché: ${join(profile.searchedJob)}`,
+            `Type de contrat: ${join(profile.contractType)}`,
+            `Durée: ${join(profile.duration)}`,
+            `Environnement: ${join(profile.workEnvironment)}`,
+        ].join('\n'));
+
+        addSection("Formations", [
           `Niveau le plus élevé: ${join(profile.highestFormation)}`,
           `Compétences associées: ${join(profile.highestFormationSkills)}`,
           `En lien avec le métier actuel: ${join(profile.currentJobFormation)}`,
           `Compétences associées: ${join(profile.currentJobFormationSkills)}`,
           `En lien avec le projet: ${join(profile.projectFormation)}`,
           `Compétences associées: ${join(profile.projectFormationSkills)}`
-        ].filter(line => !line.endsWith(': ')).join('\n');
-        let lines = doc.splitTextToSize(formationsText, 180);
-        doc.text(lines, 15, y);
-        y += lines.length * 5 + 8;
-
-
-        // --- Expériences ---
-        y = addSection("Expériences Professionnelles", "");
-        profile.experiences?.forEach(exp => {
-            if (y > 250) { doc.addPage(); y = 15; }
-            doc.setFontSize(11);
-            doc.setFont('helvetica', 'bold');
-            const expTitle = `${join(exp.jobTitle)} (${calculateSeniority(exp.startDate, exp.endDate) || 'N/A'})`;
-            doc.text(expTitle, 15, y);
-            y += 6;
-            
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            if (checkArray(exp.activities).length > 0) {
-                 doc.text(`Activités: ${join(exp.activities)}`, 20, y, { maxWidth: 175 });
-                 y += doc.getTextDimensions(`Activités: ${join(exp.activities)}`, { maxWidth: 175 }).h + 4;
-            }
-            if (checkArray(exp.characteristics).length > 0) {
-                doc.text(`Compétences: ${join(exp.characteristics)}`, 20, y, { maxWidth: 175 });
-                 y += doc.getTextDimensions(`Compétences: ${join(exp.characteristics)}`, { maxWidth: 175 }).h + 6;
-            }
-            y += 2;
-        });
-
-        // --- Softskills & Others in a new page if needed ---
-        if (y > 220) { doc.addPage(); y = 15; }
-        y = addSection("Softskills", join(profile.softskills));
-        y = addSection("Centres d'intérêt", join(profile.otherInterests));
+        ].filter(line => !line.endsWith(': ')).join('\n'));
         
-        if (y > 260) { doc.addPage(); y = 15; }
-        y = addSection("Mobilité & Permis", `${join(profile.mobility)} \n ${join(profile.drivingLicence)}`);
+        addExperienceSection(profile.experiences);
 
+        addSection("Softskills", join(profile.softskills));
+        addSection("Centres d'intérêt", join(profile.otherInterests));
+        addSection("Mobilité & Permis", `${join(profile.mobility)} | ${join(profile.drivingLicence)}`);
 
         doc.save(`CV_${client.firstName}_${client.lastName}.pdf`);
     };
@@ -925,3 +919,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
