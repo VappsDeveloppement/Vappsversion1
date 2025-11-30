@@ -2,7 +2,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit } from "lucide-react";
@@ -26,6 +26,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { differenceInMonths, differenceInYears } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 type Client = {
@@ -137,6 +138,8 @@ function Cvtheque() {
     const [showCreateForm, setShowCreateForm] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
+    const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
+    const [profileToDelete, setProfileToDelete] = useState<CvProfile | null>(null);
     
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
     const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
@@ -167,11 +170,30 @@ function Cvtheque() {
         otherInterests: [],
       }
     });
-
+    
     const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
         control: cvForm.control,
         name: "experiences"
     });
+    
+    useEffect(() => {
+        if (isSheetOpen) {
+            if (editingProfile) {
+                const client: Client = {
+                    id: editingProfile.clientId,
+                    firstName: editingProfile.clientName.split(' ')[0],
+                    lastName: editingProfile.clientName.split(' ').slice(1).join(' '),
+                    email: '', // Not needed for display
+                    dateJoined: '', // Not needed for display
+                };
+                setSelectedClient(client);
+                cvForm.reset(editingProfile);
+            } else {
+                 resetSheet();
+            }
+        }
+    }, [isSheetOpen, editingProfile, cvForm]);
+
 
     const calculateSeniority = (startDate?: string, endDate?: string) => {
         if (!startDate) return null;
@@ -201,6 +223,7 @@ function Cvtheque() {
         setSearchResult(null);
         setSelectedClient(null);
         setShowCreateForm(false);
+        setEditingProfile(null);
         newUserForm.reset();
         cvForm.reset();
     };
@@ -311,17 +334,36 @@ function Cvtheque() {
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
             ...data,
         };
+
+        if (editingProfile) {
+            const profileRef = doc(firestore, `users/${user.uid}/cv_profiles`, editingProfile.id);
+            setDocumentNonBlocking(profileRef, cvProfileData, { merge: true });
+            toast({ title: "Profil CV mis à jour" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), cvProfileData);
+            toast({title: "Profil CV enregistré"});
+        }
         
-        addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), cvProfileData);
-        
-        toast({title: "Profil CV enregistré"});
         resetSheet();
     };
 
     const handleEdit = (profile: CvProfile) => {
-        // This function will need implementation when edit functionality is added
-        toast({title: "Fonctionnalité à venir", description: "La modification des profils sera bientôt disponible."})
-    }
+        setEditingProfile(profile);
+        setIsSheetOpen(true);
+    };
+    
+    const handleDelete = async () => {
+        if (!profileToDelete || !user) return;
+        try {
+            const profileRef = doc(firestore, `users/${user.uid}/cv_profiles`, profileToDelete.id);
+            await deleteDocumentNonBlocking(profileRef);
+            toast({ title: "Profil CV supprimé" });
+        } catch (error) {
+            toast({ title: "Erreur", description: "Impossible de supprimer le profil.", variant: "destructive" });
+        } finally {
+            setProfileToDelete(null);
+        }
+    };
 
     return (
         <Card>
@@ -337,7 +379,7 @@ function Cvtheque() {
                         </SheetTrigger>
                         <SheetContent className="sm:max-w-3xl w-full">
                             <SheetHeader>
-                                <SheetTitle>Nouveau profil CV</SheetTitle>
+                                <SheetTitle>{editingProfile ? "Modifier le profil CV" : "Nouveau profil CV"}</SheetTitle>
                                 <SheetDescription>
                                     {selectedClient ? `Profil pour ${selectedClient.firstName} ${selectedClient.lastName}` : "Commencez par sélectionner ou créer un client."}
                                 </SheetDescription>
@@ -431,10 +473,10 @@ function Cvtheque() {
                                                             </div>
                                                         )}
                                                     </div>
-                                                    <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>
+                                                    {!editingProfile && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
                                                 </div>
                                             </Card>
-
+                                            
                                             <Card>
                                                 <CardHeader><CardTitle>Mobilité</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
@@ -442,7 +484,7 @@ function Cvtheque() {
                                                     <FormField control={cvForm.control} name="drivingLicence" render={({ field }) => (<FormItem><FormLabel>Moyen de locomotion et permis</FormLabel><FormControl><TagInput {...field} placeholder="Permis B, Véhicule personnel..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 </CardContent>
                                             </Card>
-                                            
+
                                             <Card>
                                                 <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
@@ -552,11 +594,11 @@ function Cvtheque() {
                                 cvProfiles.map(p => (
                                     <TableRow key={p.id}>
                                         <TableCell>{p.clientName}</TableCell>
-                                        <TableCell>{Array.isArray(p.lastJob) ? p.lastJob.join(', ') : ''}</TableCell>
-                                        <TableCell>{Array.isArray(p.searchedJob) ? p.searchedJob.join(', ') : ''}</TableCell>
+                                        <TableCell>{Array.isArray(p.lastJob) ? p.lastJob.join(', ') : p.lastJob}</TableCell>
+                                        <TableCell>{Array.isArray(p.searchedJob) ? p.searchedJob.join(', ') : p.searchedJob}</TableCell>
                                         <TableCell className="text-right">
                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(p)}><Edit className="h-4 w-4"/></Button>
-                                            <Button variant="ghost" size="icon" onClick={() => {}}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => setProfileToDelete(p)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
@@ -569,6 +611,18 @@ function Cvtheque() {
                     </Table>
                 </div>
             </CardContent>
+            <AlertDialog open={!!profileToDelete} onOpenChange={(open) => !open && setProfileToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer le profil de {profileToDelete?.clientName} ?</AlertDialogTitle>
+                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </Card>
     );
 }
