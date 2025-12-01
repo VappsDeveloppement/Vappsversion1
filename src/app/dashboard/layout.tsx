@@ -325,16 +325,14 @@ export default function DashboardLayout({
                     </SidebarMenuButton>
                   </Link>
                 </SidebarMenuItem>
-                 {hasAdminAccess && (
-                    <SidebarMenuItem>
-                        <Link href="/admin">
-                            <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
-                                <Users />
-                                <span>Admin Platforme</span>
-                            </SidebarMenuButton>
-                        </Link>
-                    </SidebarMenuItem>
-                 )}
+                <SidebarMenuItem>
+                    <Link href="/admin">
+                        <SidebarMenuButton isActive={pathname.startsWith("/admin")}>
+                            <Users />
+                            <span>Admin Platforme</span>
+                        </SidebarMenuButton>
+                    </Link>
+                </SidebarMenuItem>
             </SidebarMenu>
              
           </SidebarContent>
@@ -369,5 +367,3 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
-
-    
