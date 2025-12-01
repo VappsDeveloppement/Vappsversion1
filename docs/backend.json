@@ -930,6 +930,25 @@
       },
       "required": ["id", "title"]
     },
+    "JobApplication": {
+        "title": "Job Application",
+        "type": "object",
+        "description": "Represents a candidate's application for a job offer.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string", "description": "ID of the counselor who owns the job offer." },
+            "jobOfferId": { "type": "string" },
+            "jobOfferTitle": { "type": "string" },
+            "applicantName": { "type": "string" },
+            "applicantEmail": { "type": "string", "format": "email" },
+            "applicantPhone": { "type": "string" },
+            "cvUrl": { "type": "string", "format": "uri" },
+            "coverLetter": { "type": "string" },
+            "appliedAt": { "type": "string", "format": "date-time" },
+            "status": { "type": "string", "enum": ["new", "reviewed", "contacted", "rejected"], "default": "new" }
+        },
+        "required": ["counselorId", "jobOfferId", "jobOfferTitle", "applicantName", "applicantEmail", "cvUrl", "appliedAt"]
+    },
     "BetaScenario": {
       "title": "Beta Scenario",
       "type": "object",
@@ -1532,6 +1551,14 @@
         }
       },
       {
+        "path": "/job_applications/{applicationId}",
+        "definition": {
+          "entityName": "JobApplication",
+          "schema": { "$ref": "#/entities/JobApplication" },
+          "description": "Stores job applications submitted from public job offers."
+        }
+      },
+      {
         "path": "/gdpr_requests/{requestId}",
         "definition": {
           "entityName": "GdprRequest",
@@ -1776,3 +1803,5 @@
   }
 }
 
+
+    

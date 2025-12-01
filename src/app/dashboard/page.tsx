@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -11,7 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2, Search, Mail, MessageSquare, TrendingUp, Users, FileText, Receipt, Calendar as CalendarIcon } from 'lucide-react';
+import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2, Search, Mail, MessageSquare, TrendingUp, Users, FileText, Receipt, Calendar as CalendarIcon, Download, FileArchive } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -51,6 +52,16 @@ type TrainingRequest = {
     message: string;
     status: 'new' | 'processed';
     createdAt: string;
+};
+
+type JobApplication = {
+    id: string;
+    jobOfferTitle: string;
+    applicantName: string;
+    applicantEmail: string;
+    cvUrl: string;
+    status: 'new' | 'reviewed' | 'contacted' | 'rejected';
+    appliedAt: string;
 };
 
 
@@ -660,22 +671,147 @@ function TrainingRequestsSection() {
     );
 }
 
+function JobApplicationsSection() {
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [applicationToDelete, setApplicationToDelete] = useState<JobApplication | null>(null);
+
+    const applicationsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'job_applications'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: applications, isLoading: areApplicationsLoading } = useCollection<JobApplication>(applicationsQuery);
+
+    const handleUpdateStatus = (appId: string, status: JobApplication['status']) => {
+        const appRef = doc(firestore, 'job_applications', appId);
+        setDocumentNonBlocking(appRef, { status }, { merge: true });
+        toast({ title: "Statut mis à jour." });
+    };
+
+    const handleDelete = () => {
+        if (!applicationToDelete) return;
+        deleteDocumentNonBlocking(doc(firestore, 'job_applications', applicationToDelete.id));
+        toast({ title: 'Candidature supprimée' });
+        setApplicationToDelete(null);
+    };
+
+    const applicationStatusVariant: Record<JobApplication['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
+        new: 'destructive',
+        reviewed: 'outline',
+        contacted: 'default',
+        rejected: 'secondary',
+    };
+    const applicationStatusText: Record<JobApplication['status'], string> = {
+        new: 'Nouvelle',
+        reviewed: 'Examinée',
+        contacted: 'Contacté',
+        rejected: 'Rejetée',
+    };
+
+    return (
+         <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Mes Candidatures</CardTitle>
+                    <CardDescription>Liste des candidatures reçues pour vos offres d'emploi.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Candidat</TableHead>
+                                <TableHead>Offre</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {areApplicationsLoading || isUserLoading ? (
+                                <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                            ) : applications && applications.length > 0 ? (
+                                applications.map(app => (
+                                    <TableRow key={app.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{app.applicantName}</div>
+                                            <div className="text-sm text-muted-foreground">{app.applicantEmail}</div>
+                                        </TableCell>
+                                        <TableCell>{app.jobOfferTitle}</TableCell>
+                                        <TableCell>{new Date(app.appliedAt).toLocaleDateString()}</TableCell>
+                                        <TableCell><Badge variant={applicationStatusVariant[app.status]}>{applicationStatusText[app.status]}</Badge></TableCell>
+                                        <TableCell className="text-right">
+                                             <DropdownMenu>
+                                                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem asChild><a href={app.cvUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" /> Télécharger le CV</a></DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'reviewed')}>Marquer comme examinée</DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'contacted')}>Marquer comme contacté</DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'rejected')}>Marquer comme rejetée</DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => setApplicationToDelete(app)}>
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucune candidature pour le moment.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+             <AlertDialog open={!!applicationToDelete} onOpenChange={(open) => !open && setApplicationToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer cette candidature ?</AlertDialogTitle>
+                        <AlertDialogDescription>L'action est irréversible.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+        </>
+    );
+}
+
 
 export default function DashboardPage() {
     const { agency } = useAgency();
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+    const userPlan = useMemo(() => {
+        if (!userData?.planId || !personalization?.whiteLabelSection?.plans) {
+          return null;
+        }
+        return personalization.whiteLabelSection.plans.find(p => p.id === userData.planId);
+    }, [userData, personalization]);
+
+    const showVitae = (userData?.role === 'conseiller' && userPlan?.hasVitaeAccess);
 
     return (
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold font-headline">Tableau de bord</h1>
                 <p className="text-muted-foreground">
-                    Bienvenue sur votre tableau de bord, {agency?.name || '...'}.
+                    Bienvenue sur votre tableau de bord, {userData?.firstName || '...'}.
                 </p>
             </div>
             
             <DashboardStats />
             <FollowUpRequestsSection />
             <TrainingRequestsSection />
+            {showVitae && <JobApplicationsSection />}
 
             <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
                 <p className="text-muted-foreground">D'autres statistiques et informations seront bientôt disponibles ici.</p>
@@ -683,3 +819,6 @@ export default function DashboardPage() {
         </div>
     );
 }
+
+
+    
