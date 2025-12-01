@@ -1147,7 +1147,7 @@ function RncpManager() {
 
     const onSubmit = (data: RncpFormData) => {
         if (!user) return;
-        const ficheData = { counselorId: user.uid, ...data };
+        const ficheData = { counselorId: user.uid, ...data, trainingIds: data.trainingIds || [] };
         if (editingFiche) {
             setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rncp_sheets`, editingFiche.id), ficheData, { merge: true });
             toast({ title: 'Fiche RNCP mise à jour' });
