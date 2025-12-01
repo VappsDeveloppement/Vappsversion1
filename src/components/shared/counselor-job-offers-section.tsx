@@ -12,13 +12,14 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
-import { Loader2, Upload, File as FileIcon } from 'lucide-react';
+import { Loader2, Upload, File as FileIcon, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useStorage, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 import Link from 'next/link';
+import { RichTextEditor } from '../ui/rich-text-editor';
 
 type CounselorProfile = {
     id: string;
@@ -113,13 +114,18 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
     return (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-                <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>Postuler</Button>
+                <Button className="w-full font-bold" style={{ backgroundColor: primaryColor }}>Voir l'offre</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-lg">
+            <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>Postuler pour : {offer.title}</DialogTitle>
-                    <DialogDescription>Référence : {offer.reference}</DialogDescription>
+                    <DialogTitle>{offer.title}</DialogTitle>
+                    <DialogDescription>
+                        Référence: {offer.reference} <br/>
+                        {offer.location} | {offer.contractType}
+                    </DialogDescription>
                 </DialogHeader>
+                <div className="prose dark:prose-invert max-w-none max-h-[40vh] overflow-y-auto pr-4" dangerouslySetInnerHTML={{ __html: offer.description || '' }} />
+                <h4 className="font-semibold pt-4 border-t">Postuler à cette offre</h4>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                         <FormField control={form.control} name="applicantName" render={({ field }) => (<FormItem><FormLabel>Nom et prénom</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -140,8 +146,8 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
                                                     {field.value?.[0]?.name || "Aucun fichier sélectionné"}
                                                 </span>
                                             </div>
-                                            <Button type="button" variant="outline" onClick={() => document.getElementById('cv-upload')?.click()}><Upload className="h-4 w-4" /></Button>
-                                            <Input id="cv-upload" type="file" accept=".pdf" className="hidden" {...cvFileRef} />
+                                            <Button type="button" variant="outline" onClick={() => document.getElementById(`cv-upload-${offer.id}`)?.click()}><Upload className="h-4 w-4" /></Button>
+                                            <Input id={`cv-upload-${offer.id}`} type="file" accept=".pdf" className="hidden" {...cvFileRef} />
                                         </div>
                                     </FormControl>
                                     <FormMessage />
@@ -170,6 +176,7 @@ export function CounselorJobOffersSection({ counselor, jobOffers: offers }: { co
     }
     
     const { title, subtitle, description } = jobOffersSettings;
+    const cleanDescription = (html: string) => html ? html.replace(/<[^>]+>/g, '') : '';
 
     return (
         <section className="bg-muted/30 text-foreground py-16 sm:py-24">
@@ -201,6 +208,7 @@ export function CounselorJobOffersSection({ counselor, jobOffers: offers }: { co
                                             <p><strong>Contrat:</strong> {offer.contractType}</p>
                                             {offer.workingHours && <p><strong>Temps:</strong> {offer.workingHours}</p>}
                                             {offer.salary && <p><strong>Salaire:</strong> {offer.salary}</p>}
+                                            {offer.description && <p className="text-muted-foreground pt-2 line-clamp-3">{cleanDescription(offer.description)}</p>}
                                         </CardContent>
                                         <CardFooter>
                                             <JobApplicationForm offer={offer} counselorId={counselor.id} primaryColor={primaryColor} />
