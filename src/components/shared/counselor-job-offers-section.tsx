@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState } from 'react';
@@ -14,12 +13,10 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Loader2, Upload, File as FileIcon, Briefcase } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useStorage, addDocumentNonBlocking } from '@/firebase';
+import { useFirestore, addDocumentNonBlocking } from '@/firebase';
 import { collection } from 'firebase/firestore';
-import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 import Link from 'next/link';
-import { RichTextEditor } from '../ui/rich-text-editor';
 
 type CounselorProfile = {
     id: string;

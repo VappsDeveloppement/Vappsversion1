@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -302,8 +300,7 @@ function ApplicationManager() {
                           <DropdownMenuItem asChild>
                             <a
                               href={app.cvUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
+                              download={`CV_${app.applicantName.replace(' ', '_')}.pdf`}
                             >
                               <Download className="mr-2 h-4 w-4" /> Télécharger
                               le CV
