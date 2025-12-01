@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -160,15 +161,7 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
     );
 }
 
-export function CounselorJobOffersSection({ counselor }: { counselor: CounselorProfile }) {
-    const firestore = useFirestore();
-
-    const jobOffersQuery = useMemoFirebase(() => {
-        if (!counselor?.id) return null;
-        return query(collection(firestore, 'job_offers'), where('counselorId', '==', counselor.id));
-    }, [counselor?.id, firestore]);
-    const { data: offers, isLoading } = useCollection<JobOffer>(jobOffersQuery);
-
+export function CounselorJobOffersSection({ counselor, jobOffers: offers }: { counselor: CounselorProfile, jobOffers: JobOffer[] }) {
     const jobOffersSettings = counselor.miniSite?.jobOffersSection;
     const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 

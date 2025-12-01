@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React from 'react';
@@ -18,6 +19,7 @@ import { TrainingCatalogSection } from '@/components/shared/training-catalog-sec
 import { ProductsSection } from '@/components/shared/products-section';
 import { CounselorBlogSection } from '@/components/shared/counselor-blog-section';
 import type { Product } from '@/app/dashboard/aura/page';
+import type { JobOffer } from '@/app/dashboard/vitae/page';
 
 type CounselorProfile = {
     id: string;
@@ -62,9 +64,10 @@ type CounselorProfile = {
 interface CounselorPublicPageClientProps {
     counselor: CounselorProfile;
     products: Product[];
+    jobOffers: JobOffer[];
 }
 
-export function CounselorPublicPageClient({ counselor, products }: CounselorPublicPageClientProps) {
+export function CounselorPublicPageClient({ counselor, products, jobOffers }: CounselorPublicPageClientProps) {
   
   const copyrightText = "VApps";
   const copyrightUrl = "/";
@@ -80,7 +83,7 @@ export function CounselorPublicPageClient({ counselor, products }: CounselorPubl
         <CounselorServicesSection counselor={counselor} />
         <ParcoursSection counselor={counselor} />
         <CounselorPricingSection counselor={counselor} />
-        <CounselorJobOffersSection counselor={counselor} />
+        <CounselorJobOffersSection counselor={counselor} jobOffers={jobOffers} />
         <CounselorCtaSection counselor={counselor} />
         <CounselorActivitiesSection counselor={counselor} />
         {counselor.miniSite?.trainingCatalogSection?.enabled && (

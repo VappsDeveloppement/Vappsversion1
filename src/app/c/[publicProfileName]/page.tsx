@@ -6,6 +6,7 @@ import { initializeFirebase } from '@/firebase/server';
 import { collection, query, where, limit, getDocs, doc } from 'firebase/firestore';
 import { CounselorPublicPageClient } from '@/components/shared/counselor-public-page';
 import type { Product } from '@/app/dashboard/aura/page';
+import type { JobOffer } from '@/app/dashboard/vitae/page';
 
 type CounselorProfile = {
     id: string;
@@ -47,12 +48,18 @@ async function getCounselorData(publicProfileName: string) {
     const counselorDoc = counselorSnapshot.docs[0];
     const counselor = { id: counselorDoc.id, ...counselorDoc.data() } as CounselorProfile;
     
-    // Fetch products separately
+    // Fetch products
     const productsQuery = query(collection(firestore, 'products'), where('counselorId', '==', counselor.id));
     const productsSnapshot = await getDocs(productsQuery);
     const products = productsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Product));
 
-    return { counselor, products };
+    // Fetch job offers
+    const jobOffersQuery = query(collection(firestore, `users/${counselor.id}/job_offers`));
+    const jobOffersSnapshot = await getDocs(jobOffersQuery);
+    const jobOffers = jobOffersSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as JobOffer));
+
+
+    return { counselor, products, jobOffers };
 }
 
 export default async function CounselorPublicProfilePage({ params }: { params: { publicProfileName: string } }) {
@@ -62,5 +69,5 @@ export default async function CounselorPublicProfilePage({ params }: { params: {
     notFound();
   }
 
-  return <CounselorPublicPageClient counselor={data.counselor} products={data.products} />;
+  return <CounselorPublicPageClient counselor={data.counselor} products={data.products} jobOffers={data.jobOffers} />;
 }
