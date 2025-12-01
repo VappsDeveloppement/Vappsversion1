@@ -42,6 +42,8 @@ import React, { useEffect, useMemo } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AlertTriangle } from "lucide-react";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
@@ -77,23 +79,17 @@ export default function AdminLayout({
   const hasAdminAccess = useMemo(() => {
     if (!userData) return false;
     const hasFullAccessPermission = userData.permissions?.includes('FULLACCESS');
-    const isSuperAdmin = userData.role === 'superadmin';
-    return hasFullAccessPermission || isSuperAdmin;
+    // Le rôle 'superadmin' a été supprimé de la logique, comme demandé.
+    return hasFullAccessPermission;
   }, [userData]);
 
 
   useEffect(() => {
-    // This effect handles redirection *after* all loading is complete.
-    if (!isUserLoading && !isUserDataLoading) {
-      if (!user) {
-        // If no user is logged in at all, redirect to the main login.
-        router.push('/application');
-      } else if (!hasAdminAccess) {
-        // If the user is logged in but doesn't have admin rights, redirect to their normal dashboard.
-        router.push('/dashboard');
-      }
+    // Redirect to login if not authenticated
+    if (!isUserLoading && !user) {
+      router.push('/application');
     }
-  }, [isUserLoading, isUserDataLoading, user, hasAdminAccess, router]);
+  }, [isUserLoading, user, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -104,9 +100,8 @@ export default function AdminLayout({
 
   const isLoading = isUserLoading || isUserDataLoading;
   
-  // While loading or if the user is not yet determined to be an admin, show a loading state.
-  // This prevents rendering the children or redirecting prematurely.
-  if (isLoading || !hasAdminAccess) {
+  // While loading, show a full-screen loader.
+  if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
         <Loader2 className="h-16 w-16 animate-spin text-primary" />
@@ -114,7 +109,27 @@ export default function AdminLayout({
     );
   }
 
-  // Once loading is complete and access is confirmed, render the layout.
+  // After loading, if the user is authenticated but doesn't have access, show an error page.
+  if (user && !hasAdminAccess) {
+    return (
+         <div className="flex h-screen items-center justify-center bg-muted/30 p-4">
+             <Card className="w-full max-w-md text-center">
+                <CardHeader>
+                    <AlertTriangle className="mx-auto h-12 w-12 text-destructive" />
+                    <CardTitle className="mt-4">Accès Refusé</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p className="text-muted-foreground">Vous n'avez pas les autorisations nécessaires pour accéder à cette section.</p>
+                     <Button asChild className="mt-6">
+                        <Link href="/dashboard">Retour au tableau de bord</Link>
+                    </Button>
+                </CardContent>
+             </Card>
+        </div>
+    )
+  }
+
+  // If the user has access, render the admin layout.
   return (
     <SidebarProvider>
       <div className="flex">
@@ -165,11 +180,11 @@ export default function AdminLayout({
           <SidebarFooter>
             <div className="flex items-center gap-3 p-2 rounded-lg bg-secondary">
               <Avatar>
-                <AvatarImage src="https://picsum.photos/seed/admin-avatar/40/40" data-ai-hint="admin avatar" />
-                <AvatarFallback>A</AvatarFallback>
+                <AvatarImage src={userData?.photoUrl ?? undefined} />
+                <AvatarFallback>{user?.email?.charAt(0).toUpperCase() || 'A'}</AvatarFallback>
               </Avatar>
               <div className="flex-1 overflow-hidden">
-                <p className="font-semibold text-sm truncate">Super Admin</p>
+                <p className="font-semibold text-sm truncate">{userData?.firstName || 'Admin'}</p>
               </div>
               <Button variant="ghost" size="icon" onClick={handleLogout}>
                 <LogOut className="h-4 w-4" />
