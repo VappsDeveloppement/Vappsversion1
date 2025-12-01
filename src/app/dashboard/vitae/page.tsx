@@ -39,6 +39,7 @@ import { ChevronsUpDown, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { JobOffer, JobOfferFormData, jobOfferFormSchema } from '@/lib/types';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 
 
 type Client = {
@@ -1832,3 +1833,4 @@ export default function VitaePage() {
 }
 
     
+
