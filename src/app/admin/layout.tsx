@@ -77,9 +77,8 @@ export default function AdminLayout({
   const hasAdminAccess = useMemo(() => {
     if (!userData) return false;
     // A user has admin access if they have the 'superadmin' role OR the 'FULLACCESS' permission.
-    const hasSuperAdminRole = userData.role === 'superadmin';
     const hasFullAccessPermission = userData.permissions?.includes('FULLACCESS');
-    return hasSuperAdminRole || hasFullAccessPermission;
+    return hasFullAccessPermission;
   }, [userData]);
 
 

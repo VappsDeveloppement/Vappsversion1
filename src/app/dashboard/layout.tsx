@@ -127,13 +127,15 @@ export default function DashboardLayout({
 
 
   useEffect(() => {
-    // Wait until both user and user data are loaded
     if (!isUserLoading && !isUserDataLoading) {
-      if (!user) {
-        router.push('/application');
-      }
+        if (!user) {
+            router.push('/application');
+        } else if (userData?.permissions?.includes('FULLACCESS') && pathname !== '/admin' && !pathname.startsWith('/admin/')) {
+            // Redirect admin to admin dashboard if they are not there already
+            router.push('/admin');
+        }
     }
-  }, [isUserLoading, isUserDataLoading, user, router]);
+}, [isUserLoading, isUserDataLoading, user, userData, pathname, router]);
 
   const hasAdminAccess = userData?.permissions?.includes('FULLACCESS');
   const isConseiller = userData?.role === 'conseiller';
