@@ -2,47 +2,35 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Règles pour les collections publiques (création autorisée sans authentification)
+
+    // --- Règles Publiques ---
+    // Ces collections autorisent des opérations spécifiques sans authentification.
+
+    // Autoriser la création de candidatures par n'importe qui.
     match /job_applications/{applicationId} {
       allow create: if true;
-      // Les autres opérations (read, update, delete) ne sont pas autorisées publiquement
-      // Elles suivront les règles par défaut (aucun accès) ou des règles plus spécifiques si définies.
+      allow read, update, delete: if request.auth != null; // Seuls les utilisateurs connectés peuvent gérer
     }
 
+    // Autoriser la création de messages de contact par n'importe qui.
     match /contact_messages/{messageId} {
       allow create: if true;
-    }
-
-    match /gdpr_requests/{requestId} {
-      allow create: if true;
-    }
-
-    match /support_requests/{requestId} {
-      allow create: if true;
-    }
-
-    match /live_follow_up_requests/{requestId} {
-      allow create: if true;
-    }
-
-    match /training_requests/{requestId} {
-      allow create: if true;
+      allow read, update, delete: if request.auth != null;
     }
     
-    match /beta_tests_results/{resultId} {
-      allow create: if true;
-    }
-
+    // Autoriser la validation publique des devis
     match /quotes/{quoteId} {
         allow read: if true;
-        allow update: if true;
+        allow update: if resource.data.status != write.resource.data.status;
     }
 
-    // Règles pour les autres collections (nécessite une authentification)
-    match /{path=**} {
-      allow read: if true; // Permettre la lecture publique pour la plupart des données
-      allow write: if request.auth != null; // N'autoriser l'écriture qu'aux utilisateurs authentifiés
+    // --- Règles pour les utilisateurs authentifiés ---
+    match /{document=**} {
+      // Par défaut, autoriser la lecture à tous (pour les pages publiques)
+      // et l'écriture uniquement aux utilisateurs authentifiés.
+      // Des règles plus spécifiques ci-dessous peuvent restreindre davantage ces accès.
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }
