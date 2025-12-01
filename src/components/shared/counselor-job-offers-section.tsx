@@ -15,9 +15,9 @@ import { Textarea } from '../ui/textarea';
 import { Loader2, Upload, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useStorage, addDocumentNonBlocking } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '../ui/carousel';
 import Link from 'next/link';
 
 type CounselorProfile = {
@@ -172,7 +172,7 @@ export function CounselorJobOffersSection({ counselor, jobOffers: offers }: { co
     const { title, subtitle, description } = jobOffersSettings;
 
     return (
-        <section className="bg-background text-foreground py-16 sm:py-24">
+        <section className="bg-muted/30 text-foreground py-16 sm:py-24">
             <div className="container mx-auto px-4">
                 <div className="text-center mb-12">
                     <h2 className="text-3xl lg:text-4xl font-bold">{title}</h2>
@@ -180,41 +180,39 @@ export function CounselorJobOffersSection({ counselor, jobOffers: offers }: { co
                     {description && <p className="text-muted-foreground mt-4 max-w-2xl mx-auto">{description}</p>}
                 </div>
 
-                <div className="space-y-6">
-                    {offers.map((offer) => (
-                        <Card key={offer.id} className="shadow-sm">
-                             <Accordion type="single" collapsible>
-                                <AccordionItem value={offer.id} className="border-b-0">
-                                    <AccordionTrigger className="p-6 hover:no-underline">
-                                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center w-full text-left gap-4">
-                                            <div className='flex-1'>
-                                                <CardTitle>{offer.title}</CardTitle>
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground mt-2">
-                                                    {offer.reference && <span>Ref: {offer.reference}</span>}
-                                                    {offer.contractType && <span>{offer.contractType}</span>}
-                                                    {offer.workingHours && <span>{offer.workingHours}</span>}
-                                                    {offer.location && <span>{offer.location}</span>}
-                                                    {offer.salary && <span>{offer.salary}</span>}
-                                                </div>
-                                            </div>
-                                             <div className="hidden h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background md:flex">
-                                                Détails
-                                             </div>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent>
-                                        <div className="px-6 pb-6 space-y-6">
-                                            {offer.description && (
-                                                <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: offer.description }}/>
-                                            )}
+                <Carousel
+                    opts={{
+                        align: "start",
+                        loop: offers.length > 3,
+                    }}
+                    className="w-full max-w-6xl mx-auto"
+                >
+                    <CarouselContent className="-ml-4">
+                        {offers.map((offer) => (
+                            <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3">
+                                <div className="p-1 h-full">
+                                    <Card className="flex flex-col h-full shadow-sm hover:shadow-lg transition-shadow duration-300">
+                                        <CardHeader>
+                                            <CardTitle className="line-clamp-2">{offer.title}</CardTitle>
+                                            <CardDescription>Ref: {offer.reference}</CardDescription>
+                                        </CardHeader>
+                                        <CardContent className="flex-1 space-y-2 text-sm">
+                                            <p><strong>Lieu:</strong> {offer.location}</p>
+                                            <p><strong>Contrat:</strong> {offer.contractType}</p>
+                                            {offer.workingHours && <p><strong>Temps:</strong> {offer.workingHours}</p>}
+                                            {offer.salary && <p><strong>Salaire:</strong> {offer.salary}</p>}
+                                        </CardContent>
+                                        <CardFooter>
                                             <JobApplicationForm offer={offer} counselorId={counselor.id} primaryColor={primaryColor} />
-                                        </div>
-                                    </AccordionContent>
-                                </AccordionItem>
-                             </Accordion>
-                        </Card>
-                    ))}
-                </div>
+                                        </CardFooter>
+                                    </Card>
+                                </div>
+                            </CarouselItem>
+                        ))}
+                    </CarouselContent>
+                    <CarouselPrevious />
+                    <CarouselNext />
+                </Carousel>
             </div>
         </section>
     );
