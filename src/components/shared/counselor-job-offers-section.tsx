@@ -51,7 +51,6 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
     const [isSubmitting, setIsSubmitting] = useState(false);
     const { toast } = useToast();
     const firestore = useFirestore();
-    const storage = useStorage();
 
     const form = useForm<ApplicationFormData>({
         resolver: zodResolver(applicationSchema),
@@ -59,6 +58,14 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
     });
 
     const cvFileRef = form.register("cv");
+
+    const toBase64 = (file: File): Promise<string> =>
+      new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = (error) => reject(error);
+    });
 
     const onSubmit = async (data: ApplicationFormData) => {
         setIsSubmitting(true);
@@ -70,12 +77,10 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
         }
 
         try {
-            // Upload CV to storage
-            const cvStorageRef = ref(storage, `job_applications/${counselorId}/${offer.id}/${Date.now()}-${cvFile.name}`);
-            const uploadResult = await uploadString(cvStorageRef, await toBase64(cvFile), 'data_url');
-            const cvUrl = await getDownloadURL(uploadResult.ref);
+            // Convert CV to Base64 data URI
+            const cvDataUrl = await toBase64(cvFile);
 
-            // Save application to Firestore
+            // Save application to Firestore with CV data inline
             const applicationData = {
                 counselorId,
                 jobOfferId: offer.id,
@@ -84,7 +89,7 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
                 applicantEmail: data.applicantEmail,
                 applicantPhone: data.applicantPhone,
                 coverLetter: data.coverLetter,
-                cvUrl,
+                cvUrl: cvDataUrl, // Store the data URI
                 status: 'new',
                 appliedAt: new Date().toISOString(),
             };
@@ -102,14 +107,6 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
             setIsSubmitting(false);
         }
     };
-    
-    const toBase64 = (file: File): Promise<string> =>
-      new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = (error) => reject(error);
-    });
 
     return (
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
