@@ -2,6 +2,49 @@
 
 {
   "entities": {
+    "CvProfile": {
+      "title": "CV Profile",
+      "type": "object",
+      "description": "Represents a candidate's CV profile created by a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "mobility": { "type": "array", "items": { "type": "string" } },
+        "drivingLicence": { "type": "array", "items": { "type": "string" } },
+        "lastJob": { "type": "array", "items": { "type": "string" } },
+        "searchedJob": { "type": "array", "items": { "type": "string" } },
+        "contractType": { "type": "array", "items": { "type": "string" } },
+        "duration": { "type": "array", "items": { "type": "string" } },
+        "workEnvironment": { "type": "array", "items": { "type": "string" } },
+        "highestFormation": { "type": "array", "items": { "type": "string" } },
+        "highestFormationSkills": { "type": "array", "items": { "type": "string" } },
+        "currentJobFormation": { "type": "array", "items": { "type": "string" } },
+        "currentJobFormationSkills": { "type": "array", "items": { "type": "string" } },
+        "projectFormation": { "type": "array", "items": { "type": "string" } },
+        "projectFormationSkills": { "type": "array", "items": { "type": "string" } },
+        "fundingOptions": { "type": "array", "items": { "type": "string" } },
+        "experiences": { 
+            "type": "array", 
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "startDate": { "type": "string" },
+                    "endDate": { "type": "string" },
+                    "jobTitle": { "type": "array", "items": { "type": "string" } },
+                    "characteristics": { "type": "array", "items": { "type": "string" } },
+                    "activities": { "type": "array", "items": { "type": "string" } }
+                }
+            }
+        },
+        "otherInterests": { "type": "array", "items": { "type": "string" } },
+        "softskills": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["disponible", "en_mission", "en_emploi"] },
+        "cvUrl": { "type": "string", "format": "uri", "description": "URL to the candidate's CV in PDF format." }
+      }
+    },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
@@ -1803,5 +1846,3 @@
   }
 }
 
-
-    

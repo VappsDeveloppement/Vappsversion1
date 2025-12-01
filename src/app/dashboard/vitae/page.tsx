@@ -5,13 +5,13 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit, Download } from "lucide-react";
+import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit, Download, Upload } from "lucide-react";
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs, arrayUnion } from 'firebase/firestore';
-import { useFirestore, useAuth } from '@/firebase/provider';
+import { collection, query, where, doc, getDocs, arrayUnion, ref, uploadBytes, getDownloadURL } from 'firebase/firestore';
+import { useFirestore, useAuth, useStorage } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -95,6 +95,7 @@ const cvProfileSchema = z.object({
   otherInterests: z.array(z.string()).optional(),
   softskills: z.array(z.string()).optional(),
   status: z.enum(['disponible', 'en_mission', 'en_emploi']).default('disponible').optional(),
+  cvUrl: z.string().url().optional().nullable(),
 });
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 
@@ -179,6 +180,24 @@ export type JobOffer = JobOfferFormData & {
   id: string;
 };
 
+type JobApplication = {
+    id: string;
+    jobOfferTitle: string;
+    applicantName: string;
+    applicantEmail: string;
+    cvUrl: string;
+    status: 'new' | 'reviewed' | 'contacted' | 'rejected';
+    appliedAt: string;
+};
+
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+});
+
 
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
@@ -221,9 +240,119 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
     );
 };
 
+function ApplicationManager() {
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [applicationToDelete, setApplicationToDelete] = useState<JobApplication | null>(null);
+
+    const applicationsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'job_applications'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: applications, isLoading: areApplicationsLoading } = useCollection<JobApplication>(applicationsQuery);
+
+    const handleUpdateStatus = (appId: string, status: JobApplication['status']) => {
+        const appRef = doc(firestore, 'job_applications', appId);
+        setDocumentNonBlocking(appRef, { status }, { merge: true });
+        toast({ title: "Statut mis à jour." });
+    };
+
+    const handleDelete = () => {
+        if (!applicationToDelete) return;
+        deleteDocumentNonBlocking(doc(firestore, 'job_applications', applicationToDelete.id));
+        toast({ title: 'Candidature supprimée' });
+        setApplicationToDelete(null);
+    };
+
+    const applicationStatusVariant: Record<JobApplication['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
+        new: 'destructive',
+        reviewed: 'outline',
+        contacted: 'default',
+        rejected: 'secondary',
+    };
+    const applicationStatusText: Record<JobApplication['status'], string> = {
+        new: 'Nouvelle',
+        reviewed: 'Examinée',
+        contacted: 'Contacté',
+        rejected: 'Rejetée',
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Candidatures</CardTitle>
+                <CardDescription>Liste des candidatures reçues pour vos offres d'emploi.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Candidat</TableHead>
+                            <TableHead>Offre</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead>Statut</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {areApplicationsLoading || isUserLoading ? (
+                            <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                        ) : applications && applications.length > 0 ? (
+                            applications.map(app => (
+                                <TableRow key={app.id}>
+                                    <TableCell>
+                                        <div className="font-medium">{app.applicantName}</div>
+                                        <div className="text-sm text-muted-foreground">{app.applicantEmail}</div>
+                                    </TableCell>
+                                    <TableCell>{app.jobOfferTitle}</TableCell>
+                                    <TableCell>{new Date(app.appliedAt).toLocaleDateString()}</TableCell>
+                                    <TableCell><Badge variant={applicationStatusVariant[app.status]}>{applicationStatusText[app.status]}</Badge></TableCell>
+                                    <TableCell className="text-right">
+                                            <DropdownMenu>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem asChild><a href={app.cvUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" /> Télécharger le CV</a></DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'reviewed')}>Marquer comme examinée</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'contacted')}>Marquer comme contacté</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'rejected')}>Marquer comme rejetée</DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive" onClick={() => setApplicationToDelete(app)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucune candidature pour le moment.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+                 <AlertDialog open={!!applicationToDelete} onOpenChange={(open) => !open && setApplicationToDelete(null)}>
+                    <AlertDialogContent>
+                        <AlertDialogHeader>
+                            <AlertDialogTitle>Supprimer cette candidature ?</AlertDialogTitle>
+                            <AlertDialogDescription>L'action est irréversible.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                            <AlertDialogCancel>Annuler</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                        </AlertDialogFooter>
+                    </AlertDialogContent>
+                </AlertDialog>
+            </CardContent>
+        </Card>
+    );
+}
+
+
 function Cvtheque() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const auth = useAuth();
     const { toast } = useToast();
     const { personalization } = useAgency();
@@ -241,6 +370,8 @@ function Cvtheque() {
 
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [isUploading, setIsUploading] = useState(false);
+    const pdfInputRef = React.useRef<HTMLInputElement>(null);
     
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
     const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
@@ -276,6 +407,7 @@ function Cvtheque() {
         otherInterests: [],
         softskills: [],
         status: 'disponible',
+        cvUrl: null,
       }
     });
     
@@ -429,6 +561,32 @@ function Cvtheque() {
         setSearchResult(null);
     };
 
+    const handlePdfUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (!file || !storage || !user) return;
+
+        setIsUploading(true);
+        toast({ title: 'Téléversement du CV en cours...', description: 'Veuillez patienter.' });
+        
+        const filePath = `cv/${user.uid}/${file.name}`;
+        const fileRef = ref(storage, filePath);
+
+        try {
+            await uploadBytes(fileRef, file);
+            const downloadURL = await getDownloadURL(fileRef);
+            cvForm.setValue('cvUrl', downloadURL, { shouldValidate: true });
+            toast({ title: 'Téléversement réussi', description: 'Le CV a été enregistré.' });
+        } catch (error) {
+            console.error("PDF Upload Error:", error);
+            toast({ title: 'Erreur de téléversement', description: "Impossible d'envoyer le fichier.", variant: 'destructive' });
+        } finally {
+            setIsUploading(false);
+             if (pdfInputRef.current) {
+                pdfInputRef.current.value = "";
+            }
+        }
+    }
+
     const onCvProfileSubmit = (data: CvProfileFormData) => {
         if (!user || !selectedClient) return;
     
@@ -436,24 +594,7 @@ function Cvtheque() {
             counselorId: user.uid,
             clientId: selectedClient.id,
             clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
-            mobility: data.mobility || [],
-            drivingLicence: data.drivingLicence || [],
-            lastJob: data.lastJob || [],
-            searchedJob: data.searchedJob || [],
-            contractType: data.contractType || [],
-            duration: data.duration || [],
-            workEnvironment: data.workEnvironment || [],
-            highestFormation: data.highestFormation || [],
-            highestFormationSkills: data.highestFormationSkills || [],
-            currentJobFormation: data.currentJobFormation || [],
-            currentJobFormationSkills: data.currentJobFormationSkills || [],
-            projectFormation: data.projectFormation || [],
-            projectFormationSkills: data.projectFormationSkills || [],
-            fundingOptions: data.fundingOptions || [],
-            experiences: data.experiences || [],
-            otherInterests: data.otherInterests || [],
-            softskills: data.softskills || [],
-            status: data.status || 'disponible',
+            ...data
         };
 
         if (editingProfile) {
@@ -725,6 +866,21 @@ function Cvtheque() {
                                                 </div>
                                             </Card>
                                             
+                                            <FormField control={cvForm.control} name="cvUrl" render={() => (
+                                                <FormItem>
+                                                    <FormLabel>CV du candidat (PDF)</FormLabel>
+                                                    <FormControl>
+                                                        <div className="flex items-center gap-2">
+                                                            <Input disabled value={cvForm.watch('cvUrl') || 'Aucun CV téléversé'}/>
+                                                            <input type="file" ref={pdfInputRef} onChange={handlePdfUpload} className="hidden" accept="application/pdf" />
+                                                            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
+                                                                {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
+                                                            </Button>
+                                                        </div>
+                                                    </FormControl>
+                                                    <FormMessage/>
+                                                </FormItem>
+                                            )}/>
                                             <Card>
                                                 <CardHeader><CardTitle>Mobilité</CardTitle></CardHeader>
                                                 <CardContent className="space-y-4">
@@ -1063,10 +1219,7 @@ function RncpManager() {
                                                                 name="trainingIds"
                                                                 render={({ field }) => {
                                                                     return (
-                                                                        <FormItem
-                                                                            key={training.id}
-                                                                            className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md"
-                                                                        >
+                                                                        <FormItem key={training.id} className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md">
                                                                             <FormControl>
                                                                                 <Checkbox
                                                                                     checked={field.value?.includes(training.id)}
@@ -1493,8 +1646,9 @@ export default function VitaePage() {
                 <h1 className="text-3xl font-bold font-headline">Vitae</h1>
                 <p className="text-muted-foreground">Votre outil de gestion de parcours professionnels</p>
             </div>
+             <ApplicationManager />
             <Tabs defaultValue="cvtheque" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 h-auto">
+                <TabsList className="grid w-full grid-cols-4 h-auto">
                     <TabsTrigger value="cvtheque">
                         <FileText className="mr-2 h-4 w-4" /> CVTHEQUE
                     </TabsTrigger>
@@ -1506,9 +1660,6 @@ export default function VitaePage() {
                     </TabsTrigger>
                     <TabsTrigger value="jobs">
                         <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
-                    </TabsTrigger>
-                    <TabsTrigger value="test">
-                        <FlaskConical className="mr-2 h-4 w-4" /> TEST
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="cvtheque">
@@ -1523,20 +1674,10 @@ export default function VitaePage() {
                 <TabsContent value="jobs">
                     <JobOfferManager />
                 </TabsContent>
-                <TabsContent value="test">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>Test</CardTitle>
-                            <CardDescription>Section de test pour l'outil Vitae.</CardDescription>
-                        </CardHeader>
-                        <CardContent className="text-center p-12 text-muted-foreground">
-                             <p>La section de test sera bientôt disponible ici.</p>
-                        </CardContent>
-                    </Card>
-                </TabsContent>
             </Tabs>
         </div>
     );
 }
+
 
 
