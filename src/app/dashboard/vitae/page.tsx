@@ -1568,7 +1568,6 @@ function JobOfferManager() {
 
     const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
     const { data: offers, isLoading: areOffersLoading } = useCollection<JobOffer>(offersQuery);
-
     
     const filteredOffers = useMemo(() => {
         if (!offers) return [];
@@ -1628,6 +1627,78 @@ function JobOfferManager() {
         if (!user) return;
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerId));
         toast({ title: "Offre d'emploi supprimée" });
+    };
+
+    const generateJobOfferPdf = async (offer: JobOffer) => {
+        const doc = new jsPDF();
+        let y = 20;
+
+        const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
+        const join = (arr: any) => checkArray(arr).join(', ');
+        
+        const htmlToText = (html: string) => {
+            const tempDiv = document.createElement("div");
+            tempDiv.innerHTML = html;
+            return tempDiv.textContent || tempDiv.innerText || "";
+        }
+
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(offer.title || 'Offre d\'emploi', 105, y, { align: 'center' });
+        y += 8;
+        if(offer.reference) {
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(`Référence: ${offer.reference}`, 105, y, { align: 'center' });
+            y += 8;
+        }
+
+        const addSection = (title: string, content: string | string[]) => {
+            if ((Array.isArray(content) && content.length === 0) || !content) return;
+            if (y > 260) { doc.addPage(); y = 20; }
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 7;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const contentText = Array.isArray(content) ? join(content) : content;
+            const lines = doc.splitTextToSize(contentText, 180);
+            doc.text(lines, 15, y);
+            y += (lines.length * 5) + 6;
+        };
+
+        addSection('Description', htmlToText(offer.description || ''));
+        addSection('Type de contrat', offer.contractType || '');
+        addSection('Temps de travail', offer.workingHours || '');
+        addSection('Lieu', offer.location || '');
+        addSection('Salaire', offer.salary || '');
+        
+        y += 5;
+        doc.setDrawColor(220, 220, 220);
+        doc.line(15, y, 195, y);
+        y += 10;
+        doc.setFontSize(14);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Informations pour le matching (interne)", 15, y);
+        y += 8;
+        
+        const info = offer.infoMatching;
+        if (info) {
+            addSection("Années d'expérience souhaitées", info.yearsExperience || '');
+            addSection("Formation souhaitée", info.desiredTraining || '');
+            addSection("Codes ROME", info.romeCode);
+            addSection("Autres appellations", info.otherNames);
+            addSection("Secteur géographique", info.geographicSector);
+            addSection("Conditions de travail", info.workingConditions);
+            addSection("Environnement", info.environment);
+            addSection("Compétences recherchées", info.desiredSkills);
+            addSection("Savoir-être (Softskills)", info.softSkills);
+            addSection("Notes internes", htmlToText(info.internalNotes || ''));
+        }
+
+        doc.save(`Offre_${offer.title.replace(/ /g, '_')}.pdf`);
     };
 
     const onSubmit = async (data: JobOfferFormData) => {
@@ -1709,6 +1780,7 @@ function JobOfferManager() {
                                         <TableCell>{offer.location}</TableCell>
                                         <TableCell>{offer.contractType}</TableCell>
                                         <TableCell className="text-right">
+                                             <Button variant="ghost" size="icon" onClick={() => generateJobOfferPdf(offer)}><Download className="h-4 w-4" /></Button>
                                              <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
                                              <Button variant="ghost" size="icon" onClick={() => handleDelete(offer.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                         </TableCell>
@@ -1831,6 +1903,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
-
