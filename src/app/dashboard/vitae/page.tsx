@@ -1694,6 +1694,20 @@ function JobOfferManager() {
     );
 }
 
+function TestManager() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Test</CardTitle>
+                <CardDescription>Section de test pour le matching.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p>Contenu à venir pour l'outil de test.</p>
+            </CardContent>
+        </Card>
+    );
+}
+
 export default function VitaePage() {
     return (
         <div className="space-y-8">
@@ -1703,7 +1717,7 @@ export default function VitaePage() {
             </div>
              <ApplicationManager />
             <Tabs defaultValue="cvtheque" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 h-auto">
+                <TabsList className="grid w-full grid-cols-5 h-auto">
                     <TabsTrigger value="cvtheque">
                         <FileText className="mr-2 h-4 w-4" /> CVTHEQUE
                     </TabsTrigger>
@@ -1715,6 +1729,9 @@ export default function VitaePage() {
                     </TabsTrigger>
                     <TabsTrigger value="jobs">
                         <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
+                    </TabsTrigger>
+                    <TabsTrigger value="test">
+                        <FlaskConical className="mr-2 h-4 w-4" /> TEST
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="cvtheque">
@@ -1728,6 +1745,9 @@ export default function VitaePage() {
                 </TabsContent>
                 <TabsContent value="jobs">
                     <JobOfferManager />
+                </TabsContent>
+                <TabsContent value="test">
+                    <TestManager />
                 </TabsContent>
             </Tabs>
         </div>
