@@ -1,20 +1,32 @@
 
 'use client';
 
+import React from 'react';
 import { useAgency } from "@/context/agency-provider";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
 import { Button } from "@/components/ui/button";
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection } from 'firebase/firestore';
+import { useFirestore } from '@/firebase/provider';
+import { Skeleton } from '../ui/skeleton';
+import type { JobOffer } from '@/lib/types';
+import Link from 'next/link';
 
 export function JobOffersSection() {
-    const { personalization } = useAgency();
+    const { personalization, isLoading: isAgencyLoading } = useAgency();
+    const firestore = useFirestore();
     const jobOffersSettings = personalization?.jobOffersSection;
 
-    if (!jobOffersSettings || !jobOffersSettings.offers || jobOffersSettings.offers.length === 0) {
+    const offersQuery = useMemoFirebase(() => collection(firestore, 'job_offers'), [firestore]);
+    const { data: offers, isLoading: areOffersLoading } = useCollection<JobOffer>(offersQuery);
+
+    if (!jobOffersSettings?.enabled) {
         return null;
     }
     
-    const { title, subtitle, offers } = jobOffersSettings;
+    const { title, subtitle } = jobOffersSettings;
+    const isLoading = isAgencyLoading || areOffersLoading;
 
     return (
         <section className="bg-muted/30 text-foreground py-16 sm:py-24">
@@ -24,41 +36,54 @@ export function JobOffersSection() {
                     <p className="text-lg text-muted-foreground mt-2">{subtitle}</p>
                 </div>
 
-                <Carousel
-                    opts={{
-                        align: "start",
-                        loop: true,
-                    }}
-                    className="w-full max-w-5xl mx-auto"
-                >
-                    <CarouselContent>
-                        {offers.map((offer) => (
-                            <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3">
-                                <div className="p-1">
-                                    <Card className="flex flex-col h-full">
-                                        <CardHeader>
-                                            <CardTitle>{offer.title}</CardTitle>
-                                        </CardHeader>
-                                        <CardContent className="flex-1">
-                                            <div className="space-y-1 text-sm text-muted-foreground">
-                                                <p><strong>Contrat:</strong> {offer.contractType}</p>
-                                                <p><strong>Lieu:</strong> {offer.location}</p>
-                                            </div>
-                                        </CardContent>
-                                        <CardFooter>
-                                            <Button variant="outline" className="w-full">Voir l'offre</Button>
-                                        </CardFooter>
-                                    </Card>
-                                </div>
-                            </CarouselItem>
-                        ))}
-                    </CarouselContent>
-                    <CarouselPrevious />
-                    <CarouselNext />
-                </Carousel>
+                {isLoading ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                       {[...Array(3)].map((_, i) => (
+                           <Card key={i}><CardContent className="p-6"><Skeleton className="h-48 w-full" /></CardContent></Card>
+                       ))}
+                    </div>
+                ) : offers && offers.length > 0 ? (
+                    <Carousel
+                        opts={{
+                            align: "start",
+                            loop: offers.length > 3,
+                        }}
+                        className="w-full max-w-5xl mx-auto"
+                    >
+                        <CarouselContent>
+                            {offers.map((offer) => (
+                                <CarouselItem key={offer.id} className="md:basis-1/2 lg:basis-1/3">
+                                    <div className="p-1 h-full">
+                                        <Card className="flex flex-col h-full shadow-sm hover:shadow-lg transition-shadow duration-300">
+                                            <CardHeader>
+                                                <CardTitle className="line-clamp-2">{offer.title}</CardTitle>
+                                                <CardDescription>Ref: {offer.reference}</CardDescription>
+                                            </CardHeader>
+                                            <CardContent className="flex-1">
+                                                <div className="space-y-1 text-sm text-muted-foreground">
+                                                    <p><strong>Contrat:</strong> {offer.contractType}</p>
+                                                    <p><strong>Lieu:</strong> {offer.location}</p>
+                                                </div>
+                                            </CardContent>
+                                            <CardFooter>
+                                                <Button asChild variant="outline" className="w-full">
+                                                    <Link href={`/jobs/${offer.id}`}>Voir l'offre</Link>
+                                                </Button>
+                                            </CardFooter>
+                                        </Card>
+                                    </div>
+                                </CarouselItem>
+                            ))}
+                        </CarouselContent>
+                        <CarouselPrevious />
+                        <CarouselNext />
+                    </Carousel>
+                ) : (
+                    <div className="text-center py-10">
+                        <p className="text-muted-foreground">Aucune offre d'emploi disponible pour le moment.</p>
+                    </div>
+                )}
             </div>
         </section>
     );
 }
-
-    
