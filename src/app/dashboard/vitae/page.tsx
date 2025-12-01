@@ -27,7 +27,7 @@ import { differenceInMonths, differenceInYears } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoreHorizontal } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -535,17 +535,6 @@ function Cvtheque() {
                 role: 'membre',
             });
 
-            if (personalization.emailSettings.fromEmail) {
-                 await sendEmail({
-                    emailSettings: personalization.emailSettings,
-                    recipientEmail: values.email,
-                    recipientName: `${values.firstName} ${values.lastName}`,
-                    subject: `Bienvenue ! Vos accès à votre espace client`,
-                    textBody: `Bonjour ${values.firstName},\n\nUn compte client a été créé pour vous. Vous pouvez vous connecter à votre espace en utilisant les identifiants suivants:\nEmail: ${values.email}\nMot de passe: ${values.password}\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
-                    htmlBody: `<p>Bonjour ${values.firstName},</p><p>Un compte client a été créé pour vous. Vous pouvez vous connecter à votre espace en utilisant les identifiants suivants :</p><ul><li><strong>Email :</strong> ${values.email}</li><li><strong>Mot de passe :</strong> ${values.password}</li></ul><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
-                });
-            }
-
             toast({ title: 'Client créé' });
             setSelectedClient(newUserData);
             setShowCreateForm(false);
@@ -795,218 +784,216 @@ function Cvtheque() {
                         <SheetTrigger asChild>
                             <Button><PlusCircle className="mr-2 h-4 w-4" />Nouveau Profil CV</Button>
                         </SheetTrigger>
-                        <SheetContent className="sm:max-w-3xl w-full">
+                        <SheetContent className="sm:max-w-3xl w-full flex flex-col">
                             <SheetHeader>
                                 <SheetTitle>{editingProfile ? "Modifier le profil CV" : "Nouveau profil CV"}</SheetTitle>
                                 <SheetDescription>
                                     {selectedClient ? `Profil pour ${selectedClient.firstName} ${selectedClient.lastName}` : "Commencez par sélectionner ou créer un client."}
                                 </SheetDescription>
                             </SheetHeader>
-                            <div className="py-4">
-                                {!selectedClient ? (
-                                    <div className="space-y-4">
-                                        {!showCreateForm && (
-                                            <div className="flex gap-2">
-                                                <Input placeholder="Rechercher par email..." value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} />
-                                                <Button onClick={handleSearchUser} disabled={isSearching || !searchEmail}>
-                                                    {isSearching ? <Loader2 className="h-4 w-4 animate-spin"/> : <Search className="h-4 w-4" />}
-                                                </Button>
+                            {!selectedClient ? (
+                                <div className="py-4 space-y-4">
+                                    {!showCreateForm && (
+                                        <div className="flex gap-2">
+                                            <Input placeholder="Rechercher par email..." value={searchEmail} onChange={(e) => setSearchEmail(e.target.value)} />
+                                            <Button onClick={handleSearchUser} disabled={isSearching || !searchEmail}>
+                                                {isSearching ? <Loader2 className="h-4 w-4 animate-spin"/> : <Search className="h-4 w-4" />}
+                                            </Button>
+                                        </div>
+                                    )}
+                                    {searchResult === 'not-found' && !showCreateForm && (
+                                        <Card className="p-4 bg-muted"><p className="text-sm text-center text-muted-foreground mb-4">Aucun utilisateur trouvé.</p><Button className="w-full" variant="secondary" onClick={() => setShowCreateForm(true)}><UserPlus className="mr-2 h-4 w-4" /> Créer une fiche client</Button></Card>
+                                    )}
+                                    {searchResult && searchResult !== 'not-found' && (
+                                        <Card className="p-4">
+                                            <div className='flex items-start justify-between'>
+                                              <div>
+                                                <p className="font-semibold">{searchResult.firstName} {searchResult.lastName}</p>
+                                                <p className="text-sm text-muted-foreground">{searchResult.email}</p>
+                                              </div>
+                                               <p className='text-xs text-muted-foreground'>Client depuis: {new Date(searchResult.dateJoined).toLocaleDateString()}</p>
                                             </div>
-                                        )}
-                                        {searchResult === 'not-found' && !showCreateForm && (
-                                            <Card className="p-4 bg-muted"><p className="text-sm text-center text-muted-foreground mb-4">Aucun utilisateur trouvé.</p><Button className="w-full" variant="secondary" onClick={() => setShowCreateForm(true)}><UserPlus className="mr-2 h-4 w-4" /> Créer une fiche client</Button></Card>
-                                        )}
-                                        {searchResult && searchResult !== 'not-found' && (
-                                            <Card className="p-4">
-                                                <div className='flex items-start justify-between'>
-                                                  <div>
-                                                    <p className="font-semibold">{searchResult.firstName} {searchResult.lastName}</p>
-                                                    <p className="text-sm text-muted-foreground">{searchResult.email}</p>
-                                                  </div>
-                                                   <p className='text-xs text-muted-foreground'>Client depuis: {new Date(searchResult.dateJoined).toLocaleDateString()}</p>
-                                                </div>
-                                                
-                                                {searchResult.counselorIds?.includes(user?.uid || '') ? (
-                                                     <Button className="w-full mt-4" onClick={() => handleSelectExistingClient(searchResult)}>
-                                                        Sélectionner ce client
-                                                    </Button>
-                                                ) : (
-                                                    <Button className="w-full mt-4" onClick={() => handleAddClient(searchResult)} disabled={isSubmitting}>
-                                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                                        Ajouter comme client
-                                                    </Button>
-                                                )}
-                                            </Card>
-                                        )}
-                                        {showCreateForm && (
-                                            <Card className="p-4">
-                                                <div className="flex justify-between items-center mb-4"><h4 className="font-semibold">Nouveau client</h4><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowCreateForm(false)}><X className="h-4 w-4"/></Button></div>
-                                                <Form {...newUserForm}>
-                                                    <form onSubmit={newUserForm.handleSubmit(onCreateNewUser)} className="space-y-4">
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <FormField control={newUserForm.control} name="firstName" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Prénom" {...field}/></FormControl><FormMessage/></FormItem> )}/>
-                                                            <FormField control={newUserForm.control} name="lastName" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Nom" {...field}/></FormControl><FormMessage/></FormItem> )}/>
-                                                        </div>
-                                                        <FormField control={newUserForm.control} name="email" render={({ field }) => ( <FormItem><FormControl><Input disabled value={searchEmail} {...field}/></FormControl><FormMessage/></FormItem> )}/>
-                                                        <FormField control={newUserForm.control} name="phone" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Téléphone" {...field}/></FormControl><FormMessage/></FormItem> )}/>
-                                                        <FormField control={newUserForm.control} name="address" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Adresse" {...field}/></FormControl><FormMessage/></FormItem> )}/>
-                                                         <div className="grid grid-cols-2 gap-2">
-                                                            <FormField control={newUserForm.control} name="zipCode" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Code Postal" {...field}/></FormControl><FormMessage/></FormItem> )}/>
-                                                            <FormField control={newUserForm.control} name="city" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Ville" {...field}/></FormControl><FormMessage/></FormItem> )}/>
-                                                        </div>
-                                                        <FormField control={newUserForm.control} name="password" render={({ field }) => (
-                                                            <FormItem>
-                                                                <div className="relative">
-                                                                    <FormControl><Input type={showPassword ? "text":"password"} placeholder="Mot de passe" {...field}/></FormControl>
-                                                                    <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-0.5 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff/>:<Eye/>}</Button>
-                                                                </div>
-                                                                <FormMessage/>
-                                                            </FormItem> 
-                                                        )}/>
-                                                        <Button type="submit" disabled={isSubmitting} className="w-full">
-                                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                                            Créer et sélectionner
-                                                        </Button>
-                                                    </form>
-                                                </Form>
-                                            </Card>
-                                        )}
-                                    </div>
-                                ) : (
-                                    <ScrollArea className="h-[calc(100vh-12rem)] pr-4">
-                                      <Form {...cvForm}>
-                                        <form onSubmit={cvForm.handleSubmit(onCvProfileSubmit)} className="space-y-6">
-                                            <Card className="p-4 bg-secondary">
-                                                <div className="flex justify-between items-start">
-                                                    <div>
-                                                        <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
-                                                        {selectedClient.email && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Mail className="h-4 w-4" /><span>{selectedClient.email}</span></div>}
-                                                        {selectedClient.phone && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Phone className="h-4 w-4" /><span>{selectedClient.phone}</span></div>}
-                                                        {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span></div>}
-                                                    </div>
-                                                    {!editingProfile && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
-                                                </div>
-                                            </Card>
                                             
-                                            <FormField control={cvForm.control} name="cvUrl" render={() => (
-                                                <FormItem>
-                                                    <FormLabel>CV du candidat (PDF)</FormLabel>
-                                                    <FormControl>
-                                                        <div className="flex items-center gap-2">
-                                                            <Input disabled value={cvForm.watch('cvUrl') || 'Aucun CV téléversé'}/>
-                                                            <input type="file" ref={pdfInputRef} onChange={handlePdfUpload} className="hidden" accept="application/pdf" />
-                                                            <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
-                                                                {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
-                                                            </Button>
-                                                        </div>
-                                                    </FormControl>
-                                                    <FormMessage/>
-                                                </FormItem>
-                                            )}/>
-                                            <Card>
-                                                <CardHeader><CardTitle>Mobilité</CardTitle></CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="mobility" render={({ field }) => (<FormItem><FormLabel>Mobilité Géographique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une ville, région..." /></FormControl><FormMessage /></FormItem>)}/>
-                                                    <FormField control={cvForm.control} name="drivingLicence" render={({ field }) => (<FormItem><FormLabel>Moyen de locomotion et permis</FormLabel><FormControl><TagInput {...field} placeholder="Permis B, Véhicule personnel..." /></FormControl><FormMessage /></FormItem>)}/>
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card>
-                                                <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                    <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                </CardContent>
-                                            </Card>
-
-                                             <Card>
-                                                <CardHeader><CardTitle>Formation</CardTitle></CardHeader>
-                                                <CardContent className="space-y-6">
-                                                    <div className="space-y-2">
-                                                        <FormField control={cvForm.control} name="highestFormation" render={({ field }) => ( <FormItem><FormLabel>Formation la plus élevée</FormLabel><FormControl><TagInput {...field} placeholder="Code RNCP, Niveau, Libellé..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                        <FormField control={cvForm.control} name="highestFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                            {searchResult.counselorIds?.includes(user?.uid || '') ? (
+                                                 <Button className="w-full mt-4" onClick={() => handleSelectExistingClient(searchResult)}>
+                                                    Sélectionner ce client
+                                                </Button>
+                                            ) : (
+                                                <Button className="w-full mt-4" onClick={() => handleAddClient(searchResult)} disabled={isSubmitting}>
+                                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                                    Ajouter comme client
+                                                </Button>
+                                            )}
+                                        </Card>
+                                    )}
+                                    {showCreateForm && (
+                                        <Card className="p-4">
+                                            <div className="flex justify-between items-center mb-4"><h4 className="font-semibold">Nouveau client</h4><Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setShowCreateForm(false)}><X className="h-4 w-4"/></Button></div>
+                                            <Form {...newUserForm}>
+                                                <form onSubmit={newUserForm.handleSubmit(onCreateNewUser)} className="space-y-4">
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        <FormField control={newUserForm.control} name="firstName" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Prénom" {...field}/></FormControl><FormMessage/></FormItem> )}/>
+                                                        <FormField control={newUserForm.control} name="lastName" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Nom" {...field}/></FormControl><FormMessage/></FormItem> )}/>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <FormField control={cvForm.control} name="currentJobFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec métier actuel</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                        <FormField control={cvForm.control} name="currentJobFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                    <FormField control={newUserForm.control} name="email" render={({ field }) => ( <FormItem><FormControl><Input disabled value={searchEmail} {...field}/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={newUserForm.control} name="phone" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Téléphone" {...field}/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={newUserForm.control} name="address" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Adresse" {...field}/></FormControl><FormMessage/></FormItem> )}/>
+                                                     <div className="grid grid-cols-2 gap-2">
+                                                        <FormField control={newUserForm.control} name="zipCode" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Code Postal" {...field}/></FormControl><FormMessage/></FormItem> )}/>
+                                                        <FormField control={newUserForm.control} name="city" render={({ field }) => ( <FormItem><FormControl><Input placeholder="Ville" {...field}/></FormControl><FormMessage/></FormItem> )}/>
                                                     </div>
-                                                    <div className="space-y-2">
-                                                        <FormField control={cvForm.control} name="projectFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec projet</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                        <FormField control={cvForm.control} name="projectFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
-                                                    </div>
-                                                    <FormField control={cvForm.control} name="fundingOptions" render={({ field }) => ( <FormItem><FormLabel>Financement possible</FormLabel><FormControl><TagInput {...field} placeholder="CPF, Pôle Emploi..."/></FormControl><FormMessage/></FormItem> )}/>
-                                                </CardContent>
-                                            </Card>
-
-                                            <Card>
-                                                <CardHeader><CardTitle>Expériences</CardTitle></CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    {experienceFields.map((field, index) => {
-                                                        const startDate = cvForm.watch(`experiences.${index}.startDate`);
-                                                        const endDate = cvForm.watch(`experiences.${index}.endDate`);
-                                                        const seniority = calculateSeniority(startDate, endDate);
-                                                        
-                                                        return (
-                                                            <div key={field.id} className="p-4 border rounded-lg space-y-4">
-                                                                <div className="flex justify-between items-center">
-                                                                    <h4 className="font-medium">Expérience {index + 1}</h4>
-                                                                    <Button type="button" variant="ghost" size="icon" onClick={() => removeExperience(index)}>
-                                                                        <Trash2 className="h-4 w-4 text-destructive" />
-                                                                    </Button>
-                                                                </div>
-                                                                <div className="grid grid-cols-2 gap-4">
-                                                                    <FormField control={cvForm.control} name={`experiences.${index}.startDate`} render={({ field }) => (<FormItem><FormLabel>Date de début</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''}/></FormControl></FormItem>)}/>
-                                                                    <FormField control={cvForm.control} name={`experiences.${index}.endDate`} render={({ field }) => (<FormItem><FormLabel>Date de fin</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''}/></FormControl></FormItem>)}/>
-                                                                </div>
-                                                                {seniority && <p className="text-sm font-medium text-muted-foreground">Ancienneté: {seniority}</p>}
-                                                                <FormField control={cvForm.control} name={`experiences.${index}.jobTitle`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl></FormItem>)}/>
-                                                                <FormField control={cvForm.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..."/></FormControl></FormItem>)}/>
-                                                                <FormField control={cvForm.control} name={`experiences.${index}.characteristics`} render={({ field }) => (<FormItem><FormLabel>Compétences exercées / développées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
+                                                    <FormField control={newUserForm.control} name="password" render={({ field }) => (
+                                                        <FormItem>
+                                                            <div className="relative">
+                                                                <FormControl><Input type={showPassword ? 'text':'password'} placeholder="Mot de passe" {...field}/></FormControl>
+                                                                <Button type="button" variant="ghost" size="icon" className="absolute right-1 top-0.5 h-7 w-7" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff/>:<Eye/>}</Button>
                                                             </div>
-                                                        );
-                                                    })}
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}`, startDate: '', endDate: '', jobTitle:[], characteristics: [], activities: [] })}>
-                                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une expérience
+                                                            <FormMessage/>
+                                                        </FormItem> 
+                                                    )}/>
+                                                    <Button type="submit" disabled={isSubmitting} className="w-full">
+                                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                                        Créer et sélectionner
                                                     </Button>
-                                                </CardContent>
-                                            </Card>
+                                                </form>
+                                            </Form>
+                                        </Card>
+                                    )}
+                                </div>
+                            ) : (
+                                <ScrollArea className="h-[calc(100vh-12rem)] pr-4 -mr-6">
+                                  <Form {...cvForm}>
+                                    <form onSubmit={cvForm.handleSubmit(onCvProfileSubmit)} className="space-y-6">
+                                        <Card className="p-4 bg-secondary">
+                                            <div className="flex justify-between items-start">
+                                                <div>
+                                                    <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
+                                                    {selectedClient.email && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Mail className="h-4 w-4" /><span>{selectedClient.email}</span></div>}
+                                                    {selectedClient.phone && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Phone className="h-4 w-4" /><span>{selectedClient.phone}</span></div>}
+                                                    {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span></div>}
+                                                </div>
+                                                {!editingProfile && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
+                                            </div>
+                                        </Card>
+                                        
+                                        <FormField control={cvForm.control} name="cvUrl" render={() => (
+                                            <FormItem>
+                                                <FormLabel>CV du candidat (PDF)</FormLabel>
+                                                <FormControl>
+                                                    <div className="flex items-center gap-2">
+                                                        <Input disabled value={cvForm.watch('cvUrl') || 'Aucun CV téléversé'}/>
+                                                        <input type="file" ref={pdfInputRef} onChange={handlePdfUpload} className="hidden" accept="application/pdf" />
+                                                        <Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" onClick={() => pdfInputRef.current?.click()} disabled={isUploading}>
+                                                            {isUploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Upload className="h-4 w-4"/>}
+                                                        </Button>
+                                                    </div>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
+                                        )}/>
+                                        <Card>
+                                            <CardHeader><CardTitle>Mobilité</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <FormField control={cvForm.control} name="mobility" render={({ field }) => (<FormItem><FormLabel>Mobilité Géographique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une ville, région..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={cvForm.control} name="drivingLicence" render={({ field }) => (<FormItem><FormLabel>Moyen de locomotion et permis</FormLabel><FormControl><TagInput {...field} placeholder="Permis B, Véhicule personnel..." /></FormControl><FormMessage /></FormItem>)}/>
+                                            </CardContent>
+                                        </Card>
 
-                                            <Card>
-                                                <CardHeader><CardTitle>Softskills & Centres d'intérêt</CardTitle></CardHeader>
-                                                <CardContent className="space-y-4">
-                                                    <FormField control={cvForm.control} name="softskills" render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Compétences comportementales (Softskills)</FormLabel>
-                                                            <FormControl>
-                                                                <TagInput {...field} placeholder="Ajouter une compétence..."/>
-                                                            </FormControl>
-                                                            <FormMessage/>
-                                                        </FormItem>
-                                                    )}/>
-                                                    <FormField control={cvForm.control} name="otherInterests" render={({ field }) => (
-                                                        <FormItem>
-                                                            <FormLabel>Centres d'intérêt, activités extra-professionnelles, etc.</FormLabel>
-                                                            <FormControl>
-                                                                <TagInput {...field} placeholder="Ajouter un intérêt..."/>
-                                                            </FormControl>
-                                                            <FormMessage/>
-                                                        </FormItem>
-                                                    )}/>
-                                                </CardContent>
-                                            </Card>
+                                        <Card>
+                                            <CardHeader><CardTitle>Projet Professionnel</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <FormField control={cvForm.control} name="lastJob" render={({ field }) => ( <FormItem><FormLabel>Dernier métier exercé (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                <FormField control={cvForm.control} name="searchedJob" render={({ field }) => ( <FormItem><FormLabel>Métier Recherché (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                <FormField control={cvForm.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                <FormField control={cvForm.control} name="duration" render={({ field }) => ( <FormItem><FormLabel>Durée</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein, Temps partiel..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                <FormField control={cvForm.control} name="workEnvironment" render={({ field }) => ( <FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Télétravail, Bureau..."/></FormControl><FormMessage/></FormItem> )}/>
+                                            </CardContent>
+                                        </Card>
 
-                                            <SheetFooter className="pt-6 border-t">
-                                              <SheetClose asChild><Button type="button" variant="outline">Fermer</Button></SheetClose>
-                                              <Button type="submit">Enregistrer le profil</Button>
-                                            </SheetFooter>
-                                        </form>
-                                      </Form>
-                                    </ScrollArea>
-                                )}
-                            </div>
+                                         <Card>
+                                            <CardHeader><CardTitle>Formation</CardTitle></CardHeader>
+                                            <CardContent className="space-y-6">
+                                                <div className="space-y-2">
+                                                    <FormField control={cvForm.control} name="highestFormation" render={({ field }) => ( <FormItem><FormLabel>Formation la plus élevée</FormLabel><FormControl><TagInput {...field} placeholder="Code RNCP, Niveau, Libellé..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="highestFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <FormField control={cvForm.control} name="currentJobFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec métier actuel</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="currentJobFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                </div>
+                                                <div className="space-y-2">
+                                                    <FormField control={cvForm.control} name="projectFormation" render={({ field }) => ( <FormItem><FormLabel>Formation en lien avec projet</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une formation..."/></FormControl><FormMessage/></FormItem> )}/>
+                                                    <FormField control={cvForm.control} name="projectFormationSkills" render={({ field }) => (<FormItem className="mt-2"><FormLabel className="text-xs text-muted-foreground">Compétences et activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                </div>
+                                                <FormField control={cvForm.control} name="fundingOptions" render={({ field }) => ( <FormItem><FormLabel>Financement possible</FormLabel><FormControl><TagInput {...field} placeholder="CPF, Pôle Emploi..."/></FormControl><FormMessage/></FormItem> )}/>
+                                            </CardContent>
+                                        </Card>
+
+                                        <Card>
+                                            <CardHeader><CardTitle>Expériences</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                {experienceFields.map((field, index) => {
+                                                    const startDate = cvForm.watch(`experiences.${index}.startDate`);
+                                                    const endDate = cvForm.watch(`experiences.${index}.endDate`);
+                                                    const seniority = calculateSeniority(startDate, endDate);
+                                                    
+                                                    return (
+                                                        <div key={field.id} className="p-4 border rounded-lg space-y-4">
+                                                            <div className="flex justify-between items-center">
+                                                                <h4 className="font-medium">Expérience {index + 1}</h4>
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeExperience(index)}>
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                            <div className="grid grid-cols-2 gap-4">
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.startDate`} render={({ field }) => (<FormItem><FormLabel>Date de début</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''}/></FormControl></FormItem>)}/>
+                                                                <FormField control={cvForm.control} name={`experiences.${index}.endDate`} render={({ field }) => (<FormItem><FormLabel>Date de fin</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''}/></FormControl></FormItem>)}/>
+                                                            </div>
+                                                            {seniority && <p className="text-sm font-medium text-muted-foreground">Ancienneté: {seniority}</p>}
+                                                            <FormField control={cvForm.control} name={`experiences.${index}.jobTitle`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste (Code ROME et intitulé)</FormLabel><FormControl><TagInput {...field} placeholder="Code ROME, intitulé..."/></FormControl></FormItem>)}/>
+                                                            <FormField control={cvForm.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..."/></FormControl></FormItem>)}/>
+                                                            <FormField control={cvForm.control} name={`experiences.${index}.characteristics`} render={({ field }) => (<FormItem><FormLabel>Compétences exercées / développées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
+                                                        </div>
+                                                    );
+                                                })}
+                                                <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}`, startDate: '', endDate: '', jobTitle:[], characteristics: [], activities: [] })}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une expérience
+                                                </Button>
+                                            </CardContent>
+                                        </Card>
+
+                                        <Card>
+                                            <CardHeader><CardTitle>Softskills & Centres d'intérêt</CardTitle></CardHeader>
+                                            <CardContent className="space-y-4">
+                                                <FormField control={cvForm.control} name="softskills" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Compétences comportementales (Softskills)</FormLabel>
+                                                        <FormControl>
+                                                            <TagInput {...field} placeholder="Ajouter une compétence..."/>
+                                                        </FormControl>
+                                                        <FormMessage/>
+                                                    </FormItem>
+                                                )}/>
+                                                <FormField control={cvForm.control} name="otherInterests" render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Centres d'intérêt, activités extra-professionnelles, etc.</FormLabel>
+                                                        <FormControl>
+                                                            <TagInput {...field} placeholder="Ajouter un intérêt..."/>
+                                                        </FormControl>
+                                                        <FormMessage/>
+                                                    </FormItem>
+                                                )}/>
+                                            </CardContent>
+                                        </Card>
+
+                                        <SheetFooter className="pt-6 border-t">
+                                          <SheetClose asChild><Button type="button" variant="outline">Fermer</Button></SheetClose>
+                                          <Button type="submit">Enregistrer le profil</Button>
+                                        </SheetFooter>
+                                    </form>
+                                  </Form>
+                                </ScrollArea>
+                            )}
                         </SheetContent>
                     </Sheet>
                 </div>
@@ -1157,6 +1144,45 @@ function RncpManager() {
         }
         setIsSheetOpen(false);
     };
+    
+    const generateRncpPdf = async (fiche: FicheRNCP) => {
+        const doc = new jsPDF();
+        let y = 20;
+
+        const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
+        const join = (arr: any) => checkArray(arr).join(', ');
+
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(fiche.formationName, 105, y, { align: 'center' });
+        y += 12;
+
+        const addSection = (title: string, content: string | (string | null | undefined)[]) => {
+            if ((Array.isArray(content) && content.length === 0) || !content) return;
+            if (y > 260) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 8;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const contentText = Array.isArray(content) ? join(content) : content;
+            const lines = doc.splitTextToSize(contentText, 180);
+            doc.text(lines, 15, y);
+            y += (lines.length * 5) + 6;
+        };
+
+        addSection("Niveau de formation", fiche.formationLevel);
+        addSection("Code(s) RNCP", fiche.rncpCode);
+        addSection("Intitulé(s) de formation", fiche.formationTitle);
+        addSection("Code(s) ROME compatible(s)", fiche.codeRomeCompatible);
+        addSection("Métier(s) compatible(s)", fiche.metierCompatible);
+        addSection("Compétences attestées", fiche.skills);
+        addSection("Activités visées", fiche.activities);
+
+        doc.save(`Fiche_RNCP_${fiche.formationName.replace(/ /g, '_')}.pdf`);
+    };
 
     return (
         <Card>
@@ -1190,15 +1216,14 @@ function RncpManager() {
                                         <TableCell>{Array.isArray(fiche.rncpCode) ? fiche.rncpCode.join(', ') : ''}</TableCell>
                                         <TableCell>{fiche.trainingIds?.length || 0}</TableCell>
                                         <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => generateRncpPdf(fiche)}><Download className="h-4 w-4" /></Button>
                                             <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
                                             <Button variant="ghost" size="icon" onClick={() => handleDelete(fiche.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                         </TableCell>
                                     </TableRow>
                                 ))
                             ) : (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">Aucune fiche RNCP créée.</TableCell>
-                                </TableRow>
+                                <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucune fiche RNCP créée.</TableCell></TableRow>
                             )}
                         </TableBody>
                     </Table>
@@ -1224,7 +1249,7 @@ function RncpManager() {
                                      <FormField
                                         control={form.control}
                                         name="trainingIds"
-                                        render={() => (
+                                        render={({ field }) => (
                                             <FormItem>
                                                 <div className="mb-4">
                                                     <FormLabel className="text-base">Formations associées</FormLabel>
@@ -1235,28 +1260,19 @@ function RncpManager() {
                                                 <div className="space-y-2">
                                                     {areTrainingsLoading ? <Skeleton className="h-20 w-full" /> : trainings && trainings.length > 0 ? (
                                                         trainings.map((training) => (
-                                                            <FormField
-                                                                key={training.id}
-                                                                control={form.control}
-                                                                name="trainingIds"
-                                                                render={({ field }) => {
-                                                                    return (
-                                                                        <FormItem key={training.id} className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md">
-                                                                            <FormControl>
-                                                                                <Checkbox
-                                                                                    checked={field.value?.includes(training.id)}
-                                                                                    onCheckedChange={(checked) => {
-                                                                                        return checked
-                                                                                            ? field.onChange([...(field.value || []), training.id])
-                                                                                            : field.onChange(field.value?.filter((value) => value !== training.id));
-                                                                                    }}
-                                                                                />
-                                                                            </FormControl>
-                                                                            <FormLabel className="font-normal">{training.title}</FormLabel>
-                                                                        </FormItem>
-                                                                    );
-                                                                }}
-                                                            />
+                                                            <FormItem key={training.id} className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md">
+                                                                <FormControl>
+                                                                    <Checkbox
+                                                                        checked={field.value?.includes(training.id)}
+                                                                        onCheckedChange={(checked) => {
+                                                                            return checked
+                                                                                ? field.onChange([...(field.value || []), training.id])
+                                                                                : field.onChange(field.value?.filter((value) => value !== training.id));
+                                                                        }}
+                                                                    />
+                                                                </FormControl>
+                                                                <FormLabel className="font-normal">{training.title}</FormLabel>
+                                                            </FormItem>
                                                         ))
                                                     ) : (
                                                         <p className="text-sm text-muted-foreground">Aucune formation créée. Allez dans l'onglet E-learning pour en ajouter.</p>
@@ -1323,6 +1339,46 @@ function RomeManager() {
         toast({ title: "Fiche ROME supprimée" });
         setFicheToDelete(null);
     };
+    
+    const generateRomePdf = async (fiche: FicheROME) => {
+        const doc = new jsPDF();
+        let y = 20;
+
+        const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
+        const join = (arr: any) => checkArray(arr).join(', ');
+
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text(fiche.name, 105, y, { align: 'center' });
+        y += 12;
+
+        const addSection = (title: string, content: string | (string | null | undefined)[]) => {
+            if ((Array.isArray(content) && content.length === 0) || !content) return;
+            if (y > 260) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 8;
+
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const contentText = Array.isArray(content) ? join(content) : content;
+            const lines = doc.splitTextToSize(contentText, 180);
+            doc.text(lines, 15, y);
+            y += (lines.length * 5) + 6;
+        };
+
+        addSection("Code(s) ROME associé(s)", fiche.associatedRomeCode);
+        addSection("Métier(s) associé(s)", fiche.associatedJobs);
+        addSection("Mission", fiche.mission);
+        addSection("Compétences", fiche.skills);
+        addSection("Conditions d'accès (Fiches RNCP)", fiche.accessConditions);
+        addSection("Savoirs", fiche.knowledge);
+        addSection("Savoir-faire et Activités", fiche.knowHowAndActivities);
+        addSection("Savoir-être et Softskills", fiche.softSkills);
+
+        doc.save(`Fiche_ROME_${fiche.name.replace(/ /g, '_')}.pdf`);
+    };
 
     const onSubmit = (data: RomeFormData) => {
         if (!user) return;
@@ -1381,6 +1437,7 @@ function RomeManager() {
                                         <TableCell className="font-medium">{fiche.name}</TableCell>
                                         <TableCell>{Array.isArray(fiche.associatedRomeCode) ? fiche.associatedRomeCode.join(', ') : ''}</TableCell>
                                         <TableCell className="text-right">
+                                             <Button variant="ghost" size="icon" onClick={() => generateRomePdf(fiche)}><Download className="h-4 w-4" /></Button>
                                              <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
                                              <Button variant="ghost" size="icon" onClick={() => setFicheToDelete(fiche)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                         </TableCell>
@@ -1408,51 +1465,68 @@ function RomeManager() {
                                          <FormField control={form.control} name="associatedJobs" render={({ field }) => ( <FormItem><FormLabel>Métiers associés</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl><FormMessage /></FormItem> )}/>
                                          <FormField control={form.control} name="mission" render={({ field }) => ( <FormItem><FormLabel>Mission</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une mission..." /></FormControl><FormMessage /></FormItem> )}/>
                                          <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField control={form.control} name="knowledge" render={({ field }) => ( <FormItem><FormLabel>Savoir</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir..." /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField control={form.control} name="knowHowAndActivities" render={({ field }) => ( <FormItem><FormLabel>Savoir-faire et Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-faire..." /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField control={form.control} name="softSkills" render={({ field }) => ( <FormItem><FormLabel>Savoir-être et Softskills</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl><FormMessage /></FormItem> )}/>
-                                         <FormField
+                                          <FormField
                                             control={form.control}
                                             name="accessConditions"
-                                            render={() => (
-                                                <FormItem>
-                                                    <div className="mb-4">
-                                                        <FormLabel className="text-base">Condition d'accès (Fiches RNCP)</FormLabel>
-                                                    </div>
-                                                    <div className="space-y-2">
-                                                        {areFichesRncpLoading ? <Skeleton className="h-20 w-full" /> : fichesRncp && fichesRncp.length > 0 ? (
-                                                            fichesRncp.map((fiche) => (
-                                                                <FormField
-                                                                    key={fiche.id}
-                                                                    control={form.control}
-                                                                    name="accessConditions"
-                                                                    render={({ field }) => {
-                                                                        return (
-                                                                            <FormItem key={fiche.id} className="flex flex-row items-center space-x-3 space-y-0 p-3 border rounded-md">
-                                                                                <FormControl>
-                                                                                    <Checkbox
-                                                                                        checked={field.value?.includes(fiche.id)}
-                                                                                        onCheckedChange={(checked) => {
-                                                                                            return checked
-                                                                                                ? field.onChange([...(field.value || []), fiche.id])
-                                                                                                : field.onChange(field.value?.filter((value) => value !== fiche.id));
-                                                                                        }}
-                                                                                    />
-                                                                                </FormControl>
-                                                                                <FormLabel className="font-normal">{fiche.formationName}</FormLabel>
-                                                                            </FormItem>
-                                                                        );
-                                                                    }}
-                                                                />
-                                                            ))
-                                                        ) : (
-                                                            <p className="text-sm text-muted-foreground">Aucune fiche RNCP créée.</p>
-                                                        )}
-                                                    </div>
-                                                    <FormMessage />
-                                                </FormItem>
+                                            render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Condition d'accès (Fiches RNCP)</FormLabel>
+                                                <FormControl>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <Button
+                                                                variant="outline"
+                                                                role="combobox"
+                                                                className={cn(
+                                                                    "w-full justify-between",
+                                                                    !field.value || field.value.length === 0 && "text-muted-foreground"
+                                                                )}
+                                                                >
+                                                                {field.value && field.value.length > 0 ? 
+                                                                    `${field.value.length} fiche(s) sélectionnée(s)` : 
+                                                                    "Sélectionner des fiches RNCP"}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[300px] p-0">
+                                                            <Command>
+                                                            <CommandInput placeholder="Rechercher..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>Aucune fiche trouvée.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                {fichesRncp?.map((fiche) => (
+                                                                    <CommandItem
+                                                                        key={fiche.id}
+                                                                        onSelect={() => {
+                                                                            const selected = field.value || [];
+                                                                            const newValue = selected.includes(fiche.id)
+                                                                                ? selected.filter((id) => id !== fiche.id)
+                                                                                : [...selected, fiche.id];
+                                                                            field.onChange(newValue);
+                                                                        }}
+                                                                    >
+                                                                        <Check
+                                                                            className={cn(
+                                                                            "mr-2 h-4 w-4",
+                                                                            field.value?.includes(fiche.id) ? "opacity-100" : "opacity-0"
+                                                                            )}
+                                                                        />
+                                                                        {fiche.formationName}
+                                                                    </CommandItem>
+                                                                    ))}
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                </FormControl>
+                                                <FormMessage/>
+                                            </FormItem>
                                             )}
-                                        />
+                                         />
+                                          <FormField control={form.control} name="knowledge" render={({ field }) => ( <FormItem><FormLabel>Savoirs</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir..." /></FormControl><FormMessage /></FormItem> )}/>
+                                          <FormField control={form.control} name="knowHowAndActivities" render={({ field }) => ( <FormItem><FormLabel>Savoir-faire et Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-faire..." /></FormControl><FormMessage /></FormItem> )}/>
+                                          <FormField control={form.control} name="softSkills" render={({ field }) => ( <FormItem><FormLabel>Savoir-être et Softskills</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl><FormMessage /></FormItem> )}/>
                                     </div>
                                  </ScrollArea>
                                 <SheetFooter className="pt-6 border-t mt-auto">
@@ -1755,3 +1829,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
