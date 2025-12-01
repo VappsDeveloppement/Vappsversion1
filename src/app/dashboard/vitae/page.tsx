@@ -1099,12 +1099,20 @@ function RncpManager() {
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingFiche, setEditingFiche] = useState<FicheRNCP | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
 
     const fichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_sheets`)) : null, [user, firestore]);
     const { data: fiches, isLoading } = useCollection<FicheRNCP>(fichesQuery);
 
     const trainingsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'trainings'), where('authorId', '==', user.uid)) : null, [user, firestore]);
     const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+    
+    const filteredFiches = useMemo(() => {
+        if (!fiches) return [];
+        if (!searchTerm) return fiches;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return fiches.filter(f => f.formationName.toLowerCase().includes(lowercasedTerm));
+    }, [fiches, searchTerm]);
 
 
     const form = useForm<RncpFormData>({
@@ -1196,6 +1204,15 @@ function RncpManager() {
                     </div>
                     <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouvelle Fiche RNCP</Button>
                 </div>
+                 <div className="relative pt-4">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-[-50%]" />
+                    <Input
+                        placeholder="Rechercher par nom de formation..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="border rounded-lg">
@@ -1211,8 +1228,8 @@ function RncpManager() {
                         <TableBody>
                             {isLoading ? (
                                 <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                            ) : fiches && fiches.length > 0 ? (
-                                fiches.map((fiche) => (
+                            ) : filteredFiches && filteredFiches.length > 0 ? (
+                                filteredFiches.map((fiche) => (
                                     <TableRow key={fiche.id}>
                                         <TableCell className="font-medium">{fiche.formationName}</TableCell>
                                         <TableCell>{Array.isArray(fiche.rncpCode) ? fiche.rncpCode.join(', ') : ''}</TableCell>
