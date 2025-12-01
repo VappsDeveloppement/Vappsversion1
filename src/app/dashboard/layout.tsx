@@ -127,15 +127,10 @@ export default function DashboardLayout({
 
 
   useEffect(() => {
-    if (!isUserLoading && !isUserDataLoading) {
-        if (!user) {
-            router.push('/application');
-        } else if (userData?.permissions?.includes('FULLACCESS') && pathname !== '/admin' && !pathname.startsWith('/admin/')) {
-            // Redirect admin to admin dashboard if they are not there already
-            router.push('/admin');
-        }
+    if (!isUserLoading && !user) {
+        router.push('/application');
     }
-}, [isUserLoading, isUserDataLoading, user, userData, pathname, router]);
+}, [isUserLoading, user, router]);
 
   const hasAdminAccess = userData?.permissions?.includes('FULLACCESS');
   const isConseiller = userData?.role === 'conseiller';
@@ -153,7 +148,7 @@ export default function DashboardLayout({
     router.push('/application');
   };
 
-
+  // Force re-render on HMR
   const dashboardStyle = useMemo(() => {
     const theme = userData?.dashboardTheme;
     if (isConseiller && theme) {
