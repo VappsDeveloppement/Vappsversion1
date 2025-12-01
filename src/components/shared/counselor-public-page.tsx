@@ -16,6 +16,7 @@ import { CounselorContactSection } from '@/components/shared/counselor-contact-s
 import { CounselorTestimonialsSection } from '@/components/shared/counselor-testimonials-section';
 import { TrainingCatalogSection } from '@/components/shared/training-catalog-section';
 import { ProductsSection } from '@/components/shared/products-section';
+import { CounselorBlogSection } from '@/components/shared/counselor-blog-section';
 import type { Product } from '@/app/dashboard/aura/page';
 
 type CounselorProfile = {
