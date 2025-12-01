@@ -555,8 +555,6 @@ const defaultPersonalization = {
         enabled: true,
     },
     trainingCatalogSection: {
-        title: "Catalogue des Formations",
-        description: "Découvrez toutes nos formations disponibles.",
         enabled: false,
     },
     paymentSettings: {

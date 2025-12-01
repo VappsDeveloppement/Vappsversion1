@@ -241,9 +241,8 @@ const defaultHomePageSections: Section[] = [
   { id: 'otherActivities', label: 'Autres activités & Contact', enabled: true },
   { id: 'blog', label: 'Blog', enabled: true },
   { id: 'whiteLabel', label: 'Marque Blanche', enabled: true },
-  { id: 'pricing', label: 'Formules (Tarifs)', enabled: true },
   { id: 'trainingCatalog', label: 'Catalogue de formation', enabled: true },
-  { id: 'jobOffers', label: 'Offre emploi', enabled: true },
+  { id: 'cta2', label: 'CTA 2', enabled: true },
 ];
 
 const defaultPersonalization: Personalization = {
