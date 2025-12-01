@@ -130,7 +130,7 @@ export default function DashboardLayout({
     }
   }, [isUserLoading, user, router]);
 
-  const hasAdminAccess = userData?.permissions?.includes('FULLACCESS');
+  const hasAdminAccess = userData?.permissions?.includes('FULLACCESS') || userData?.role === 'superadmin';
   const isConseiller = userData?.role === 'conseiller';
   
   const activeProfilePath = profileMenuItems.some(item => pathname.startsWith(item.href));
