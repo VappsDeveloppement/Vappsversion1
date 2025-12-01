@@ -9,7 +9,7 @@ service cloud.firestore {
       allow read: if true;
       allow write: if request.auth != null;
     }
-    
+
     // Règle spécifique pour les candidatures (autorise la création publique)
     match /job_applications/{applicationId} {
       allow create: if true;
