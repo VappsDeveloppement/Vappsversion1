@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -174,7 +175,7 @@ const jobOfferFormSchema = z.object({
 });
 
 
-type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
+export type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
 
 export type JobOffer = JobOfferFormData & {
   id: string;
@@ -1753,3 +1754,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
