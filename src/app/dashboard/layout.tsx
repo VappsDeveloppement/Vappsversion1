@@ -130,7 +130,7 @@ export default function DashboardLayout({
     if (!isUserLoading && !user) {
         router.push('/application');
     }
-}, [isUserLoading, user, router]);
+  }, [isUserLoading, user, router]);
 
   const hasAdminAccess = userData?.permissions?.includes('FULLACCESS');
   const isConseiller = userData?.role === 'conseiller';
@@ -148,7 +148,7 @@ export default function DashboardLayout({
     router.push('/application');
   };
 
-  // Force re-render on HMR
+  // This will apply the theme colors for the counselor's dashboard
   const dashboardStyle = useMemo(() => {
     const theme = userData?.dashboardTheme;
     if (isConseiller && theme) {
