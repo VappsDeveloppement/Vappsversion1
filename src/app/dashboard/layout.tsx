@@ -39,13 +39,11 @@ import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { useUser, useMemoFirebase, useDoc } from "@/firebase";
-import { Skeleton } from "@/components/ui/skeleton";
 import React, { useMemo, useState, useEffect } from "react";
 import { useFirestore, useAuth } from "@/firebase/provider";
 import { doc } from "firebase/firestore";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useAgency } from "@/context/agency-provider";
-
 
 const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
