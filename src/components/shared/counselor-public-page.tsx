@@ -18,8 +18,8 @@ import { CounselorTestimonialsSection } from '@/components/shared/counselor-test
 import { TrainingCatalogSection } from '@/components/shared/training-catalog-section';
 import { ProductsSection } from '@/components/shared/products-section';
 import { CounselorBlogSection } from '@/components/shared/counselor-blog-section';
-import type { Product } from '@/app/dashboard/aura/page';
-import type { JobOffer } from '@/app/dashboard/vitae/page';
+import type { Product, JobOffer } from '@/lib/types';
+
 
 type CounselorProfile = {
     id: string;

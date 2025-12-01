@@ -39,6 +39,7 @@ import { ChevronsUpDown, Check } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import type { JobOffer, JobOfferFormData, jobOfferFormSchema } from '@/lib/types';
 
 
 type Client = {
@@ -147,39 +148,6 @@ type FicheROME = RomeFormData & {
 type Training = {
     id: string;
     title: string;
-};
-
-const infoMatchingSchema = z.object({
-    yearsExperience: z.string().optional(),
-    desiredTraining: z.string().optional(),
-    romeCode: z.array(z.string()).optional(),
-    otherNames: z.array(z.string()).optional(),
-    geographicSector: z.array(z.string()).optional(),
-    workingConditions: z.array(z.string()).optional(),
-    environment: z.array(z.string()).optional(),
-    desiredSkills: z.array(z.string()).optional(),
-    softSkills: z.array(z.string()).optional(),
-    internalNotes: z.string().optional(),
-});
-
-const jobOfferFormSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(1, "Le titre du poste est requis."),
-  reference: z.string().optional(),
-  description: z.string().optional(),
-  contractType: z.string().optional(),
-  workingHours: z.string().optional(),
-  location: z.string().optional(),
-  salary: z.string().optional(),
-  infoMatching: infoMatchingSchema.optional(),
-});
-
-
-export type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
-
-export type JobOffer = JobOfferFormData & {
-  id: string;
-  counselorId: string;
 };
 
 type JobApplication = {
@@ -1248,15 +1216,15 @@ function RncpManager() {
                           <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
                             <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
                                 <div className="space-y-4">
-                                    <FormField control={form.control} name="formationName" render={({ field }) => ( <FormItem><FormLabel>Nom de la formation</FormLabel><FormControl><Input placeholder="Ex: Développeur Web et Web Mobile" {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField control={form.control} name="formationLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau (ex: 5, 6...)" /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField control={form.control} name="rncpCode" render={({ field }) => ( <FormItem><FormLabel>Code RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code (ex: RNCP31114...)" /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField control={form.control} name="formationTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField control={form.control} name="codeRomeCompatible" render={({ field }) => ( <FormItem><FormLabel>Code ROME compatible</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code ROME..." /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField control={form.control} name="metierCompatible" render={({ field }) => ( <FormItem><FormLabel>Métier compatible</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField control={form.control} name="activities" render={({ field }) => ( <FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
-                                    <FormField
+                                     <FormField control={form.control} name="formationName" render={({ field }) => ( <FormItem><FormLabel>Nom de la formation</FormLabel><FormControl><Input placeholder="Ex: Développeur Web et Web Mobile" {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField control={form.control} name="formationLevel" render={({ field }) => ( <FormItem><FormLabel>Niveau de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau (ex: 5, 6...)" /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField control={form.control} name="rncpCode" render={({ field }) => ( <FormItem><FormLabel>Code RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code (ex: RNCP31114...)" /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField control={form.control} name="formationTitle" render={({ field }) => ( <FormItem><FormLabel>Intitulé de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField control={form.control} name="codeRomeCompatible" render={({ field }) => ( <FormItem><FormLabel>Code ROME compatible</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code ROME..." /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField control={form.control} name="metierCompatible" render={({ field }) => ( <FormItem><FormLabel>Métier compatible</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField control={form.control} name="activities" render={({ field }) => ( <FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
+                                     <FormField
                                         control={form.control}
                                         name="trainingIds"
                                         render={() => (
@@ -1542,20 +1510,8 @@ function JobOfferManager() {
     
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferFormSchema),
-        defaultValues: { 
-            title: '', reference: '', description: '', contractType: '', workingHours: '', location: '', salary: '', 
-            infoMatching: {
-                yearsExperience: '',
-                desiredTraining: '',
-                romeCode: [],
-                otherNames: [],
-                geographicSector: [],
-                workingConditions: [],
-                environment: [],
-                desiredSkills: [],
-                softSkills: [],
-                internalNotes: '',
-            } 
+        defaultValues: {
+            infoMatching: { romeCode: [], otherNames: [], geographicSector: [], workingConditions: [], environment: [], desiredSkills: [], softSkills: [] }
         },
     });
     
@@ -1802,7 +1758,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-
-
-    

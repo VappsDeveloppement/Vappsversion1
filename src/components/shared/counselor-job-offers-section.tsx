@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState } from 'react';
@@ -19,6 +18,7 @@ import { useFirestore, useStorage, addDocumentNonBlocking, useCollection, useMem
 import { collection, query, where } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import Link from 'next/link';
 
 type CounselorProfile = {
     id: string;
@@ -197,8 +197,8 @@ export function CounselorJobOffersSection({ counselor, jobOffers: offers }: { co
                                                     {offer.salary && <span>{offer.salary}</span>}
                                                 </div>
                                             </div>
-                                             <div className="hidden md:block">
-                                                <Button variant="outline">Détails</Button>
+                                             <div className="hidden md:flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background">
+                                                Détails
                                              </div>
                                         </div>
                                     </AccordionTrigger>

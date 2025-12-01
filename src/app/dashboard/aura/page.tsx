@@ -34,6 +34,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import type { Product } from '@/lib/types';
 
 
 const toBase64 = (file: File): Promise<string> =>
@@ -61,21 +62,6 @@ const productSchema = z.object({
 });
 type ProductFormData = z.infer<typeof productSchema>;
 
-export type Product = {
-    id: string;
-    counselorId: string;
-    title: string;
-    description?: string;
-    isFeatured?: boolean;
-    imageUrl?: string | null;
-    price?: number;
-    characteristics?: string[];
-    contraindications?: string[];
-    holisticProfile?: string[];
-    pathologies?: string[];
-    ctaLink?: string;
-    versions?: any[];
-}
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
     const currentValues = value || [];
@@ -533,18 +519,6 @@ type WellnessSheet = {
 
 type Client = { id: string; firstName: string; lastName: string; email: string; phone?: string; counselorIds?: string[] };
 
-const newUserSchema = z.object({
-    firstName: z.string().min(1, 'Le prénom est requis.'),
-    lastName: z.string().min(1, 'Le nom est requis.'),
-    email: z.string().email("Email invalide."),
-    phone: z.string().optional(),
-    address: z.string().optional(),
-    zipCode: z.string().optional(),
-    city: z.string().optional(),
-    password: z.string().min(6, "Le mot de passe doit comporter au moins 6 caractères."),
-});
-type NewUserFormData = z.infer<typeof newUserSchema>;
-
 
 function WellnessSheetGenerator() {
     const { user } = useUser();
@@ -684,13 +658,13 @@ function WellnessSheetGenerator() {
                     recipientEmail: values.email,
                     recipientName: `${values.firstName} ${values.lastName}`,
                     subject: `Bienvenue ! Vos accès à votre espace client`,
-                    textBody: `Bonjour ${values.firstName},\n\nUn compte client a été créé pour vous. Vous pouvez vous connecter en utilisant les identifiants suivants:\nEmail: ${values.email}\nMot de passe: ${values.password}\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
+                    textBody: `Bonjour ${values.firstName},\n\nUn compte client a été créé pour vous. Vous pouvez vous connecter à votre espace en utilisant les identifiants suivants:\nEmail: ${values.email}\nMot de passe: ${values.password}\n\nCordialement,\nL'équipe ${personalization.emailSettings.fromName}`,
                     htmlBody: `<p>Bonjour ${values.firstName},</p><p>Un compte client a été créé pour vous. Vous pouvez vous connecter à votre espace en utilisant les identifiants suivants :</p><ul><li><strong>Email :</strong> ${values.email}</li><li><strong>Mot de passe :</strong> ${values.password}</li></ul><p>Cordialement,<br/>L'équipe ${personalization.emailSettings.fromName}</p>`
                 });
             }
 
             toast({ title: 'Client créé' });
-            setSelectedClient(newUserData);
+            setSelectedClient(newUserData as Client);
             setShowCreateForm(false);
         } catch(error: any) {
             let message = "Une erreur est survenue lors de la création du client.";
@@ -883,6 +857,16 @@ function WellnessSheetGenerator() {
                                 <form onSubmit={wellnessForm.handleSubmit(onWellnessSubmit)} className="flex flex-col h-full overflow-hidden">
                                     <ScrollArea className="flex-grow pr-6 -mr-6">
                                         <div className="space-y-6 py-4">
+                                            <Card className="p-4 bg-secondary">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
+                                                        {selectedClient.email && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Mail className="h-4 w-4" /><span>{selectedClient.email}</span></div>}
+                                                        {selectedClient.phone && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Phone className="h-4 w-4" /><span>{selectedClient.phone}</span></div>}
+                                                    </div>
+                                                    {!editingSheet && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
+                                                </div>
+                                            </Card>
                                             <FormField control={wellnessForm.control} name="dob" render={({ field }) => (<FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage/></FormItem>)}/>
                                             <FormField control={wellnessForm.control} name="gender" render={({ field }) => (<FormItem><FormLabel>Genre</FormLabel><FormControl><RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4"><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="female" /></FormControl><FormLabel>Femme</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="male" /></FormControl><FormLabel>Homme</FormLabel></FormItem><FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="other" /></FormControl><FormLabel>Autre</FormLabel></FormItem></RadioGroup></FormControl><FormMessage/></FormItem>)}/>
                                             <FormField control={wellnessForm.control} name="foodHabits" render={({ field }) => (<FormItem><FormLabel>Habitudes alimentaires</FormLabel><FormControl><TagInput {...field} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>)} />
@@ -963,319 +947,15 @@ function WellnessSheetGenerator() {
     );
 }
 
-function AuraTestTool() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const [pathologie, setPathologie] = useState<string[]>([]);
-    const [emotion, setEmotion] = useState<string[]>([]);
-    const [holisticProfile, setHolisticProfile] = useState<string[]>([]);
-    const [contraindication, setContraindication] = useState<string[]>([]);
-    
-    const [open, setOpen] = useState(false);
-    const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
-    const [selectedSheet, setSelectedSheet] = useState<WellnessSheet | null>(null);
-    const [selectedClient, setSelectedClient] = useState<Client | null>(null);
-
-    const clientsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid)) : null, [user, firestore]);
-    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
-
-    const wellnessSheetQuery = useMemoFirebase(() => {
-        if (!user || !selectedClientId) return null;
-        return query(collection(firestore, `users/${user.uid}/wellness_sheets`), where('clientId', '==', selectedClientId));
-    }, [user, firestore, selectedClientId]);
-    const { data: sheets } = useCollection<WellnessSheet>(wellnessSheetQuery);
-    
-    const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
-    const { data: allProducts, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
-
-    const protocolsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'protocols'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
-    const { data: allProtocols, isLoading: areProtocolsLoading } = useCollection<Protocole>(protocolsQuery);
-
-
-    useEffect(() => {
-        if (sheets && sheets.length > 0) {
-            const sheet = sheets[0];
-            setSelectedSheet(sheet);
-            setHolisticProfile(sheet.holisticProfile || []);
-        } else {
-            setSelectedSheet(null);
-            setHolisticProfile([]);
-        }
-    }, [sheets]);
-
-    const handleClientSelect = (clientId: string) => {
-        setSelectedClientId(clientId);
-        const client = clients?.find(c => c.id === clientId);
-        setSelectedClient(client || null);
-        setOpen(false);
-    };
-
-    const selectedClientName = useMemo(() => {
-        if (!selectedClientId || !clients) return "Sélectionner un client...";
-        const client = clients.find(c => c.id === selectedClientId);
-        return client ? `${client.firstName} ${client.lastName}` : "Sélectionner un client...";
-    }, [selectedClientId, clients]);
-    
-    const recommendations = useMemo(() => {
-        if (!allProducts || !allProtocols) {
-            return { pathology: { products: [], protocols: [] }, emotion: { products: [], protocols: [] } };
-        }
-
-        const allContraindications = new Set([
-            ...(selectedSheet?.contraindications || []),
-            ...(selectedSheet?.allergies || []),
-            ...contraindication,
-        ]);
-
-        const applySafetyFilter = <T extends Product | Protocole>(items: T[]): T[] => {
-            if (allContraindications.size === 0) return items;
-            return items.filter(item => {
-                const itemContraindications = new Set(item.contraindications || []);
-                return ![...allContraindications].some(c => itemContraindications.has(c));
-            });
-        };
-
-        const productsByPatho = pathologie.length > 0 ? allProducts.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
-        const protocolsByPatho = pathologie.length > 0 ? allProtocols.filter(p => pathologie.some(tag => p.pathologies?.includes(tag))) : [];
-        
-        const productsByEmotion = emotion.length > 0 ? allProducts.filter(p => emotion.some(tag => p.pathologies?.includes(tag))) : [];
-        const protocolsByEmotion = emotion.length > 0 ? allProtocols.filter(p => emotion.some(tag => p.pathologies?.includes(tag))) : [];
-
-        return {
-            pathology: { products: applySafetyFilter(productsByPatho), protocols: applySafetyFilter(protocolsByPatho) },
-            emotion: { products: applySafetyFilter(productsByEmotion), protocols: applySafetyFilter(protocolsByEmotion) },
-        };
-    }, [pathologie, emotion, contraindication, selectedSheet, allProducts, allProtocols]);
-    
-    const profileRecommendations = useMemo(() => {
-        if (holisticProfile.length === 0) {
-            return { products: [], protocols: [] };
-        }
-
-        const allRecommendedProducts = [...recommendations.pathology.products, ...recommendations.emotion.products];
-        const allRecommendedProtocols = [...recommendations.pathology.protocols, ...recommendations.emotion.protocols];
-        
-        const uniqueProducts = Array.from(new Map(allRecommendedProducts.map(item => [item.id, item])).values());
-        const uniqueProtocols = Array.from(new Map(allRecommendedProtocols.map(item => [item.id, item])).values());
-
-        const profileFilteredProducts = uniqueProducts.filter(p => 
-            holisticProfile.some(tag => p.holisticProfile?.includes(tag))
-        );
-        const profileFilteredProtocols = uniqueProtocols.filter(p => 
-            holisticProfile.some(tag => p.holisticProfile?.includes(tag))
-        );
-
-        return { products: profileFilteredProducts, protocols: profileFilteredProtocols };
-    }, [holisticProfile, recommendations]);
-
-
-    const InfoBlock = ({ title, tags }: { title: string; tags: string[] | undefined }) => {
-        if (!tags || tags.length === 0) return null;
-        return (
-            <div className="text-sm">
-                <h4 className="font-semibold text-foreground">{title}</h4>
-                <div className="flex flex-wrap gap-1 mt-1">
-                    {tags.map(tag => <Badge key={tag} variant="secondary">{tag}</Badge>)}
-                </div>
-            </div>
-        );
-    };
-
-    const RecommendationList = ({ title, products, protocols, icon: Icon, emptyMessage }: { title: string; products: Product[]; protocols: Protocole[]; icon: React.ElementType, emptyMessage: string }) => {
-        const hasProducts = products.length > 0;
-        const hasProtocols = protocols.length > 0;
-
-        if (!hasProducts && !hasProtocols) {
-            return (
-                <div className="space-y-4">
-                    <h3 className="text-xl font-semibold flex items-center gap-2">
-                        <Icon className="h-6 w-6 text-primary"/>
-                        {title}
-                    </h3>
-                    <p className="text-sm text-muted-foreground pl-8">{emptyMessage}</p>
-                </div>
-            );
-        }
-
-        return (
-            <div className="space-y-4">
-                <h3 className="text-xl font-semibold flex items-center gap-2">
-                    <Icon className="h-6 w-6 text-primary"/>
-                    {title}
-                </h3>
-                {hasProducts && (
-                    <div className="pl-8 space-y-4">
-                        <h4 className="font-semibold mb-2">Produits</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {products.map(item => (
-                                <Card key={item.id} className="p-3">
-                                    <p className="font-semibold">{item.title}</p>
-                                    {item.characteristics && item.characteristics.length > 0 && (
-                                        <p className="text-xs text-muted-foreground mt-1">{item.characteristics.join(', ')}</p>
-                                    )}
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
-                 {hasProtocols && (
-                    <div className="pl-8 mt-4 space-y-4">
-                        <h4 className="font-semibold mb-2">Protocoles</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            {protocols.map(item => (
-                                <Card key={item.id} className="p-3">
-                                    <p className="font-semibold">{item.name}</p>
-                                </Card>
-                            ))}
-                        </div>
-                    </div>
-                )}
-            </div>
-        );
-    };
-
-    const generatePDF = async () => {
-        const { default: jsPDF } = await import('jspdf');
-        const { default: autoTable } = await import('jspdf-autotable');
-        const doc = new jsPDF();
-        let y = 15;
-
-        doc.setFontSize(18);
-        doc.text("Recommandations Bien-être", 15, y);
-        y += 10;
-        doc.setFontSize(12);
-        if (selectedClient) {
-            doc.text(`Pour: ${selectedClient.firstName} ${selectedClient.lastName}`, 15, y);
-            y += 7;
-        }
-        doc.text(`Date: ${new Date().toLocaleDateString('fr-FR')}`, 15, y);
-        y += 10;
-
-        const addSectionToPdf = (title: string, products: Product[], protocols: Protocole[]) => {
-            if (products.length === 0 && protocols.length === 0) return;
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(title, 15, y);
-            y += 8;
-
-            if (products.length > 0) {
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text("Produits", 20, y);
-                y += 6;
-                autoTable(doc, {
-                    startY: y,
-                    head: [['Nom', 'Caractéristiques']],
-                    body: products.map(p => [p.title, p.characteristics?.join(', ') || '']),
-                    theme: 'grid',
-                    styles: { fontSize: 10 },
-                });
-                y = (doc as any).lastAutoTable.finalY + 10;
-            }
-
-            if (protocols.length > 0) {
-                doc.setFontSize(12);
-                doc.setFont('helvetica', 'bold');
-                doc.text("Protocoles", 20, y);
-                y += 6;
-                autoTable(doc, {
-                    startY: y,
-                    head: [['Nom']],
-                    body: protocols.map(p => [p.name]),
-                    theme: 'grid',
-                    styles: { fontSize: 10 },
-                });
-                y = (doc as any).lastAutoTable.finalY + 10;
-            }
-        };
-
-        addSectionToPdf("Recommandation(s) Pathologie(s)", recommendations.pathology.products, recommendations.pathology.protocols);
-        addSectionToPdf("Recommandation(s) Émotion(s)", recommendations.emotion.products, recommendations.emotion.protocols);
-        addSectionToPdf("Conseillé pour le Profil", profileRecommendations.products, profileRecommendations.protocols);
-        
-        doc.save(`recommandation-${selectedClient?.firstName || 'test'}.pdf`);
-    };
-
+function TestManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Outil de Test Aura</CardTitle>
-                <CardDescription>Renseignez les informations pour obtenir des recommandations personnalisées.</CardDescription>
+                <CardTitle>Test</CardTitle>
+                <CardDescription>Section de test pour le matching.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-                <div className="space-y-2">
-                    <Label>Rechercher une fiche bien-être (Optionnel)</Label>
-                    <Popover open={open} onOpenChange={setOpen}>
-                        <PopoverTrigger asChild>
-                            <Button variant="outline" role="combobox" className="w-full justify-between" disabled={areClientsLoading}>
-                                {areClientsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : selectedClientName}
-                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                            <Command>
-                                <CommandInput placeholder="Rechercher un client..." />
-                                <CommandList><CommandEmpty>Aucun client trouvé.</CommandEmpty>
-                                    <CommandGroup>
-                                        {clients?.map((client) => (
-                                            <CommandItem key={client.id} value={`${client.firstName} ${client.lastName} ${client.email}`} onSelect={() => handleClientSelect(client.id)}>
-                                                <Check className={cn("mr-2 h-4 w-4", selectedClientId === client.id ? "opacity-100" : "opacity-0")}/>
-                                                {client.firstName} {client.lastName}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                </CommandList>
-                            </Command>
-                        </PopoverContent>
-                    </Popover>
-                </div>
-                
-                {selectedClient && (
-                    <Card className="bg-muted/50 p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                             <h3 className="font-semibold flex items-center gap-2"><User className="h-5 w-5 text-primary" />{selectedClient.firstName} {selectedClient.lastName}</h3>
-                             <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setSelectedClientId(null); setSelectedClient(null); setSelectedSheet(null); }}><X className="h-4 w-4" /></Button>
-                        </div>
-                        <div className="space-y-3 text-sm text-muted-foreground">
-                            <p className="flex items-center gap-2"><Mail className="h-4 w-4" /> {selectedClient.email}</p>
-                            {selectedClient.phone && <p className="flex items-center gap-2"><Phone className="h-4 w-4" /> {selectedClient.phone}</p>}
-                        </div>
-                        {selectedSheet && (
-                            <div className="border-t pt-4 space-y-3">
-                               <InfoBlock title="Habitudes Alimentaires" tags={selectedSheet.foodHabits} />
-                               <InfoBlock title="Allergies" tags={selectedSheet.allergies} />
-                               <InfoBlock title="Contre-indications (Fiche)" tags={selectedSheet.contraindications} />
-                               <InfoBlock title="Profil Holistique (Fiche)" tags={selectedSheet.holisticProfile} />
-                            </div>
-                        )}
-                    </Card>
-                )}
-
-                <div className="space-y-2">
-                    <Label>Pathologie à traiter</Label>
-                    <TagInput value={pathologie} onChange={setPathologie} placeholder="Ajouter une pathologie (ex: Stress, Anxiété)..." />
-                </div>
-                 <div className="space-y-2">
-                    <Label>Émotion du moment</Label>
-                    <TagInput value={emotion} onChange={setEmotion} placeholder="Ajouter une émotion (ex: Tristesse, Colère)..." />
-                </div>
-                 <div className="space-y-2">
-                    <Label>Profil Holistique (pré-rempli par la fiche)</Label>
-                    <TagInput value={holisticProfile} onChange={setHolisticProfile} placeholder="Ajouter un profil (ex: Sportif, Sédentaire)..." />
-                </div>
-                <div className="space-y-2">
-                    <Label>Contre-indication temporaire</Label>
-                    <TagInput value={contraindication} onChange={setContraindication} placeholder="Ajouter une contre-indication (ex: Femme enceinte)..." />
-                </div>
-
-                <div className="pt-6 mt-6 border-t space-y-8">
-                     <div className="flex justify-end">
-                        <Button onClick={generatePDF}><Download className="mr-2 h-4 w-4" /> Générer PDF</Button>
-                    </div>
-                     <RecommendationList title="Recommandation(s) Pathologie(s)" products={recommendations.pathology.products} protocols={recommendations.pathology.protocols} icon={HeartPulse} emptyMessage="Aucune recommandation pour les pathologies renseignées."/>
-                     <RecommendationList title="Recommandation(s) Émotion(s)" products={recommendations.emotion.products} protocols={recommendations.emotion.protocols} icon={BrainCircuit} emptyMessage="Aucune recommandation pour les émotions renseignées."/>
-                     <RecommendationList title="Conseillé pour le Profil" products={profileRecommendations.products} protocols={profileRecommendations.protocols} icon={Brain} emptyMessage="Aucune des recommandations ne correspond spécifiquement au profil holistique."/>
-                </div>
+            <CardContent>
+                <p>Contenu à venir pour l'outil de test.</p>
             </CardContent>
         </Card>
     );
@@ -1286,28 +966,29 @@ export default function AuraPage() {
         <div className="space-y-8">
             <div>
                 <h1 className="text-3xl font-bold font-headline">Aura</h1>
-                <p className="text-muted-foreground">Votre outils de gestion de votre activité bien-être.</p>
+                <p className="text-muted-foreground">Votre outil de bien-être et naturopathie.</p>
             </div>
-            <Tabs defaultValue="fiche-bien-etre" className="w-full">
-                <TabsList className="grid w-full grid-cols-4 h-auto">
-                    <TabsTrigger value="fiche-bien-etre"><FileText className="mr-2 h-4 w-4" />Fiche bien-être</TabsTrigger>
-                    <TabsTrigger value="catalogue-produits"><ShoppingBag className="mr-2 h-4 w-4" />Catalogue Produits</TabsTrigger>
-                    <TabsTrigger value="protocoles"><Beaker className="mr-2 h-4 w-4" />Protocoles</TabsTrigger>
-                    <TabsTrigger value="test"><ClipboardList className="mr-2 h-4 w-4" />Test</TabsTrigger>
+            
+            <Tabs defaultValue="products" className="w-full">
+                <TabsList className="grid w-full grid-cols-3 h-auto">
+                    <TabsTrigger value="products">
+                        <ShoppingBag className="mr-2 h-4 w-4" /> Catalogue Produits
+                    </TabsTrigger>
+                     <TabsTrigger value="protocols">
+                        <ClipboardList className="mr-2 h-4 w-4" /> Protocoles
+                    </TabsTrigger>
+                    <TabsTrigger value="wellness-sheets">
+                        <FileText className="mr-2 h-4 w-4" /> Fiches Bien-être
+                    </TabsTrigger>
                 </TabsList>
-                <TabsContent value="fiche-bien-etre">
-                   <WellnessSheetGenerator />
+                <TabsContent value="products">
+                   <ProductManager />
                 </TabsContent>
-                <TabsContent value="catalogue-produits">
-                   <div className="space-y-8">
-                       <ProductManager />
-                   </div>
-                </TabsContent>
-                <TabsContent value="protocoles">
+                 <TabsContent value="protocols">
                     <ProtocoleManager />
                 </TabsContent>
-                <TabsContent value="test">
-                    <AuraTestTool />
+                <TabsContent value="wellness-sheets">
+                   <WellnessSheetGenerator />
                 </TabsContent>
             </Tabs>
         </div>

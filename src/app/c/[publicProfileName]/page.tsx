@@ -5,8 +5,8 @@ import { notFound } from 'next/navigation';
 import { initializeFirebase } from '@/firebase/server';
 import { collection, query, where, limit, getDocs, doc } from 'firebase/firestore';
 import { CounselorPublicPageClient } from '@/components/shared/counselor-public-page';
-import type { Product } from '@/app/dashboard/aura/page';
-import type { JobOffer } from '@/app/dashboard/vitae/page';
+import type { Product, JobOffer } from '@/lib/types';
+
 
 type CounselorProfile = {
     id: string;
