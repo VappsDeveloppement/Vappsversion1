@@ -44,20 +44,10 @@ type CounselorProfile = {
     }
 };
 
-function CounselorPublicPageLoader() {
-    return (
-        <div className="space-y-8 p-4">
-            <Skeleton className="h-64 w-full" />
-            <Skeleton className="h-40 w-full" />
-            <Skeleton className="h-40 w-full" />
-        </div>
-    );
-}
-
 export default function CounselorPublicProfilePage() {
     const params = useParams();
-    const firestore = useFirestore();
     const { publicProfileName } = params;
+    const firestore = useFirestore();
 
     const counselorQuery = useMemoFirebase(() => {
         if (!publicProfileName) return null;
@@ -66,16 +56,11 @@ export default function CounselorPublicProfilePage() {
             where("miniSite.publicProfileName", "==", publicProfileName),
             limit(1)
         );
-    }, [publicProfileName, firestore]);
+    }, [firestore, publicProfileName]);
 
     const { data: counselors, isLoading: isCounselorLoading } = useCollection<CounselorProfile>(counselorQuery);
-    const counselor = counselors?.[0];
 
-    const productsQuery = useMemoFirebase(() => {
-        if (!counselor?.id) return null;
-        return query(collection(firestore, 'products'), where('counselorId', '==', counselor.id));
-    }, [counselor?.id, firestore]);
-    const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+    const counselor = counselors?.[0];
 
     const jobOffersQuery = useMemoFirebase(() => {
         if (!counselor?.id) return null;
@@ -83,15 +68,30 @@ export default function CounselorPublicProfilePage() {
     }, [counselor?.id, firestore]);
     const { data: jobOffers, isLoading: areJobOffersLoading } = useCollection<JobOffer>(jobOffersQuery);
 
-    const isLoading = isCounselorLoading || areProductsLoading || areJobOffersLoading;
+    const productsQuery = useMemoFirebase(() => {
+        if (!counselor?.id) return null;
+        return query(collection(firestore, 'products'), where('counselorId', '==', counselor.id));
+    }, [counselor?.id, firestore]);
+    const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+    
+    const isLoading = isCounselorLoading || areJobOffersLoading || areProductsLoading;
 
     if (isLoading) {
-        return <CounselorPublicPageLoader />;
+        return (
+             <div className="flex h-screen items-center justify-center">
+                <div className="space-y-4 p-8 w-full max-w-4xl">
+                    <Skeleton className="h-[400px] w-full" />
+                    <Skeleton className="h-[200px] w-full" />
+                </div>
+            </div>
+        );
     }
-
-    if (!counselor) {
+    
+    if (!counselor && !isLoading) {
         notFound();
     }
+    
+    if (!counselor) return null;
 
     const copyrightText = "VApps";
     const copyrightUrl = "/";

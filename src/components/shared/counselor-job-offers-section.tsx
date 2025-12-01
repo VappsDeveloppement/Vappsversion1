@@ -14,7 +14,7 @@ import { Input } from '../ui/input';
 import { Textarea } from '../ui/textarea';
 import { Loader2, Upload, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useStorage, addDocumentNonBlocking, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useStorage, addDocumentNonBlocking } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
@@ -197,7 +197,7 @@ export function CounselorJobOffersSection({ counselor, jobOffers: offers }: { co
                                                     {offer.salary && <span>{offer.salary}</span>}
                                                 </div>
                                             </div>
-                                             <div className="hidden md:flex h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background">
+                                             <div className="hidden h-10 items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background md:flex">
                                                 Détails
                                              </div>
                                         </div>
