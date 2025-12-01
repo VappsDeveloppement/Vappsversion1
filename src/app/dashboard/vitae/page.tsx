@@ -1309,6 +1309,7 @@ function JobOfferManager() {
     const { user } = useUser();
     const { toast } = useToast();
     const firestore = useFirestore();
+    const [searchTerm, setSearchTerm] = useState('');
 
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingOffer, setEditingOffer] = useState<JobOffer | null>(null);
@@ -1318,6 +1319,17 @@ function JobOfferManager() {
     const { data: userData, isLoading: isUserLoading } = useDoc<{miniSite: { jobOffersSection?: { offers: JobOffer[] }}}>(userDocRef);
 
     const offers = userData?.miniSite?.jobOffersSection?.offers || [];
+    
+    const filteredOffers = useMemo(() => {
+        if (!offers) return [];
+        if (!searchTerm) return offers;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return offers.filter(offer => 
+            offer.title?.toLowerCase().includes(lowercasedTerm) ||
+            offer.location?.toLowerCase().includes(lowercasedTerm) ||
+            offer.contractType?.toLowerCase().includes(lowercasedTerm)
+        );
+    }, [offers, searchTerm]);
     
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferFormSchema),
@@ -1388,6 +1400,15 @@ function JobOfferManager() {
                     </div>
                     <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" />Nouvelle offre</Button>
                 </div>
+                 <div className="relative pt-4">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-[-50%]" />
+                    <Input
+                        placeholder="Rechercher par titre, lieu, contrat..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <div className="border rounded-lg">
@@ -1395,8 +1416,8 @@ function JobOfferManager() {
                         <TableHeader><TableRow><TableHead>Titre du poste</TableHead><TableHead>Lieu</TableHead><TableHead>Contrat</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
                             {isUserLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
-                            : offers.length > 0 ? (
-                                offers.map((offer) => (
+                            : filteredOffers.length > 0 ? (
+                                filteredOffers.map((offer) => (
                                     <TableRow key={offer.id}>
                                         <TableCell className="font-medium">{offer.title}</TableCell>
                                         <TableCell>{offer.location}</TableCell>
@@ -1517,4 +1538,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
