@@ -10,12 +10,13 @@ import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'reac
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs, arrayUnion, ref, uploadBytes, getDownloadURL } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, arrayUnion } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useFirestore, useAuth, useStorage } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useAgency } from '@/context/agency-provider';
@@ -279,72 +280,128 @@ function ApplicationManager() {
     };
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Candidatures</CardTitle>
-                <CardDescription>Liste des candidatures reçues pour vos offres d'emploi.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Candidat</TableHead>
-                            <TableHead>Offre</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Statut</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {areApplicationsLoading || isUserLoading ? (
-                            <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-                        ) : applications && applications.length > 0 ? (
-                            applications.map(app => (
-                                <TableRow key={app.id}>
-                                    <TableCell>
-                                        <div className="font-medium">{app.applicantName}</div>
-                                        <div className="text-sm text-muted-foreground">{app.applicantEmail}</div>
-                                    </TableCell>
-                                    <TableCell>{app.jobOfferTitle}</TableCell>
-                                    <TableCell>{new Date(app.appliedAt).toLocaleDateString()}</TableCell>
-                                    <TableCell><Badge variant={applicationStatusVariant[app.status]}>{applicationStatusText[app.status]}</Badge></TableCell>
-                                    <TableCell className="text-right">
-                                            <DropdownMenu>
-                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild><a href={app.cvUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" /> Télécharger le CV</a></DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'reviewed')}>Marquer comme examinée</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'contacted')}>Marquer comme contacté</DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'rejected')}>Marquer comme rejetée</DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive" onClick={() => setApplicationToDelete(app)}>
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Supprimer
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
-                            <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucune candidature pour le moment.</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-                 <AlertDialog open={!!applicationToDelete} onOpenChange={(open) => !open && setApplicationToDelete(null)}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader>
-                            <AlertDialogTitle>Supprimer cette candidature ?</AlertDialogTitle>
-                            <AlertDialogDescription>L'action est irréversible.</AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                            <AlertDialogCancel>Annuler</AlertDialogCancel>
-                            <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                        </AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-            </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>Candidatures</CardTitle>
+          <CardDescription>
+            Liste des candidatures reçues pour vos offres d'emploi.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Candidat</TableHead>
+                <TableHead>Offre</TableHead>
+                <TableHead>Date</TableHead>
+                <TableHead>Statut</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {areApplicationsLoading || isUserLoading ? (
+                <TableRow>
+                  <TableCell colSpan={5}>
+                    <Skeleton className="h-8 w-full" />
+                  </TableCell>
+                </TableRow>
+              ) : applications && applications.length > 0 ? (
+                applications.map((app) => (
+                  <TableRow key={app.id}>
+                    <TableCell>
+                      <div className="font-medium">{app.applicantName}</div>
+                      <div className="text-sm text-muted-foreground">
+                        {app.applicantEmail}
+                      </div>
+                    </TableCell>
+                    <TableCell>{app.jobOfferTitle}</TableCell>
+                    <TableCell>
+                      {new Date(app.appliedAt).toLocaleDateString()}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={applicationStatusVariant[app.status]}>
+                        {applicationStatusText[app.status]}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem asChild>
+                            <a
+                              href={app.cvUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                            >
+                              <Download className="mr-2 h-4 w-4" /> Télécharger
+                              le CV
+                            </a>
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => handleUpdateStatus(app.id, 'reviewed')}
+                          >
+                            Marquer comme examinée
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleUpdateStatus(app.id, 'contacted')}
+                          >
+                            Marquer comme contacté
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleUpdateStatus(app.id, 'rejected')}
+                          >
+                            Marquer comme rejetée
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            className="text-destructive"
+                            onClick={() => setApplicationToDelete(app)}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    Aucune candidature pour le moment.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+          <AlertDialog
+            open={!!applicationToDelete}
+            onOpenChange={(open) => !open && setApplicationToDelete(null)}
+          >
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer cette candidature ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  L'action est irréversible.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDelete}
+                  className="bg-destructive hover:bg-destructive/90"
+                >
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </CardContent>
+      </Card>
     );
 }
 
@@ -1245,7 +1302,7 @@ function RncpManager() {
                                         )}
                                     />
                                 </div>
-                            </ScrollArea>
+                             </ScrollArea>
                             <SheetFooter className="pt-6 border-t mt-auto">
                                 <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                 <Button type="submit">Enregistrer</Button>
@@ -1678,6 +1735,4 @@ export default function VitaePage() {
         </div>
     );
 }
-
-
 
