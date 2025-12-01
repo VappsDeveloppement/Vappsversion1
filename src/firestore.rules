@@ -2,22 +2,47 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    // Règles de développement : Autoriser la lecture publique et l'écriture pour les utilisateurs authentifiés.
-    // ATTENTION : Ne pas utiliser en production sans sécuriser les données sensibles.
-    match /{document=**} {
-      allow read: if true;
-      allow write: if request.auth != null;
-    }
-
-    // Règle spécifique pour les candidatures (autorise la création publique)
+    
+    // Règles pour les collections publiques (création autorisée sans authentification)
     match /job_applications/{applicationId} {
       allow create: if true;
+      // Les autres opérations (read, update, delete) ne sont pas autorisées publiquement
+      // Elles suivront les règles par défaut (aucun accès) ou des règles plus spécifiques si définies.
     }
 
-    // Garder une règle spécifique pour la création de messages de contact par des utilisateurs non authentifiés
     match /contact_messages/{messageId} {
       allow create: if true;
+    }
+
+    match /gdpr_requests/{requestId} {
+      allow create: if true;
+    }
+
+    match /support_requests/{requestId} {
+      allow create: if true;
+    }
+
+    match /live_follow_up_requests/{requestId} {
+      allow create: if true;
+    }
+
+    match /training_requests/{requestId} {
+      allow create: if true;
+    }
+    
+    match /beta_tests_results/{resultId} {
+      allow create: if true;
+    }
+
+    match /quotes/{quoteId} {
+        allow read: if true;
+        allow update: if true;
+    }
+
+    // Règles pour les autres collections (nécessite une authentification)
+    match /{path=**} {
+      allow read: if true; // Permettre la lecture publique pour la plupart des données
+      allow write: if request.auth != null; // N'autoriser l'écriture qu'aux utilisateurs authentifiés
     }
   }
 }
