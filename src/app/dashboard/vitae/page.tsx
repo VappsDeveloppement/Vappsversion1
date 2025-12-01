@@ -37,6 +37,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ChevronsUpDown, Check } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
 
 
 type Client = {
@@ -156,11 +157,13 @@ const infoMatchingSchema = z.object({
     environment: z.array(z.string()).optional(),
     desiredSkills: z.array(z.string()).optional(),
     softSkills: z.array(z.string()).optional(),
+    internalNotes: z.string().optional(),
 });
 
 const jobOfferFormSchema = z.object({
   id: z.string().optional(),
   title: z.string().min(1, "Le titre du poste est requis."),
+  reference: z.string().optional(),
   description: z.string().optional(),
   contractType: z.string().optional(),
   workingHours: z.string().optional(),
@@ -1318,19 +1321,20 @@ function JobOfferManager() {
     
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferFormSchema),
-        defaultValues: { title: '', description: '', contractType: '', workingHours: '', location: '', salary: '', infoMatching: {} },
+        defaultValues: { title: '', reference: '', description: '', contractType: '', workingHours: '', location: '', salary: '', infoMatching: { internalNotes: '' } },
     });
     
     useEffect(() => {
         if (isSheetOpen) {
             form.reset({
                 title: editingOffer?.title || '',
+                reference: editingOffer?.reference || '',
                 description: editingOffer?.description || '',
                 contractType: editingOffer?.contractType || '',
                 workingHours: editingOffer?.workingHours || '',
                 location: editingOffer?.location || '',
                 salary: editingOffer?.salary || '',
-                infoMatching: editingOffer?.infoMatching || {},
+                infoMatching: editingOffer?.infoMatching || { internalNotes: '' },
             });
         }
     }, [isSheetOpen, editingOffer, form]);
@@ -1410,7 +1414,7 @@ function JobOfferManager() {
                     </Table>
                 </div>
                  <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-2xl w-full">
+                    <SheetContent className="sm:max-w-3xl w-full">
                         <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} offre d'emploi</SheetTitle></SheetHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -1420,7 +1424,8 @@ function JobOfferManager() {
                                             <h3 className="text-lg font-medium border-b pb-2 mb-4">Annonce Publique</h3>
                                             <div className="space-y-4">
                                                 <FormField control={form.control} name="title" render={({ field }) => ( <FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="reference" render={({ field }) => ( <FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="description" render={({ field }) => ( <FormItem><FormLabel>Description</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem> )}/>
                                                 <FormField control={form.control} name="contractType" render={({ field }) => ( <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><Input placeholder="CDI, CDD, Alternance..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
                                                 <FormField control={form.control} name="workingHours" render={({ field }) => ( <FormItem><FormLabel>Temps de travail</FormLabel><FormControl><Input placeholder="Temps plein, Temps partiel..." {...field} /></FormControl><FormMessage /></FormItem> )}/>
                                                 <FormField control={form.control} name="location" render={({ field }) => ( <FormItem><FormLabel>Lieu</FormLabel><FormControl><Input placeholder="Paris, France" {...field} /></FormControl><FormMessage /></FormItem> )}/>
@@ -1430,8 +1435,8 @@ function JobOfferManager() {
                                         <section className="pt-6 border-t">
                                             <h3 className="text-lg font-medium border-b pb-2 mb-4">Info Matching (Interne)</h3>
                                             <div className="space-y-4">
-                                                <FormField control={form.control} name="infoMatching.yearsExperience" render={({ field }) => ( <FormItem><FormLabel>Années d'expérience souhaitées</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                <FormField control={form.control} name="infoMatching.desiredTraining" render={({ field }) => ( <FormItem><FormLabel>Formation souhaitée</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="infoMatching.yearsExperience" render={({ field }) => ( <FormItem><FormLabel>Années d'expérience souhaitées</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="infoMatching.desiredTraining" render={({ field }) => ( <FormItem><FormLabel>Formation souhaitée</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )}/>
                                                 <FormField control={form.control} name="infoMatching.romeCode" render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code ROME..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={form.control} name="infoMatching.otherNames" render={({ field }) => (<FormItem><FormLabel>Autres appellations</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une appellation..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={form.control} name="infoMatching.geographicSector" render={({ field }) => (<FormItem><FormLabel>Secteur géographique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un secteur..." /></FormControl><FormMessage /></FormItem>)}/>
@@ -1439,6 +1444,7 @@ function JobOfferManager() {
                                                 <FormField control={form.control} name="infoMatching.environment" render={({ field }) => (<FormItem><FormLabel>Environnement</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un tag d'environnement..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={form.control} name="infoMatching.desiredSkills" render={({ field }) => (<FormItem><FormLabel>Mission/Compétences recherchées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={form.control} name="infoMatching.softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être et Softskills</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un softskill..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.internalNotes" render={({ field }) => (<FormItem><FormLabel>Informations internes (privées)</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
                                         </section>
                                     </div>
@@ -1511,3 +1517,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
