@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState } from 'react';
@@ -15,7 +16,7 @@ import { Textarea } from '../ui/textarea';
 import { Loader2, Upload, File as FileIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore, useStorage, addDocumentNonBlocking } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection } from 'firebase/firestore';
 import { ref, uploadString, getDownloadURL } from 'firebase/storage';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
@@ -27,7 +28,6 @@ type CounselorProfile = {
             title?: string;
             subtitle?: string;
             description?: string;
-            offers?: JobOffer[];
         }
     };
     dashboardTheme?: {
@@ -162,14 +162,22 @@ function JobApplicationForm({ offer, counselorId, primaryColor }: { offer: JobOf
 }
 
 export function CounselorJobOffersSection({ counselor }: { counselor: CounselorProfile }) {
+    const firestore = useFirestore();
+
+    const jobOffersQuery = useMemoFirebase(() => {
+        if (!counselor?.id) return null;
+        return query(collection(firestore, 'job_offers'), where('counselorId', '==', counselor.id));
+    }, [counselor?.id, firestore]);
+    const { data: offers, isLoading } = useCollection<JobOffer>(jobOffersQuery);
+
     const jobOffersSettings = counselor.miniSite?.jobOffersSection;
     const primaryColor = counselor.dashboardTheme?.primaryColor || '#10B981';
 
-    if (!jobOffersSettings?.enabled || !jobOffersSettings.offers || jobOffersSettings.offers.length === 0) {
+    if (!jobOffersSettings?.enabled || !offers || offers.length === 0) {
         return null;
     }
     
-    const { title, subtitle, description, offers } = jobOffersSettings;
+    const { title, subtitle, description } = jobOffersSettings;
 
     return (
         <section className="bg-background text-foreground py-16 sm:py-24">

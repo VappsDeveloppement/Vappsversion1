@@ -179,6 +179,7 @@ export type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
 
 export type JobOffer = JobOfferFormData & {
   id: string;
+  counselorId: string;
 };
 
 type JobApplication = {
@@ -1524,10 +1525,9 @@ function JobOfferManager() {
     const [editingOffer, setEditingOffer] = useState<JobOffer | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-    const { data: userData, isLoading: isUserLoading } = useDoc<{miniSite: { jobOffersSection?: { offers: JobOffer[] }}}>(userDocRef);
+    const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, 'job_offers'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: offers, isLoading: areOffersLoading } = useCollection<JobOffer>(offersQuery);
 
-    const offers = userData?.miniSite?.jobOffersSection?.offers || [];
     
     const filteredOffers = useMemo(() => {
         if (!offers) return [];
@@ -1571,27 +1571,31 @@ function JobOfferManager() {
     };
     
     const handleDelete = (offerId: string) => {
-        if (!userDocRef) return;
-        const updatedOffers = offers.filter(o => o.id !== offerId);
-        setDocumentNonBlocking(userDocRef, { 'miniSite.jobOffersSection.offers': updatedOffers }, { merge: true });
+        deleteDocumentNonBlocking(doc(firestore, 'job_offers', offerId));
         toast({ title: "Offre d'emploi supprimée" });
     };
 
     const onSubmit = async (data: JobOfferFormData) => {
-        if (!userDocRef) return;
+        if (!user) return;
         setIsSubmitting(true);
-        let updatedOffers: JobOffer[];
-        if (editingOffer) {
-            updatedOffers = offers.map(o => o.id === editingOffer.id ? { ...o, ...data } : o);
-        } else {
-            updatedOffers = [...offers, { id: `job-${Date.now()}`, ...data }];
-        }
+
+        const offerData = {
+            ...data,
+            counselorId: user.uid,
+        };
 
         try {
-            await setDocumentNonBlocking(userDocRef, { 'miniSite.jobOffersSection.offers': updatedOffers }, { merge: true });
-            toast({ title: editingOffer ? "Offre mise à jour" : "Offre créée" });
+            if (editingOffer) {
+                const offerRef = doc(firestore, 'job_offers', editingOffer.id);
+                await setDocumentNonBlocking(offerRef, offerData, { merge: true });
+                toast({ title: "Offre mise à jour" });
+            } else {
+                await addDocumentNonBlocking(collection(firestore, 'job_offers'), offerData);
+                toast({ title: "Offre créée" });
+            }
             setIsSheetOpen(false);
         } catch(e) {
+            console.error(e);
             toast({ title: "Erreur", description: "Impossible de sauvegarder l'offre.", variant: "destructive"});
         } finally {
             setIsSubmitting(false);
@@ -1624,7 +1628,7 @@ function JobOfferManager() {
                     <Table>
                         <TableHeader><TableRow><TableHead>Titre du poste</TableHead><TableHead>Lieu</TableHead><TableHead>Contrat</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                         <TableBody>
-                            {isUserLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
+                            {areOffersLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-10 w-full" /></TableCell></TableRow>
                             : filteredOffers.length > 0 ? (
                                 filteredOffers.map((offer) => (
                                     <TableRow key={offer.id}>
@@ -1754,4 +1758,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
 

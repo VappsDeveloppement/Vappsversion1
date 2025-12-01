@@ -1,6 +1,50 @@
 
+
 {
   "entities": {
+    "CvProfile": {
+      "title": "CV Profile",
+      "type": "object",
+      "description": "Represents a candidate's CV profile created by a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "mobility": { "type": "array", "items": { "type": "string" } },
+        "drivingLicence": { "type": "array", "items": { "type": "string" } },
+        "lastJob": { "type": "array", "items": { "type": "string" } },
+        "searchedJob": { "type": "array", "items": { "type": "string" } },
+        "contractType": { "type": "array", "items": { "type": "string" } },
+        "duration": { "type": "array", "items": { "type": "string" } },
+        "workEnvironment": { "type": "array", "items": { "type": "string" } },
+        "highestFormation": { "type": "array", "items": { "type": "string" } },
+        "highestFormationSkills": { "type": "array", "items": { "type": "string" } },
+        "currentJobFormation": { "type": "array", "items": { "type": "string" } },
+        "currentJobFormationSkills": { "type": "array", "items": { "type": "string" } },
+        "projectFormation": { "type": "array", "items": { "type": "string" } },
+        "projectFormationSkills": { "type": "array", "items": { "type": "string" } },
+        "fundingOptions": { "type": "array", "items": { "type": "string" } },
+        "experiences": { 
+            "type": "array", 
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": { "type": "string" },
+                    "startDate": { "type": "string" },
+                    "endDate": { "type": "string" },
+                    "jobTitle": { "type": "array", "items": { "type": "string" } },
+                    "characteristics": { "type": "array", "items": { "type": "string" } },
+                    "activities": { "type": "array", "items": { "type": "string" } }
+                }
+            }
+        },
+        "otherInterests": { "type": "array", "items": { "type": "string" } },
+        "softskills": { "type": "array", "items": { "type": "string" } },
+        "status": { "type": "string", "enum": ["disponible", "en_mission", "en_emploi"] },
+        "cvUrl": { "type": "string", "format": "uri", "description": "URL to the candidate's CV in PDF format." }
+      }
+    },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
@@ -435,13 +479,7 @@
                 "properties": {
                     "enabled": { "type": "boolean" },
                     "title": { "type": "string" },
-                    "subtitle": { "type": "string" },
-                    "offers": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/entities/JobOffer"
-                        }
-                    }
+                    "subtitle": { "type": "string" }
                 }
             },
             "blogSection": {
@@ -898,16 +936,56 @@
       "required": ["id", "category", "question", "content", "scope"]
     },
     "JobOffer": {
-        "title": "Job Offer",
+      "title": "Job Offer",
+      "type": "object",
+      "description": "Represents a single job offer.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "title": { "type": "string" },
+        "reference": { "type": "string" },
+        "description": { "type": "string" },
+        "contractType": { "type": "string" },
+        "workingHours": { "type": "string" },
+        "location": { "type": "string" },
+        "salary": { "type": "string" },
+        "infoMatching": {
+          "type": "object",
+          "description": "Internal data for matching candidates.",
+          "properties": {
+            "yearsExperience": { "type": "string" },
+            "desiredTraining": { "type": "string" },
+            "romeCode": { "type": "array", "items": { "type": "string" } },
+            "otherNames": { "type": "array", "items": { "type": "string" } },
+            "geographicSector": { "type": "array", "items": { "type": "string" } },
+            "workingConditions": { "type": "array", "items": { "type": "string" } },
+            "environment": { "type": "array", "items": { "type": "string" } },
+            "desiredSkills": { "type": "array", "items": { "type": "string" } },
+            "softSkills": { "type": "array", "items": { "type": "string" } },
+            "internalNotes": { "type": "string" }
+          }
+        }
+      },
+      "required": ["id", "counselorId", "title"]
+    },
+    "JobApplication": {
+        "title": "Job Application",
         "type": "object",
-        "description": "Represents a single job offer.",
+        "description": "Represents a candidate's application for a job offer.",
         "properties": {
             "id": { "type": "string" },
-            "title": { "type": "string" },
-            "contractType": { "type": "string" },
-            "location": { "type": "string" }
+            "counselorId": { "type": "string", "description": "ID of the counselor who owns the job offer." },
+            "jobOfferId": { "type": "string" },
+            "jobOfferTitle": { "type": "string" },
+            "applicantName": { "type": "string" },
+            "applicantEmail": { "type": "string", "format": "email" },
+            "applicantPhone": { "type": "string" },
+            "cvUrl": { "type": "string", "format": "uri" },
+            "coverLetter": { "type": "string" },
+            "appliedAt": { "type": "string", "format": "date-time" },
+            "status": { "type": "string", "enum": ["new", "reviewed", "contacted", "rejected"], "default": "new" }
         },
-        "required": ["id", "title", "contractType", "location"]
+        "required": ["counselorId", "jobOfferId", "jobOfferTitle", "applicantName", "applicantEmail", "cvUrl", "appliedAt"]
     },
     "BetaScenario": {
       "title": "Beta Scenario",
@@ -1511,6 +1589,22 @@
         }
       },
       {
+        "path": "/job_offers/{offerId}",
+        "definition": {
+          "entityName": "JobOffer",
+          "schema": { "$ref": "#/entities/JobOffer" },
+          "description": "Stores job offers created by counselors."
+        }
+      },
+      {
+        "path": "/job_applications/{applicationId}",
+        "definition": {
+          "entityName": "JobApplication",
+          "schema": { "$ref": "#/entities/JobApplication" },
+          "description": "Stores job applications submitted from public job offers."
+        }
+      },
+      {
         "path": "/gdpr_requests/{requestId}",
         "definition": {
           "entityName": "GdprRequest",
@@ -1754,3 +1848,4 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
