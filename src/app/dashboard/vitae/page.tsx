@@ -635,7 +635,7 @@ function Cvtheque() {
             toast({ title: 'Téléversement réussi', description: 'Le CV a été enregistré.' });
         } catch (error) {
             console.error("PDF Upload Error:", error);
-            toast({ title: 'Erreur de téléversement', description: "Impossible d'envoyer le fichier.", variant: 'destructive' });
+            toast({ title: 'Erreur de téléversement', description: "Impossible d'envoyer le fichier.", variant: "destructive" });
         } finally {
             setIsUploading(false);
              if (pdfInputRef.current) {
@@ -1542,7 +1542,21 @@ function JobOfferManager() {
     
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferFormSchema),
-        defaultValues: { title: '', reference: '', description: '', contractType: '', workingHours: '', location: '', salary: '', infoMatching: { internalNotes: '' } },
+        defaultValues: { 
+            title: '', reference: '', description: '', contractType: '', workingHours: '', location: '', salary: '', 
+            infoMatching: {
+                yearsExperience: '',
+                desiredTraining: '',
+                romeCode: [],
+                otherNames: [],
+                geographicSector: [],
+                workingConditions: [],
+                environment: [],
+                desiredSkills: [],
+                softSkills: [],
+                internalNotes: '',
+            } 
+        },
     });
     
     useEffect(() => {
@@ -1555,7 +1569,18 @@ function JobOfferManager() {
                 workingHours: editingOffer?.workingHours || '',
                 location: editingOffer?.location || '',
                 salary: editingOffer?.salary || '',
-                infoMatching: editingOffer?.infoMatching || { internalNotes: '' },
+                infoMatching: {
+                    yearsExperience: editingOffer?.infoMatching?.yearsExperience || '',
+                    desiredTraining: editingOffer?.infoMatching?.desiredTraining || '',
+                    romeCode: editingOffer?.infoMatching?.romeCode || [],
+                    otherNames: editingOffer?.infoMatching?.otherNames || [],
+                    geographicSector: editingOffer?.infoMatching?.geographicSector || [],
+                    workingConditions: editingOffer?.infoMatching?.workingConditions || [],
+                    environment: editingOffer?.infoMatching?.environment || [],
+                    desiredSkills: editingOffer?.infoMatching?.desiredSkills || [],
+                    softSkills: editingOffer?.infoMatching?.softSkills || [],
+                    internalNotes: editingOffer?.infoMatching?.internalNotes || '',
+                },
             });
         }
     }, [isSheetOpen, editingOffer, form]);
@@ -1581,8 +1606,14 @@ function JobOfferManager() {
         setIsSubmitting(true);
 
         const offerData = {
-            ...data,
             counselorId: user.uid,
+            title: data.title,
+            reference: data.reference || '',
+            description: data.description || '',
+            contractType: data.contractType || '',
+            workingHours: data.workingHours || '',
+            location: data.location || '',
+            salary: data.salary || '',
             infoMatching: {
               yearsExperience: data.infoMatching?.yearsExperience || '',
               desiredTraining: data.infoMatching?.desiredTraining || '',
