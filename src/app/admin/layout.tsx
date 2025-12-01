@@ -37,12 +37,11 @@ import {
 import { Logo } from "@/components/shared/logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { useUser, useAuth, useMemoFirebase, useDoc, useCollection } from "@/firebase";
+import { useUser, useAuth, useMemoFirebase, useDoc } from "@/firebase";
 import React, { useEffect, useMemo } from "react";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { doc, collection, query } from "firebase/firestore";
+import { doc } from "firebase/firestore";
 import { useFirestore } from "@/firebase/provider";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const adminMenuItems = [
   { href: "/admin", label: "Dashboard", icon: <LayoutGrid /> },
@@ -75,26 +74,17 @@ export default function AdminLayout({
   const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
   const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
   
-  // This is a temporary measure. We check if the user is the ONLY user.
-  // If so, we grant admin access to prevent lockout during initial setup.
-  const usersQuery = useMemoFirebase(() => collection(firestore, 'users'), [firestore]);
-  const { data: allUsers, isLoading: areUsersLoading } = useCollection(usersQuery);
-
   const hasAdminAccess = useMemo(() => {
     if (!userData) return false;
-    // Direct permission check
-    if (userData.permissions?.includes('FULLACCESS')) return true;
-    // Check for superadmin role
-    if (userData.role === 'superadmin') return true;
-    // Fallback for the very first user in the system
-    if (allUsers && allUsers.length === 1 && allUsers[0].id === user?.uid) return true;
-
-    return false;
-  }, [userData, allUsers, user]);
+    // A user has admin access if they have the 'superadmin' role OR the 'FULLACCESS' permission.
+    const hasSuperAdminRole = userData.role === 'superadmin';
+    const hasFullAccessPermission = userData.permissions?.includes('FULLACCESS');
+    return hasSuperAdminRole || hasFullAccessPermission;
+  }, [userData]);
 
 
   useEffect(() => {
-    if (!isUserLoading && !isUserDataLoading && !areUsersLoading) {
+    if (!isUserLoading && !isUserDataLoading) {
       if (!user) {
           router.push('/application');
       } else if (!hasAdminAccess) {
@@ -103,7 +93,7 @@ export default function AdminLayout({
           // toast({ title: "Accès refusé", description: "Vous n'avez pas les droits pour accéder à cette page.", variant: "destructive" });
       }
     }
-  }, [isUserLoading, isUserDataLoading, areUsersLoading, user, hasAdminAccess, router]);
+  }, [isUserLoading, isUserDataLoading, user, hasAdminAccess, router]);
   
   const activeSettingsPath = settingsMenuItems.some(item => pathname.startsWith(item.href));
 
@@ -112,7 +102,7 @@ export default function AdminLayout({
     router.push('/application');
   };
 
-  const isLoading = isUserLoading || isUserDataLoading || areUsersLoading;
+  const isLoading = isUserLoading || isUserDataLoading;
   
   if (isLoading || !hasAdminAccess) {
     return (
