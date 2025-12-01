@@ -27,14 +27,14 @@ import Image from 'next/image';
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
-import { useAgency } from "@/context/agency-provider";
+import { useAgency } from '@/context/agency-provider';
 import { sendGdprEmail as sendEmail } from '@/app/actions/gdpr';
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import type { Product } from '@/lib/types';
+import { Product, ProductFormData, productSchema } from '@/lib/types';
 
 
 const toBase64 = (file: File): Promise<string> =>
@@ -47,20 +47,6 @@ const toBase64 = (file: File): Promise<string> =>
 
 
 // Product Management Section
-
-const productSchema = z.object({
-  title: z.string().min(1, "Le titre du produit est requis."),
-  description: z.string().optional(),
-  isFeatured: z.boolean().default(false),
-  imageUrl: z.string().nullable().optional(),
-  price: z.coerce.number().optional(),
-  characteristics: z.array(z.string()).optional(),
-  contraindications: z.array(z.string()).optional(),
-  holisticProfile: z.array(z.string()).optional(),
-  pathologies: z.array(z.string()).optional(),
-  ctaLink: z.string().url('URL invalide').optional().or(z.literal('')),
-});
-type ProductFormData = z.infer<typeof productSchema>;
 
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
@@ -961,34 +947,46 @@ function TestManager() {
     );
 }
 
-export default function AuraPage() {
+export default function VitaePage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold font-headline">Aura</h1>
-                <p className="text-muted-foreground">Votre outil de bien-être et naturopathie.</p>
+                <h1 className="text-3xl font-bold font-headline">Vitae</h1>
+                <p className="text-muted-foreground">Votre outil de gestion de parcours professionnels</p>
             </div>
-            
-            <Tabs defaultValue="products" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 h-auto">
-                    <TabsTrigger value="products">
-                        <ShoppingBag className="mr-2 h-4 w-4" /> Catalogue Produits
+             <ApplicationManager />
+            <Tabs defaultValue="cvtheque" className="w-full">
+                <TabsList className="grid w-full grid-cols-5 h-auto">
+                    <TabsTrigger value="cvtheque">
+                        <FileText className="mr-2 h-4 w-4" /> CVTHEQUE
                     </TabsTrigger>
-                     <TabsTrigger value="protocols">
-                        <ClipboardList className="mr-2 h-4 w-4" /> Protocoles
+                    <TabsTrigger value="rncp">
+                        <Search className="mr-2 h-4 w-4" /> FICHE RNCP
                     </TabsTrigger>
-                    <TabsTrigger value="wellness-sheets">
-                        <FileText className="mr-2 h-4 w-4" /> Fiches Bien-être
+                    <TabsTrigger value="rome">
+                        <Search className="mr-2 h-4 w-4" /> FICHE ROME
+                    </TabsTrigger>
+                    <TabsTrigger value="jobs">
+                        <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
+                    </TabsTrigger>
+                    <TabsTrigger value="test">
+                        <FlaskConical className="mr-2 h-4 w-4" /> TEST
                     </TabsTrigger>
                 </TabsList>
-                <TabsContent value="products">
-                   <ProductManager />
+                <TabsContent value="cvtheque">
+                    <Cvtheque />
                 </TabsContent>
-                 <TabsContent value="protocols">
-                    <ProtocoleManager />
+                <TabsContent value="rncp">
+                    <RncpManager />
                 </TabsContent>
-                <TabsContent value="wellness-sheets">
-                   <WellnessSheetGenerator />
+                 <TabsContent value="rome">
+                    <RomeManager />
+                </TabsContent>
+                <TabsContent value="jobs">
+                    <JobOfferManager />
+                </TabsContent>
+                <TabsContent value="test">
+                    <TestManager />
                 </TabsContent>
             </Tabs>
         </div>

@@ -15,7 +15,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useFirestore, useAuth, useStorage } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetDescription, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { createUserWithEmailAndPassword } from 'firebase/auth';
@@ -36,10 +36,9 @@ import 'jspdf-autotable';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ChevronsUpDown, Check } from 'lucide-react';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
-import type { JobOffer, JobOfferFormData, jobOfferFormSchema } from '@/lib/types';
+import { JobOffer, JobOfferFormData, jobOfferFormSchema } from '@/lib/types';
 
 
 type Client = {
@@ -1560,7 +1559,7 @@ function JobOfferManager() {
     const onSubmit = async (data: JobOfferFormData) => {
         if (!user) return;
         setIsSubmitting(true);
-
+    
         const offerData = {
             counselorId: user.uid,
             title: data.title,

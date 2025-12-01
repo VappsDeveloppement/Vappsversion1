@@ -1,31 +1,7 @@
 
+'use client';
 
 import { z } from 'zod';
-
-// Vitae Page Types
-export type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
-
-export type JobOffer = JobOfferFormData & {
-  id: string;
-  counselorId: string;
-};
-
-// Aura Page Types
-export type Product = {
-    id: string;
-    counselorId: string;
-    title: string;
-    description?: string;
-    isFeatured?: boolean;
-    imageUrl?: string | null;
-    price?: number;
-    characteristics?: string[];
-    contraindications?: string[];
-    holisticProfile?: string[];
-    pathologies?: string[];
-    ctaLink?: string;
-    versions?: any[];
-}
 
 const infoMatchingSchema = z.object({
     yearsExperience: z.string().optional(),
@@ -51,3 +27,32 @@ export const jobOfferFormSchema = z.object({
   salary: z.string().optional(),
   infoMatching: infoMatchingSchema.optional(),
 });
+
+export type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
+
+export type JobOffer = JobOfferFormData & {
+  id: string;
+  counselorId: string;
+};
+
+// Aura Page Types
+export const productSchema = z.object({
+  title: z.string().min(1, "Le titre du produit est requis."),
+  description: z.string().optional(),
+  isFeatured: z.boolean().default(false),
+  imageUrl: z.string().nullable().optional(),
+  price: z.coerce.number().optional(),
+  characteristics: z.array(z.string()).optional(),
+  contraindications: z.array(z.string()).optional(),
+  holisticProfile: z.array(z.string()).optional(),
+  pathologies: z.array(z.string()).optional(),
+  ctaLink: z.string().url('URL invalide').optional().or(z.literal('')),
+});
+
+export type ProductFormData = z.infer<typeof productSchema>;
+
+export type Product = ProductFormData & {
+    id: string;
+    counselorId: string;
+    versions?: any[];
+};
