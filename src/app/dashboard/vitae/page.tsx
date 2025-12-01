@@ -1525,7 +1525,7 @@ function JobOfferManager() {
     const [editingOffer, setEditingOffer] = useState<JobOffer | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, 'job_offers'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
     const { data: offers, isLoading: areOffersLoading } = useCollection<JobOffer>(offersQuery);
 
     
@@ -1571,7 +1571,8 @@ function JobOfferManager() {
     };
     
     const handleDelete = (offerId: string) => {
-        deleteDocumentNonBlocking(doc(firestore, 'job_offers', offerId));
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerId));
         toast({ title: "Offre d'emploi supprimée" });
     };
 
@@ -1586,11 +1587,11 @@ function JobOfferManager() {
 
         try {
             if (editingOffer) {
-                const offerRef = doc(firestore, 'job_offers', editingOffer.id);
+                const offerRef = doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id);
                 await setDocumentNonBlocking(offerRef, offerData, { merge: true });
                 toast({ title: "Offre mise à jour" });
             } else {
-                await addDocumentNonBlocking(collection(firestore, 'job_offers'), offerData);
+                await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/job_offers`), offerData);
                 toast({ title: "Offre créée" });
             }
             setIsSheetOpen(false);
@@ -1758,5 +1759,6 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
 
