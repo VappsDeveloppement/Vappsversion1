@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -280,7 +279,7 @@ function ApplicationManager() {
     };
 
     return (
-      <Card>
+      <Card className="mb-8">
         <CardHeader>
           <CardTitle>Candidatures</CardTitle>
           <CardDescription>
@@ -404,7 +403,6 @@ function ApplicationManager() {
       </Card>
     );
 }
-
 
 function Cvtheque() {
     const { user } = useUser();
@@ -625,7 +623,7 @@ function Cvtheque() {
         setIsUploading(true);
         toast({ title: 'Téléversement du CV en cours...', description: 'Veuillez patienter.' });
         
-        const filePath = `cv/${user.uid}/${file.name}`;
+        const filePath = `cv/${file.name}`;
         const fileRef = ref(storage, filePath);
 
         try {
@@ -1735,4 +1733,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
