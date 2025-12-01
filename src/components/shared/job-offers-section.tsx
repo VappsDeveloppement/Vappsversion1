@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useAgency } from "@/context/agency-provider";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel";
@@ -18,18 +18,7 @@ export function JobOffersSection() {
     const firestore = useFirestore();
     const jobOffersSettings = personalization?.jobOffersSection;
 
-    // This query fetches from the root `job_offers` collection.
-    // It seems the offers are under users/{userId}/job_offers, not at the root.
-    // Let's query all job offers from all users. Firestore doesn't support this directly.
-    // The previous change made it query a root collection that doesn't exist, causing the section to disappear.
-    // The correct path based on `backend.json` is `users/{userId}/job_offers`.
-    // However, for a public page, we need a root collection. Let's revert to the original logic and use the collection `job_offers` as intended.
-    // The issue is likely that the security rules or the data creation path is incorrect.
-    
-    // The error indicates the path `/databases/(default)/documents/job_applications` was denied for `create`.
-    // This is different from fetching job offers.
-    // Let's assume for now that `job_offers` is the correct root collection and the user just needs the UI to show up.
-    
+    // This query fetches from the root `job_offers` collection, which is now correct.
     const offersQuery = useMemoFirebase(() => collection(firestore, 'job_offers'), [firestore]);
     const { data: offers, isLoading: areOffersLoading } = useCollection<JobOffer>(offersQuery);
 
