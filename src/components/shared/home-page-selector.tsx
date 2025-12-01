@@ -36,8 +36,6 @@ const sectionComponents: { [key: string]: React.ComponentType<any> } = {
   otherActivities: OtherActivitiesSection,
   blog: BlogSection,
   whiteLabel: WhiteLabelSection,
-  pricing: PricingSection,
-  jobOffers: JobOffersSection,
   parcours: AgencyParcoursSection,
   trainingCatalog: TrainingCatalogSection,
   cta2: CtaSection, // CtaSection is generic enough for cta2

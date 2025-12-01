@@ -1576,8 +1576,8 @@
             "description": "Stores ROME sheets created by a counselor."
         }
       },
-      {
-        "path": "/job_offers/{offerId}",
+       {
+        "path": "/users/{userId}/job_offers/{offerId}",
         "definition": {
           "entityName": "JobOffer",
           "schema": { "$ref": "#/entities/JobOffer" },
