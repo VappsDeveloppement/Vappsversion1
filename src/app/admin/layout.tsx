@@ -76,20 +76,20 @@ export default function AdminLayout({
   
   const hasAdminAccess = useMemo(() => {
     if (!userData) return false;
-    // A user has admin access if they have the 'superadmin' role OR the 'FULLACCESS' permission.
     const hasFullAccessPermission = userData.permissions?.includes('FULLACCESS');
     return hasFullAccessPermission;
   }, [userData]);
 
 
   useEffect(() => {
+    // This effect handles redirection *after* all loading is complete.
     if (!isUserLoading && !isUserDataLoading) {
       if (!user) {
-          router.push('/application');
+        // If no user is logged in at all, redirect to the main login.
+        router.push('/application');
       } else if (!hasAdminAccess) {
-          router.push('/dashboard');
-          // Optional: Show a toast message for unauthorized access
-          // toast({ title: "Accès refusé", description: "Vous n'avez pas les droits pour accéder à cette page.", variant: "destructive" });
+        // If the user is logged in but doesn't have admin rights, redirect to their normal dashboard.
+        router.push('/dashboard');
       }
     }
   }, [isUserLoading, isUserDataLoading, user, hasAdminAccess, router]);
@@ -103,6 +103,8 @@ export default function AdminLayout({
 
   const isLoading = isUserLoading || isUserDataLoading;
   
+  // While loading or if the user is not yet determined to be an admin, show a loading state.
+  // This prevents rendering the children or redirecting prematurely.
   if (isLoading || !hasAdminAccess) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -110,18 +112,8 @@ export default function AdminLayout({
       </div>
     );
   }
-  
-  if (!user) {
-     return (
-      <div className="flex h-screen items-center justify-center bg-muted">
-        <div className="flex flex-col items-center gap-4 text-center">
-            <Loader2 className="h-16 w-16 animate-spin text-primary" />
-            <p className="text-muted-foreground">Redirection...</p>
-        </div>
-      </div>
-    );
-  }
 
+  // Once loading is complete and access is confirmed, render the layout.
   return (
     <SidebarProvider>
       <div className="flex">
