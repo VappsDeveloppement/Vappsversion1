@@ -1583,6 +1583,18 @@ function JobOfferManager() {
         const offerData = {
             ...data,
             counselorId: user.uid,
+            infoMatching: {
+              yearsExperience: data.infoMatching?.yearsExperience || '',
+              desiredTraining: data.infoMatching?.desiredTraining || '',
+              romeCode: data.infoMatching?.romeCode || [],
+              otherNames: data.infoMatching?.otherNames || [],
+              geographicSector: data.infoMatching?.geographicSector || [],
+              workingConditions: data.infoMatching?.workingConditions || [],
+              environment: data.infoMatching?.environment || [],
+              desiredSkills: data.infoMatching?.desiredSkills || [],
+              softSkills: data.infoMatching?.softSkills || [],
+              internalNotes: data.infoMatching?.internalNotes || '',
+            }
         };
 
         try {
@@ -1670,8 +1682,8 @@ function JobOfferManager() {
                                         <section className="pt-6 border-t">
                                             <h3 className="text-lg font-medium border-b pb-2 mb-4">Info Matching (Interne)</h3>
                                             <div className="space-y-4">
-                                                <FormField control={form.control} name="infoMatching.yearsExperience" render={({ field }) => ( <FormItem><FormLabel>Années d'expérience souhaitées</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )}/>
-                                                <FormField control={form.control} name="infoMatching.desiredTraining" render={({ field }) => ( <FormItem><FormLabel>Formation souhaitée</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="infoMatching.yearsExperience" render={({ field }) => ( <FormItem><FormLabel>Années d'expérience souhaitées</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name="infoMatching.desiredTraining" render={({ field }) => ( <FormItem><FormLabel>Formation souhaitée</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
                                                 <FormField control={form.control} name="infoMatching.romeCode" render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code ROME..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={form.control} name="infoMatching.otherNames" render={({ field }) => (<FormItem><FormLabel>Autres appellations</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une appellation..." /></FormControl><FormMessage /></FormItem>)}/>
                                                 <FormField control={form.control} name="infoMatching.geographicSector" render={({ field }) => (<FormItem><FormLabel>Secteur géographique</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un secteur..." /></FormControl><FormMessage /></FormItem>)}/>
@@ -1762,3 +1774,4 @@ export default function VitaePage() {
 
 
 
+    
