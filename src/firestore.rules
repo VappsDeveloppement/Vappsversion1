@@ -3,34 +3,32 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Règles Publiques ---
-    // Ces collections autorisent des opérations spécifiques sans authentification.
+    // --- Règles Publiques Spécifiques ---
 
-    // Autoriser la création de candidatures par n'importe qui.
+    // Permet à n'importe qui de créer une candidature (formulaire public)
+    // Seuls les utilisateurs authentifiés peuvent lire ou modifier les candidatures existantes.
     match /job_applications/{applicationId} {
       allow create: if true;
-      allow read, update, delete: if request.auth != null; // Seuls les utilisateurs connectés peuvent gérer
+      allow read, update, delete: if request.auth != null;
     }
 
-    // Autoriser la création de messages de contact par n'importe qui.
+    // Permet à n'importe qui de créer un message de contact (formulaire public)
     match /contact_messages/{messageId} {
       allow create: if true;
       allow read, update, delete: if request.auth != null;
     }
-    
-    // Autoriser la validation publique des devis
-    match /quotes/{quoteId} {
-        allow read: if true;
-        allow update: if resource.data.status != write.resource.data.status;
-    }
 
-    // --- Règles pour les utilisateurs authentifiés ---
-    match /{document=**} {
-      // Par défaut, autoriser la lecture à tous (pour les pages publiques)
-      // et l'écriture uniquement aux utilisateurs authentifiés.
-      // Des règles plus spécifiques ci-dessous peuvent restreindre davantage ces accès.
+    // Permet à n'importe qui de lire un devis public et de le mettre à jour (pour signature/refus)
+    match /quotes/{quoteId} {
       allow read: if true;
-      allow write: if request.auth != null;
+      allow update: if request.auth == null && resource.data.status != write.resource.data.status;
+    }
+    
+    // --- Règles Générales ---
+    // Cette règle s'applique à toutes les autres collections qui n'ont pas de règle spécifique.
+    match /{document=**} {
+      allow read: if true; // Permet la lecture publique (mini-sites, articles, etc.)
+      allow write: if request.auth != null; // Requiert une authentification pour toute écriture
     }
   }
 }
