@@ -174,7 +174,7 @@ export default function DashboardLayout({
   if (!user || !userData) {
      return (
       <div className="flex h-screen items-center justify-center">
-        <p>Chargement ou accès refusé.</p>
+        <Loader2 className="h-16 w-16 animate-spin text-primary" />
       </div>
     );
   }
