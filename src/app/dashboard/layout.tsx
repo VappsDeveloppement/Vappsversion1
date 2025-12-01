@@ -130,7 +130,11 @@ export default function DashboardLayout({
     }
   }, [isUserLoading, user, router]);
 
-  const hasAdminAccess = userData?.permissions?.includes('FULLACCESS') || userData?.role === 'superadmin';
+  const hasAdminAccess = useMemo(() => {
+    if (!userData) return false;
+    return userData.permissions?.includes('FULLACCESS');
+  }, [userData]);
+
   const isConseiller = userData?.role === 'conseiller';
   
   const activeProfilePath = profileMenuItems.some(item => pathname.startsWith(item.href));
@@ -365,3 +369,5 @@ export default function DashboardLayout({
     </SidebarProvider>
   );
 }
+
+    
