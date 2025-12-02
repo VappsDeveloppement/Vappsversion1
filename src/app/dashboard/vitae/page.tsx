@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -217,107 +216,145 @@ const calculateSeniority = (startDate?: string, endDate?: string) => {
     return result.trim() || 'Moins d\'un mois';
 };
 
-const generateCvProfilePdf = async (profile: CvProfile) => {
+const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) => {
     const doc = new jsPDF();
     let y = 20;
 
-    doc.setFontSize(22);
+    // --- HEADER ---
+    doc.setFontSize(26);
     doc.setFont('helvetica', 'bold');
-    doc.text(`Profil CV: ${profile.clientName}`, 15, y);
-    y += 15;
+    doc.text(profile.clientName, doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+    y += 10;
 
-    const addSection = (title: string, data: { label: string; value?: string[] }[]) => {
-        if (!data.some(item => item.value && item.value.length > 0)) return;
+    if (client) {
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        const contactInfo = [client.email, client.phone].filter(Boolean).join('  |  ');
+        doc.text(contactInfo, doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+        y += 10;
+    }
 
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text(title, 15, y);
-        y += 8;
+    // --- PROJET PROFESSIONNEL ---
+    doc.setFontSize(16);
+    doc.setFont('helvetica', 'bold');
+    doc.text("Projet Professionnel", 15, y);
+    y += 8;
 
-        data.forEach(item => {
-            if (item.value && item.value.length > 0) {
-                doc.setFontSize(11);
-                doc.setFont('helvetica', 'bold');
-                doc.text(item.label + ':', 15, y);
-                doc.setFont('helvetica', 'normal');
-                const values = item.value.join(', ');
-                const splitValues = doc.splitTextToSize(values, 150);
-                doc.text(splitValues, 50, y);
-                y += (splitValues.length * 5) + 3;
-            }
-        });
-        y += 5;
+    const addSectionData = (label: string, value?: string[]) => {
+        if (value && value.length > 0) {
+            doc.setFontSize(11);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${label}:`, 20, y);
+            doc.setFont('helvetica', 'normal');
+            doc.text(value.join(', '), 60, y);
+            y += 7;
+        }
     };
-    
-    addSection("Projet Professionnel", [
-        { label: "Métiers Actuels", value: profile.currentJobs },
-        { label: "Métiers Recherchés", value: profile.searchedJobs },
-        { label: "Types de Contrat", value: profile.contractTypes },
-        { label: "Durée de Travail", value: profile.workDurations },
-        { label: "Environnement", value: profile.workEnvironments },
-        { label: "Salaire Souhaité", value: profile.desiredSalary },
-        { label: "Mobilité", value: profile.mobility },
-    ]);
 
-    if ((profile.formations && profile.formations.length > 0) || (profile.drivingLicences && profile.drivingLicences.length > 0)) {
+    addSectionData("Métier(s) actuel(s)", profile.currentJobs);
+    addSectionData("Projet(s)", profile.searchedJobs);
+    addSectionData("Contrat(s)", profile.contractTypes);
+    addSectionData("Durée travail", profile.workDurations);
+    addSectionData("Environnement", profile.workEnvironments);
+    addSectionData("Salaire souhaité", profile.desiredSalary);
+    addSectionData("Mobilité", profile.mobility);
+    y += 5;
+
+    // --- FORMATIONS ---
+    if (profile.formations && profile.formations.length > 0) {
         if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
-        doc.text("Formations et Qualifications", 15, y);
+        doc.text("Formations", 15, y);
         y += 8;
-        if(profile.drivingLicences && profile.drivingLicences.length > 0){
-            addSection("", [{ label: "Permis", value: profile.drivingLicences }]);
-        }
-        
-        profile.formations?.forEach(formation => {
-            y += 5;
+
+        profile.formations.forEach(formation => {
             if (y > 260) { doc.addPage(); y = 20; }
-            autoTable(doc, {
-                startY: y,
-                head: [[`Formation: ${formation.title?.join(', ')}`]],
-                body: [
-                    ["Code RNCP", formation.rncpCode?.join(', ') || '-'],
-                    ["Niveau", formation.level?.join(', ') || '-'],
-                    ["Compétences", formation.skills?.join(', ') || '-'],
-                ],
-                theme: 'grid',
-                headStyles: { fontStyle: 'bold' }
-            });
-            y = (doc as any).lastAutoTable.finalY + 5;
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(formation.title?.join(', ') || 'Formation non spécifiée', 20, y);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(formation.level?.join(', ') || '', 195, y, { align: 'right' });
+            y += 6;
+            
+            if (formation.skills && formation.skills.length > 0) {
+                doc.setFont('helvetica', 'italic');
+                doc.text(`Compétences: ${formation.skills.join(', ')}`, 20, y, { maxWidth: 170 });
+                y += (doc.splitTextToSize(formation.skills.join(', '), 170).length * 5) + 2;
+            }
         });
+        y += 5;
+    }
+    
+    // Permis
+    if (profile.drivingLicences && profile.drivingLicences.length > 0) {
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Permis", 15, y);
+        y += 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(profile.drivingLicences.join(', '), 20, y);
+        y += 10;
     }
 
+
+    // --- EXPÉRIENCES ---
     if (profile.experiences && profile.experiences.length > 0) {
-        if(y > 200) { doc.addPage(); y = 20; }
+        if (y > 220) { doc.addPage(); y = 20; }
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text("Parcours Professionnel", 15, y);
         y += 8;
+
         profile.experiences.forEach(exp => {
-            y += 5;
-            if(y > 260) { doc.addPage(); y = 20; }
+            if (y > 250) { doc.addPage(); y = 20; }
             const seniority = calculateSeniority(exp.startDate, exp.endDate);
-            autoTable(doc, {
-                startY: y,
-                head: [[`Expérience: ${exp.title?.join(', ')}`]],
-                body: [
-                    ["Code ROME", exp.romeCode?.join(', ') || '-'],
-                    ["Période", `${exp.startDate || ''} - ${exp.endDate || ''} (${seniority || 'N/A'})`],
-                    ["Compétences", exp.skills?.join(', ') || '-'],
-                    ["Activités", exp.activities?.join(', ') || '-'],
-                ],
-                theme: 'grid',
-                headStyles: { fontStyle: 'bold' }
-            });
-            y = (doc as any).lastAutoTable.finalY + 5;
+            const dateRange = `${exp.startDate ? new Date(exp.startDate).toLocaleDateString('fr-FR') : '?'} - ${exp.endDate ? new Date(exp.endDate).toLocaleDateString('fr-FR') : '?'}`;
+            
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(exp.title?.join(', ') || 'Poste non spécifié', 20, y);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text(dateRange, 195, y, { align: 'right' });
+            y += 6;
+            if (seniority) {
+                doc.setFontSize(9);
+                doc.setFont('helvetica', 'italic');
+                doc.setTextColor(150);
+                doc.text(seniority, 195, y, { align: 'right' });
+                doc.setTextColor(0);
+            }
+            if (exp.activities && exp.activities.length > 0) {
+                doc.setFontSize(10);
+                doc.text(`Activités: ${exp.activities.join(', ')}`, 20, y, { maxWidth: 170 });
+                 y += (doc.splitTextToSize(`Activités: ${exp.activities.join(', ')}`, 170).length * 5) + 2;
+            }
+             if (exp.skills && exp.skills.length > 0) {
+                doc.text(`Compétences: ${exp.skills.join(', ')}`, 20, y, { maxWidth: 170 });
+                y += (doc.splitTextToSize(`Compétences: ${exp.skills.join(', ')}`, 170).length * 5) + 2;
+            }
+            y += 5;
         });
+        y += 5;
     }
-    
-    if(profile.softSkills && profile.softSkills.length > 0) {
-        if(y > 250) { doc.addPage(); y = 20; }
-        addSection("Savoir-être (Softskills)", [{ label: "", value: profile.softSkills }]);
+
+    // --- SOFTSKILLS ---
+    if (profile.softSkills && profile.softSkills.length > 0) {
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Savoir-être", 15, y);
+        y += 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(profile.softSkills.join(' • '), 20, y, { maxWidth: 170 });
+        y += (doc.splitTextToSize(profile.softSkills.join(' • '), 170).length * 5) + 5;
     }
-    
+
     doc.save(`CV_Profil_${profile.clientName.replace(' ', '_')}.pdf`);
 };
 
@@ -359,12 +396,7 @@ function Cvtheque() {
     useEffect(() => {
         if(isSheetOpen) {
             if(editingProfile) {
-                form.reset({
-                  ...editingProfile,
-                  formations: editingProfile.formations || [],
-                  experiences: editingProfile.experiences || [],
-                  softSkills: editingProfile.softSkills || [],
-                });
+                form.reset(editingProfile);
                 const client = clients?.find(c => c.id === editingProfile.clientId);
                 if (client) {
                     setSelectedClientForDisplay({ name: editingProfile.clientName, email: client.email, phone: client.phone });
@@ -417,7 +449,7 @@ function Cvtheque() {
             }
         }
         
-        const profileData: Omit<CvProfile, 'id'> = {
+        const profileData = {
             counselorId: user.uid,
             clientId: data.clientId,
             clientName: data.clientName,
@@ -458,6 +490,11 @@ function Cvtheque() {
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/cv_profiles`, profileId));
         toast({ title: "Profil supprimé" });
     };
+
+    const handleExport = (profile: CvProfile) => {
+        const client = clients?.find(c => c.id === profile.clientId);
+        generateCvProfilePdf(profile, client);
+    }
 
     return (
       <Card>
@@ -640,7 +677,7 @@ function Cvtheque() {
                                             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem onClick={() => generateCvProfilePdf(profile)}>
+                                            <DropdownMenuItem onClick={() => handleExport(profile)}>
                                                 <Download className="mr-2 h-4 w-4" /> Exporter PDF
                                             </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleEditProfile(profile)}>
