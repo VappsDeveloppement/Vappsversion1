@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro, Upload, ChevronsUpDown, Check } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro, Upload, ChevronsUpDown, Check, MoreHorizontal } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -29,6 +29,7 @@ import { Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 type JobApplication = {
@@ -215,6 +216,13 @@ function Cvtheque() {
     }, [user, firestore]);
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
 
+    const cvProfilesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/cv_profiles`));
+    }, [user, firestore]);
+    const { data: cvProfiles, isLoading: areProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
+
+
     const form = useForm<CvProfileFormData>({
         resolver: zodResolver(cvProfileSchema),
         defaultValues: {
@@ -286,7 +294,7 @@ function Cvtheque() {
             try {
                 const filePath = `CV/${Date.now()}_${cvFile.name}`;
                 const fileRef = ref(storage, filePath);
-                await uploadBytes(fileRef, cvFile);
+                await uploadBytes(fileRef, file);
                 fileUrl = await getDownloadURL(fileRef);
                 toast({ title: "CV téléversé avec succès" });
             } catch (error) {
@@ -314,6 +322,17 @@ function Cvtheque() {
         
         setIsUploading(false);
         setIsSheetOpen(false);
+    };
+
+    const handleEditProfile = (profile: CvProfile) => {
+        setEditingProfile(profile);
+        setIsSheetOpen(true);
+    };
+
+    const handleDeleteProfile = (profileId: string) => {
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/cv_profiles`, profileId));
+        toast({ title: "Profil supprimé" });
     };
 
     return (
@@ -349,8 +368,8 @@ function Cvtheque() {
                                     {selectedClientForDisplay && (
                                         <Card className="p-4 bg-muted/50">
                                             <p className="text-sm font-semibold">{selectedClientForDisplay.name}</p>
-                                            <p className="text-xs text-muted-foreground">{selectedClientForDisplay.email}</p>
-                                            <p className="text-xs text-muted-foreground">{selectedClientForDisplay.phone}</p>
+                                            {selectedClientForDisplay.email && <p className="text-xs text-muted-foreground">{selectedClientForDisplay.email}</p>}
+                                            {selectedClientForDisplay.phone && <p className="text-xs text-muted-foreground">{selectedClientForDisplay.phone}</p>}
                                         </Card>
                                     )}
                                     <section>
@@ -472,9 +491,49 @@ function Cvtheque() {
           </div>
         </CardHeader>
         <CardContent>
-            <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                <p>Aucun profil CV pour le moment.</p>
-            </div>
+            {areProfilesLoading ? (
+                 <div className="space-y-2">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
+                </div>
+            ) : cvProfiles && cvProfiles.length > 0 ? (
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Projet</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {cvProfiles.map(profile => (
+                            <TableRow key={profile.id}>
+                                <TableCell className="font-medium">{profile.clientName}</TableCell>
+                                <TableCell className="text-muted-foreground">{profile.searchedJobs?.join(', ') || '-'}</TableCell>
+                                <TableCell className="text-right">
+                                     <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => handleEditProfile(profile)}>
+                                                <Edit className="mr-2 h-4 w-4"/> Modifier
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteProfile(profile.id)}>
+                                                <Trash2 className="mr-2 h-4 w-4"/> Supprimer
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
+            ) : (
+                <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <p>Aucun profil CV pour le moment.</p>
+                </div>
+            )}
         </CardContent>
       </Card>
     );
@@ -613,4 +672,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
