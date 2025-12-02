@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 type JobApplication = {
@@ -261,7 +262,7 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
     addSectionData("Salaire souhaité", profile.desiredSalary);
     addSectionData("Mobilité", profile.mobility);
     y += 5;
-
+    
     // --- PERMIS ---
     if (profile.drivingLicences && profile.drivingLicences.length > 0) {
         if (y > 250) { doc.addPage(); y = 20; }
@@ -275,6 +276,7 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
         doc.text(profile.drivingLicences.join(', '), 20, y);
         y += 10;
     }
+
 
     // --- FORMATIONS ---
     if (profile.formations && profile.formations.length > 0) {
@@ -383,6 +385,7 @@ function Cvtheque() {
     const [isUploading, setIsUploading] = useState(false);
     const [cvFile, setCvFile] = useState<File | null>(null);
     const [selectedClientForDisplay, setSelectedClientForDisplay] = useState<{name:string, email?:string, phone?:string} | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
     
     const clientsQuery = useMemoFirebase(() => {
         if(!user) return null;
@@ -395,6 +398,13 @@ function Cvtheque() {
         return query(collection(firestore, `users/${user.uid}/cv_profiles`));
     }, [user, firestore]);
     const { data: cvProfiles, isLoading: areProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
+    
+    const filteredCvProfiles = useMemo(() => {
+        if (!cvProfiles) return [];
+        if (!searchTerm) return cvProfiles;
+        const lowercasedTerm = searchTerm.toLowerCase();
+        return cvProfiles.filter(profile => profile.clientName.toLowerCase().includes(lowercasedTerm));
+    }, [cvProfiles, searchTerm]);
 
 
     const form = useForm<CvProfileFormData>({
@@ -678,6 +688,15 @@ function Cvtheque() {
                 </SheetContent>
              </Sheet>
           </div>
+          <div className="relative pt-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
+            <Input
+                placeholder="Rechercher par nom de client..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+            />
+          </div>
         </CardHeader>
         <CardContent>
             {areProfilesLoading ? (
@@ -685,7 +704,7 @@ function Cvtheque() {
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                 </div>
-            ) : cvProfiles && cvProfiles.length > 0 ? (
+            ) : filteredCvProfiles && filteredCvProfiles.length > 0 ? (
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -695,7 +714,7 @@ function Cvtheque() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {cvProfiles.map(profile => (
+                        {filteredCvProfiles.map(profile => (
                             <TableRow key={profile.id}>
                                 <TableCell className="font-medium">{profile.clientName}</TableCell>
                                 <TableCell className="text-muted-foreground">{profile.searchedJobs?.join(', ') || '-'}</TableCell>
@@ -740,24 +759,24 @@ type ClientSelectorProps = {
 
 function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: ClientSelectorProps) {
     const [open, setOpen] = useState(false);
-    const [selectedClientName, setSelectedClientName] = useState<string | null>(defaultValue?.name || null);
+    const [selectedClient, setSelectedClient] = useState<z.infer<typeof clientInfoSchema> | null>(defaultValue || null);
 
     useEffect(() => {
-        if(defaultValue?.name && !selectedClientName) {
-            setSelectedClientName(defaultValue.name);
-        } else if (!defaultValue) {
-             setSelectedClientName(null);
+        if (defaultValue) {
+            setSelectedClient(defaultValue);
+        } else {
+            setSelectedClient(null);
         }
-    }, [defaultValue, selectedClientName]);
+    }, [defaultValue]);
 
     const handleSelect = (client: Client) => {
         const clientInfo = {
             id: client.id,
             name: `${client.firstName} ${client.lastName}`,
             email: client.email,
-            phone: client.phone
+            phone: client.phone,
         };
-        setSelectedClientName(clientInfo.name);
+        setSelectedClient(clientInfo);
         onClientSelect(clientInfo);
         setOpen(false);
     }
@@ -769,7 +788,7 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: Cl
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between mt-2">
-                        {selectedClientName || "Sélectionner un client..."}
+                        {selectedClient?.name ? selectedClient.name : "Sélectionner un client..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
@@ -781,7 +800,7 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: Cl
                             <CommandGroup>
                                 {clients.map((client) => (
                                     <CommandItem key={client.id} value={client.email} onSelect={() => handleSelect(client)}>
-                                        <Check className={cn("mr-2 h-4 w-4", selectedClientName === `${client.firstName} ${client.lastName}` ? "opacity-100" : "opacity-0")}/>
+                                        <Check className={cn("mr-2 h-4 w-4", selectedClient?.id === client.id ? "opacity-100" : "opacity-0")}/>
                                         <div>
                                             <p>{client.firstName} {client.lastName}</p>
                                             <p className="text-xs text-muted-foreground">{client.email}</p>
@@ -811,6 +830,53 @@ function UnderConstruction({ title }: { title: string }) {
     );
 }
 
+const generateRncpPdf = (fiche: any) => {
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text(`Fiche: ${fiche.name}`, 15, 20);
+
+    let y = 35;
+    
+    const addSection = (title: string, data: {label: string, values: string[]}[]) => {
+        if (data.every(d => !d.values || d.values.length === 0)) return;
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setFontSize(16);
+        doc.text(title, 15, y);
+        y += 8;
+        data.forEach(item => {
+            if (item.values && item.values.length > 0) {
+                 if (y > 270) { doc.addPage(); y = 20; }
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text(item.label, 20, y);
+                y += 6;
+                doc.setFont('helvetica', 'normal');
+                const lines = doc.splitTextToSize(item.values.join(', '), 170);
+                doc.text(lines, 20, y);
+                y += (lines.length * 5) + 4;
+            }
+        });
+    };
+
+    addSection("Codification RNCP", [
+        { label: "Code(s) RNCP:", values: fiche.rncpCodes },
+        { label: "Intitulé(s):", values: fiche.rncpTitle },
+        { label: "Niveau(x):", values: fiche.rncpLevel },
+    ]);
+    
+     addSection("Codification ROME", [
+        { label: "Code(s) ROME:", values: fiche.romeCodes },
+        { label: "Métier(s) associé(s):", values: fiche.romeMetiers },
+    ]);
+
+     addSection("Compétences et Activités", [
+        { label: "Compétences:", values: fiche.competences },
+        { label: "Activités:", values: fiche.activites },
+    ]);
+
+
+    doc.save(`Fiche_${fiche.name.replace(/\s/g, '_')}.pdf`);
+};
 
 function RncpManager() {
   const { user } = useUser();
@@ -818,12 +884,20 @@ function RncpManager() {
   const { toast } = useToast();
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingFiche, setEditingFiche] = useState<any>(null);
+  const [ficheToDelete, setFicheToDelete] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const rncpFichesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, `users/${user.uid}/rncp_fiches`));
   }, [user, firestore]);
   const { data: fiches, isLoading } = useCollection(rncpFichesQuery);
+  
+  const filteredFiches = useMemo(() => {
+    if (!fiches) return [];
+    if (!searchTerm) return fiches;
+    return fiches.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [fiches, searchTerm]);
 
   const ficheFormSchema = z.object({
     name: z.string().min(1, 'Le nom est requis.'),
@@ -841,14 +915,8 @@ function RncpManager() {
   const form = useForm<FicheFormData>({
     resolver: zodResolver(ficheFormSchema),
     defaultValues: {
-      name: '',
-      rncpCodes: [],
-      rncpLevel: [],
-      rncpTitle: [],
-      romeCodes: [],
-      romeMetiers: [],
-      competences: [],
-      activites: [],
+      name: '', rncpCodes: [], rncpLevel: [], rncpTitle: [], romeCodes: [],
+      romeMetiers: [], competences: [], activites: [],
     },
   });
 
@@ -863,6 +931,17 @@ function RncpManager() {
     form.reset(fiche);
     setIsSheetOpen(true);
   }
+  
+  const handleDelete = async () => {
+      if (!ficheToDelete || !user) return;
+      await deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/rncp_fiches`, ficheToDelete.id));
+      toast({ title: "Fiche supprimée" });
+      setFicheToDelete(null);
+  };
+  
+  const handleExportPdf = (fiche: any) => {
+    generateRncpPdf(fiche);
+  };
 
   const onSubmit = async (data: FicheFormData) => {
     if (!user) return;
@@ -884,17 +963,33 @@ function RncpManager() {
             <CardTitle>Fiches RNCP/ROME</CardTitle>
             <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Fiche</Button>
         </div>
+        <div className="relative pt-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
+            <Input
+                placeholder="Rechercher une fiche..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+            />
+        </div>
       </CardHeader>
       <CardContent>
           <Table>
             <TableHeader><TableRow><TableHead>Nom de la fiche</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
             <TableBody>
               {isLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-8" /></TableCell></TableRow>
-              : fiches && fiches.length > 0 ? fiches.map((fiche: any) => (
+              : filteredFiches && filteredFiches.length > 0 ? filteredFiches.map((fiche: any) => (
                 <TableRow key={fiche.id}>
                   <TableCell>{fiche.name}</TableCell>
                   <TableCell className="text-right">
-                    <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                      <DropdownMenuContent>
+                        <DropdownMenuItem onClick={() => handleExportPdf(fiche)}><Download className="mr-2 h-4 w-4" /> Exporter PDF</DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleEdit(fiche)}><Edit className="mr-2 h-4 w-4" /> Modifier</DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => setFicheToDelete(fiche)}><Trash2 className="mr-2 h-4 w-4" /> Supprimer</DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </TableCell>
                 </TableRow>
               )) : <TableRow><TableCell colSpan={2} className="text-center h-24">Aucune fiche créée.</TableCell></TableRow>}
@@ -936,6 +1031,12 @@ function RncpManager() {
               </Form>
             </SheetContent>
           </Sheet>
+          <AlertDialog open={!!ficheToDelete} onOpenChange={(open) => !open && setFicheToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader><AlertDialogTitle>Supprimer cette fiche ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction></AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
       </CardContent>
     </Card>
   );
@@ -992,4 +1093,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
