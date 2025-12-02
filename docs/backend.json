@@ -1,5 +1,4 @@
 
-
 {
   "entities": {
     "CvProfile": {
@@ -17,7 +16,38 @@
         "workDurations": { "type": "array", "items": { "type": "string" }, "description": "Durée de travail souhaitée (temps plein, partiel)." },
         "workEnvironments": { "type": "array", "items": { "type": "string" }, "description": "Environnement de travail souhaité (bureau, télétravail)." },
         "desiredSalary": { "type": "array", "items": { "type": "string" }, "description": "Fourchette de salaire souhaitée." },
-        "mobility": { "type": "array", "items": { "type": "string" }, "description": "Mobilité et lieux de travail souhaités." }
+        "mobility": { "type": "array", "items": { "type": "string" }, "description": "Mobilité et lieux de travail souhaités." },
+        "drivingLicences": { "type": "array", "items": { "type": "string" }, "description": "Permis de conduire possédés." },
+        "formations": {
+          "type": "array",
+          "description": "Liste des formations suivies par le candidat.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "rncpCode": { "type": "array", "items": { "type": "string" } },
+              "title": { "type": "array", "items": { "type": "string" } },
+              "level": { "type": "array", "items": { "type": "string" } },
+              "skills": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "experiences": {
+          "type": "array",
+          "description": "Liste des expériences professionnelles du candidat.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "romeCode": { "type": "array", "items": { "type": "string" } },
+              "title": { "type": "array", "items": { "type": "string" } },
+              "startDate": { "type": "string", "format": "date" },
+              "endDate": { "type": "string", "format": "date" },
+              "skills": { "type": "array", "items": { "type": "string" } },
+              "activities": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        }
       }
     },
     "User": {
@@ -1728,3 +1758,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    

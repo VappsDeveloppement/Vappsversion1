@@ -1,17 +1,17 @@
 
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, differenceInYears, differenceInMonths } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
 
 
 type JobApplication = {
@@ -108,22 +109,22 @@ function ApplicationManager() {
 }
 
 // Reusable Tag Input Component
-const TagInput = ({ value, onChange, placeholder }: { value: string[]; onChange: (value: string[]) => void, placeholder: string }) => {
+const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
             e.preventDefault();
-            if (!value.includes(inputValue.trim())) {
-                onChange([...value, inputValue.trim()]);
+            if (!value?.includes(inputValue.trim())) {
+                onChange([...(value || []), inputValue.trim()]);
             }
             setInputValue('');
         }
     };
-    const removeTag = (tagToRemove: string) => onChange(value.filter(tag => tag !== tagToRemove));
+    const removeTag = (tagToRemove: string) => onChange(value?.filter(tag => tag !== tagToRemove) || []);
     return (
         <div className="border p-2 rounded-md bg-background">
             <div className="flex flex-wrap gap-1 mb-2">
-                {value.map(tag => (
+                {value?.map(tag => (
                     <Badge key={tag} variant="secondary">
                         {tag}
                         <button type="button" onClick={() => removeTag(tag)} className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
@@ -154,6 +155,15 @@ const cvProfileSchema = z.object({
       level: z.array(z.string()).optional(),
       skills: z.array(z.string()).optional(),
   })).optional(),
+   experiences: z.array(z.object({
+      id: z.string(),
+      romeCode: z.array(z.string()).optional(),
+      title: z.array(z.string()).optional(),
+      startDate: z.string().optional(),
+      endDate: z.string().optional(),
+      skills: z.array(z.string()).optional(),
+      activities: z.array(z.string()).optional(),
+  })).optional(),
 });
 
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
@@ -175,26 +185,39 @@ function Cvtheque() {
     const form = useForm<CvProfileFormData>({
         resolver: zodResolver(cvProfileSchema),
         defaultValues: {
-            currentJobs: [],
-            searchedJobs: [],
-            contractTypes: [],
-            workDurations: [],
-            workEnvironments: [],
-            desiredSalary: [],
-            mobility: [],
-            drivingLicences: [],
-            formations: [],
+            currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [],
+            workEnvironments: [], desiredSalary: [], mobility: [], drivingLicences: [],
+            formations: [], experiences: []
         }
     });
 
     const { fields: formationFields, append: appendFormation, remove: removeFormation } = useFieldArray({
-        control: form.control,
-        name: "formations",
+        control: form.control, name: "formations",
     });
+
+    const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
+        control: form.control, name: "experiences",
+    });
+    
+    const calculateSeniority = (startDate?: string, endDate?: string) => {
+        if (!startDate || !endDate) return null;
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+
+        const years = differenceInYears(end, start);
+        const months = differenceInMonths(end, start) % 12;
+        
+        let result = '';
+        if (years > 0) result += `${years} an(s) `;
+        if (months > 0) result += `${months} mois`;
+        
+        return result.trim() || 'Moins d\'un mois';
+    };
+
 
     const onSubmit = (data: CvProfileFormData) => {
         console.log(data);
-        // Logic to save data to be implemented
         toast({ title: "Profil sauvegardé (simulation)" });
         setIsSheetOpen(false);
     };
@@ -211,7 +234,7 @@ function Cvtheque() {
                 <SheetTrigger asChild>
                     <Button onClick={() => { setEditingProfile(null); form.reset(); }}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un profil CV</Button>
                 </SheetTrigger>
-                <SheetContent className="sm:max-w-2xl w-full">
+                <SheetContent className="sm:max-w-3xl w-full">
                      <SheetHeader>
                         <SheetTitle>{editingProfile ? 'Modifier le profil' : 'Nouveau Profil CV'}</SheetTitle>
                     </SheetHeader>
@@ -256,6 +279,41 @@ function Cvtheque() {
                                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une formation
                                                     </Button>
                                                 </div>
+                                            </div>
+                                        </div>
+                                    </section>
+                                     <section>
+                                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">Parcours Professionnel</h3>
+                                        <div>
+                                            <Label>Expériences</Label>
+                                            <div className="space-y-4 mt-2">
+                                                {experienceFields.map((field, index) => {
+                                                    const startDate = form.watch(`experiences.${index}.startDate`);
+                                                    const endDate = form.watch(`experiences.${index}.endDate`);
+                                                    const seniority = calculateSeniority(startDate, endDate);
+                                                    return (
+                                                        <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-muted/50">
+                                                            <div className="flex justify-between items-center">
+                                                                <h4 className="font-medium">Expérience {index + 1}</h4>
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeExperience(index)}>
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                            <FormField control={form.control} name={`experiences.${index}.romeCode`} render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                            <FormField control={form.control} name={`experiences.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Développeur, etc." /></FormControl><FormMessage /></FormItem>)}/>
+                                                            <div className="grid grid-cols-2 gap-4 items-end">
+                                                                <FormField control={form.control} name={`experiences.${index}.startDate`} render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                                                <FormField control={form.control} name={`experiences.${index}.endDate`} render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                                            </div>
+                                                             {seniority && <div className="text-sm text-muted-foreground"><span className="font-semibold">Ancienneté :</span> {seniority}</div>}
+                                                            <FormField control={form.control} name={`experiences.${index}.skills`} render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                            <FormField control={form.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                        </div>
+                                                    )
+                                                })}
+                                                <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}`, romeCode:[], title: [], startDate: '', endDate: '', skills: [], activities: [] })}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une expérience
+                                                </Button>
                                             </div>
                                         </div>
                                     </section>
@@ -346,3 +404,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
