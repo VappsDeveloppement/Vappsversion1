@@ -35,6 +35,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Training } from '@/app/dashboard/e-learning/page';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
 
 type JobApplication = {
@@ -1806,4 +1807,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
