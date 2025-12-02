@@ -219,6 +219,9 @@ const calculateSeniority = (startDate?: string, endDate?: string) => {
 };
 
 const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) => {
+    const { default: jsPDF } = await import('jspdf');
+    const { default: autoTable } = await import('jspdf-autotable');
+
     const doc = new jsPDF();
     let y = 20;
 
@@ -759,7 +762,7 @@ type ClientSelectorProps = {
 
 function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: ClientSelectorProps) {
     const [open, setOpen] = useState(false);
-    const [selectedClient, setSelectedClient] = useState<z.infer<typeof clientInfoSchema> | null>(defaultValue || null);
+    const [selectedClient, setSelectedClient] = useState<{id: string, name: string} | null>(defaultValue || null);
 
     useEffect(() => {
         if (defaultValue) {
@@ -1042,7 +1045,160 @@ function RncpManager() {
   );
 }
 
-function RomeManager() { return <UnderConstruction title="FICHE ROME" />; }
+function RomeManager() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingFiche, setEditingFiche] = useState<any>(null);
+  const [ficheToDelete, setFicheToDelete] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const romeFichesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, `users/${user.uid}/rome_fiches`));
+  }, [user, firestore]);
+  const { data: fiches, isLoading } = useCollection(romeFichesQuery);
+  
+  const filteredFiches = useMemo(() => {
+    if (!fiches) return [];
+    if (!searchTerm) return fiches;
+    return fiches.filter((f: any) => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+  }, [fiches, searchTerm]);
+
+  const ficheFormSchema = z.object({
+    name: z.string().min(1, 'Le nom est requis.'),
+    romeCodes: z.array(z.string()).optional(),
+    romeTitles: z.array(z.string()).optional(),
+    associatedJobs: z.array(z.string()).optional(),
+    associatedRncp: z.array(z.string()).optional(),
+    softSkills: z.array(z.string()).optional(),
+    competences: z.array(z.string()).optional(),
+    activites: z.array(z.string()).optional(),
+  });
+  
+  type FicheFormData = z.infer<typeof ficheFormSchema>;
+  
+  const form = useForm<FicheFormData>({
+    resolver: zodResolver(ficheFormSchema),
+    defaultValues: {
+      name: '', romeCodes: [], romeTitles: [], associatedJobs: [], associatedRncp: [],
+      softSkills: [], competences: [], activites: [],
+    },
+  });
+
+  const handleNew = () => {
+    setEditingFiche(null);
+    form.reset();
+    setIsSheetOpen(true);
+  };
+  
+  const handleEdit = (fiche: any) => {
+    setEditingFiche(fiche);
+    form.reset(fiche);
+    setIsSheetOpen(true);
+  };
+  
+  const handleDelete = async () => {
+      if (!ficheToDelete || !user) return;
+      await deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/rome_fiches`, ficheToDelete.id));
+      toast({ title: "Fiche supprimée" });
+      setFicheToDelete(null);
+  };
+
+  const onSubmit = async (data: FicheFormData) => {
+    if (!user) return;
+    const ficheData = { counselorId: user.uid, ...data };
+    if (editingFiche) {
+      await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rome_fiches`, editingFiche.id), ficheData, { merge: true });
+      toast({ title: 'Fiche ROME mise à jour' });
+    } else {
+      await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/rome_fiches`), ficheData);
+      toast({ title: 'Fiche ROME créée' });
+    }
+    setIsSheetOpen(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+            <CardTitle>Fiches ROME</CardTitle>
+            <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Fiche</Button>
+        </div>
+        <div className="relative pt-4">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
+            <Input
+                placeholder="Rechercher une fiche..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+            />
+        </div>
+      </CardHeader>
+      <CardContent>
+          <Table>
+            <TableHeader><TableRow><TableHead>Nom de la fiche</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {isLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-8" /></TableCell></TableRow>
+              : filteredFiches && filteredFiches.length > 0 ? filteredFiches.map((fiche: any) => (
+                <TableRow key={fiche.id}>
+                  <TableCell>{fiche.name}</TableCell>
+                  <TableCell className="text-right">
+                      <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
+                      <Button variant="ghost" size="icon" onClick={() => setFicheToDelete(fiche)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                  </TableCell>
+                </TableRow>
+              )) : <TableRow><TableCell colSpan={2} className="text-center h-24">Aucune fiche créée.</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetContent className="sm:max-w-2xl w-full">
+              <SheetHeader>
+                <SheetTitle>{editingFiche ? 'Modifier la' : 'Nouvelle'} fiche ROME</SheetTitle>
+              </SheetHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                  <ScrollArea className="h-[calc(100vh-8rem)]">
+                    <div className="py-4 pr-4 space-y-6">
+                      <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la fiche</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <section className="space-y-4 pt-4 border-t">
+                        <h3 className="font-semibold">Codification ROME</h3>
+                        <FormField control={form.control} name="romeCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="romeTitles" render={({ field }) => (<FormItem><FormLabel>Intitulé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="associatedJobs" render={({ field }) => (<FormItem><FormLabel>Métier(s) associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl></FormItem>)} />
+                      </section>
+                       <section className="space-y-4 pt-4 border-t">
+                        <h3 className="font-semibold">Condition d'accès</h3>
+                        <FormField control={form.control} name="associatedRncp" render={({ field }) => (<FormItem><FormLabel>RNCP Associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code RNCP..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl></FormItem>)} />
+                      </section>
+                      <section className="space-y-4 pt-4 border-t">
+                        <h3 className="font-semibold">Compétences et Activités</h3>
+                        <FormField control={form.control} name="competences" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="activites" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl></FormItem>)} />
+                      </section>
+                    </div>
+                  </ScrollArea>
+                  <SheetFooter className="pt-4 border-t mt-auto">
+                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                    <Button type="submit">Sauvegarder</Button>
+                  </SheetFooter>
+                </form>
+              </Form>
+            </SheetContent>
+          </Sheet>
+          <AlertDialog open={!!ficheToDelete} onOpenChange={(open) => !open && setFicheToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader><AlertDialogTitle>Supprimer cette fiche ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction></AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+      </CardContent>
+    </Card>
+  );
+}
+
 function JobOfferManager() { return <UnderConstruction title="OFFRE D'EMPLOI" />; }
 function TestManager() { return <UnderConstruction title="TEST" />; }
 

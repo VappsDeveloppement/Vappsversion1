@@ -1,6 +1,24 @@
 
 {
   "entities": {
+    "RomeFiche": {
+        "title": "Fiche ROME",
+        "type": "object",
+        "description": "Represents a sheet for ROME codifications.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "name": { "type": "string" },
+            "romeCodes": { "type": "array", "items": { "type": "string" } },
+            "romeTitles": { "type": "array", "items": { "type": "string" } },
+            "associatedJobs": { "type": "array", "items": { "type": "string" } },
+            "associatedRncp": { "type": "array", "items": { "type": "string" } },
+            "softSkills": { "type": "array", "items": { "type": "string" } },
+            "competences": { "type": "array", "items": { "type": "string" } },
+            "activites": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["name", "counselorId"]
+    },
     "RncpFiche": {
         "title": "Fiche RNCP",
         "type": "object",
@@ -1514,6 +1532,14 @@
             "entityName": "RncpFiche",
             "schema": { "$ref": "#/entities/RncpFiche" },
             "description": "Stores RNCP sheets created by a counselor."
+        }
+      },
+      {
+        "path": "/users/{userId}/rome_fiches/{ficheId}",
+        "definition": {
+            "entityName": "RomeFiche",
+            "schema": { "$ref": "#/entities/RomeFiche" },
+            "description": "Stores ROME sheets created by a counselor."
         }
       },
       {
