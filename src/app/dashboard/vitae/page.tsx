@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -34,8 +35,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
-import type { Training } from '@/app/dashboard/e-learning/[trainingId]/page';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import type { Training } from '@/app/dashboard/e-learning/page';
 
 
 type JobApplication = {
@@ -671,7 +671,7 @@ function Cvtheque() {
         setEditingProfile(profile);
         setIsSheetOpen(true);
     };
-
+    
     const handleDeleteProfile = (profileId: string) => {
         if (!user) return;
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/cv_profiles`, profileId));
@@ -1378,6 +1378,18 @@ function RomeManager() {
     );
 }
 
+function TestManager() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>TEST</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <p>En cours de construction...</p>
+            </CardContent>
+        </Card>
+    );
+}
 function JobOfferManager() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -1567,19 +1579,6 @@ function JobOfferManager() {
           </CardContent>
       </Card>
   );
-}
-
-function TestManager() {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>TEST</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <p>En cours de construction...</p>
-            </CardContent>
-        </Card>
-    );
 }
 
 
