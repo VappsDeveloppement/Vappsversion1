@@ -1553,38 +1553,6 @@
         }
       },
       {
-        "path": "/users/{userId}/cv_profiles/{profileId}",
-        "definition": {
-            "entityName": "CvProfile",
-            "schema": { "$ref": "#/entities/CvProfile" },
-            "description": "Stores CV profiles created by a counselor for their clients."
-        }
-      },
-       {
-        "path": "/users/{userId}/rncp_sheets/{sheetId}",
-        "definition": {
-            "entityName": "FicheRNCP",
-            "schema": { "$ref": "#/entities/FicheRNCP" },
-            "description": "Stores RNCP sheets created by a counselor."
-        }
-      },
-      {
-        "path": "/users/{userId}/rome_sheets/{sheetId}",
-        "definition": {
-            "entityName": "FicheROME",
-            "schema": { "$ref": "#/entities/FicheROME" },
-            "description": "Stores ROME sheets created by a counselor."
-        }
-      },
-       {
-        "path": "/users/{userId}/job_offers/{offerId}",
-        "definition": {
-          "entityName": "JobOffer",
-          "schema": { "$ref": "#/entities/JobOffer" },
-          "description": "Stores job offers created by counselors."
-        }
-      },
-      {
         "path": "/minisites/{counselorId}",
         "definition": {
           "entityName": "CounselorProfile",
@@ -1600,6 +1568,14 @@
           "entityName": "ContactMessage",
           "schema": { "$ref": "#/entities/ContactMessage" },
           "description": "Stores messages submitted from public contact forms."
+        }
+      },
+      {
+        "path": "/job_offers/{offerId}",
+        "definition": {
+          "entityName": "JobOffer",
+          "schema": { "$ref": "#/entities/JobOffer" },
+          "description": "Stores job offers created by counselors."
         }
       },
       {
@@ -1854,5 +1830,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
-
