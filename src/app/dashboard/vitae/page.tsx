@@ -1,12 +1,13 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro, Upload, ChevronsUpDown, Check, MoreHorizontal } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -28,6 +29,7 @@ import { Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
+import { ChevronsUpDown, Check } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -358,7 +360,12 @@ function Cvtheque() {
     useEffect(() => {
         if(isSheetOpen) {
             if(editingProfile) {
-                form.reset(editingProfile);
+                form.reset({
+                  ...editingProfile,
+                  formations: editingProfile.formations || [],
+                  experiences: editingProfile.experiences || [],
+                  softSkills: editingProfile.softSkills || [],
+                });
                 const client = clients?.find(c => c.id === editingProfile.clientId);
                 if (client) {
                     setSelectedClientForDisplay({ name: editingProfile.clientName, email: client.email, phone: client.phone });
@@ -672,12 +679,12 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: Cl
     const [selectedClientName, setSelectedClientName] = useState<string | null>(defaultValue?.name || null);
 
     useEffect(() => {
-        if(defaultValue?.name) {
+        if(defaultValue?.name && !selectedClientName) {
             setSelectedClientName(defaultValue.name);
-        } else {
-            setSelectedClientName(null);
+        } else if (!defaultValue?.name) {
+             setSelectedClientName(null);
         }
-    }, [defaultValue]);
+    }, [defaultValue, selectedClientName]);
 
     const handleSelect = (client: Client) => {
         const clientInfo = {
@@ -793,3 +800,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
