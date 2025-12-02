@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -224,6 +223,8 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
 
     const doc = new jsPDF();
     let y = 20;
+    
+    const printList = (list?: string[]) => (list && list.length > 0 ? list.join(', ') : 'Non spécifié');
 
     // --- HEADER ---
     doc.setFontSize(22);
@@ -252,20 +253,21 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
             doc.setFont('helvetica', 'bold');
             doc.text(`${label}:`, 20, y);
             doc.setFont('helvetica', 'normal');
-            doc.text(value.join(', '), 60, y, { maxWidth: 130 });
-            y += (doc.splitTextToSize(value.join(', '), 130).length * 5) + 2;
+            const textToPrint = value.join(', ');
+            const splitText = doc.splitTextToSize(textToPrint, 130);
+            doc.text(splitText, 60, y);
+            y += splitText.length * 5 + 2;
         }
     };
 
-    addSectionData("Métier(s) actuel(s)", profile.currentJobs);
-    addSectionData("Projet(s) recherché(s)", profile.searchedJobs);
-    addSectionData("Type(s) de contrat", profile.contractTypes);
+    addSectionData("Métier(s) recherché(s)", profile.searchedJobs);
+    addSectionData("Contrat(s) souhaité(s)", profile.contractTypes);
     addSectionData("Durée de travail", profile.workDurations);
     addSectionData("Environnement", profile.workEnvironments);
     addSectionData("Salaire souhaité", profile.desiredSalary);
     addSectionData("Mobilité", profile.mobility);
     y += 5;
-    
+
     // --- PERMIS ---
     if (profile.drivingLicences && profile.drivingLicences.length > 0) {
         if (y > 250) { doc.addPage(); y = 20; }
@@ -280,38 +282,36 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
         y += 10;
     }
 
-
     // --- FORMATIONS ---
     if (profile.formations && profile.formations.length > 0) {
-        if (y > 250) { doc.addPage(); y = 20; }
+        if (y > 220) { doc.addPage(); y = 20; }
         doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text("FORMATIONS", 15, y);
+        doc.text("FORMATION", 15, y);
         doc.line(15, y + 2, 195, y + 2);
         y += 10;
-
+        
         profile.formations.forEach(formation => {
             if (y > 260) { doc.addPage(); y = 20; }
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
-            doc.text(formation.title?.join(', ') || 'Formation non spécifiée', 20, y);
+            doc.text(printList(formation.title), 20, y);
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
-            doc.text(formation.level?.join(', ') || '', 195, y, { align: 'right' });
+            doc.text(printList(formation.level), 195, y, { align: 'right' });
             y += 6;
             
             if (formation.skills && formation.skills.length > 0) {
                 doc.setFont('helvetica', 'italic');
-                const skillsText = `Compétences: ${formation.skills.join(', ')}`;
+                const skillsText = `Compétences: ${printList(formation.skills)}`;
                 const skillsLines = doc.splitTextToSize(skillsText, 170);
-                doc.text(skillsLines, 20, y);
-                y += skillsLines.length * 5;
+                doc.text(skillsLines, 25, y);
+                y += skillsLines.length * 5 + 4;
             }
-             y += 4;
         });
         y += 5;
     }
-
+    
     // --- EXPÉRIENCES ---
     if (profile.experiences && profile.experiences.length > 0) {
         if (y > 220) { doc.addPage(); y = 20; }
@@ -324,15 +324,16 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
         profile.experiences.forEach(exp => {
             if (y > 250) { doc.addPage(); y = 20; }
             const seniority = calculateSeniority(exp.startDate, exp.endDate);
-            const dateRange = `${exp.startDate ? new Date(exp.startDate).toLocaleDateString('fr-FR') : '?'} - ${exp.endDate ? new Date(exp.endDate).toLocaleDateString('fr-FR') : '?'}`;
+            const dateRange = `${exp.startDate ? new Date(exp.startDate).toLocaleDateString('fr-FR') : '?'} - ${exp.endDate ? new Date(exp.endDate).toLocaleDateString('fr-FR') : 'Aujourd\'hui'}`;
             
             doc.setFontSize(12);
             doc.setFont('helvetica', 'bold');
-            doc.text(exp.title?.join(', ') || 'Poste non spécifié', 20, y);
+            doc.text(printList(exp.title), 20, y);
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             doc.text(dateRange, 195, y, { align: 'right' });
             y += 6;
+            
             if (seniority) {
                 doc.setFontSize(9);
                 doc.setFont('helvetica', 'italic');
@@ -340,20 +341,20 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
                 doc.text(seniority, 195, y, { align: 'right' });
                 doc.setTextColor(0);
             }
-            if (exp.activities && exp.activities.length > 0) {
-                doc.setFontSize(10);
-                const activitiesText = `Activités: ${exp.activities.join(', ')}`;
-                const activitiesLines = doc.splitTextToSize(activitiesText, 170);
-                doc.text(activitiesLines, 20, y);
-                 y += (activitiesLines.length * 5) + 2;
-            }
-             if (exp.skills && exp.skills.length > 0) {
-                doc.setFontSize(10);
-                const skillsText = `Compétences: ${exp.skills.join(', ')}`;
-                const skillsLines = doc.splitTextToSize(skillsText, 170);
-                doc.text(skillsLines, 20, y);
-                y += (skillsLines.length * 5) + 2;
-            }
+            
+            const addExpDetails = (label: string, items?: string[]) => {
+                if (items && items.length > 0) {
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'italic');
+                    const text = `${label}: ${printList(items)}`;
+                    const lines = doc.splitTextToSize(text, 170);
+                    doc.text(lines, 25, y);
+                    y += lines.length * 5 + 2;
+                }
+            };
+            
+            addExpDetails("Activités", exp.activities);
+            addExpDetails("Compétences", exp.skills);
             y += 5;
         });
         y += 5;
@@ -899,7 +900,7 @@ function RncpManager() {
   const filteredFiches = useMemo(() => {
     if (!fiches) return [];
     if (!searchTerm) return fiches;
-    return fiches.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    return fiches.filter((f: any) => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
   }, [fiches, searchTerm]);
 
   const ficheFormSchema = z.object({
@@ -948,7 +949,17 @@ function RncpManager() {
 
   const onSubmit = async (data: FicheFormData) => {
     if (!user) return;
-    const ficheData = { counselorId: user.uid, ...data };
+    const ficheData = { 
+        counselorId: user.uid, 
+        name: data.name,
+        rncpCodes: data.rncpCodes || [],
+        rncpLevel: data.rncpLevel || [],
+        rncpTitle: data.rncpTitle || [],
+        romeCodes: data.romeCodes || [],
+        romeMetiers: data.romeMetiers || [],
+        competences: data.competences || [],
+        activites: data.activites || [],
+    };
     if (editingFiche) {
       await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rncp_fiches`, editingFiche.id), ficheData, { merge: true });
       toast({ title: 'Fiche RNCP mise à jour' });
@@ -963,7 +974,7 @@ function RncpManager() {
     <Card>
       <CardHeader>
         <div className="flex justify-between items-center">
-            <CardTitle>Fiches RNCP/ROME</CardTitle>
+            <CardTitle>Fiches RNCP</CardTitle>
             <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Fiche</Button>
         </div>
         <div className="relative pt-4">
@@ -1001,7 +1012,7 @@ function RncpManager() {
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
             <SheetContent className="sm:max-w-2xl w-full">
               <SheetHeader>
-                <SheetTitle>{editingFiche ? 'Modifier la' : 'Nouvelle'} fiche RNCP/ROME</SheetTitle>
+                <SheetTitle>{editingFiche ? 'Modifier la' : 'Nouvelle'} fiche RNCP</SheetTitle>
               </SheetHeader>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -1097,7 +1108,7 @@ function RomeManager() {
     setEditingFiche(fiche);
     form.reset(fiche);
     setIsSheetOpen(true);
-  };
+  }
   
   const handleDelete = async () => {
       if (!ficheToDelete || !user) return;
@@ -1108,7 +1119,17 @@ function RomeManager() {
 
   const onSubmit = async (data: FicheFormData) => {
     if (!user) return;
-    const ficheData = { counselorId: user.uid, ...data };
+    const ficheData = { 
+        counselorId: user.uid,
+        name: data.name,
+        romeCodes: data.romeCodes || [],
+        romeTitles: data.romeTitles || [],
+        associatedJobs: data.associatedJobs || [],
+        associatedRncp: data.associatedRncp || [],
+        softSkills: data.softSkills || [],
+        competences: data.competences || [],
+        activites: data.activites || [],
+    };
     if (editingFiche) {
       await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rome_fiches`, editingFiche.id), ficheData, { merge: true });
       toast({ title: 'Fiche ROME mise à jour' });
