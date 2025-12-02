@@ -30,7 +30,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 
 type JobApplication = {
@@ -200,6 +200,22 @@ type Client = {
     counselorIds?: string[];
 };
 
+const calculateSeniority = (startDate?: string, endDate?: string) => {
+    if (!startDate || !endDate) return null;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+
+    const years = differenceInYears(end, start);
+    const months = differenceInMonths(end, start) % 12;
+    
+    let result = '';
+    if (years > 0) result += `${years} an(s) `;
+    if (months > 0) result += `${months} mois`;
+    
+    return result.trim() || 'Moins d\'un mois';
+};
+
 const generateCvProfilePdf = async (profile: CvProfile) => {
     const doc = new jsPDF();
     let y = 20;
@@ -210,6 +226,8 @@ const generateCvProfilePdf = async (profile: CvProfile) => {
     y += 15;
 
     const addSection = (title: string, data: { label: string; value?: string[] }[]) => {
+        if (!data.some(item => item.value && item.value.length > 0)) return;
+
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text(title, 15, y);
@@ -240,18 +258,19 @@ const generateCvProfilePdf = async (profile: CvProfile) => {
         { label: "Mobilité", value: profile.mobility },
     ]);
 
-    // Formations
-    if (profile.formations && profile.formations.length > 0) {
+    if ((profile.formations && profile.formations.length > 0) || (profile.drivingLicences && profile.drivingLicences.length > 0)) {
+        if (y > 250) { doc.addPage(); y = 20; }
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text("Formations et Qualifications", 15, y);
         y += 8;
         if(profile.drivingLicences && profile.drivingLicences.length > 0){
-             addSection("", [{ label: "Permis", value: profile.drivingLicences }]);
+            addSection("", [{ label: "Permis", value: profile.drivingLicences }]);
         }
         
-        profile.formations.forEach(formation => {
+        profile.formations?.forEach(formation => {
             y += 5;
+            if (y > 260) { doc.addPage(); y = 20; }
             autoTable(doc, {
                 startY: y,
                 head: [[`Formation: ${formation.title?.join(', ')}`]],
@@ -267,7 +286,6 @@ const generateCvProfilePdf = async (profile: CvProfile) => {
         });
     }
 
-    // Expériences
     if (profile.experiences && profile.experiences.length > 0) {
         if(y > 200) { doc.addPage(); y = 20; }
         doc.setFontSize(16);
@@ -294,29 +312,12 @@ const generateCvProfilePdf = async (profile: CvProfile) => {
         });
     }
     
-    // Soft Skills
     if(profile.softSkills && profile.softSkills.length > 0) {
         if(y > 250) { doc.addPage(); y = 20; }
         addSection("Savoir-être (Softskills)", [{ label: "", value: profile.softSkills }]);
     }
     
     doc.save(`CV_Profil_${profile.clientName.replace(' ', '_')}.pdf`);
-};
-
-const calculateSeniority = (startDate?: string, endDate?: string) => {
-    if (!startDate || !endDate) return null;
-    const start = new Date(startDate);
-    const end = new Date(endDate);
-    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
-
-    const years = differenceInYears(end, start);
-    const months = differenceInMonths(end, start) % 12;
-    
-    let result = '';
-    if (years > 0) result += `${years} an(s) `;
-    if (months > 0) result += `${months} mois`;
-    
-    return result.trim() || 'Moins d\'un mois';
 };
 
 function Cvtheque() {
@@ -357,18 +358,13 @@ function Cvtheque() {
     useEffect(() => {
         if(isSheetOpen) {
             if(editingProfile) {
-                form.reset({
-                    ...editingProfile,
-                    formations: editingProfile.formations || [],
-                    experiences: editingProfile.experiences || [],
-                    softSkills: editingProfile.softSkills || [],
-                });
-                 const client = clients?.find(c => c.id === editingProfile.clientId);
+                form.reset(editingProfile);
+                const client = clients?.find(c => c.id === editingProfile.clientId);
                 if (client) {
                     setSelectedClientForDisplay({ name: editingProfile.clientName, email: client.email, phone: client.phone });
                 }
             } else {
-                form.reset({
+                 form.reset({
                     clientId: '', clientName: '', currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [],
                     workEnvironments: [], desiredSalary: [], mobility: [], drivingLicences: [],
                     formations: [], experiences: [], softSkills: [], cvUrl: null,
@@ -797,5 +793,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
