@@ -1571,14 +1571,6 @@
         }
       },
       {
-        "path": "/job_offers/{offerId}",
-        "definition": {
-          "entityName": "JobOffer",
-          "schema": { "$ref": "#/entities/JobOffer" },
-          "description": "Stores job offers created by counselors."
-        }
-      },
-      {
         "path": "/job_applications/{applicationId}",
         "definition": {
           "entityName": "JobApplication",
