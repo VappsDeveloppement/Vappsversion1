@@ -31,7 +31,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 
 
 type JobApplication = {
@@ -411,7 +411,20 @@ function Cvtheque() {
     useEffect(() => {
         if(isSheetOpen) {
             if(editingProfile) {
-                form.reset(editingProfile);
+                form.reset({
+                  ...editingProfile,
+                  currentJobs: editingProfile.currentJobs || [],
+                  searchedJobs: editingProfile.searchedJobs || [],
+                  contractTypes: editingProfile.contractTypes || [],
+                  workDurations: editingProfile.workDurations || [],
+                  workEnvironments: editingProfile.workEnvironments || [],
+                  desiredSalary: editingProfile.desiredSalary || [],
+                  mobility: editingProfile.mobility || [],
+                  drivingLicences: editingProfile.drivingLicences || [],
+                  formations: editingProfile.formations || [],
+                  experiences: editingProfile.experiences || [],
+                  softSkills: editingProfile.softSkills || [],
+                });
                 const client = clients?.find(c => c.id === editingProfile.clientId);
                 if (client) {
                     setSelectedClientForDisplay({ name: editingProfile.clientName, email: client.email, phone: client.phone });
@@ -819,6 +832,8 @@ function RncpManager() {
     rncpTitle: z.array(z.string()).optional(),
     romeCodes: z.array(z.string()).optional(),
     romeMetiers: z.array(z.string()).optional(),
+    competences: z.array(z.string()).optional(),
+    activites: z.array(z.string()).optional(),
   });
   
   type FicheFormData = z.infer<typeof ficheFormSchema>;
@@ -832,6 +847,8 @@ function RncpManager() {
       rncpTitle: [],
       romeCodes: [],
       romeMetiers: [],
+      competences: [],
+      activites: [],
     },
   });
 
@@ -903,6 +920,11 @@ function RncpManager() {
                         <h3 className="font-semibold">Codification ROME</h3>
                         <FormField control={form.control} name="romeCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) ROME associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="romeMetiers" render={({ field }) => (<FormItem><FormLabel>Métier(s) associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl></FormItem>)} />
+                      </section>
+                      <section className="space-y-4 pt-4 border-t">
+                        <h3 className="font-semibold">Compétences et Activités</h3>
+                        <FormField control={form.control} name="competences" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="activites" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl></FormItem>)} />
                       </section>
                     </div>
                   </ScrollArea>

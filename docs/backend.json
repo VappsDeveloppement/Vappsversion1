@@ -1,6 +1,24 @@
 
 {
   "entities": {
+    "RncpFiche": {
+        "title": "Fiche RNCP",
+        "type": "object",
+        "description": "Represents a sheet for RNCP and ROME codifications.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "name": { "type": "string" },
+            "rncpCodes": { "type": "array", "items": { "type": "string" } },
+            "rncpLevel": { "type": "array", "items": { "type": "string" } },
+            "rncpTitle": { "type": "array", "items": { "type": "string" } },
+            "romeCodes": { "type": "array", "items": { "type": "string" } },
+            "romeMetiers": { "type": "array", "items": { "type": "string" } },
+            "competences": { "type": "array", "items": { "type": "string" } },
+            "activites": { "type": "array", "items": { "type": "string" } }
+        },
+        "required": ["name", "counselorId"]
+    },
     "CvProfile": {
       "title": "CV Profile",
       "type": "object",
@@ -47,7 +65,9 @@
               "activities": { "type": "array", "items": { "type": "string" } }
             }
           }
-        }
+        },
+        "softSkills": { "type": "array", "items": { "type": "string" }, "description": "Compétences comportementales du candidat." },
+        "cvUrl": { "type": "string", "format": "uri", "description": "URL du fichier CV stocké." }
       }
     },
     "User": {
@@ -1488,6 +1508,14 @@
             "description": "Stores CV profiles created by a counselor for their clients."
         }
       },
+       {
+        "path": "/users/{userId}/rncp_fiches/{ficheId}",
+        "definition": {
+            "entityName": "RncpFiche",
+            "schema": { "$ref": "#/entities/RncpFiche" },
+            "description": "Stores RNCP sheets created by a counselor."
+        }
+      },
       {
         "path": "/minisites/{counselorId}",
         "definition": {
@@ -1758,5 +1786,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
-    
