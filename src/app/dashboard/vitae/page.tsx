@@ -868,10 +868,10 @@ function Cvtheque() {
                                         <Card className="p-4 bg-secondary">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <p className="font-semibold">{selectedClient.firstName} ${selectedClient.lastName}</p>
+                                                    <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
                                                     {selectedClient.email && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Mail className="h-4 w-4" /><span>{selectedClient.email}</span></div>}
                                                     {selectedClient.phone && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Phone className="h-4 w-4" /><span>{selectedClient.phone}</span></div>}
-                                                    {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, ${selectedClient.zipCode} ${selectedClient.city}</span></div>}
+                                                    {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span></div>}
                                                 </div>
                                                 {!editingProfile && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
                                             </div>
@@ -1078,7 +1078,7 @@ function Cvtheque() {
             <AlertDialog open={!!profileToDelete} onOpenChange={(open) => !open && setProfileToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Supprimer le profil de ${profileToDelete?.clientName} ?</AlertDialogTitle>
+                        <AlertDialogTitle>Supprimer le profil de {profileToDelete?.clientName} ?</AlertDialogTitle>
                         <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -1566,7 +1566,7 @@ function RomeManager() {
                         <AlertDialogFooter>
                             <AlertDialogCancel>Annuler</AlertDialogCancel>
                             <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
-                        </AlertDialogFooter>
+                    </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
             </CardContent>
@@ -1871,7 +1871,9 @@ function TestManager() {
     const [selectedRncp, setSelectedRncp] = useState<FicheRNCP | null>(null);
     const [selectedRome, setSelectedRome] = useState<FicheROME | null>(null);
     
-    const [analysisResult, setAnalysisResult] = useState<{ score: number, missing: string[] } | null>(null);
+    const [analysisResultRncp, setAnalysisResultRncp] = useState<{ score: number, missing: string[] } | null>(null);
+    const [analysisResultRome, setAnalysisResultRome] = useState<{ score: number, missing: string[] } | null>(null);
+
 
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
     const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
@@ -1881,10 +1883,21 @@ function TestManager() {
 
     const romeFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_sheets`)) : null, [user, firestore]);
     const { data: romeFiches, isLoading: areRomeLoading } = useCollection<FicheROME>(romeFichesQuery);
+    
+    const checkCorrespondence = (cvItems: string[], ficheItems: string[], criterionName: string) => {
+        if (!Array.isArray(cvItems) || !Array.isArray(ficheItems)) {
+            return { hasMatch: false, missing: ficheItems || [] };
+        }
+        const intersection = cvItems.filter(item => ficheItems.includes(item));
+        return { 
+            hasMatch: intersection.length > 0, 
+            missing: ficheItems.length > 0 ? (intersection.length === 0 ? [criterionName] : []) : []
+        };
+    };
 
-    const handleAnalyse = () => {
+    const handleAnalyseCvVsRncp = () => {
         if (!selectedCv || !selectedRncp) {
-            setAnalysisResult(null);
+            setAnalysisResultRncp(null);
             return;
         }
 
@@ -1915,26 +1928,60 @@ function TestManager() {
         let missing: string[] = [];
         const criteriaCount = 5;
 
-        const checkCorrespondence = (cvItems: string[], rncpItems: string[], criterionName: string) => {
-            const intersection = cvItems.filter(item => rncpItems.includes(item));
-            if (intersection.length > 0) {
-                score++;
-            } else if (rncpItems.length > 0) {
-                missing.push(`Aucune correspondance pour: ${criterionName} (attendu: ${rncpItems.join(', ')})`);
-            }
-        };
+        const rncpCodeCheck = checkCorrespondence(cvFormations, rncpData.rncpCode, "Code RNCP");
+        const levelCheck = checkCorrespondence(cvFormations, rncpData.formationLevel, "Niveau de formation");
+        const titleCheck = checkCorrespondence(cvFormations, rncpData.formationTitle, "Intitulé de formation");
+        const skillsCheck = checkCorrespondence(cvSkills, rncpData.skills, "Compétences");
+        const activitiesCheck = checkCorrespondence(cvActivities, rncpData.activities, "Activités");
 
-        checkCorrespondence(cvFormations, rncpData.rncpCode, "Code RNCP");
-        checkCorrespondence(cvFormations, rncpData.formationLevel, "Niveau de formation");
-        checkCorrespondence(cvFormations, rncpData.formationTitle, "Intitulé de formation");
-        checkCorrespondence(cvSkills, rncpData.skills, "Compétences");
-        checkCorrespondence(cvActivities, rncpData.activities, "Activités");
+        if (rncpCodeCheck.hasMatch) score++; else missing.push(...rncpCodeCheck.missing);
+        if (levelCheck.hasMatch) score++; else missing.push(...levelCheck.missing);
+        if (titleCheck.hasMatch) score++; else missing.push(...titleCheck.missing);
+        if (skillsCheck.hasMatch) score++; else missing.push(...skillsCheck.missing);
+        if (activitiesCheck.hasMatch) score++; else missing.push(...activitiesCheck.missing);
         
-        setAnalysisResult({
+        setAnalysisResultRncp({
             score: (score / criteriaCount) * 100,
             missing: missing,
         });
     };
+    
+    const handleAnalyseCvVsRome = () => {
+        if (!selectedCv || !selectedRome || !rncpFiches) {
+            setAnalysisResultRome(null);
+            return;
+        }
+
+        const cvMetiers = [
+            ...(selectedCv.lastJob || []),
+            ...(selectedCv.searchedJob || []),
+            ...((selectedCv.experiences || []).flatMap(e => e.jobTitle || []))
+        ];
+        
+        const cvFormations = [
+            ...(selectedCv.highestFormation || []),
+            ...(selectedCv.currentJobFormation || []),
+            ...(selectedCv.projectFormation || []),
+        ];
+
+        const rncpNamesFromIds = selectedRome.accessConditions?.map(id => rncpFiches.find(f => f.id === id)?.formationName).filter(Boolean) as string[] || [];
+
+        let score = 0;
+        let missing: string[] = [];
+        const criteriaCount = 2;
+
+        const metierCheck = checkCorrespondence(cvMetiers, [...(selectedRome.associatedJobs || []), ...(selectedRome.associatedRomeCode || [])], "Métier / Code ROME");
+        const formationCheck = checkCorrespondence(cvFormations, rncpNamesFromIds, "Formation d'accès");
+        
+        if (metierCheck.hasMatch) score++; else missing.push(...metierCheck.missing);
+        if (formationCheck.hasMatch) score++; else missing.push(...formationCheck.missing);
+
+        setAnalysisResultRome({
+            score: (score / criteriaCount) * 100,
+            missing: missing,
+        });
+    };
+
 
     return (
         <Card>
@@ -1966,15 +2013,21 @@ function TestManager() {
                         </Select>
                     </div>
                 </div>
-                <Button onClick={handleAnalyse} disabled={!selectedCv || !selectedRncp}>
-                    <FlaskConical className="mr-2 h-4 w-4"/>
-                    Lancer l'analyse CV vs RNCP
-                </Button>
+                <div className="flex gap-4">
+                    <Button onClick={handleAnalyseCvVsRncp} disabled={!selectedCv || !selectedRncp}>
+                        <FlaskConical className="mr-2 h-4 w-4"/>
+                        Analyser CV vs RNCP
+                    </Button>
+                    <Button onClick={handleAnalyseCvVsRome} disabled={!selectedCv || !selectedRome}>
+                        <FlaskConical className="mr-2 h-4 w-4"/>
+                        Analyser CV vs ROME
+                    </Button>
+                </div>
 
-                {analysisResult && (
+                {analysisResultRncp && (
                     <Card className="bg-muted/50">
                         <CardHeader>
-                            <CardTitle>Résultats de l'Analyse</CardTitle>
+                            <CardTitle>Résultats de l'Analyse CV vs RNCP</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                              <div className="flex items-center gap-4">
@@ -1982,13 +2035,13 @@ function TestManager() {
                                     <Percent className="h-5 w-5 text-primary" />
                                     Taux de correspondance :
                                 </div>
-                                <span className="text-2xl font-bold text-primary">{analysisResult.score.toFixed(0)}%</span>
+                                <span className="text-2xl font-bold text-primary">{analysisResultRncp.score.toFixed(0)}%</span>
                             </div>
                             <div>
-                                <h4 className="font-semibold mb-2">Informations manquantes sur le CV (par rapport à la fiche RNCP) :</h4>
-                                {analysisResult.missing.length > 0 ? (
+                                <h4 className="font-semibold mb-2">Informations manquantes sur le CV :</h4>
+                                {analysisResultRncp.missing.length > 0 ? (
                                     <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
-                                        {analysisResult.missing.map((item, index) => <li key={index}>{item}</li>)}
+                                        {analysisResultRncp.missing.map((item, index) => <li key={index}>{item}</li>)}
                                     </ul>
                                 ) : (
                                     <p className="text-sm text-green-600 font-medium">Aucune information manquante détectée. Excellente correspondance !</p>
@@ -1997,6 +2050,34 @@ function TestManager() {
                         </CardContent>
                     </Card>
                 )}
+                
+                 {analysisResultRome && (
+                    <Card className="bg-muted/50 mt-4">
+                        <CardHeader>
+                            <CardTitle>Résultats de l'Analyse CV vs ROME</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 font-bold text-lg">
+                                    <Percent className="h-5 w-5 text-primary" />
+                                    Taux de correspondance :
+                                </div>
+                                <span className="text-2xl font-bold text-primary">{analysisResultRome.score.toFixed(0)}%</span>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Informations manquantes sur le CV :</h4>
+                                {analysisResultRome.missing.length > 0 ? (
+                                    <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                                        {analysisResultRome.missing.map((item, index) => <li key={index}>{item}</li>)}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-green-600 font-medium">Aucune information manquante détectée. Excellente correspondance !</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
+
             </CardContent>
         </Card>
     );
@@ -2047,4 +2128,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
