@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -145,7 +146,10 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
 const clientInfoSchema = z.object({
   id: z.string().min(1, "La sélection d'un client est requise."),
   name: z.string(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
 });
+
 
 const cvProfileSchema = z.object({
   clientId: z.string().min(1, "La sélection d'un client est requise."),
@@ -190,6 +194,7 @@ type Client = {
     firstName: string;
     lastName: string;
     email: string;
+    phone?: string;
     counselorIds?: string[];
 };
 
@@ -202,6 +207,7 @@ function Cvtheque() {
     const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [cvFile, setCvFile] = useState<File | null>(null);
+    const [selectedClientForDisplay, setSelectedClientForDisplay] = useState<{name:string, email?:string, phone?:string} | null>(null);
     
     const clientsQuery = useMemoFirebase(() => {
         if(!user) return null;
@@ -224,15 +230,20 @@ function Cvtheque() {
         if(isSheetOpen) {
             if(editingProfile) {
                 form.reset(editingProfile);
+                const client = clients?.find(c => c.id === editingProfile.clientId);
+                if (client) {
+                    setSelectedClientForDisplay({ name: editingProfile.clientName, email: client.email, phone: client.phone });
+                }
             } else {
                 form.reset({
                     clientId: '', clientName: '', currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [],
                     workEnvironments: [], desiredSalary: [], mobility: [], drivingLicences: [],
                     formations: [], experiences: [], softSkills: [], cvUrl: null,
                 });
+                setSelectedClientForDisplay(null);
             }
         }
-    }, [isSheetOpen, editingProfile, form]);
+    }, [isSheetOpen, editingProfile, form, clients]);
 
     const { fields: formationFields, append: appendFormation, remove: removeFormation } = useFieldArray({
         control: form.control, name: "formations",
@@ -315,7 +326,7 @@ function Cvtheque() {
             </div>
              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetTrigger asChild>
-                    <Button onClick={() => { setEditingProfile(null); form.reset(); setCvFile(null); }}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un profil CV</Button>
+                    <Button onClick={() => { setEditingProfile(null); form.reset(); setCvFile(null); setSelectedClientForDisplay(null); }}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un profil CV</Button>
                 </SheetTrigger>
                 <SheetContent className="sm:max-w-3xl w-full">
                      <SheetHeader>
@@ -330,10 +341,18 @@ function Cvtheque() {
                                         onClientSelect={(client) => {
                                             form.setValue('clientId', client.id || '');
                                             form.setValue('clientName', client.name);
+                                            setSelectedClientForDisplay(client);
                                         }}
                                         isLoading={areClientsLoading}
                                         defaultValue={editingProfile ? {id: editingProfile.clientId, name: editingProfile.clientName} : undefined}
                                     />
+                                    {selectedClientForDisplay && (
+                                        <Card className="p-4 bg-muted/50">
+                                            <p className="text-sm font-semibold">{selectedClientForDisplay.name}</p>
+                                            <p className="text-xs text-muted-foreground">{selectedClientForDisplay.email}</p>
+                                            <p className="text-xs text-muted-foreground">{selectedClientForDisplay.phone}</p>
+                                        </Card>
+                                    )}
                                     <section>
                                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">Projet Professionnel</h3>
                                         <div className="space-y-4">
@@ -461,13 +480,22 @@ function Cvtheque() {
     );
 }
 
-function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { clients: Client[], onClientSelect: (client: {id: string, name: string}) => void, isLoading: boolean, defaultValue?: {id:string, name:string} }) {
+type ClientSelectorProps = {
+    clients: Client[];
+    onClientSelect: (client: {id: string, name: string, email?: string, phone?: string}) => void;
+    isLoading: boolean;
+    defaultValue?: {id:string, name:string};
+};
+
+function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: ClientSelectorProps) {
     const [open, setOpen] = useState(false);
     const [selectedClientName, setSelectedClientName] = useState<string | null>(defaultValue?.name || null);
 
     useEffect(() => {
         if(defaultValue?.name) {
             setSelectedClientName(defaultValue.name);
+        } else {
+            setSelectedClientName(null);
         }
     }, [defaultValue]);
 
@@ -475,6 +503,8 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         const clientInfo = {
             id: client.id,
             name: `${client.firstName} ${client.lastName}`,
+            email: client.email,
+            phone: client.phone
         };
         setSelectedClientName(clientInfo.name);
         onClientSelect(clientInfo);
@@ -488,7 +518,7 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
             <Popover open={open} onOpenChange={setOpen}>
                 <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between mt-2">
-                        {selectedClientName ? selectedClientName : "Sélectionner un client..."}
+                        {selectedClientName || "Sélectionner un client..."}
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
