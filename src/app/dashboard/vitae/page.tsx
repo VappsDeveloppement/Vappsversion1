@@ -30,6 +30,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 
 type JobApplication = {
@@ -199,6 +201,125 @@ type Client = {
     counselorIds?: string[];
 };
 
+const generateCvProfilePdf = async (profile: CvProfile) => {
+    const doc = new jsPDF();
+    let y = 20;
+
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text(`Profil CV: ${profile.clientName}`, 15, y);
+    y += 15;
+
+    const addSection = (title: string, data: { label: string; value?: string[] }[]) => {
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text(title, 15, y);
+        y += 8;
+
+        data.forEach(item => {
+            if (item.value && item.value.length > 0) {
+                doc.setFontSize(11);
+                doc.setFont('helvetica', 'bold');
+                doc.text(item.label + ':', 15, y);
+                doc.setFont('helvetica', 'normal');
+                const values = item.value.join(', ');
+                const splitValues = doc.splitTextToSize(values, 150);
+                doc.text(splitValues, 50, y);
+                y += (splitValues.length * 5) + 3;
+            }
+        });
+        y += 5;
+    };
+    
+    addSection("Projet Professionnel", [
+        { label: "Métiers Actuels", value: profile.currentJobs },
+        { label: "Métiers Recherchés", value: profile.searchedJobs },
+        { label: "Types de Contrat", value: profile.contractTypes },
+        { label: "Durée de Travail", value: profile.workDurations },
+        { label: "Environnement", value: profile.workEnvironments },
+        { label: "Salaire Souhaité", value: profile.desiredSalary },
+        { label: "Mobilité", value: profile.mobility },
+    ]);
+
+    // Formations
+    if (profile.formations && profile.formations.length > 0) {
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Formations et Qualifications", 15, y);
+        y += 8;
+        if(profile.drivingLicences && profile.drivingLicences.length > 0){
+             addSection("", [{ label: "Permis", value: profile.drivingLicences }]);
+        }
+        
+        profile.formations.forEach(formation => {
+            y += 5;
+            autoTable(doc, {
+                startY: y,
+                head: [[`Formation: ${formation.title?.join(', ')}`]],
+                body: [
+                    ["Code RNCP", formation.rncpCode?.join(', ') || '-'],
+                    ["Niveau", formation.level?.join(', ') || '-'],
+                    ["Compétences", formation.skills?.join(', ') || '-'],
+                ],
+                theme: 'grid',
+                headStyles: { fontStyle: 'bold' }
+            });
+            y = (doc as any).lastAutoTable.finalY + 5;
+        });
+    }
+
+    // Expériences
+    if (profile.experiences && profile.experiences.length > 0) {
+        doc.addPage();
+        y = 20;
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Parcours Professionnel", 15, y);
+        y += 8;
+        profile.experiences.forEach(exp => {
+            y += 5;
+            const seniority = calculateSeniority(exp.startDate, exp.endDate);
+            autoTable(doc, {
+                startY: y,
+                head: [[`Expérience: ${exp.title?.join(', ')}`]],
+                body: [
+                    ["Code ROME", exp.romeCode?.join(', ') || '-'],
+                    ["Période", `${exp.startDate || ''} - ${exp.endDate || ''} (${seniority || 'N/A'})`],
+                    ["Compétences", exp.skills?.join(', ') || '-'],
+                    ["Activités", exp.activities?.join(', ') || '-'],
+                ],
+                theme: 'grid',
+                headStyles: { fontStyle: 'bold' }
+            });
+            y = (doc as any).lastAutoTable.finalY + 5;
+        });
+    }
+    
+    // Soft Skills
+    if(profile.softSkills && profile.softSkills.length > 0) {
+        if(y > 250) { doc.addPage(); y = 20; }
+        addSection("Savoir-être (Softskills)", [{ label: "", value: profile.softSkills }]);
+    }
+    
+    doc.save(`CV_Profil_${profile.clientName.replace(' ', '_')}.pdf`);
+};
+
+const calculateSeniority = (startDate?: string, endDate?: string) => {
+    if (!startDate || !endDate) return null;
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
+
+    const years = differenceInYears(end, start);
+    const months = differenceInMonths(end, start) % 12;
+    
+    let result = '';
+    if (years > 0) result += `${years} an(s) `;
+    if (months > 0) result += `${months} mois`;
+    
+    return result.trim() || 'Moins d\'un mois';
+};
+
 function Cvtheque() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -238,7 +359,7 @@ function Cvtheque() {
         if(isSheetOpen) {
             if(editingProfile) {
                 form.reset(editingProfile);
-                const client = clients?.find(c => c.id === editingProfile.clientId);
+                 const client = clients?.find(c => c.id === editingProfile.clientId);
                 if (client) {
                     setSelectedClientForDisplay({ name: editingProfile.clientName, email: client.email, phone: client.phone });
                 }
@@ -261,21 +382,6 @@ function Cvtheque() {
         control: form.control, name: "experiences",
     });
     
-    const calculateSeniority = (startDate?: string, endDate?: string) => {
-        if (!startDate || !endDate) return null;
-        const start = new Date(startDate);
-        const end = new Date(endDate);
-        if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
-
-        const years = differenceInYears(end, start);
-        const months = differenceInMonths(end, start) % 12;
-        
-        let result = '';
-        if (years > 0) result += `${years} an(s) `;
-        if (months > 0) result += `${months} mois`;
-        
-        return result.trim() || 'Moins d\'un mois';
-    };
 
     const handleCvFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
@@ -294,7 +400,7 @@ function Cvtheque() {
             try {
                 const filePath = `CV/${Date.now()}_${cvFile.name}`;
                 const fileRef = ref(storage, filePath);
-                await uploadBytes(fileRef, file);
+                await uploadBytes(fileRef, fileUrl as any);
                 fileUrl = await getDownloadURL(fileRef);
                 toast({ title: "CV téléversé avec succès" });
             } catch (error) {
@@ -355,7 +461,7 @@ function Cvtheque() {
                         <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
                             <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
                                 <div className="space-y-8">
-                                    <ClientSelector
+                                     <ClientSelector
                                         clients={clients || []}
                                         onClientSelect={(client) => {
                                             form.setValue('clientId', client.id || '');
@@ -516,6 +622,9 @@ function Cvtheque() {
                                             <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => generateCvProfilePdf(profile)}>
+                                                <Download className="mr-2 h-4 w-4" /> Exporter PDF
+                                            </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => handleEditProfile(profile)}>
                                                 <Edit className="mr-2 h-4 w-4"/> Modifier
                                             </DropdownMenuItem>
