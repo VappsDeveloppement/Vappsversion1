@@ -400,7 +400,7 @@ function Cvtheque() {
             try {
                 const filePath = `CV/${Date.now()}_${cvFile.name}`;
                 const fileRef = ref(storage, filePath);
-                await uploadBytes(fileRef, fileUrl as any);
+                await uploadBytes(fileRef, cvFile); 
                 fileUrl = await getDownloadURL(fileRef);
                 toast({ title: "CV téléversé avec succès" });
             } catch (error) {
@@ -415,6 +415,18 @@ function Cvtheque() {
             ...data,
             counselorId: user.uid,
             cvUrl: fileUrl,
+            // Ensure array fields are not undefined
+            currentJobs: data.currentJobs || [],
+            searchedJobs: data.searchedJobs || [],
+            contractTypes: data.contractTypes || [],
+            workDurations: data.workDurations || [],
+            workEnvironments: data.workEnvironments || [],
+            desiredSalary: data.desiredSalary || [],
+            mobility: data.mobility || [],
+            drivingLicences: data.drivingLicences || [],
+            formations: data.formations || [],
+            experiences: data.experiences || [],
+            softSkills: data.softSkills || [],
         };
 
         if (editingProfile) {
