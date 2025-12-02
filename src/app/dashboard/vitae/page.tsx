@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -267,7 +268,6 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     )
 }
-
 
 const calculateSeniority = (startDate?: string, endDate?: string) => {
     if (!startDate) return null;
@@ -1264,10 +1264,9 @@ function RomeManager() {
                                             name="associatedRncp"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>RNCP Associé</FormLabel>
-                                                    <FicheSelector
+                                                    <FormLabel>Codes RNCP Associés</FormLabel>
+                                                    <RncpSelector
                                                         fiches={rncpFiches || []}
-                                                        title="RNCP"
                                                         onSelect={(fiche) => {
                                                             const currentCodes = new Set(field.value || []);
                                                             (fiche.rncpCodes || []).forEach((code: string) => currentCodes.add(code));
@@ -1342,11 +1341,40 @@ function JobOfferManager() {
     type JobOfferFormData = z.infer<typeof jobOfferSchema>;
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferSchema),
-        defaultValues: { infoMatching: {} }
+        defaultValues: {
+            reference: '',
+            title: [],
+            description: '',
+            contractType: [],
+            workingHours: [],
+            location: [],
+            salary: [],
+            infoMatching: {
+                rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
+                romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
+            }
+        }
     });
     
-    const handleNew = () => { setEditingOffer(null); form.reset({ infoMatching: {} }); setIsSheetOpen(true); };
-    const handleEdit = (offer: any) => { setEditingOffer(offer); form.reset(offer); setIsSheetOpen(true); };
+    useEffect(() => {
+        if (isSheetOpen) {
+            if (editingOffer) {
+                form.reset(editingOffer);
+            } else {
+                 form.reset({
+                    reference: '', title: [], description: '', contractType: [],
+                    workingHours: [], location: [], salary: [],
+                    infoMatching: {
+                        rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
+                        romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
+                    }
+                });
+            }
+        }
+    }, [isSheetOpen, editingOffer, form]);
+    
+    const handleNew = () => { setEditingOffer(null); setIsSheetOpen(true); };
+    const handleEdit = (offer: any) => { setEditingOffer(offer); setIsSheetOpen(true); };
     
     const onSubmit = async (data: JobOfferFormData) => {
         if (!user) return;
@@ -1383,6 +1411,13 @@ function JobOfferManager() {
         form.setValue('infoMatching.romeActivities', fiche.activites);
     };
     
+    const renderCell = (value: string | string[] | undefined) => {
+        if (Array.isArray(value)) {
+            return value.join(', ');
+        }
+        return value || '-';
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -1398,9 +1433,9 @@ function JobOfferManager() {
                         {areOffersLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8"/></TableCell></TableRow>
                         : offers && offers.length > 0 ? offers.map((offer: any) => (
                           <TableRow key={offer.id}>
-                            <TableCell>{Array.isArray(offer.title) ? offer.title.join(', ') : offer.title}</TableCell>
-                            <TableCell>{Array.isArray(offer.contractType) ? offer.contractType.join(', ') : offer.contractType}</TableCell>
-                            <TableCell>{Array.isArray(offer.location) ? offer.location.join(', ') : offer.location}</TableCell>
+                            <TableCell>{renderCell(offer.title)}</TableCell>
+                            <TableCell>{renderCell(offer.contractType)}</TableCell>
+                            <TableCell>{renderCell(offer.location)}</TableCell>
                             <TableCell className="text-right">
                                 <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4"/></Button>
                                 <Button variant="ghost" size="icon" onClick={() => setOfferToDelete(offer)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
@@ -1419,9 +1454,9 @@ function JobOfferManager() {
                               <section>
                                 <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Générales</h3>
                                 <div className="space-y-4">
-                                  <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Métier - Titre de l'annonce</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un titre..."/></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description de l'offre</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description de l'offre</FormLabel><FormControl><Textarea rows={5} {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un type..." /></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Temps de travail</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un lieu..." /></FormControl></FormItem>)}/>
@@ -1466,7 +1501,6 @@ function JobOfferManager() {
         </Card>
     );
 }
-
 
 function TestManager() {
     return (
