@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -37,7 +36,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Training } from '@/app/dashboard/e-learning/page';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
-
+import Link from 'next/link';
 
 type JobApplication = {
     id: string;
@@ -1838,4 +1837,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
