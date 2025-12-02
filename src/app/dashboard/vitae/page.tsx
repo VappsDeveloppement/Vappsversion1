@@ -101,7 +101,10 @@ function ApplicationManager() {
     };
 
     const handleDownloadCv = (cvUrl: string, applicantName: string) => {
-        if (!cvUrl) return;
+        if (!cvUrl) {
+            toast({ title: "Erreur", description: "Aucun CV n'est associé à cette candidature.", variant: 'destructive'});
+            return;
+        }
         const link = document.createElement("a");
         link.href = cvUrl;
         link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
@@ -1382,6 +1385,7 @@ function TestManager() {
 
     const [rncpAnalysisResult, setRncpAnalysisResult] = useState<any>(null);
     const [romeAnalysisResult, setRomeAnalysisResult] = useState<any>(null);
+    const [jobAnalysisResult, setJobAnalysisResult] = useState<any>(null);
     
     // Data fetching
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
@@ -1837,3 +1841,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
