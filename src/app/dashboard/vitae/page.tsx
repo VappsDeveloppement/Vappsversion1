@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore, useStorage } from '@/firebase/provider';
@@ -63,6 +63,14 @@ const statusText: Record<JobApplication['status'], string> = {
   rejected: 'Rejetée',
 };
 
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+});
+
 
 function ApplicationManager() {
     const { user } = useUser();
@@ -91,12 +99,28 @@ function ApplicationManager() {
         setDeletingApplication(null);
     };
 
-    const handleDownloadCv = (cvUrl: string, applicantName: string) => {
+     const handleDownloadCv = (cvUrl: string, applicantName: string) => {
+        if (!cvUrl.startsWith('data:')) {
+            window.open(cvUrl, '_blank');
+            return;
+        }
+        
+        // Create a link element
         const link = document.createElement("a");
+        
+        // Set the href to the data URI
         link.href = cvUrl;
+        
+        // Suggest a filename for the download
         link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
+        
+        // Append the link to the body (required for Firefox)
         document.body.appendChild(link);
+        
+        // Programmatically click the link to trigger the download
         link.click();
+        
+        // Remove the link from the document
         document.body.removeChild(link);
     };
 
@@ -530,12 +554,12 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
 function Cvtheque() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [cvFile, setCvFile] = useState<File | null>(null);
-    const [cvBlobUrl, setCvBlobUrl] = useState<string | null>(null);
 
     const [selectedClientForDisplay, setSelectedClientForDisplay] = useState<{name:string, email?:string, phone?:string} | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
@@ -610,29 +634,23 @@ function Cvtheque() {
     const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({
         control: form.control, name: "experiences",
     });
-    
-    useEffect(() => {
-      // Clean up blob URL on unmount or file change
-      return () => {
-        if (cvBlobUrl) {
-          URL.revokeObjectURL(cvBlobUrl);
-        }
-      };
-    }, [cvBlobUrl]);
-
 
     const handleCvFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
             setCvFile(file);
-            if(cvBlobUrl) URL.revokeObjectURL(cvBlobUrl); // Revoke old one
-            setCvBlobUrl(URL.createObjectURL(file));
         }
     };
     
     const onSubmit = async (data: CvProfileFormData) => {
         if (!user) return;
         setIsUploading(true);
+
+        let cvUrl = editingProfile?.cvUrl || null;
+        if (cvFile) {
+             const cvDataUrl = await toBase64(cvFile);
+             cvUrl = cvDataUrl;
+        }
 
         const profileData: Omit<CvProfile, 'id'> = {
             counselorId: user.uid,
@@ -649,7 +667,7 @@ function Cvtheque() {
             formations: data.formations || [],
             experiences: data.experiences || [],
             softSkills: data.softSkills || [],
-            cvUrl: cvBlobUrl, // Store the local blob URL
+            cvUrl: cvUrl,
         };
 
         if (editingProfile) {
@@ -816,9 +834,6 @@ function Cvtheque() {
                                                     Choisir
                                                 </Button>
                                             </div>
-                                             {cvBlobUrl && (
-                                                <a href={cvBlobUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">Voir le nouveau CV</a>
-                                            )}
                                         </div>
                                     </section>
                                 </div>
@@ -1116,9 +1131,7 @@ function RncpManager() {
             <CardTitle>Fiches RNCP</CardTitle>
             <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Fiche</Button>
         </div>
-        <div className="relative pt-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" /><Input placeholder="Rechercher une fiche..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9"/>
-        </div>
+        <div className="relative pt-4"><Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" /><Input placeholder="Rechercher une fiche..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9"/></div>
       </CardHeader>
       <CardContent>
           <Table>
@@ -1371,17 +1384,102 @@ function RomeManager() {
 }
 
 function TestManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const [selectedCvProfile, setSelectedCvProfile] = useState<any>(null);
+    const [selectedRncpFiche, setSelectedRncpFiche] = useState<any>(null);
+    const [selectedRomeFiche, setSelectedRomeFiche] = useState<any>(null);
+    const [selectedJobOffer, setSelectedJobOffer] = useState<any>(null);
+    
+    // Data fetching
+    const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
+    const { data: cvProfiles } = useCollection<CvProfile>(cvProfilesQuery);
+
+    const rncpFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_fiches`)) : null, [user, firestore]);
+    const { data: rncpFiches } = useCollection(rncpFichesQuery);
+
+    const romeFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_fiches`)) : null, [user, firestore]);
+    const { data: romeFiches } = useCollection(romeFichesQuery);
+
+    const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
+    const { data: jobOffers } = useCollection(offersQuery);
+
+    const Selector = ({ items, title, onSelect, selectedItem }: { items: any[] | undefined, title: string, onSelect: (item: any) => void, selectedItem: any }) => {
+        const [open, setOpen] = useState(false);
+        const itemName = selectedItem ? (selectedItem.clientName || selectedItem.name || selectedItem.title) : `Sélectionner ${title}...`;
+
+        return (
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" className="w-full justify-between">
+                        <span className="truncate">{itemName}</span>
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder={`Rechercher ${title}...`} />
+                        <CommandList>
+                            <CommandEmpty>Aucun résultat.</CommandEmpty>
+                            <CommandGroup>
+                                {(items || []).map((item) => (
+                                    <CommandItem key={item.id} onSelect={() => { onSelect(item); setOpen(false); }}>
+                                        <Check className={cn("mr-2 h-4 w-4", selectedItem?.id === item.id ? "opacity-100" : "opacity-0")} />
+                                        {item.clientName || item.name || item.title}
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+        );
+    };
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>TEST</CardTitle>
+                <CardTitle>Test de Matching</CardTitle>
+                <CardDescription>Sélectionnez des éléments pour voir les correspondances potentielles.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <p>En cours de construction...</p>
+            <CardContent className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><FileText className="h-4 w-4" />Profil CV</Label>
+                        <Selector items={cvProfiles} title="un profil" onSelect={setSelectedCvProfile} selectedItem={selectedCvProfile} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><BookCopy className="h-4 w-4" />Fiche RNCP</Label>
+                        <Selector items={rncpFiches} title="une fiche RNCP" onSelect={setSelectedRncpFiche} selectedItem={selectedRncpFiche} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><Search className="h-4 w-4" />Fiche ROME</Label>
+                        <Selector items={romeFiches} title="une fiche ROME" onSelect={setSelectedRomeFiche} selectedItem={selectedRomeFiche} />
+                    </div>
+                     <div className="space-y-2">
+                        <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Offre d'emploi</Label>
+                        <Selector items={jobOffers} title="une offre" onSelect={setSelectedJobOffer} selectedItem={selectedJobOffer} />
+                    </div>
+                </div>
+
+                <div className="pt-8 border-t">
+                    <h3 className="text-lg font-semibold mb-4">Éléments Sélectionnés</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {selectedCvProfile && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />{selectedCvProfile.clientName}</CardTitle></Card>}
+                        {selectedRncpFiche && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><BookCopy className="h-4 w-4" />{selectedRncpFiche.name}</CardTitle></Card>}
+                        {selectedRomeFiche && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><Search className="h-4 w-4" />{selectedRomeFiche.name}</CardTitle></Card>}
+                        {selectedJobOffer && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><Briefcase className="h-4 w-4" />{renderCell(selectedJobOffer.title)}</CardTitle></Card>}
+                    </div>
+                     <div className="mt-8 text-center">
+                        <Button disabled>Lancer l'analyse de compatibilité (Bientôt disponible)</Button>
+                    </div>
+                </div>
             </CardContent>
         </Card>
     );
 }
+
 const renderCell = (value: string | string[] | undefined) => {
     if (Array.isArray(value)) return value.join(', ');
     return value || '-';
