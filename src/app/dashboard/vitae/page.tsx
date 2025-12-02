@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro, Upload } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro, Upload, ChevronsUpDown, Check } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -25,6 +25,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { cn } from '@/lib/utils';
 
 
 type JobApplication = {
@@ -139,8 +142,14 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
     );
 };
 
+const clientInfoSchema = z.object({
+  id: z.string().min(1, "La sélection d'un client est requise."),
+  name: z.string(),
+});
 
 const cvProfileSchema = z.object({
+  clientId: z.string().min(1, "La sélection d'un client est requise."),
+  clientName: z.string(),
   currentJobs: z.array(z.string()).optional(),
   searchedJobs: z.array(z.string()).optional(),
   contractTypes: z.array(z.string()).optional(),
@@ -174,9 +183,15 @@ type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 type CvProfile = CvProfileFormData & {
   id: string;
   counselorId: string;
-  clientId: string;
-  clientName: string;
 }
+
+type Client = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    counselorIds?: string[];
+};
 
 function Cvtheque() {
     const { user } = useUser();
@@ -187,15 +202,37 @@ function Cvtheque() {
     const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [cvFile, setCvFile] = useState<File | null>(null);
+    
+    const clientsQuery = useMemoFirebase(() => {
+        if(!user) return null;
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
 
     const form = useForm<CvProfileFormData>({
         resolver: zodResolver(cvProfileSchema),
         defaultValues: {
+            clientId: '',
+            clientName: '',
             currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [],
             workEnvironments: [], desiredSalary: [], mobility: [], drivingLicences: [],
             formations: [], experiences: [], softSkills: [], cvUrl: null,
         }
     });
+    
+    useEffect(() => {
+        if(isSheetOpen) {
+            if(editingProfile) {
+                form.reset(editingProfile);
+            } else {
+                form.reset({
+                    clientId: '', clientName: '', currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [],
+                    workEnvironments: [], desiredSalary: [], mobility: [], drivingLicences: [],
+                    formations: [], experiences: [], softSkills: [], cvUrl: null,
+                });
+            }
+        }
+    }, [isSheetOpen, editingProfile, form]);
 
     const { fields: formationFields, append: appendFormation, remove: removeFormation } = useFieldArray({
         control: form.control, name: "formations",
@@ -238,7 +275,7 @@ function Cvtheque() {
             try {
                 const filePath = `CV/${Date.now()}_${cvFile.name}`;
                 const fileRef = ref(storage, filePath);
-                await uploadBytes(fileRef, cvFile);
+                await uploadBytes(fileRef, file);
                 fileUrl = await getDownloadURL(fileRef);
                 toast({ title: "CV téléversé avec succès" });
             } catch (error) {
@@ -251,13 +288,19 @@ function Cvtheque() {
         
         const profileData = {
             ...data,
+            counselorId: user.uid,
             cvUrl: fileUrl,
         };
 
-        // Here you would typically also select a client/candidate
-        // For now, it's just a placeholder for the form logic.
-        console.log("Submitting:", profileData);
-        toast({ title: "Profil sauvegardé (simulation)" });
+        if (editingProfile) {
+            const profileRef = doc(firestore, `users/${user.uid}/cv_profiles`, editingProfile.id);
+            await setDocumentNonBlocking(profileRef, profileData, { merge: true });
+            toast({ title: "Profil mis à jour" });
+        } else {
+            await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), profileData);
+            toast({ title: "Profil créé" });
+        }
+        
         setIsUploading(false);
         setIsSheetOpen(false);
     };
@@ -282,6 +325,15 @@ function Cvtheque() {
                         <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
                             <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
                                 <div className="space-y-8">
+                                    <ClientSelector
+                                        clients={clients || []}
+                                        onClientSelect={(client) => {
+                                            form.setValue('clientId', client.id || '');
+                                            form.setValue('clientName', client.name);
+                                        }}
+                                        isLoading={areClientsLoading}
+                                        defaultValue={editingProfile ? {id: editingProfile.clientId, name: editingProfile.clientName} : undefined}
+                                    />
                                     <section>
                                         <h3 className="text-lg font-semibold mb-4 border-b pb-2">Projet Professionnel</h3>
                                         <div className="space-y-4">
@@ -407,6 +459,62 @@ function Cvtheque() {
         </CardContent>
       </Card>
     );
+}
+
+function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { clients: Client[], onClientSelect: (client: {id: string, name: string}) => void, isLoading: boolean, defaultValue?: {id:string, name:string} }) {
+    const [open, setOpen] = useState(false);
+    const [selectedClientName, setSelectedClientName] = useState<string | null>(defaultValue?.name || null);
+
+    useEffect(() => {
+        if(defaultValue?.name) {
+            setSelectedClientName(defaultValue.name);
+        }
+    }, [defaultValue]);
+
+    const handleSelect = (client: Client) => {
+        const clientInfo = {
+            id: client.id,
+            name: `${client.firstName} ${client.lastName}`,
+        };
+        setSelectedClientName(clientInfo.name);
+        onClientSelect(clientInfo);
+        setOpen(false);
+    }
+    
+    return (
+        <div>
+            <Label>Client</Label>
+            {isLoading ? <Skeleton className="h-10 w-full mt-2" /> : (
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between mt-2">
+                        {selectedClientName ? selectedClientName : "Sélectionner un client..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder="Rechercher un client..." />
+                        <CommandList>
+                            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                            <CommandGroup>
+                                {clients.map((client) => (
+                                    <CommandItem key={client.id} value={client.email} onSelect={() => handleSelect(client)}>
+                                        <Check className={cn("mr-2 h-4 w-4", selectedClientName === `${client.firstName} ${client.lastName}` ? "opacity-100" : "opacity-0")}/>
+                                        <div>
+                                            <p>{client.firstName} {client.lastName}</p>
+                                            <p className="text-xs text-muted-foreground">{client.email}</p>
+                                        </div>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+            )}
+        </div>
+    )
 }
 
 function UnderConstruction({ title }: { title: string }) {
