@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -201,8 +200,7 @@ function ApplicationManager() {
 // Reusable Tag Input Component
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
-    const currentValues = Array.isArray(value) ? value : (value ? [value] : []);
-
+    const currentValues = Array.isArray(value) ? value : [];
 
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
@@ -527,7 +525,6 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
 function Cvtheque() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const storage = useStorage();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
@@ -622,18 +619,9 @@ function Cvtheque() {
         let fileUrl = editingProfile?.cvUrl || null;
         
         if (cvFile) {
-            try {
-                const filePath = `CV/${Date.now()}_${cvFile.name}`;
-                const fileRef = ref(storage, filePath);
-                await uploadBytes(fileRef, cvFile); 
-                fileUrl = await getDownloadURL(fileRef);
-                toast({ title: "CV téléversé avec succès" });
-            } catch (error) {
-                console.error("Error uploading CV:", error);
-                toast({ title: "Erreur de téléversement", description: "Impossible d'envoyer le fichier CV.", variant: "destructive" });
-                setIsUploading(false);
-                return;
-            }
+            // Placeholder for actual upload logic
+             toast({ title: "Simulation", description: "En production, le CV serait téléversé ici."});
+             fileUrl = 'simulated_url'; // In a real scenario, this would be the result of the upload.
         }
         
         const profileData: Omit<CvProfile, 'id'> = {
@@ -1391,196 +1379,195 @@ function TestManager() {
     );
 }
 function JobOfferManager() {
-  const { user } = useUser();
-  const firestore = useFirestore();
-  const { toast } = useToast();
-  const [isSheetOpen, setIsSheetOpen] = useState(false);
-  const [editingOffer, setEditingOffer] = useState<any>(null);
-  const [offerToDelete, setOfferToDelete] = useState<any>(null);
-
-  const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
-  const { data: offers, isLoading: areOffersLoading } = useCollection(offersQuery);
-
-  const rncpFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_fiches`)) : null, [user, firestore]);
-  const { data: rncpFiches, isLoading: areRncpLoading } = useCollection(rncpFichesQuery);
-
-  const romeFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_fiches`)) : null, [user, firestore]);
-  const { data: romeFiches, isLoading: areRomeLoading } = useCollection(romeFichesQuery);
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingOffer, setEditingOffer] = useState<any>(null);
+    const [offerToDelete, setOfferToDelete] = useState<any>(null);
   
-  const jobOfferSchema = z.object({
-      reference: z.string().optional(),
-      title: z.array(z.string()).optional(),
-      description: z.string().optional(),
-      contractType: z.array(z.string()).optional(),
-      workingHours: z.array(z.string()).optional(),
-      location: z.array(z.string()).optional(),
-      salary: z.array(z.string()).optional(),
-      infoMatching: z.object({
-          rncpCodes: z.array(z.string()).optional(),
-          rncpLevels: z.array(z.string()).optional(),
-          rncpTitles: z.array(z.string()).optional(),
-          rncpSkills: z.array(z.string()).optional(),
-          rncpActivities: z.array(z.string()).optional(),
-          romeCodes: z.array(z.string()).optional(),
-          romeTitles: z.array(z.string()).optional(),
-          romeSkills: z.array(z.string()).optional(),
-          romeActivities: z.array(z.string()).optional(),
-      }).optional(),
-  });
+    const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
+    const { data: offers, isLoading: areOffersLoading } = useCollection(offersQuery);
   
-  type JobOfferFormData = z.infer<typeof jobOfferSchema>;
-  const form = useForm<JobOfferFormData>({
-      resolver: zodResolver(jobOfferSchema),
-      defaultValues: {
-          reference: '', title: [], description: '', contractType: [],
-          workingHours: [], location: [], salary: [],
-          infoMatching: {
-              rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-              romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
-          }
-      }
-  });
+    const rncpFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_fiches`)) : null, [user, firestore]);
+    const { data: rncpFiches, isLoading: areRncpLoading } = useCollection(rncpFichesQuery);
   
-  useEffect(() => {
-      if (isSheetOpen) {
-          form.reset(editingOffer || {
-              reference: '', title: [], description: '', contractType: [],
-              workingHours: [], location: [], salary: [],
-              infoMatching: {
-                  rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-                  romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
-              }
-          });
-      }
-  }, [isSheetOpen, editingOffer, form]);
+    const romeFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_fiches`)) : null, [user, firestore]);
+    const { data: romeFiches, isLoading: areRomeLoading } = useCollection(romeFichesQuery);
+    
+    const jobOfferSchema = z.object({
+        reference: z.string().optional(),
+        title: z.array(z.string()).optional(),
+        description: z.string().optional(),
+        contractType: z.array(z.string()).optional(),
+        workingHours: z.array(z.string()).optional(),
+        location: z.array(z.string()).optional(),
+        salary: z.array(z.string()).optional(),
+        infoMatching: z.object({
+            rncpCodes: z.array(z.string()).optional(),
+            rncpLevels: z.array(z.string()).optional(),
+            rncpTitles: z.array(z.string()).optional(),
+            rncpSkills: z.array(z.string()).optional(),
+            rncpActivities: z.array(z.string()).optional(),
+            romeCodes: z.array(z.string()).optional(),
+            romeTitles: z.array(z.string()).optional(),
+            romeSkills: z.array(z.string()).optional(),
+            romeActivities: z.array(z.string()).optional(),
+        }).optional(),
+    });
+    
+    type JobOfferFormData = z.infer<typeof jobOfferSchema>;
+    const form = useForm<JobOfferFormData>({
+        resolver: zodResolver(jobOfferSchema),
+        defaultValues: {
+            reference: '', title: [], description: '', contractType: [],
+            workingHours: [], location: [], salary: [],
+            infoMatching: {
+                rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
+                romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
+            }
+        }
+    });
+    
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingOffer || {
+                reference: '', title: [], description: '', contractType: [],
+                workingHours: [], location: [], salary: [],
+                infoMatching: {
+                    rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
+                    romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
+                }
+            });
+        }
+    }, [isSheetOpen, editingOffer, form]);
+    
+    const handleNew = () => { setEditingOffer(null); setIsSheetOpen(true); };
+    const handleEdit = (offer: any) => { setEditingOffer(offer); setIsSheetOpen(true); };
+    
+    const onSubmit = async (data: JobOfferFormData) => {
+        if (!user) return;
+        const offerData = { counselorId: user.uid, ...data };
+        if (editingOffer) {
+            await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
+            toast({ title: 'Offre mise à jour' });
+        } else {
+            await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/job_offers`), offerData);
+            toast({ title: 'Offre créée' });
+        }
+        setIsSheetOpen(false);
+    };
   
-  const handleNew = () => { setEditingOffer(null); setIsSheetOpen(true); };
-  const handleEdit = (offer: any) => { setEditingOffer(offer); setIsSheetOpen(true); };
+    const handleDelete = async () => {
+        if (!offerToDelete || !user) return;
+        await deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerToDelete.id));
+        toast({ title: "Offre supprimée" });
+        setOfferToDelete(null);
+    };
   
-  const onSubmit = async (data: JobOfferFormData) => {
-      if (!user) return;
-      const offerData = { counselorId: user.uid, ...data };
-      if (editingOffer) {
-          await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
-          toast({ title: 'Offre mise à jour' });
-      } else {
-          await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/job_offers`), offerData);
-          toast({ title: 'Offre créée' });
-      }
-      setIsSheetOpen(false);
-  };
-
-  const handleDelete = async () => {
-      if (!offerToDelete || !user) return;
-      await deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerToDelete.id));
-      toast({ title: "Offre supprimée" });
-      setOfferToDelete(null);
-  };
-
-  const handleSelectRncp = (fiche: any) => {
-      form.setValue('infoMatching.rncpCodes', fiche.rncpCodes);
-      form.setValue('infoMatching.rncpLevels', fiche.rncpLevel);
-      form.setValue('infoMatching.rncpTitles', fiche.rncpTitle);
-      form.setValue('infoMatching.rncpSkills', fiche.competences);
-      form.setValue('infoMatching.rncpActivities', fiche.activites);
-  };
+    const handleSelectRncp = (fiche: any) => {
+        form.setValue('infoMatching.rncpCodes', fiche.rncpCodes);
+        form.setValue('infoMatching.rncpLevels', fiche.rncpLevel);
+        form.setValue('infoMatching.rncpTitles', fiche.rncpTitle);
+        form.setValue('infoMatching.rncpSkills', fiche.competences);
+        form.setValue('infoMatching.rncpActivities', fiche.activites);
+    };
+    
+    const handleSelectRome = (fiche: any) => {
+        form.setValue('infoMatching.romeCodes', fiche.romeCodes);
+        form.setValue('infoMatching.romeTitles', fiche.romeTitles);
+        form.setValue('infoMatching.romeSkills', fiche.competences);
+        form.setValue('infoMatching.romeActivities', fiche.activites);
+    };
   
-  const handleSelectRome = (fiche: any) => {
-      form.setValue('infoMatching.romeCodes', fiche.romeCodes);
-      form.setValue('infoMatching.romeTitles', fiche.romeTitles);
-      form.setValue('infoMatching.romeSkills', fiche.competences);
-      form.setValue('infoMatching.romeActivities', fiche.activites);
-  };
-
-  const renderCell = (value: string | string[] | undefined) => {
-      if (Array.isArray(value)) return value.join(', ');
-      return value || '-';
-  };
-
-  return (
-      <Card>
-          <CardHeader>
-              <div className="flex justify-between items-center">
-                  <CardTitle>Offres d'emploi</CardTitle>
-                  <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4"/>Nouvelle Offre</Button>
-              </div>
-          </CardHeader>
-          <CardContent>
-              <Table>
-                  <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Contrat</TableHead><TableHead>Lieu</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                  <TableBody>
-                      {areOffersLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8"/></TableCell></TableRow>
-                      : offers && offers.length > 0 ? offers.map((offer: any) => (
-                        <TableRow key={offer.id}>
-                          <TableCell>{renderCell(offer.title)}</TableCell>
-                          <TableCell>{renderCell(offer.contractType)}</TableCell>
-                          <TableCell>{renderCell(offer.location)}</TableCell>
-                          <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4"/></Button>
-                              <Button variant="ghost" size="icon" onClick={() => setOfferToDelete(offer)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                          </TableCell>
-                        </TableRow>
-                      )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucune offre créée.</TableCell></TableRow>}
-                  </TableBody>
-              </Table>
-               <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                  <SheetContent className="sm:max-w-4xl w-full">
-                    <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} Offre d'Emploi</SheetTitle></SheetHeader>
-                    <Form {...form}>
-                      <form onSubmit={form.handleSubmit(onSubmit)}>
-                        <ScrollArea className="h-[calc(100vh-8rem)]">
-                          <div className="py-4 pr-4 space-y-6">
-                            <section>
-                              <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Générales</h3>
-                              <div className="space-y-4">
-                                <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Métier - Titre de l'annonce</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un titre..."/></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description de l'offre</FormLabel><FormControl><Textarea rows={5} {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un type..." /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Temps de travail</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un lieu..." /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salaire</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
-                              </div>
-                            </section>
-                            <section className="space-y-4 pt-4 border-t">
-                              <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Match</h3>
-                              <FicheSelector fiches={rncpFiches || []} title="RNCP" onSelect={handleSelectRncp}/>
-                              <div className="grid grid-cols-2 gap-4">
-                                <FormField control={form.control} name="infoMatching.rncpCodes" render={({ field }) => (<FormItem><FormLabel>Codes RNCP</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="infoMatching.rncpLevels" render={({ field }) => (<FormItem><FormLabel>Niveaux</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                              </div>
-                              <FormField control={form.control} name="infoMatching.rncpTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                              <FormField control={form.control} name="infoMatching.rncpSkills" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                              <FormField control={form.control} name="infoMatching.rncpActivities" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-
-                              <div className="pt-4 border-t"/>
-                              <FicheSelector fiches={romeFiches || []} title="ROME" onSelect={handleSelectRome}/>
-                              <FormField control={form.control} name="infoMatching.romeCodes" render={({ field }) => (<FormItem><FormLabel>Codes ROME</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                              <FormField control={form.control} name="infoMatching.romeTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                              <FormField control={form.control} name="infoMatching.romeSkills" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                              <FormField control={form.control} name="infoMatching.romeActivities" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                            </section>
-                          </div>
-                        </ScrollArea>
-                        <SheetFooter className="pt-4 border-t mt-auto">
-                          <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                          <Button type="submit">Sauvegarder</Button>
-                        </SheetFooter>
-                      </form>
-                    </Form>
-                  </SheetContent>
-                </Sheet>
-                <AlertDialog open={!!offerToDelete} onOpenChange={(open) => !open && setOfferToDelete(null)}>
-                    <AlertDialogContent>
-                        <AlertDialogHeader><AlertDialogTitle>Supprimer cette offre ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader>
-                        <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction></AlertDialogFooter>
-                    </AlertDialogContent>
-                </AlertDialog>
-          </CardContent>
-      </Card>
-  );
+    const renderCell = (value: string | string[] | undefined) => {
+        if (Array.isArray(value)) return value.join(', ');
+        return value || '-';
+    };
+  
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle>Offres d'emploi</CardTitle>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4"/>Nouvelle Offre</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Contrat</TableHead><TableHead>Lieu</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {areOffersLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8"/></TableCell></TableRow>
+                        : offers && offers.length > 0 ? offers.map((offer: any) => (
+                          <TableRow key={offer.id}>
+                            <TableCell>{renderCell(offer.title)}</TableCell>
+                            <TableCell>{renderCell(offer.contractType)}</TableCell>
+                            <TableCell>{renderCell(offer.location)}</TableCell>
+                            <TableCell className="text-right">
+                                <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4"/></Button>
+                                <Button variant="ghost" size="icon" onClick={() => setOfferToDelete(offer)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                            </TableCell>
+                          </TableRow>
+                        )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucune offre créée.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-4xl w-full">
+                      <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} Offre d'Emploi</SheetTitle></SheetHeader>
+                      <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)}>
+                          <ScrollArea className="h-[calc(100vh-8rem)]">
+                            <div className="py-4 pr-4 space-y-6">
+                              <section>
+                                <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Générales</h3>
+                                <div className="space-y-4">
+                                  <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Métier - Titre de l'annonce</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un titre..."/></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description de l'offre</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un type..." /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Temps de travail</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un lieu..." /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salaire</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
+                                </div>
+                              </section>
+                              <section className="space-y-4 pt-4 border-t">
+                                <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Match</h3>
+                                <FicheSelector fiches={rncpFiches || []} title="RNCP" onSelect={handleSelectRncp}/>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <FormField control={form.control} name="infoMatching.rncpCodes" render={({ field }) => (<FormItem><FormLabel>Codes RNCP</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="infoMatching.rncpLevels" render={({ field }) => (<FormItem><FormLabel>Niveaux</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                </div>
+                                <FormField control={form.control} name="infoMatching.rncpTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="infoMatching.rncpSkills" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="infoMatching.rncpActivities" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+  
+                                <div className="pt-4 border-t"/>
+                                <FicheSelector fiches={romeFiches || []} title="ROME" onSelect={handleSelectRome}/>
+                                <FormField control={form.control} name="infoMatching.romeCodes" render={({ field }) => (<FormItem><FormLabel>Codes ROME</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="infoMatching.romeTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="infoMatching.romeSkills" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="infoMatching.romeActivities" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                              </section>
+                            </div>
+                          </ScrollArea>
+                          <SheetFooter className="pt-4 border-t mt-auto">
+                            <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                            <Button type="submit">Sauvegarder</Button>
+                          </SheetFooter>
+                        </form>
+                      </Form>
+                    </SheetContent>
+                  </Sheet>
+                  <AlertDialog open={!!offerToDelete} onOpenChange={(open) => !open && setOfferToDelete(null)}>
+                      <AlertDialogContent>
+                          <AlertDialogHeader><AlertDialogTitle>Supprimer cette offre ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader>
+                          <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction></AlertDialogFooter>
+                      </AlertDialogContent>
+                  </AlertDialog>
+            </CardContent>
+        </Card>
+    );
 }
-
 
 export default function VitaePage() {
     return (
