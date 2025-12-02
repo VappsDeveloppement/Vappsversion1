@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -1396,6 +1397,13 @@ function TestManager() {
     const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
     const { data: jobOffers } = useCollection(offersQuery);
 
+    const trainingsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'trainings'), where('authorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: trainings } = useCollection<Training>(trainingsQuery);
+
+
     useEffect(() => {
         if (selectedCvProfile && selectedRncpFiche) {
             // RNCP Analysis
@@ -1459,8 +1467,15 @@ function TestManager() {
 
     }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche]);
 
-    const AnalysisResultCard = ({ title, results }: { title: string, results: any }) => {
+    const AnalysisResultCard = ({ title, results, fiche, allTrainings }: { title: string, results: any, fiche: any, allTrainings?: Training[] }) => {
         if (!results) return null;
+
+        const recommendedTrainings = useMemo(() => {
+            if (!fiche?.associatedTrainings || !allTrainings) return [];
+            return fiche.associatedTrainings.map((id: string) => allTrainings.find(t => t.id === id)).filter(Boolean);
+        }, [fiche, allTrainings]);
+
+        const showRecommendations = results.skills.percentage < 50 || results.activities.percentage < 50;
 
         const ResultItem = ({ label, value, unit, isMatch }: { label: string, value: string | number, unit?: string, isMatch?: boolean }) => (
             <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted text-center">
@@ -1476,11 +1491,13 @@ function TestManager() {
         return (
             <Card>
                 <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
-                <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <ResultItem label="Code/Titre" isMatch={results.hasCodeOrTitleMatch} value={0}/>
-                    <ResultItem label="Compétences" value={results.skills.percentage} unit="%" />
-                    <ResultItem label="Activités" value={results.activities.percentage} unit="%" />
-                     <Accordion type="single" collapsible className="col-span-2 lg:col-span-4">
+                <CardContent className="space-y-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        <ResultItem label="Code/Titre" isMatch={results.hasCodeOrTitleMatch} value={0}/>
+                        <ResultItem label="Compétences" value={results.skills.percentage} unit="%" />
+                        <ResultItem label="Activités" value={results.activities.percentage} unit="%" />
+                    </div>
+                     <Accordion type="single" collapsible className="w-full">
                         <AccordionItem value="details">
                             <AccordionTrigger>Voir les détails</AccordionTrigger>
                             <AccordionContent>
@@ -1491,6 +1508,20 @@ function TestManager() {
                             </AccordionContent>
                         </AccordionItem>
                     </Accordion>
+                     {showRecommendations && recommendedTrainings.length > 0 && (
+                        <div className="pt-4 border-t">
+                            <h4 className="font-semibold text-amber-600 mb-2">Recommandations de Formation</h4>
+                            <ul className="list-disc pl-5 space-y-1">
+                                {recommendedTrainings.map(training => (
+                                    <li key={training.id} className="text-sm">
+                                        <Link href={`/dashboard/e-learning/path/${training.id}`} className="text-blue-600 hover:underline">
+                                            {training.title}
+                                        </Link>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         );
@@ -1556,8 +1587,8 @@ function TestManager() {
 
                 <div className="pt-8 border-t space-y-6">
                     <h3 className="text-lg font-semibold mb-4">Résultats de l'analyse</h3>
-                    {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} />}
-                    {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} />}
+                    {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} fiche={selectedRncpFiche} allTrainings={trainings} />}
+                    {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} fiche={selectedRomeFiche} />}
                     {!rncpAnalysisResult && !romeAnalysisResult && (
                         <div className="text-center py-10 text-muted-foreground">
                             <p>Sélectionnez des éléments ci-dessus pour lancer l'analyse.</p>
@@ -1807,3 +1838,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
