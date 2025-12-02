@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -33,6 +32,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Training } from '@/app/dashboard/e-learning/[trainingId]/page';
@@ -200,7 +200,7 @@ function ApplicationManager() {
 // Reusable Tag Input Component
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
-    const currentValues = Array.isArray(value) ? value : [];
+    const currentValues = Array.isArray(value) ? value : (value ? [value] : []);
 
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
@@ -1477,7 +1477,7 @@ function JobOfferManager() {
         form.setValue('infoMatching.romeSkills', fiche.competences);
         form.setValue('infoMatching.romeActivities', fiche.activites);
     };
-    
+
     const renderCell = (value: string | string[] | undefined) => {
         if (Array.isArray(value)) return value.join(', ');
         return value || '-';
