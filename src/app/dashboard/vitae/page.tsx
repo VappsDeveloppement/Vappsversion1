@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -29,11 +30,11 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
-import type { Training } from '@/app/dashboard/e-learning/[trainingId]/page';
 import { Checkbox } from '@/components/ui/checkbox';
+import type { Training } from '@/app/dashboard/e-learning/[trainingId]/page';
 
 
 type JobApplication = {
@@ -200,6 +201,9 @@ type Client = {
     lastName: string;
     email: string;
     phone?: string;
+    address?: string;
+    zipCode?: string;
+    city?: string;
     counselorIds?: string[];
 };
 
@@ -220,9 +224,6 @@ const calculateSeniority = (startDate?: string, endDate?: string) => {
 };
 
 const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) => {
-    const { default: jsPDF } = await import('jspdf');
-    const { default: autoTable } = await import('jspdf-autotable');
-
     const doc = new jsPDF();
     let y = 20;
 
@@ -383,6 +384,72 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
     doc.save(`CV_Profil_${profile.clientName.replace(' ', '_')}.pdf`);
 };
 
+type ClientSelectorProps = {
+    clients: Client[];
+    onClientSelect: (client: z.infer<typeof clientInfoSchema>) => void;
+    isLoading: boolean;
+    defaultValue?: z.infer<typeof clientInfoSchema>;
+};
+
+function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: ClientSelectorProps) {
+    const [open, setOpen] = useState(false);
+    const [selectedClient, setSelectedClient] = useState<z.infer<typeof clientInfoSchema> | null>(defaultValue || null);
+
+    useEffect(() => {
+        if (defaultValue?.name && !selectedClient?.name) {
+            setSelectedClient(defaultValue);
+        }
+    }, [defaultValue, selectedClient]);
+
+
+    const handleSelect = (client: Client) => {
+        const clientInfo = {
+            id: client.id,
+            name: `${client.firstName} ${client.lastName}`,
+            email: client.email,
+            phone: client.phone,
+        };
+        setSelectedClient(clientInfo);
+        onClientSelect(clientInfo);
+        setOpen(false);
+    }
+    
+    return (
+        <div>
+            <h3 className="text-lg font-medium mb-4">Client</h3>
+            {isLoading ? <Skeleton className="h-10 w-full" /> : (
+            <Popover open={open} onOpenChange={setOpen}>
+                <PopoverTrigger asChild>
+                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between">
+                        {selectedClient?.name ? selectedClient.name : "Sélectionner un client..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                    <Command>
+                        <CommandInput placeholder="Rechercher un client..." />
+                        <CommandList>
+                            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                            <CommandGroup>
+                                {clients.map((client) => (
+                                    <CommandItem key={client.id} value={client.email} onSelect={() => handleSelect(client)}>
+                                        <Check className={cn("mr-2 h-4 w-4", selectedClient?.id === client.id ? "opacity-100" : "opacity-0")}/>
+                                        <div>
+                                            <p>{client.firstName} {client.lastName}</p>
+                                            <p className="text-xs text-muted-foreground">{client.email}</p>
+                                        </div>
+                                    </CommandItem>
+                                ))}
+                            </CommandGroup>
+                        </CommandList>
+                    </Command>
+                </PopoverContent>
+            </Popover>
+            )}
+        </div>
+    )
+}
+
 function Cvtheque() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -495,7 +562,7 @@ function Cvtheque() {
             }
         }
         
-        const profileData = {
+        const profileData: Omit<CvProfile, 'id'> = {
             counselorId: user.uid,
             clientId: data.clientId,
             clientName: data.clientName,
