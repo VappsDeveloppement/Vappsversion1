@@ -1,6 +1,37 @@
 
 {
   "entities": {
+    "JobOffer": {
+        "title": "Job Offer",
+        "type": "object",
+        "description": "Represents a job offer created by a counselor.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "reference": { "type": "string" },
+            "title": { "type": "string" },
+            "description": { "type": "string" },
+            "contractType": { "type": "string" },
+            "workingHours": { "type": "string" },
+            "location": { "type": "string" },
+            "salary": { "type": "string" },
+            "infoMatching": {
+                "type": "object",
+                "properties": {
+                    "rncpCodes": { "type": "array", "items": { "type": "string" } },
+                    "rncpLevels": { "type": "array", "items": { "type": "string" } },
+                    "rncpTitles": { "type": "array", "items": { "type": "string" } },
+                    "rncpSkills": { "type": "array", "items": { "type": "string" } },
+                    "rncpActivities": { "type": "array", "items": { "type": "string" } },
+                    "romeCodes": { "type": "array", "items": { "type": "string" } },
+                    "romeTitles": { "type": "array", "items": { "type": "string" } },
+                    "romeSkills": { "type": "array", "items": { "type": "string" } },
+                    "romeActivities": { "type": "array", "items": { "type": "string" } }
+                }
+            }
+        },
+        "required": ["counselorId", "title"]
+    },
     "RomeFiche": {
         "title": "Fiche ROME",
         "type": "object",
@@ -1505,6 +1536,14 @@
             "$ref": "#/backend/entities/User"
           },
           "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorIds is used for data segregation."
+        }
+      },
+      {
+        "path": "/users/{userId}/job_offers/{offerId}",
+        "definition": {
+          "entityName": "JobOffer",
+          "schema": { "$ref": "#/entities/JobOffer" },
+          "description": "Stores job offers created by a specific counselor."
         }
       },
       {

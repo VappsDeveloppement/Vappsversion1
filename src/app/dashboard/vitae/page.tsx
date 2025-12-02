@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -29,7 +30,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -206,9 +207,10 @@ type Client = {
 };
 
 const calculateSeniority = (startDate?: string, endDate?: string) => {
-    if (!startDate || !endDate) return null;
+    if (!startDate) return null;
     const start = new Date(startDate);
-    const end = new Date(endDate);
+    // Use current date if end date is not provided
+    const end = endDate ? new Date(endDate) : new Date();
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return null;
 
     const years = differenceInYears(end, start);
@@ -836,6 +838,8 @@ function UnderConstruction({ title }: { title: string }) {
     );
 }
 
+function JobOfferManager() { return <UnderConstruction title="OFFRE D'EMPLOI" />; }
+
 const generateRncpPdf = (fiche: any) => {
     const doc = new jsPDF();
     doc.setFontSize(20);
@@ -1167,15 +1171,15 @@ function RomeManager() {
     const onSubmit = async (data: FicheFormData) => {
         if (!user) return;
         const ficheData = { 
-          counselorId: user.uid,
-          name: data.name,
-          romeCodes: data.romeCodes || [],
-          romeTitles: data.romeTitles || [],
-          associatedJobs: data.associatedJobs || [],
-          associatedRncp: data.associatedRncp || [],
-          softSkills: data.softSkills || [],
-          competences: data.competences || [],
-          activites: data.activites || [],
+            counselorId: user.uid,
+            name: data.name,
+            romeCodes: data.romeCodes || [],
+            romeTitles: data.romeTitles || [],
+            associatedJobs: data.associatedJobs || [],
+            associatedRncp: data.associatedRncp || [],
+            softSkills: data.softSkills || [],
+            competences: data.competences || [],
+            activites: data.activites || [],
         };
         if (editingFiche) {
             await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rome_fiches`, editingFiche.id), ficheData, { merge: true });
@@ -1258,7 +1262,7 @@ function RncpSelector({ fiches, onSelect }: { fiches: any[], onSelect: (fiche: a
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline" className="w-full justify-start"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter depuis une fiche RNCP...</Button>
+                <Button type="button" variant="outline" className="w-full justify-start"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter depuis une fiche RNCP...</Button>
             </PopoverTrigger>
             <PopoverContent className="w-[400px] p-0">
                 <Command>
@@ -1280,7 +1284,6 @@ function RncpSelector({ fiches, onSelect }: { fiches: any[], onSelect: (fiche: a
 }
 
 
-function JobOfferManager() { return <UnderConstruction title="OFFRE D'EMPLOI" />; }
 function TestManager() { return <UnderConstruction title="TEST" />; }
 
 export default function VitaePage() {
