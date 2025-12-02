@@ -91,6 +91,15 @@ function ApplicationManager() {
         setDeletingApplication(null);
     };
 
+    const handleDownloadCv = (cvUrl: string, applicantName: string) => {
+        const link = document.createElement("a");
+        link.href = cvUrl;
+        link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    };
+
     return (
          <>
             <Card>
@@ -135,10 +144,8 @@ function ApplicationManager() {
                                                     <DropdownMenuItem onClick={() => setViewingApplication(app)}>
                                                         <Eye className="mr-2 h-4 w-4" /> Voir la candidature
                                                     </DropdownMenuItem>
-                                                    <DropdownMenuItem asChild>
-                                                        <a href={app.cvUrl} target="_blank" rel="noopener noreferrer">
-                                                            <Download className="mr-2 h-4 w-4" /> Voir le CV
-                                                        </a>
+                                                    <DropdownMenuItem onClick={() => handleDownloadCv(app.cvUrl, app.applicantName)} disabled={!app.cvUrl}>
+                                                        <Download className="mr-2 h-4 w-4" /> Télécharger le CV
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'reviewed')}>Examinée</DropdownMenuItem>
@@ -1375,6 +1382,11 @@ function TestManager() {
         </Card>
     );
 }
+const renderCell = (value: string | string[] | undefined) => {
+    if (Array.isArray(value)) return value.join(', ');
+    return value || '-';
+};
+
 function JobOfferManager() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -1477,11 +1489,6 @@ function JobOfferManager() {
         form.setValue('infoMatching.romeActivities', fiche.activites);
     };
   
-    const renderCell = (value: string | string[] | undefined) => {
-        if (Array.isArray(value)) return value.join(', ');
-        return value || '-';
-    };
-  
     return (
         <Card>
             <CardHeader>
@@ -1518,9 +1525,9 @@ function JobOfferManager() {
                               <section>
                                 <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Générales</h3>
                                 <div className="space-y-4">
-                                  <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Métier - Titre de l'annonce</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un titre..."/></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description de l'offre</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description de l'offre</FormLabel><FormControl><Textarea rows={5} {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un type..." /></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Temps de travail</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un lieu..." /></FormControl></FormItem>)}/>
