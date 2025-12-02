@@ -196,11 +196,9 @@ function ApplicationManager() {
     );
 }
 
-
-// Reusable Tag Input Component
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
-    const currentValues = Array.isArray(value) ? value : [];
+    const currentValues = Array.isArray(value) ? value : (value ? [String(value)] : []);
 
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
@@ -530,6 +528,8 @@ function Cvtheque() {
     const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [cvFile, setCvFile] = useState<File | null>(null);
+    const [cvBlobUrl, setCvBlobUrl] = useState<string | null>(null);
+
     const [selectedClientForDisplay, setSelectedClientForDisplay] = useState<{name:string, email?:string, phone?:string} | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     
@@ -604,11 +604,22 @@ function Cvtheque() {
         control: form.control, name: "experiences",
     });
     
+    useEffect(() => {
+      // Clean up blob URL on unmount or file change
+      return () => {
+        if (cvBlobUrl) {
+          URL.revokeObjectURL(cvBlobUrl);
+        }
+      };
+    }, [cvBlobUrl]);
+
 
     const handleCvFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
         const file = event.target.files?.[0];
         if (file) {
             setCvFile(file);
+            if(cvBlobUrl) URL.revokeObjectURL(cvBlobUrl); // Revoke old one
+            setCvBlobUrl(URL.createObjectURL(file));
         }
     };
     
@@ -616,14 +627,6 @@ function Cvtheque() {
         if (!user) return;
         setIsUploading(true);
 
-        let fileUrl = editingProfile?.cvUrl || null;
-        
-        if (cvFile) {
-            // Placeholder for actual upload logic
-             toast({ title: "Simulation", description: "En production, le CV serait téléversé ici."});
-             fileUrl = 'simulated_url'; // In a real scenario, this would be the result of the upload.
-        }
-        
         const profileData: Omit<CvProfile, 'id'> = {
             counselorId: user.uid,
             clientId: data.clientId,
@@ -639,7 +642,7 @@ function Cvtheque() {
             formations: data.formations || [],
             experiences: data.experiences || [],
             softSkills: data.softSkills || [],
-            cvUrl: fileUrl,
+            cvUrl: cvBlobUrl, // Store the local blob URL
         };
 
         if (editingProfile) {
@@ -806,8 +809,8 @@ function Cvtheque() {
                                                     Choisir
                                                 </Button>
                                             </div>
-                                             {editingProfile?.cvUrl && !cvFile && (
-                                                <a href={editingProfile.cvUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">Voir le CV actuel</a>
+                                             {cvBlobUrl && (
+                                                <a href={cvBlobUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">Voir le nouveau CV</a>
                                             )}
                                         </div>
                                     </section>
@@ -1107,13 +1110,7 @@ function RncpManager() {
             <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Fiche</Button>
         </div>
         <div className="relative pt-4">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
-            <Input
-                placeholder="Rechercher une fiche..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9"
-            />
+            <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" /><Input placeholder="Rechercher une fiche..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9"/>
         </div>
       </CardHeader>
       <CardContent>
@@ -1385,16 +1382,16 @@ function JobOfferManager() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingOffer, setEditingOffer] = useState<any>(null);
     const [offerToDelete, setOfferToDelete] = useState<any>(null);
-  
+
     const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
     const { data: offers, isLoading: areOffersLoading } = useCollection(offersQuery);
-  
+
     const rncpFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_fiches`)) : null, [user, firestore]);
-    const { data: rncpFiches, isLoading: areRncpLoading } = useCollection(rncpFichesQuery);
-  
+    const { data: rncpFiches } = useCollection(rncpFichesQuery);
+
     const romeFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_fiches`)) : null, [user, firestore]);
-    const { data: romeFiches, isLoading: areRomeLoading } = useCollection(romeFichesQuery);
-    
+    const { data: romeFiches } = useCollection(romeFichesQuery);
+
     const jobOfferSchema = z.object({
         reference: z.string().optional(),
         title: z.array(z.string()).optional(),
@@ -1428,7 +1425,7 @@ function JobOfferManager() {
             }
         }
     });
-    
+
     useEffect(() => {
         if (isSheetOpen) {
             form.reset(editingOffer || {
@@ -1441,10 +1438,10 @@ function JobOfferManager() {
             });
         }
     }, [isSheetOpen, editingOffer, form]);
-    
+
     const handleNew = () => { setEditingOffer(null); setIsSheetOpen(true); };
     const handleEdit = (offer: any) => { setEditingOffer(offer); setIsSheetOpen(true); };
-    
+
     const onSubmit = async (data: JobOfferFormData) => {
         if (!user) return;
         const offerData = { counselorId: user.uid, ...data };
@@ -1457,14 +1454,14 @@ function JobOfferManager() {
         }
         setIsSheetOpen(false);
     };
-  
+
     const handleDelete = async () => {
         if (!offerToDelete || !user) return;
         await deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerToDelete.id));
         toast({ title: "Offre supprimée" });
         setOfferToDelete(null);
     };
-  
+
     const handleSelectRncp = (fiche: any) => {
         form.setValue('infoMatching.rncpCodes', fiche.rncpCodes);
         form.setValue('infoMatching.rncpLevels', fiche.rncpLevel);
