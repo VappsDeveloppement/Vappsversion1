@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -29,7 +29,7 @@ import { Loader2 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -42,9 +42,12 @@ type JobApplication = {
     id: string;
     applicantName: string;
     applicantEmail: string;
+    applicantPhone?: string;
     jobOfferTitle: string;
     appliedAt: string;
     status: 'new' | 'reviewed' | 'contacted' | 'rejected';
+    coverLetter?: string;
+    cvUrl: string;
 };
 
 const statusVariant: Record<JobApplication['status'], 'default' | 'secondary' | 'destructive' | 'outline'> = {
@@ -65,6 +68,9 @@ const statusText: Record<JobApplication['status'], string> = {
 function ApplicationManager() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const { toast } = useToast();
+    const [viewingApplication, setViewingApplication] = useState<JobApplication | null>(null);
+    const [deletingApplication, setDeletingApplication] = useState<JobApplication | null>(null);
 
     const applicationsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -73,58 +79,128 @@ function ApplicationManager() {
 
     const { data: applications, isLoading } = useCollection<JobApplication>(applicationsQuery);
     
+    const handleUpdateStatus = (applicationId: string, status: JobApplication['status']) => {
+        const appRef = doc(firestore, 'job_applications', applicationId);
+        setDocumentNonBlocking(appRef, { status }, { merge: true });
+        toast({ title: "Statut mis à jour", description: `La candidature est maintenant marquée comme "${statusText[status]}".` });
+    };
+
+    const handleDelete = async () => {
+        if (!deletingApplication) return;
+        await deleteDocumentNonBlocking(doc(firestore, 'job_applications', deletingApplication.id));
+        toast({ title: "Candidature supprimée" });
+        setDeletingApplication(null);
+    };
+
     return (
-         <Card>
-            <CardHeader>
-                <CardTitle>Candidatures Reçues</CardTitle>
-                <CardDescription>Liste des candidatures reçues pour vos offres d'emploi.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                 <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Candidat</TableHead>
-                            <TableHead>Offre</TableHead>
-                            <TableHead>Date</TableHead>
-                            <TableHead>Statut</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? (
-                            [...Array(3)].map((_, i) => (
-                                <TableRow key={i}><TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-                            ))
-                        ) : applications && applications.length > 0 ? (
-                            applications.map(app => (
-                                <TableRow key={app.id}>
-                                    <TableCell>
-                                        <div className="font-medium">{app.applicantName}</div>
-                                        <div className="text-sm text-muted-foreground">{app.applicantEmail}</div>
-                                    </TableCell>
-                                    <TableCell>{app.jobOfferTitle}</TableCell>
-                                    <TableCell>{formatDistanceToNow(new Date(app.appliedAt), { addSuffix: true, locale: fr })}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={statusVariant[app.status]}>{statusText[app.status]}</Badge>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
+         <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Candidatures Reçues</CardTitle>
+                    <CardDescription>Liste des candidatures reçues pour vos offres d'emploi.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">Aucune candidature reçue pour le moment.</TableCell>
+                                <TableHead>Candidat</TableHead>
+                                <TableHead>Offre</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                        )}
-                    </TableBody>
-                 </Table>
-            </CardContent>
-        </Card>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? (
+                                [...Array(3)].map((_, i) => (
+                                    <TableRow key={i}><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                                ))
+                            ) : applications && applications.length > 0 ? (
+                                applications.map(app => (
+                                    <TableRow key={app.id}>
+                                        <TableCell>
+                                            <div className="font-medium">{app.applicantName}</div>
+                                            <div className="text-sm text-muted-foreground">{app.applicantEmail}</div>
+                                        </TableCell>
+                                        <TableCell>{app.jobOfferTitle}</TableCell>
+                                        <TableCell>{formatDistanceToNow(new Date(app.appliedAt), { addSuffix: true, locale: fr })}</TableCell>
+                                        <TableCell>
+                                            <Badge variant={statusVariant[app.status]}>{statusText[app.status]}</Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => setViewingApplication(app)}>
+                                                        <Eye className="mr-2 h-4 w-4" /> Voir la candidature
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuItem asChild>
+                                                        <a href={app.cvUrl} target="_blank" rel="noopener noreferrer">
+                                                            <Download className="mr-2 h-4 w-4" /> Voir le CV
+                                                        </a>
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'reviewed')}>Examinée</DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'contacted')}>Contacté</DropdownMenuItem>
+                                                    <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'rejected')}>Rejetée</DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem className="text-destructive" onClick={() => setDeletingApplication(app)}>
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-24 text-center">Aucune candidature reçue pour le moment.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+             <Dialog open={!!viewingApplication} onOpenChange={(open) => !open && setViewingApplication(null)}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Candidature de {viewingApplication?.applicantName}</DialogTitle>
+                        <DialogDescription>Pour l'offre : {viewingApplication?.jobOfferTitle}</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <p><strong>Email :</strong> {viewingApplication?.applicantEmail}</p>
+                        <p><strong>Téléphone :</strong> {viewingApplication?.applicantPhone || 'Non fourni'}</p>
+                        <Label>Message</Label>
+                        <div className="p-3 border rounded-md bg-muted text-sm h-48 overflow-y-auto">
+                            {viewingApplication?.coverLetter || 'Aucun message.'}
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            <AlertDialog open={!!deletingApplication} onOpenChange={(open) => !open && setDeletingApplication(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer cette candidature ?</AlertDialogTitle>
+                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
+         </>
     );
 }
 
 // Reusable Tag Input Component
 const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefined; onChange: (value: string[]) => void, placeholder: string }) => {
     const [inputValue, setInputValue] = useState('');
-    
-    const currentValues = Array.isArray(value) ? value : (value ? [String(value)] : []);
+    const currentValues = Array.isArray(value) ? value : [];
 
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
@@ -1307,7 +1383,7 @@ function JobOfferManager() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingOffer, setEditingOffer] = useState<any>(null);
     const [offerToDelete, setOfferToDelete] = useState<any>(null);
-
+    
     const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
     const { data: offers, isLoading: areOffersLoading } = useCollection(offersQuery);
     
@@ -1342,13 +1418,8 @@ function JobOfferManager() {
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferSchema),
         defaultValues: {
-            reference: '',
-            title: [],
-            description: '',
-            contractType: [],
-            workingHours: [],
-            location: [],
-            salary: [],
+            reference: '', title: [], description: '', contractType: [],
+            workingHours: [], location: [], salary: [],
             infoMatching: {
                 rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
                 romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
@@ -1358,18 +1429,14 @@ function JobOfferManager() {
     
     useEffect(() => {
         if (isSheetOpen) {
-            if (editingOffer) {
-                form.reset(editingOffer);
-            } else {
-                 form.reset({
-                    reference: '', title: [], description: '', contractType: [],
-                    workingHours: [], location: [], salary: [],
-                    infoMatching: {
-                        rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-                        romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
-                    }
-                });
-            }
+            form.reset(editingOffer || {
+                reference: '', title: [], description: '', contractType: [],
+                workingHours: [], location: [], salary: [],
+                infoMatching: {
+                    rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
+                    romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
+                }
+            });
         }
     }, [isSheetOpen, editingOffer, form]);
     
@@ -1412,9 +1479,7 @@ function JobOfferManager() {
     };
     
     const renderCell = (value: string | string[] | undefined) => {
-        if (Array.isArray(value)) {
-            return value.join(', ');
-        }
+        if (Array.isArray(value)) return value.join(', ');
         return value || '-';
     };
 
