@@ -1266,9 +1266,8 @@ function RomeManager() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>RNCP Associé</FormLabel>
-                                                     <FicheSelector
+                                                     <RncpSelector
                                                         fiches={rncpFiches || []}
-                                                        title="RNCP"
                                                         onSelect={(fiche) => {
                                                             const currentRncp = new Set(field.value || []);
                                                             (fiche.rncpCodes || []).forEach((code: string) => currentRncp.add(code));
@@ -1376,3 +1375,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
