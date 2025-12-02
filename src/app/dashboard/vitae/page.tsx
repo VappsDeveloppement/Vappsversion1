@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -246,8 +247,8 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
             doc.setFont('helvetica', 'bold');
             doc.text(`${label}:`, 20, y);
             doc.setFont('helvetica', 'normal');
-            doc.text(value.join(', '), 60, y);
-            y += 7;
+            doc.text(value.join(', '), 60, y, { maxWidth: 130 });
+            y += (doc.splitTextToSize(value.join(', '), 130).length * 5) + 2;
         }
     };
 
@@ -259,6 +260,19 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
     addSectionData("Salaire souhaité", profile.desiredSalary);
     addSectionData("Mobilité", profile.mobility);
     y += 5;
+    
+    // --- PERMIS ---
+    if (profile.drivingLicences && profile.drivingLicences.length > 0) {
+        if (y > 250) { doc.addPage(); y = 20; }
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Permis", 15, y);
+        y += 8;
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'normal');
+        doc.text(profile.drivingLicences.join(', '), 20, y);
+        y += 10;
+    }
 
     // --- FORMATIONS ---
     if (profile.formations && profile.formations.length > 0) {
@@ -280,24 +294,14 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
             
             if (formation.skills && formation.skills.length > 0) {
                 doc.setFont('helvetica', 'italic');
-                doc.text(`Compétences: ${formation.skills.join(', ')}`, 20, y, { maxWidth: 170 });
-                y += (doc.splitTextToSize(formation.skills.join(', '), 170).length * 5) + 2;
+                const skillsText = `Compétences: ${formation.skills.join(', ')}`;
+                const skillsLines = doc.splitTextToSize(skillsText, 170);
+                doc.text(skillsLines, 20, y);
+                y += skillsLines.length * 5;
             }
+             y += 4;
         });
         y += 5;
-    }
-    
-    // Permis
-    if (profile.drivingLicences && profile.drivingLicences.length > 0) {
-        if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text("Permis", 15, y);
-        y += 8;
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'normal');
-        doc.text(profile.drivingLicences.join(', '), 20, y);
-        y += 10;
     }
 
 
@@ -330,12 +334,17 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
             }
             if (exp.activities && exp.activities.length > 0) {
                 doc.setFontSize(10);
-                doc.text(`Activités: ${exp.activities.join(', ')}`, 20, y, { maxWidth: 170 });
-                 y += (doc.splitTextToSize(`Activités: ${exp.activities.join(', ')}`, 170).length * 5) + 2;
+                const activitiesText = `Activités: ${exp.activities.join(', ')}`;
+                const activitiesLines = doc.splitTextToSize(activitiesText, 170);
+                doc.text(activitiesLines, 20, y);
+                 y += (activitiesLines.length * 5) + 2;
             }
              if (exp.skills && exp.skills.length > 0) {
-                doc.text(`Compétences: ${exp.skills.join(', ')}`, 20, y, { maxWidth: 170 });
-                y += (doc.splitTextToSize(`Compétences: ${exp.skills.join(', ')}`, 170).length * 5) + 2;
+                doc.setFontSize(10);
+                const skillsText = `Compétences: ${exp.skills.join(', ')}`;
+                const skillsLines = doc.splitTextToSize(skillsText, 170);
+                doc.text(skillsLines, 20, y);
+                y += (skillsLines.length * 5) + 2;
             }
             y += 5;
         });
@@ -351,8 +360,10 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
         y += 8;
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
-        doc.text(profile.softSkills.join(' • '), 20, y, { maxWidth: 170 });
-        y += (doc.splitTextToSize(profile.softSkills.join(' • '), 170).length * 5) + 5;
+        const softSkillsText = profile.softSkills.join(' • ');
+        const softSkillsLines = doc.splitTextToSize(softSkillsText, 170);
+        doc.text(softSkillsLines, 20, y);
+        y += softSkillsLines.length * 5 + 5;
     }
 
     doc.save(`CV_Profil_${profile.clientName.replace(' ', '_')}.pdf`);
@@ -836,4 +847,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
