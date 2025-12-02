@@ -202,6 +202,7 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[] | undefine
     const [inputValue, setInputValue] = useState('');
     const currentValues = Array.isArray(value) ? value : (value ? [value] : []);
 
+
     const addTag = (e: React.KeyboardEvent<HTMLInputElement>) => {
         if (e.key === 'Enter' && inputValue.trim()) {
             e.preventDefault();
@@ -623,7 +624,7 @@ function Cvtheque() {
             try {
                 const filePath = `CV/${Date.now()}_${cvFile.name}`;
                 const fileRef = ref(storage, filePath);
-                await uploadBytes(fileRef, file); 
+                await uploadBytes(fileRef, cvFile); 
                 fileUrl = await getDownloadURL(fileRef);
                 toast({ title: "CV téléversé avec succès" });
             } catch (error) {
@@ -701,13 +702,13 @@ function Cvtheque() {
                         <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
                             <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
                                 <div className="space-y-8">
-                                     <ClientSelector
-                                        clients={clients || []}
+                                     <ClientSelector 
+                                        clients={clients || []} 
                                         onClientSelect={(client) => {
                                             form.setValue('clientId', client.id || '');
                                             form.setValue('clientName', client.name);
                                             setSelectedClientForDisplay(client);
-                                        }}
+                                        }} 
                                         isLoading={areClientsLoading}
                                         defaultValue={editingProfile ? {id: editingProfile.clientId, name: editingProfile.clientName} : undefined}
                                     />
