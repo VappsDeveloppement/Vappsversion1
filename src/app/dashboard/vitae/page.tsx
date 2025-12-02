@@ -266,6 +266,7 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
     )
 }
 
+
 const calculateSeniority = (startDate?: string, endDate?: string) => {
     if (!startDate) return null;
     const start = new Date(startDate);
@@ -1082,13 +1083,13 @@ function RncpManager() {
                       <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la fiche</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                       <section className="space-y-4 pt-4 border-t">
                         <h3 className="font-semibold">Codification RNCP</h3>
-                        <FormField control={form.control} name="rncpCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) RNCP associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="rncpCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="rncpTitle" render={({ field }) => (<FormItem><FormLabel>Intitulé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="rncpLevel" render={({ field }) => (<FormItem><FormLabel>Niveau(x)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..." /></FormControl></FormItem>)} />
                       </section>
                       <section className="space-y-4 pt-4 border-t">
                         <h3 className="font-semibold">Codification ROME</h3>
-                        <FormField control={form.control} name="romeCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) ROME associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="romeCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="romeMetiers" render={({ field }) => (<FormItem><FormLabel>Métier(s) associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl></FormItem>)} />
                       </section>
                       <section className="space-y-4 pt-4 border-t">
@@ -1345,7 +1346,15 @@ function JobOfferManager() {
 
     const onOfferSubmit = async (data: JobOfferFormData) => {
         if (!user) return;
-        const offerData = { counselorId: user.uid, ...data };
+        const offerData = { 
+            counselorId: user.uid, 
+            ...data,
+            title: data.title || [],
+            contractType: data.contractType || [],
+            workingHours: data.workingHours || [],
+            location: data.location || [],
+            salary: data.salary || [],
+        };
         if (editingOffer) {
             await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
             toast({ title: 'Offre mise à jour' });
@@ -1355,6 +1364,15 @@ function JobOfferManager() {
         }
         setIsSheetOpen(false);
     };
+    
+    // Helper function to safely join array or return string
+    const safeJoin = (value: any) => {
+      if (Array.isArray(value)) {
+        return value.join(', ');
+      }
+      return value || '-';
+    };
+
 
     return (
         <Card>
@@ -1371,9 +1389,9 @@ function JobOfferManager() {
                         {isLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8" /></TableCell></TableRow> 
                         : offers && offers.length > 0 ? offers.map((offer: any) => (
                             <TableRow key={offer.id}>
-                                <TableCell>{offer.title?.join(', ')}</TableCell>
-                                <TableCell>{offer.contractType?.join(', ')}</TableCell>
-                                <TableCell>{offer.location?.join(', ')}</TableCell>
+                                <TableCell>{safeJoin(offer.title)}</TableCell>
+                                <TableCell>{safeJoin(offer.contractType)}</TableCell>
+                                <TableCell>{safeJoin(offer.location)}</TableCell>
                                 <TableCell className="text-right">
                                     <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
                                     <Button variant="ghost" size="icon" onClick={() => setOfferToDelete(offer)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
