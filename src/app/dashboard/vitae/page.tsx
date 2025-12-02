@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -33,6 +32,9 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
+import type { Training } from '@/app/dashboard/e-learning/[trainingId]/page';
+import { Checkbox } from '@/components/ui/checkbox';
+
 
 type JobApplication = {
     id: string;
@@ -223,7 +225,7 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
 
     const doc = new jsPDF();
     let y = 20;
-    
+
     const printList = (list?: string[]) => (list && list.length > 0 ? list.join(', ') : 'Non spécifié');
 
     // --- HEADER ---
@@ -249,6 +251,7 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
 
     const addSectionData = (label: string, value?: string[]) => {
         if (value && value.length > 0) {
+            if (y > 270) { doc.addPage(); y = 20; }
             doc.setFontSize(11);
             doc.setFont('helvetica', 'bold');
             doc.text(`${label}:`, 20, y);
@@ -344,6 +347,7 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
             
             const addExpDetails = (label: string, items?: string[]) => {
                 if (items && items.length > 0) {
+                    if (y > 270) { doc.addPage(); y = 20; }
                     doc.setFontSize(10);
                     doc.setFont('helvetica', 'italic');
                     const text = `${label}: ${printList(items)}`;
@@ -754,73 +758,6 @@ function Cvtheque() {
     );
 }
 
-type ClientSelectorProps = {
-    clients: Client[];
-    onClientSelect: (client: {id: string, name: string, email?: string, phone?: string}) => void;
-    isLoading: boolean;
-    defaultValue?: {id:string, name:string};
-};
-
-function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: ClientSelectorProps) {
-    const [open, setOpen] = useState(false);
-    const [selectedClient, setSelectedClient] = useState<{id: string, name: string} | null>(defaultValue || null);
-
-    useEffect(() => {
-        if (defaultValue) {
-            setSelectedClient(defaultValue);
-        } else {
-            setSelectedClient(null);
-        }
-    }, [defaultValue]);
-
-    const handleSelect = (client: Client) => {
-        const clientInfo = {
-            id: client.id,
-            name: `${client.firstName} ${client.lastName}`,
-            email: client.email,
-            phone: client.phone,
-        };
-        setSelectedClient(clientInfo);
-        onClientSelect(clientInfo);
-        setOpen(false);
-    }
-    
-    return (
-        <div>
-            <Label>Client</Label>
-            {isLoading ? <Skeleton className="h-10 w-full mt-2" /> : (
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-between mt-2">
-                        {selectedClient?.name ? selectedClient.name : "Sélectionner un client..."}
-                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                    </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                    <Command>
-                        <CommandInput placeholder="Rechercher un client..." />
-                        <CommandList>
-                            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
-                            <CommandGroup>
-                                {clients.map((client) => (
-                                    <CommandItem key={client.id} value={client.email} onSelect={() => handleSelect(client)}>
-                                        <Check className={cn("mr-2 h-4 w-4", selectedClient?.id === client.id ? "opacity-100" : "opacity-0")}/>
-                                        <div>
-                                            <p>{client.firstName} {client.lastName}</p>
-                                            <p className="text-xs text-muted-foreground">{client.email}</p>
-                                        </div>
-                                    </CommandItem>
-                                ))}
-                            </CommandGroup>
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
-            )}
-        </div>
-    )
-}
-
 function UnderConstruction({ title }: { title: string }) {
     return (
         <Card>
@@ -878,6 +815,9 @@ const generateRncpPdf = (fiche: any) => {
         { label: "Activités:", values: fiche.activites },
     ]);
 
+    addSection("Formations Associées", [
+        { label: "Formations:", values: fiche.associatedTrainings?.map((t:any) => t.name) || [] }
+    ]);
 
     doc.save(`Fiche_${fiche.name.replace(/\s/g, '_')}.pdf`);
 };
@@ -897,6 +837,12 @@ function RncpManager() {
   }, [user, firestore]);
   const { data: fiches, isLoading } = useCollection(rncpFichesQuery);
   
+  const trainingsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, 'trainings'), where('authorId', '==', user.uid));
+  }, [user, firestore]);
+  const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
+  
   const filteredFiches = useMemo(() => {
     if (!fiches) return [];
     if (!searchTerm) return fiches;
@@ -912,6 +858,7 @@ function RncpManager() {
     romeMetiers: z.array(z.string()).optional(),
     competences: z.array(z.string()).optional(),
     activites: z.array(z.string()).optional(),
+    associatedTrainings: z.array(z.string()).optional(),
   });
   
   type FicheFormData = z.infer<typeof ficheFormSchema>;
@@ -920,7 +867,7 @@ function RncpManager() {
     resolver: zodResolver(ficheFormSchema),
     defaultValues: {
       name: '', rncpCodes: [], rncpLevel: [], rncpTitle: [], romeCodes: [],
-      romeMetiers: [], competences: [], activites: [],
+      romeMetiers: [], competences: [], activites: [], associatedTrainings: [],
     },
   });
 
@@ -932,7 +879,10 @@ function RncpManager() {
   
   const handleEdit = (fiche: any) => {
     setEditingFiche(fiche);
-    form.reset(fiche);
+    form.reset({
+      ...fiche,
+      associatedTrainings: fiche.associatedTrainings?.map((t: any) => t.id) || [],
+    });
     setIsSheetOpen(true);
   }
   
@@ -944,13 +894,17 @@ function RncpManager() {
   };
   
   const handleExportPdf = (fiche: any) => {
-    generateRncpPdf(fiche);
+    const populatedFiche = {
+      ...fiche,
+      associatedTrainings: fiche.associatedTrainings?.map((id: string) => trainings?.find(t => t.id === id)).filter(Boolean) || [],
+    }
+    generateRncpPdf(populatedFiche);
   };
 
   const onSubmit = async (data: FicheFormData) => {
     if (!user) return;
     const ficheData = { 
-        counselorId: user.uid, 
+        counselorId: user.uid,
         name: data.name,
         rncpCodes: data.rncpCodes || [],
         rncpLevel: data.rncpLevel || [],
@@ -959,6 +913,7 @@ function RncpManager() {
         romeMetiers: data.romeMetiers || [],
         competences: data.competences || [],
         activites: data.activites || [],
+        associatedTrainings: data.associatedTrainings || [],
     };
     if (editingFiche) {
       await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rncp_fiches`, editingFiche.id), ficheData, { merge: true });
@@ -989,12 +944,13 @@ function RncpManager() {
       </CardHeader>
       <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Nom de la fiche</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Nom de la fiche</TableHead><TableHead>Formations associées</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
             <TableBody>
-              {isLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-8" /></TableCell></TableRow>
+              {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-8" /></TableCell></TableRow>
               : filteredFiches && filteredFiches.length > 0 ? filteredFiches.map((fiche: any) => (
                 <TableRow key={fiche.id}>
                   <TableCell>{fiche.name}</TableCell>
+                   <TableCell>{fiche.associatedTrainings?.length || 0}</TableCell>
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -1006,7 +962,7 @@ function RncpManager() {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              )) : <TableRow><TableCell colSpan={2} className="text-center h-24">Aucune fiche créée.</TableCell></TableRow>}
+              )) : <TableRow><TableCell colSpan={3} className="text-center h-24">Aucune fiche créée.</TableCell></TableRow>}
             </TableBody>
           </Table>
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
@@ -1034,6 +990,44 @@ function RncpManager() {
                         <h3 className="font-semibold">Compétences et Activités</h3>
                         <FormField control={form.control} name="competences" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl></FormItem>)} />
                         <FormField control={form.control} name="activites" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl></FormItem>)} />
+                      </section>
+                      <section className="space-y-4 pt-4 border-t">
+                          <h3 className="font-semibold">Formations Associées</h3>
+                           <FormField
+                                control={form.control}
+                                name="associatedTrainings"
+                                render={() => (
+                                    <FormItem>
+                                        {trainings && trainings.length > 0 ? trainings.map((training) => (
+                                            <FormField
+                                                key={training.id}
+                                                control={form.control}
+                                                name="associatedTrainings"
+                                                render={({ field }) => {
+                                                    return (
+                                                        <FormItem
+                                                            key={training.id}
+                                                            className="flex flex-row items-start space-x-3 space-y-0"
+                                                        >
+                                                            <FormControl>
+                                                                <Checkbox
+                                                                    checked={field.value?.includes(training.id)}
+                                                                    onCheckedChange={(checked) => {
+                                                                        return checked
+                                                                        ? field.onChange([...(field.value || []), training.id])
+                                                                        : field.onChange(field.value?.filter((value) => value !== training.id));
+                                                                    }}
+                                                                />
+                                                            </FormControl>
+                                                            <FormLabel className="font-normal">{training.title}</FormLabel>
+                                                        </FormItem>
+                                                    );
+                                                }}
+                                            />
+                                        )) : <p className="text-sm text-muted-foreground">Aucune formation dans votre catalogue.</p>}
+                                    </FormItem>
+                                )}
+                            />
                       </section>
                     </div>
                   </ScrollArea>
@@ -1192,7 +1186,7 @@ function RomeManager() {
                        <section className="space-y-4 pt-4 border-t">
                         <h3 className="font-semibold">Condition d'accès</h3>
                         <FormField control={form.control} name="associatedRncp" render={({ field }) => (<FormItem><FormLabel>RNCP Associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code RNCP..." /></FormControl></FormItem>)} />
-                        <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être (Softskills)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl></FormItem>)} />
                       </section>
                       <section className="space-y-4 pt-4 border-t">
                         <h3 className="font-semibold">Compétences et Activités</h3>
@@ -1219,6 +1213,7 @@ function RomeManager() {
     </Card>
   );
 }
+
 
 function JobOfferManager() { return <UnderConstruction title="OFFRE D'EMPLOI" />; }
 function TestManager() { return <UnderConstruction title="TEST" />; }
