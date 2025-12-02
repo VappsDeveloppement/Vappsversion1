@@ -4,7 +4,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building, Percent, CheckCircle, XCircle } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore, useStorage } from '@/firebase/provider';
@@ -100,27 +100,12 @@ function ApplicationManager() {
     };
 
     const handleDownloadCv = (cvUrl: string, applicantName: string) => {
-        if (!cvUrl.startsWith('data:')) {
-            window.open(cvUrl, '_blank');
-            return;
-        }
-        
-        // Create a link element
+        if (!cvUrl) return;
         const link = document.createElement("a");
-        
-        // Set the href to the data URI
         link.href = cvUrl;
-        
-        // Suggest a filename for the download
         link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
-        
-        // Append the link to the body (required for Firefox)
         document.body.appendChild(link);
-        
-        // Programmatically click the link to trigger the download
         link.click();
-        
-        // Remove the link from the document
         document.body.removeChild(link);
     };
 
@@ -282,6 +267,7 @@ const cvProfileSchema = z.object({
       title: z.array(z.string()).optional(),
       level: z.array(z.string()).optional(),
       skills: z.array(z.string()).optional(),
+      activities: z.array(z.string()).optional(),
   })).optional(),
    experiences: z.array(z.object({
       id: z.string(),
@@ -664,7 +650,7 @@ function Cvtheque() {
             desiredSalary: data.desiredSalary || [],
             mobility: data.mobility || [],
             drivingLicences: data.drivingLicences || [],
-            formations: data.formations || [],
+            formations: data.formations?.map(f => ({...f, activities: f.activities || [] })) || [],
             experiences: data.experiences || [],
             softSkills: data.softSkills || [],
             cvUrl: cvUrl,
@@ -767,9 +753,10 @@ function Cvtheque() {
                                                             <FormField control={form.control} name={`formations.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Intitulé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem>)}/>
                                                             <FormField control={form.control} name={`formations.${index}.level`} render={({ field }) => (<FormItem><FormLabel>Niveau</FormLabel><FormControl><TagInput {...field} placeholder="Bac+3, Niveau 6..." /></FormControl><FormMessage /></FormItem>)}/>
                                                             <FormField control={form.control} name={`formations.${index}.skills`} render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                            <FormField control={form.control} name={`formations.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem>)}/>
                                                         </div>
                                                     ))}
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendFormation({ id: `formation-${Date.now()}`, rncpCode: [], title: [], level: [], skills: [] })}>
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendFormation({ id: `formation-${Date.now()}`, rncpCode: [], title: [], level: [], skills: [], activities: [] })}>
                                                         <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une formation
                                                     </Button>
                                                 </div>
@@ -1391,6 +1378,9 @@ function TestManager() {
     const [selectedRncpFiche, setSelectedRncpFiche] = useState<any>(null);
     const [selectedRomeFiche, setSelectedRomeFiche] = useState<any>(null);
     const [selectedJobOffer, setSelectedJobOffer] = useState<any>(null);
+
+    const [rncpAnalysisResult, setRncpAnalysisResult] = useState<any>(null);
+    const [romeAnalysisResult, setRomeAnalysisResult] = useState<any>(null);
     
     // Data fetching
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
@@ -1404,6 +1394,106 @@ function TestManager() {
 
     const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
     const { data: jobOffers } = useCollection(offersQuery);
+
+    useEffect(() => {
+        if (selectedCvProfile && selectedRncpFiche) {
+            // RNCP Analysis
+            const cvRncpCodes = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.rncpCode || []) || []);
+            const cvFormationTitles = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.title || []) || []);
+            
+            const ficheRncpCodes = new Set(selectedRncpFiche.rncpCodes || []);
+            const ficheRncpTitles = new Set(selectedRncpFiche.rncpTitle || []);
+
+            const codeMatch = [...cvRncpCodes].some(code => ficheRncpCodes.has(code));
+            const titleMatch = [...cvFormationTitles].some(title => ficheRncpTitles.has(title));
+
+            const cvSkills = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.skills || []) || []);
+            const ficheSkills = new Set(selectedRncpFiche.competences || []);
+            const commonSkills = [...cvSkills].filter(skill => ficheSkills.has(skill));
+            const skillsPercentage = ficheSkills.size > 0 ? (commonSkills.length / ficheSkills.size) * 100 : 0;
+            
+            const cvActivities = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.activities || []) || []);
+            const ficheActivities = new Set(selectedRncpFiche.activites || []);
+            const commonActivities = [...cvActivities].filter(act => ficheActivities.has(act));
+            const activitiesPercentage = ficheActivities.size > 0 ? (commonActivities.length / ficheActivities.size) * 100 : 0;
+
+            setRncpAnalysisResult({
+                hasCodeOrTitleMatch: codeMatch || titleMatch,
+                skills: { matches: commonSkills, percentage: skillsPercentage.toFixed(0) },
+                activities: { matches: commonActivities, percentage: activitiesPercentage.toFixed(0) },
+            });
+        } else {
+            setRncpAnalysisResult(null);
+        }
+
+        if (selectedCvProfile && selectedRomeFiche) {
+            // ROME Analysis
+            const cvRomeCodes = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.romeCode || []) || []);
+            const cvExperienceTitles = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.title || []) || []);
+
+            const ficheRomeCodes = new Set(selectedRomeFiche.romeCodes || []);
+            const ficheRomeMetiers = new Set(selectedRomeFiche.associatedJobs || []);
+
+            const codeMatch = [...cvRomeCodes].some(code => ficheRomeCodes.has(code));
+            const titleMatch = [...cvExperienceTitles].some(title => ficheRomeMetiers.has(title));
+
+            const cvSkills = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.skills || []) || []);
+            const ficheSkills = new Set(selectedRomeFiche.competences || []);
+            const commonSkills = [...cvSkills].filter(skill => ficheSkills.has(skill));
+            const skillsPercentage = ficheSkills.size > 0 ? (commonSkills.length / ficheSkills.size) * 100 : 0;
+
+            const cvActivities = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.activities || []) || []);
+            const ficheActivities = new Set(selectedRomeFiche.activites || []);
+            const commonActivities = [...cvActivities].filter(act => ficheActivities.has(act));
+            const activitiesPercentage = ficheActivities.size > 0 ? (commonActivities.length / ficheActivities.size) * 100 : 0;
+
+            setRomeAnalysisResult({
+                hasCodeOrTitleMatch: codeMatch || titleMatch,
+                skills: { matches: commonSkills, percentage: skillsPercentage.toFixed(0) },
+                activities: { matches: commonActivities, percentage: activitiesPercentage.toFixed(0) },
+            });
+        } else {
+            setRomeAnalysisResult(null);
+        }
+
+    }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche]);
+
+    const AnalysisResultCard = ({ title, results }: { title: string, results: any }) => {
+        if (!results) return null;
+
+        const ResultItem = ({ label, value, unit, isMatch }: { label: string, value: string | number, unit?: string, isMatch?: boolean }) => (
+            <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-muted text-center">
+                <div className="text-sm text-muted-foreground">{label}</div>
+                 {isMatch !== undefined ? (
+                    isMatch ? <CheckCircle className="h-8 w-8 text-green-500 my-2"/> : <XCircle className="h-8 w-8 text-destructive my-2"/>
+                 ) : (
+                    <div className="text-3xl font-bold my-2">{value}<span className="text-lg">{unit}</span></div>
+                 )}
+            </div>
+        );
+
+        return (
+            <Card>
+                <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
+                <CardContent className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <ResultItem label="Code/Titre" isMatch={results.hasCodeOrTitleMatch} value={0}/>
+                    <ResultItem label="Compétences" value={results.skills.percentage} unit="%" />
+                    <ResultItem label="Activités" value={results.activities.percentage} unit="%" />
+                     <Accordion type="single" collapsible className="col-span-2 lg:col-span-4">
+                        <AccordionItem value="details">
+                            <AccordionTrigger>Voir les détails</AccordionTrigger>
+                            <AccordionContent>
+                                <div className="text-xs space-y-2">
+                                    <p><strong>Compétences communes :</strong> {results.skills.matches.join(', ') || 'Aucune'}</p>
+                                    <p><strong>Activités communes :</strong> {results.activities.matches.join(', ') || 'Aucune'}</p>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
+                </CardContent>
+            </Card>
+        );
+    };
 
     const Selector = ({ items, title, onSelect, selectedItem }: { items: any[] | undefined, title: string, onSelect: (item: any) => void, selectedItem: any }) => {
         const [open, setOpen] = useState(false);
@@ -1463,17 +1553,15 @@ function TestManager() {
                     </div>
                 </div>
 
-                <div className="pt-8 border-t">
-                    <h3 className="text-lg font-semibold mb-4">Éléments Sélectionnés</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {selectedCvProfile && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><FileText className="h-4 w-4" />{selectedCvProfile.clientName}</CardTitle></Card>}
-                        {selectedRncpFiche && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><BookCopy className="h-4 w-4" />{selectedRncpFiche.name}</CardTitle></Card>}
-                        {selectedRomeFiche && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><Search className="h-4 w-4" />{selectedRomeFiche.name}</CardTitle></Card>}
-                        {selectedJobOffer && <Card className="p-4"><CardTitle className="text-base flex items-center gap-2"><Briefcase className="h-4 w-4" />{renderCell(selectedJobOffer.title)}</CardTitle></Card>}
-                    </div>
-                     <div className="mt-8 text-center">
-                        <Button disabled>Lancer l'analyse de compatibilité (Bientôt disponible)</Button>
-                    </div>
+                <div className="pt-8 border-t space-y-6">
+                    <h3 className="text-lg font-semibold mb-4">Résultats de l'analyse</h3>
+                    {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} />}
+                    {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} />}
+                    {!rncpAnalysisResult && !romeAnalysisResult && (
+                        <div className="text-center py-10 text-muted-foreground">
+                            <p>Sélectionnez des éléments ci-dessus pour lancer l'analyse.</p>
+                        </div>
+                    )}
                 </div>
             </CardContent>
         </Card>
@@ -1719,5 +1807,3 @@ export default function VitaePage() {
     );
 }
 
-
-    
