@@ -1166,7 +1166,17 @@ function RomeManager() {
 
     const onSubmit = async (data: FicheFormData) => {
         if (!user) return;
-        const ficheData = { counselorId: user.uid, ...data };
+        const ficheData = { 
+          counselorId: user.uid,
+          name: data.name,
+          romeCodes: data.romeCodes || [],
+          romeTitles: data.romeTitles || [],
+          associatedJobs: data.associatedJobs || [],
+          associatedRncp: data.associatedRncp || [],
+          softSkills: data.softSkills || [],
+          competences: data.competences || [],
+          activites: data.activites || [],
+        };
         if (editingFiche) {
             await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rome_fiches`, editingFiche.id), ficheData, { merge: true });
             toast({ title: 'Fiche ROME mise à jour' });
@@ -1206,21 +1216,23 @@ function RomeManager() {
                                         <FormField control={form.control} name="associatedJobs" render={({ field }) => (<FormItem><FormLabel>Métier(s) associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl></FormItem>)} />
                                     </section>
                                     <section className="space-y-4 pt-4 border-t"><h3 className="font-semibold">Condition d'accès</h3>
-                                        <FormField control={form.control} name="associatedRncp" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>RNCP Associé</FormLabel>
-                                                <RncpSelector
-                                                    fiches={rncpFiches || []}
-                                                    onSelect={(selectedFiche) => {
-                                                        const currentCodes = new Set(field.value || []);
-                                                        (selectedFiche.rncpCodes || []).forEach((code: string) => currentCodes.add(code));
-                                                        field.onChange(Array.from(currentCodes));
-                                                    }}
-                                                />
-                                                <FormControl><TagInput {...field} placeholder="Ajouter un code RNCP..." /></FormControl>
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être (Softskills)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl></FormItem>)} />
+                                       <FormField control={form.control} name="associatedRncp" render={({ field }) => (
+                                          <FormItem>
+                                              <FormLabel>RNCP Associé</FormLabel>
+                                              <RncpSelector
+                                                  fiches={rncpFiches || []}
+                                                  onSelect={(selectedFiche) => {
+                                                      const currentCodes = new Set(field.value || []);
+                                                      (selectedFiche.rncpCodes || []).forEach((code: string) => currentCodes.add(code));
+                                                      field.onChange(Array.from(currentCodes));
+                                                  }}
+                                              />
+                                              <FormControl>
+                                                  <TagInput {...field} placeholder="Ajouter un code RNCP..." />
+                                              </FormControl>
+                                          </FormItem>
+                                       )} />
+                                       <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être (Softskills)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl></FormItem>)} />
                                     </section>
                                     <section className="space-y-4 pt-4 border-t"><h3 className="font-semibold">Compétences et Activités</h3>
                                         <FormField control={form.control} name="competences" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl></FormItem>)} />
