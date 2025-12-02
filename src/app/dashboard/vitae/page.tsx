@@ -4,7 +4,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit, Download, Upload } from "lucide-react";
+import { Bot, FileText, Briefcase, FlaskConical, Search, PlusCircle, UserPlus, X, EyeOff, Eye, Loader2, Trash2, Mail, Phone, Edit, Download, Upload, Percent } from "lucide-react";
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -1499,57 +1499,51 @@ function RomeManager() {
                                          <FormField control={form.control} name="mission" render={({ field }) => ( <FormItem><FormLabel>Mission</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une mission..." /></FormControl><FormMessage /></FormItem> )}/>
                                          <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
                                          
-                                        <FormField
-                                            control={form.control}
-                                            name="accessConditions"
-                                            render={() => (
-                                                <FormItem>
-                                                    <FormLabel>Condition d'accès (Fiches RNCP)</FormLabel>
-                                                    <div className="p-2 border rounded-md">
-                                                        <div className="flex flex-wrap gap-1 mb-2 min-h-[24px]">
-                                                            {selectedRncpIds.map(id => {
-                                                                const fiche = fichesRncp?.find(f => f.id === id);
-                                                                if (!fiche) return null;
-                                                                return (
-                                                                    <Badge key={id} variant="secondary">
-                                                                        {fiche.formationName}
-                                                                        <button type="button" onClick={() => handleRncpSelect(id)} className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                                                                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
-                                                                        </button>
-                                                                    </Badge>
-                                                                );
-                                                            })}
-                                                        </div>
-                                                        <Popover>
-                                                            <PopoverTrigger asChild>
-                                                                <Button variant="outline" size="sm" className="w-full justify-start">
-                                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une fiche RNCP
-                                                                </Button>
-                                                            </PopoverTrigger>
-                                                            <PopoverContent className="w-[300px] p-0" align="start">
-                                                                <Command>
-                                                                    <CommandInput placeholder="Rechercher..." />
-                                                                    <CommandList>
-                                                                        <CommandEmpty>Aucune fiche RNCP trouvée.</CommandEmpty>
-                                                                        <CommandGroup>
-                                                                            {areFichesRncpLoading ? <CommandItem disabled>Chargement...</CommandItem> :
-                                                                                fichesRncp?.map((fiche) => (
-                                                                                    <CommandItem key={fiche.id} onSelect={() => handleRncpSelect(fiche.id)}>
-                                                                                        <Check className={cn("mr-2 h-4 w-4", selectedRncpIds.includes(fiche.id) ? "opacity-100" : "opacity-0")} />
-                                                                                        {fiche.formationName}
-                                                                                    </CommandItem>
-                                                                                ))
-                                                                            }
-                                                                        </CommandGroup>
-                                                                    </CommandList>
-                                                                </Command>
-                                                            </PopoverContent>
-                                                        </Popover>
-                                                    </div>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
+                                        <FormItem>
+                                            <FormLabel>Condition d'accès (Fiches RNCP)</FormLabel>
+                                            <div className="p-2 border rounded-md">
+                                                <div className="flex flex-wrap gap-1 mb-2 min-h-[24px]">
+                                                    {selectedRncpIds.map(id => {
+                                                        const fiche = fichesRncp?.find(f => f.id === id);
+                                                        if (!fiche) return null;
+                                                        return (
+                                                            <Badge key={id} variant="secondary">
+                                                                {fiche.formationName}
+                                                                <button type="button" onClick={() => handleRncpSelect(id)} className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                                                    <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                                </button>
+                                                            </Badge>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <Button variant="outline" size="sm" className="w-full justify-start">
+                                                            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une fiche RNCP
+                                                        </Button>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[300px] p-0" align="start">
+                                                        <Command>
+                                                            <CommandInput placeholder="Rechercher..." />
+                                                            <CommandList>
+                                                                <CommandEmpty>Aucune fiche RNCP trouvée.</CommandEmpty>
+                                                                <CommandGroup>
+                                                                    {areFichesRncpLoading ? <CommandItem disabled>Chargement...</CommandItem> :
+                                                                        fichesRncp?.map((fiche) => (
+                                                                            <CommandItem key={fiche.id} onSelect={() => handleRncpSelect(fiche.id)}>
+                                                                                <Check className={cn("mr-2 h-4 w-4", selectedRncpIds.includes(fiche.id) ? "opacity-100" : "opacity-0")} />
+                                                                                {fiche.formationName}
+                                                                            </CommandItem>
+                                                                        ))
+                                                                    }
+                                                                </CommandGroup>
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                            </div>
+                                            <FormMessage />
+                                        </FormItem>
                                          <FormField control={form.control} name="knowledge" render={({ field }) => ( <FormItem><FormLabel>Savoirs</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir..." /></FormControl><FormMessage /></FormItem> )}/>
                                           <FormField control={form.control} name="knowHowAndActivities" render={({ field }) => ( <FormItem><FormLabel>Savoir-faire et Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-faire..." /></FormControl><FormMessage /></FormItem> )}/>
                                           <FormField control={form.control} name="softSkills" render={({ field }) => ( <FormItem><FormLabel>Savoir-être et Softskills</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl><FormMessage /></FormItem> )}/>
@@ -1870,14 +1864,139 @@ function JobOfferManager() {
 }
 
 function TestManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const [selectedCv, setSelectedCv] = useState<CvProfile | null>(null);
+    const [selectedRncp, setSelectedRncp] = useState<FicheRNCP | null>(null);
+    const [selectedRome, setSelectedRome] = useState<FicheROME | null>(null);
+    
+    const [analysisResult, setAnalysisResult] = useState<{ score: number, missing: string[] } | null>(null);
+
+    const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
+    const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
+
+    const rncpFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_sheets`)) : null, [user, firestore]);
+    const { data: rncpFiches, isLoading: areRncpLoading } = useCollection<FicheRNCP>(rncpFichesQuery);
+
+    const romeFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_sheets`)) : null, [user, firestore]);
+    const { data: romeFiches, isLoading: areRomeLoading } = useCollection<FicheROME>(romeFichesQuery);
+
+    const handleAnalyse = () => {
+        if (!selectedCv || !selectedRncp) {
+            setAnalysisResult(null);
+            return;
+        }
+
+        const cvFormations = [
+            ...(selectedCv.highestFormation || []),
+            ...(selectedCv.currentJobFormation || []),
+            ...(selectedCv.projectFormation || []),
+        ];
+        const cvSkills = [
+            ...(selectedCv.highestFormationSkills || []),
+            ...(selectedCv.currentJobFormationSkills || []),
+            ...(selectedCv.projectFormationSkills || []),
+        ];
+        const cvActivities: string[] = [];
+        (selectedCv.experiences || []).forEach(exp => {
+            if(exp.activities) cvActivities.push(...exp.activities)
+        });
+
+        const rncpData = {
+            rncpCode: selectedRncp.rncpCode || [],
+            formationLevel: selectedRncp.formationLevel || [],
+            formationTitle: selectedRncp.formationTitle || [],
+            skills: selectedRncp.skills || [],
+            activities: selectedRncp.activities || [],
+        };
+        
+        let score = 0;
+        let missing: string[] = [];
+        const criteriaCount = 5;
+
+        const checkCorrespondence = (cvItems: string[], rncpItems: string[], criterionName: string) => {
+            const intersection = cvItems.filter(item => rncpItems.includes(item));
+            if (intersection.length > 0) {
+                score++;
+            } else if (rncpItems.length > 0) {
+                missing.push(`Aucune correspondance pour: ${criterionName} (attendu: ${rncpItems.join(', ')})`);
+            }
+        };
+
+        checkCorrespondence(cvFormations, rncpData.rncpCode, "Code RNCP");
+        checkCorrespondence(cvFormations, rncpData.formationLevel, "Niveau de formation");
+        checkCorrespondence(cvFormations, rncpData.formationTitle, "Intitulé de formation");
+        checkCorrespondence(cvSkills, rncpData.skills, "Compétences");
+        checkCorrespondence(cvActivities, rncpData.activities, "Activités");
+        
+        setAnalysisResult({
+            score: (score / criteriaCount) * 100,
+            missing: missing,
+        });
+    };
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Test</CardTitle>
-                <CardDescription>Section de test pour le matching.</CardDescription>
+                <CardTitle>Outil de Test de Correspondance</CardTitle>
+                <CardDescription>Sélectionnez les fiches à comparer pour analyser la correspondance.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <p>Contenu à venir pour l'outil de test.</p>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-2">
+                        <Label>Fiche Candidat (CV)</Label>
+                        <Select onValueChange={(id) => setSelectedCv(cvProfiles?.find(p => p.id === id) || null)} disabled={areCvProfilesLoading}>
+                            <SelectTrigger><SelectValue placeholder="Choisir un CV..." /></SelectTrigger>
+                            <SelectContent>{cvProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Fiche RNCP</Label>
+                        <Select onValueChange={(id) => setSelectedRncp(rncpFiches?.find(f => f.id === id) || null)} disabled={areRncpLoading}>
+                            <SelectTrigger><SelectValue placeholder="Choisir une fiche RNCP..." /></SelectTrigger>
+                            <SelectContent>{rncpFiches?.map(f => <SelectItem key={f.id} value={f.id}>{f.formationName}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Fiche ROME</Label>
+                        <Select onValueChange={(id) => setSelectedRome(romeFiches?.find(f => f.id === id) || null)} disabled={areRomeLoading}>
+                            <SelectTrigger><SelectValue placeholder="Choisir une fiche ROME..." /></SelectTrigger>
+                            <SelectContent>{romeFiches?.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}</SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <Button onClick={handleAnalyse} disabled={!selectedCv || !selectedRncp}>
+                    <FlaskConical className="mr-2 h-4 w-4"/>
+                    Lancer l'analyse CV vs RNCP
+                </Button>
+
+                {analysisResult && (
+                    <Card className="bg-muted/50">
+                        <CardHeader>
+                            <CardTitle>Résultats de l'Analyse</CardTitle>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                             <div className="flex items-center gap-4">
+                                <div className="flex items-center gap-2 font-bold text-lg">
+                                    <Percent className="h-5 w-5 text-primary" />
+                                    Taux de correspondance :
+                                </div>
+                                <span className="text-2xl font-bold text-primary">{analysisResult.score.toFixed(0)}%</span>
+                            </div>
+                            <div>
+                                <h4 className="font-semibold mb-2">Informations manquantes sur le CV (par rapport à la fiche RNCP) :</h4>
+                                {analysisResult.missing.length > 0 ? (
+                                    <ul className="list-disc pl-5 space-y-1 text-sm text-muted-foreground">
+                                        {analysisResult.missing.map((item, index) => <li key={index}>{item}</li>)}
+                                    </ul>
+                                ) : (
+                                    <p className="text-sm text-green-600 font-medium">Aucune information manquante détectée. Excellente correspondance !</p>
+                                )}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
             </CardContent>
         </Card>
     );
@@ -1928,3 +2047,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
