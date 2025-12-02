@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -838,7 +839,157 @@ function UnderConstruction({ title }: { title: string }) {
     );
 }
 
-function JobOfferManager() { return <UnderConstruction title="OFFRE D'EMPLOI" />; }
+function JobOfferManager() { 
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingOffer, setEditingOffer] = useState<any>(null);
+  
+  const form = useForm(); // Initialize form
+
+  const offersQuery = useMemoFirebase(() => {
+      if (!user) return null;
+      return query(collection(firestore, `users/${user.uid}/job_offers`));
+  }, [user, firestore]);
+  const { data: offers, isLoading } = useCollection(offersQuery);
+
+  const rncpFichesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, `users/${user.uid}/rncp_fiches`));
+  }, [user, firestore]);
+  const { data: rncpFiches } = useCollection(rncpFichesQuery);
+
+  const romeFichesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, `users/${user.uid}/rome_fiches`));
+  }, [user, firestore]);
+  const { data: romeFiches } = useCollection(romeFichesQuery);
+
+  const handleNew = () => {
+    setEditingOffer(null);
+    form.reset();
+    setIsSheetOpen(true);
+  };
+  
+  const handleEdit = (offer: any) => {
+      setEditingOffer(offer);
+      form.reset(offer);
+      setIsSheetOpen(true);
+  };
+
+  const onSubmit = async (data: any) => {
+    if (!user) return;
+    const offerData = { counselorId: user.uid, ...data };
+    if (editingOffer) {
+        await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
+        toast({ title: "Offre d'emploi mise à jour" });
+    } else {
+        await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/job_offers`), offerData);
+        toast({ title: "Offre d'emploi créée" });
+    }
+    setIsSheetOpen(false);
+  };
+
+  const handleDelete = (id: string) => {
+    if (!user) return;
+    deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, id));
+    toast({ title: "Offre supprimée" });
+  };
+  
+  return (
+    <Card>
+      <CardHeader>
+          <div className="flex justify-between items-center">
+              <CardTitle>Offres d'emploi</CardTitle>
+              <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Offre</Button>
+          </div>
+      </CardHeader>
+      <CardContent>
+          <Table>
+              <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Contrat</TableHead><TableHead>Lieu</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {isLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8"/></TableCell></TableRow> 
+                : offers && offers.length > 0 ? offers.map((offer: any) => (
+                  <TableRow key={offer.id}>
+                    <TableCell>{offer.title?.join(', ')}</TableCell>
+                    <TableCell>{offer.contractType?.join(', ')}</TableCell>
+                    <TableCell>{offer.location?.join(', ')}</TableCell>
+                    <TableCell className="text-right">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4"/></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDelete(offer.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                    </TableCell>
+                  </TableRow>
+                )) : <TableRow><TableCell colSpan={4} className="text-center h-24">Aucune offre créée</TableCell></TableRow>}
+              </TableBody>
+          </Table>
+
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetContent className="sm:max-w-3xl w-full">
+              <SheetHeader><SheetTitle>{editingOffer ? "Modifier" : "Nouvelle"} offre d'emploi</SheetTitle></SheetHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                    <ScrollArea className="h-[calc(100vh-8rem)]">
+                        <div className="p-4 space-y-6">
+                            <section>
+                                <h3 className="font-semibold text-lg border-b pb-2 mb-4">Infos Générales</h3>
+                                <div className="space-y-4">
+                                <FormField control={form.control} name="reference" render={({ field }) => <FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>} />
+                                <FormField control={form.control} name="title" render={({ field }) => <FormItem><FormLabel>Métier - Titre de l'annonce</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un titre..." /></FormControl></FormItem>} />
+                                <FormField control={form.control} name="description" render={({ field }) => <FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>} />
+                                <FormField control={form.control} name="contractType" render={({ field }) => <FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un type..." /></FormControl></FormItem>} />
+                                <FormField control={form.control} name="workingHours" render={({ field }) => <FormItem><FormLabel>Temps de travail</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein..." /></FormControl></FormItem>} />
+                                <FormField control={form.control} name="location" render={({ field }) => <FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="Paris..." /></FormControl></FormItem>} />
+                                <FormField control={form.control} name="salary" render={({ field }) => <FormItem><FormLabel>Salaire</FormLabel><FormControl><TagInput {...field} placeholder="40-50k..." /></FormControl></FormItem>} />
+                                </div>
+                            </section>
+                            <section>
+                                <h3 className="font-semibold text-lg border-b pb-2 mb-4">Infos Match</h3>
+                                <div className="space-y-4">
+                                  <FicheSelector 
+                                    fiches={rncpFiches || []} 
+                                    title="RNCP"
+                                    onSelect={(fiche) => {
+                                      form.setValue('infoMatching.rncpCodes', fiche.rncpCodes, { shouldDirty: true });
+                                      form.setValue('infoMatching.rncpLevels', fiche.rncpLevel, { shouldDirty: true });
+                                      form.setValue('infoMatching.rncpTitles', fiche.rncpTitle, { shouldDirty: true });
+                                      form.setValue('infoMatching.rncpSkills', fiche.competences, { shouldDirty: true });
+                                      form.setValue('infoMatching.rncpActivities', fiche.activites, { shouldDirty: true });
+                                    }}
+                                  />
+                                   <FormField control={form.control} name="infoMatching.rncpCodes" render={({ field }) => <FormItem><FormLabel>Codes RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                   <FormField control={form.control} name="infoMatching.rncpLevels" render={({ field }) => <FormItem><FormLabel>Niveaux</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                   <FormField control={form.control} name="infoMatching.rncpTitles" render={({ field }) => <FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                   <FormField control={form.control} name="infoMatching.rncpSkills" render={({ field }) => <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                   <FormField control={form.control} name="infoMatching.rncpActivities" render={({ field }) => <FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                  
+                                  <FicheSelector 
+                                    fiches={romeFiches || []} 
+                                    title="ROME"
+                                    onSelect={(fiche) => {
+                                      form.setValue('infoMatching.romeCodes', fiche.romeCodes, { shouldDirty: true });
+                                      form.setValue('infoMatching.romeTitles', fiche.romeTitles, { shouldDirty: true });
+                                      form.setValue('infoMatching.romeSkills', fiche.competences, { shouldDirty: true });
+                                      form.setValue('infoMatching.romeActivities', fiche.activites, { shouldDirty: true });
+                                    }}
+                                  />
+                                   <FormField control={form.control} name="infoMatching.romeCodes" render={({ field }) => <FormItem><FormLabel>Codes ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                   <FormField control={form.control} name="infoMatching.romeTitles" render={({ field }) => <FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                   <FormField control={form.control} name="infoMatching.romeSkills" render={({ field }) => <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                   <FormField control={form.control} name="infoMatching.romeActivities" render={({ field }) => <FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..." /></FormControl></FormItem>} />
+                                </div>
+                            </section>
+                        </div>
+                    </ScrollArea>
+                    <SheetFooter className="border-t pt-4"><Button type="submit">Sauvegarder</Button></SheetFooter>
+                </form>
+              </Form>
+            </SheetContent>
+          </Sheet>
+      </CardContent>
+    </Card>
+  );
+}
 
 const generateRncpPdf = (fiche: any) => {
     const doc = new jsPDF();
@@ -1220,22 +1371,26 @@ function RomeManager() {
                                         <FormField control={form.control} name="associatedJobs" render={({ field }) => (<FormItem><FormLabel>Métier(s) associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl></FormItem>)} />
                                     </section>
                                     <section className="space-y-4 pt-4 border-t"><h3 className="font-semibold">Condition d'accès</h3>
-                                       <FormField control={form.control} name="associatedRncp" render={({ field }) => (
-                                          <FormItem>
-                                              <FormLabel>RNCP Associé</FormLabel>
-                                              <RncpSelector
-                                                  fiches={rncpFiches || []}
-                                                  onSelect={(selectedFiche) => {
-                                                      const currentCodes = new Set(field.value || []);
-                                                      (selectedFiche.rncpCodes || []).forEach((code: string) => currentCodes.add(code));
-                                                      field.onChange(Array.from(currentCodes));
-                                                  }}
-                                              />
-                                              <FormControl>
-                                                  <TagInput {...field} placeholder="Ajouter un code RNCP..." />
-                                              </FormControl>
-                                          </FormItem>
-                                       )} />
+                                        <FormField
+                                            control={form.control}
+                                            name="associatedRncp"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>RNCP Associé</FormLabel>
+                                                    <RncpSelector
+                                                        fiches={rncpFiches || []}
+                                                        onSelect={(fiche) => {
+                                                            const currentRncp = new Set(field.value || []);
+                                                            (fiche.rncpCodes || []).forEach((code: string) => currentRncp.add(code));
+                                                            field.onChange(Array.from(currentRncp));
+                                                        }}
+                                                    />
+                                                    <FormControl>
+                                                        <TagInput {...field} placeholder="Ajouter un code RNCP..." />
+                                                    </FormControl>
+                                                </FormItem>
+                                            )}
+                                        />
                                        <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être (Softskills)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl></FormItem>)} />
                                     </section>
                                     <section className="space-y-4 pt-4 border-t"><h3 className="font-semibold">Compétences et Activités</h3>
@@ -1255,6 +1410,32 @@ function RomeManager() {
             </CardContent>
         </Card>
     );
+}
+
+function FicheSelector({ fiches, title, onSelect }: { fiches: any[], title: string, onSelect: (fiche: any) => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button type="button" variant="outline" className="w-full justify-start"><PlusCircle className="mr-2 h-4 w-4" /> Ajouter depuis une fiche {title}...</Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[400px] p-0">
+        <Command>
+          <CommandInput placeholder={`Rechercher une fiche ${title}...`} />
+          <CommandList>
+            <CommandEmpty>Aucune fiche trouvée.</CommandEmpty>
+            <CommandGroup>
+              {fiches.map((fiche) => (
+                <CommandItem key={fiche.id} onSelect={() => { onSelect(fiche); setOpen(false); }}>
+                  {fiche.name}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 function RncpSelector({ fiches, onSelect }: { fiches: any[], onSelect: (fiche: any) => void }) {
