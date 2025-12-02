@@ -1,5 +1,4 @@
 
-
 {
   "entities": {
     "CvProfile": {
@@ -11,38 +10,28 @@
         "counselorId": { "type": "string" },
         "clientId": { "type": "string" },
         "clientName": { "type": "string" },
-        "mobility": { "type": "array", "items": { "type": "string" } },
-        "drivingLicence": { "type": "array", "items": { "type": "string" } },
-        "lastJob": { "type": "array", "items": { "type": "string" } },
-        "searchedJob": { "type": "array", "items": { "type": "string" } },
-        "contractType": { "type": "array", "items": { "type": "string" } },
-        "duration": { "type": "array", "items": { "type": "string" } },
-        "workEnvironment": { "type": "array", "items": { "type": "string" } },
-        "highestFormation": { "type": "array", "items": { "type": "string" } },
-        "highestFormationSkills": { "type": "array", "items": { "type": "string" } },
-        "currentJobFormation": { "type": "array", "items": { "type": "string" } },
-        "currentJobFormationSkills": { "type": "array", "items": { "type": "string" } },
-        "projectFormation": { "type": "array", "items": { "type": "string" } },
-        "projectFormationSkills": { "type": "array", "items": { "type": "string" } },
-        "fundingOptions": { "type": "array", "items": { "type": "string" } },
-        "experiences": { 
-            "type": "array", 
-            "items": {
-                "type": "object",
-                "properties": {
-                    "id": { "type": "string" },
-                    "startDate": { "type": "string" },
-                    "endDate": { "type": "string" },
-                    "jobTitle": { "type": "array", "items": { "type": "string" } },
-                    "characteristics": { "type": "array", "items": { "type": "string" } },
-                    "activities": { "type": "array", "items": { "type": "string" } }
-                }
+        "currentJobs": { "type": "array", "items": { "type": "string" }, "description": "Métiers actuels du candidat." },
+        "searchedJobs": { "type": "array", "items": { "type": "string" }, "description": "Métiers recherchés ou projet professionnel." },
+        "contractTypes": { "type": "array", "items": { "type": "string" }, "description": "Types de contrat souhaités." },
+        "workDurations": { "type": "array", "items": { "type": "string" }, "description": "Durée de travail souhaitée (temps plein, partiel)." },
+        "workEnvironments": { "type": "array", "items": { "type": "string" }, "description": "Environnement de travail souhaité (bureau, télétravail)." },
+        "desiredSalary": { "type": "array", "items": { "type": "string" }, "description": "Fourchette de salaire souhaitée." },
+        "mobility": { "type": "array", "items": { "type": "string" }, "description": "Mobilité et lieux de travail souhaités." },
+        "drivingLicences": { "type": "array", "items": { "type": "string" }, "description": "Permis de conduire possédés." },
+        "formations": {
+          "type": "array",
+          "description": "Liste des formations suivies par le candidat.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "rncpCode": { "type": "array", "items": { "type": "string" } },
+              "title": { "type": "array", "items": { "type": "string" } },
+              "level": { "type": "array", "items": { "type": "string" } },
+              "skills": { "type": "array", "items": { "type": "string" } }
             }
-        },
-        "otherInterests": { "type": "array", "items": { "type": "string" } },
-        "softskills": { "type": "array", "items": { "type": "string" } },
-        "status": { "type": "string", "enum": ["disponible", "en_mission", "en_emploi"] },
-        "cvUrl": { "type": "string", "format": "uri", "description": "URL to the candidate's CV in PDF format." }
+          }
+        }
       }
     },
     "User": {
@@ -935,39 +924,6 @@
       },
       "required": ["id", "category", "question", "content", "scope"]
     },
-    "JobOffer": {
-      "title": "Job Offer",
-      "type": "object",
-      "description": "Represents a single job offer.",
-      "properties": {
-        "id": { "type": "string" },
-        "counselorId": { "type": "string" },
-        "title": { "type": "string" },
-        "reference": { "type": "string" },
-        "description": { "type": "string" },
-        "contractType": { "type": "string" },
-        "workingHours": { "type": "string" },
-        "location": { "type": "string" },
-        "salary": { "type": "string" },
-        "infoMatching": {
-          "type": "object",
-          "description": "Internal data for matching candidates.",
-          "properties": {
-            "yearsExperience": { "type": "string" },
-            "desiredTraining": { "type": "string" },
-            "romeCode": { "type": "array", "items": { "type": "string" } },
-            "otherNames": { "type": "array", "items": { "type": "string" } },
-            "geographicSector": { "type": "array", "items": { "type": "string" } },
-            "workingConditions": { "type": "array", "items": { "type": "string" } },
-            "environment": { "type": "array", "items": { "type": "string" } },
-            "desiredSkills": { "type": "array", "items": { "type": "string" } },
-            "softSkills": { "type": "array", "items": { "type": "string" } },
-            "internalNotes": { "type": "string" }
-          }
-        }
-      },
-      "required": ["id", "counselorId", "title"]
-    },
     "JobApplication": {
         "title": "Job Application",
         "type": "object",
@@ -1464,44 +1420,6 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["counselorId", "clientId", "clientName", "createdAt", "updatedAt"]
-    },
-    "FicheRNCP": {
-        "title": "Fiche RNCP",
-        "type": "object",
-        "description": "Represents a sheet for the Répertoire National des Certifications Professionnelles.",
-        "properties": {
-            "id": { "type": "string" },
-            "counselorId": { "type": "string" },
-            "formationName": { "type": "string" },
-            "formationLevel": { "type": "array", "items": { "type": "string" } },
-            "rncpCode": { "type": "array", "items": { "type": "string" } },
-            "formationTitle": { "type": "array", "items": { "type": "string" } },
-            "skills": { "type": "array", "items": { "type": "string" } },
-            "activities": { "type": "array", "items": { "type": "string" } },
-            "codeRomeCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible ROME codes." },
-            "metierCompatible": { "type": "array", "items": { "type": "string" }, "description": "Compatible job titles." },
-            "trainingIds": { "type": "array", "items": { "type": "string" }, "description": "Associated e-learning trainings." }
-        },
-        "required": ["counselorId", "formationName"]
-    },
-    "FicheROME": {
-      "title": "Fiche ROME",
-      "type": "object",
-      "description": "Represents a sheet for the Répertoire Opérationnel des Métiers et des Emplois.",
-      "properties": {
-        "id": { "type": "string" },
-        "counselorId": { "type": "string" },
-        "name": { "type": "string" },
-        "associatedRomeCode": { "type": "array", "items": { "type": "string" } },
-        "associatedJobs": { "type": "array", "items": { "type": "string" } },
-        "mission": { "type": "array", "items": { "type": "string" } },
-        "skills": { "type": "array", "items": { "type": "string" } },
-        "accessConditions": { "type": "array", "items": { "type": "string" }, "description": "IDs of associated FicheRNCP." },
-        "knowledge": { "type": "array", "items": { "type": "string" } },
-        "knowHowAndActivities": { "type": "array", "items": { "type": "string" } },
-        "softSkills": { "type": "array", "items": { "type": "string" } }
-      },
-      "required": ["counselorId", "name"]
     }
   },
   "auth": {
@@ -1554,22 +1472,6 @@
             "description": "Stores CV profiles created by a counselor for their clients."
         }
       },
-       {
-        "path": "/users/{userId}/rncp_sheets/{sheetId}",
-        "definition": {
-            "entityName": "FicheRNCP",
-            "schema": { "$ref": "#/entities/FicheRNCP" },
-            "description": "Stores RNCP sheets created by a counselor."
-        }
-      },
-      {
-        "path": "/users/{userId}/rome_sheets/{sheetId}",
-        "definition": {
-            "entityName": "FicheROME",
-            "schema": { "$ref": "#/entities/FicheROME" },
-            "description": "Stores ROME sheets created by a counselor."
-        }
-      },
       {
         "path": "/minisites/{counselorId}",
         "definition": {
@@ -1586,14 +1488,6 @@
           "entityName": "ContactMessage",
           "schema": { "$ref": "#/entities/ContactMessage" },
           "description": "Stores messages submitted from public contact forms."
-        }
-      },
-      {
-        "path": "/job_offers/{offerId}",
-        "definition": {
-          "entityName": "JobOffer",
-          "schema": { "$ref": "#/entities/JobOffer" },
-          "description": "Stores job offers created by counselors."
         }
       },
       {
@@ -1848,4 +1742,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-

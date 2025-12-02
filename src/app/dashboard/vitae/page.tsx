@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo } from 'react';
@@ -14,7 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -120,7 +121,7 @@ const TagInput = ({ value, onChange, placeholder }: { value: string[]; onChange:
     };
     const removeTag = (tagToRemove: string) => onChange(value.filter(tag => tag !== tagToRemove));
     return (
-        <div className="border p-2 rounded-md">
+        <div className="border p-2 rounded-md bg-background">
             <div className="flex flex-wrap gap-1 mb-2">
                 {value.map(tag => (
                     <Badge key={tag} variant="secondary">
@@ -145,6 +146,14 @@ const cvProfileSchema = z.object({
   workEnvironments: z.array(z.string()).optional(),
   desiredSalary: z.array(z.string()).optional(),
   mobility: z.array(z.string()).optional(),
+  drivingLicences: z.array(z.string()).optional(),
+  formations: z.array(z.object({
+      id: z.string(),
+      rncpCode: z.array(z.string()).optional(),
+      title: z.array(z.string()).optional(),
+      level: z.array(z.string()).optional(),
+      skills: z.array(z.string()).optional(),
+  })).optional(),
 });
 
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
@@ -173,7 +182,14 @@ function Cvtheque() {
             workEnvironments: [],
             desiredSalary: [],
             mobility: [],
+            drivingLicences: [],
+            formations: [],
         }
+    });
+
+    const { fields: formationFields, append: appendFormation, remove: removeFormation } = useFieldArray({
+        control: form.control,
+        name: "formations",
     });
 
     const onSubmit = (data: CvProfileFormData) => {
@@ -213,6 +229,34 @@ function Cvtheque() {
                                              <FormField control={form.control} name="workEnvironments" render={({ field }) => (<FormItem><FormLabel>Environnement souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Bureau, Télétravail..." /></FormControl><FormMessage /></FormItem>)}/>
                                              <FormField control={form.control} name="desiredSalary" render={({ field }) => (<FormItem><FormLabel>Salaire souhaité</FormLabel><FormControl><TagInput {...field} placeholder="35k, 40-45k..." /></FormControl><FormMessage /></FormItem>)}/>
                                              <FormField control={form.control} name="mobility" render={({ field }) => (<FormItem><FormLabel>Mobilité / Lieux de travail souhaité</FormLabel><FormControl><TagInput {...field} placeholder="Paris, Lyon..." /></FormControl><FormMessage /></FormItem>)}/>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">Formation et Qualification</h3>
+                                        <div className="space-y-4">
+                                            <FormField control={form.control} name="drivingLicences" render={({ field }) => (<FormItem><FormLabel>Permis</FormLabel><FormControl><TagInput {...field} placeholder="Permis B, C..." /></FormControl><FormMessage /></FormItem>)}/>
+                                            <div>
+                                                <Label>Formations</Label>
+                                                <div className="space-y-4 mt-2">
+                                                    {formationFields.map((field, index) => (
+                                                        <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-muted/50">
+                                                            <div className="flex justify-between items-center">
+                                                                <h4 className="font-medium">Formation {index + 1}</h4>
+                                                                <Button type="button" variant="ghost" size="icon" onClick={() => removeFormation(index)}>
+                                                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                                                </Button>
+                                                            </div>
+                                                            <FormField control={form.control} name={`formations.${index}.rncpCode`} render={({ field }) => (<FormItem><FormLabel>Code RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                            <FormField control={form.control} name={`formations.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Intitulé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                            <FormField control={form.control} name={`formations.${index}.level`} render={({ field }) => (<FormItem><FormLabel>Niveau</FormLabel><FormControl><TagInput {...field} placeholder="Bac+3, Niveau 6..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                            <FormField control={form.control} name={`formations.${index}.skills`} render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem>)}/>
+                                                        </div>
+                                                    ))}
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => appendFormation({ id: `formation-${Date.now()}`, rncpCode: [], title: [], level: [], skills: [] })}>
+                                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une formation
+                                                    </Button>
+                                                </div>
+                                            </div>
                                         </div>
                                     </section>
                                 </div>
