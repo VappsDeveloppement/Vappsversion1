@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -26,7 +27,7 @@ import { differenceInMonths, differenceInYears } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSubTrigger, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoreHorizontal } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -867,10 +868,10 @@ function Cvtheque() {
                                         <Card className="p-4 bg-secondary">
                                             <div className="flex justify-between items-start">
                                                 <div>
-                                                    <p className="font-semibold">{selectedClient.firstName} {selectedClient.lastName}</p>
+                                                    <p className="font-semibold">{selectedClient.firstName} ${selectedClient.lastName}</p>
                                                     {selectedClient.email && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Mail className="h-4 w-4" /><span>{selectedClient.email}</span></div>}
                                                     {selectedClient.phone && <div className="text-sm text-muted-foreground flex items-center gap-2 mt-1"><Phone className="h-4 w-4" /><span>{selectedClient.phone}</span></div>}
-                                                    {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, {selectedClient.zipCode} {selectedClient.city}</span></div>}
+                                                    {selectedClient.address && <div className="text-sm text-muted-foreground mt-1"><span>{selectedClient.address}, ${selectedClient.zipCode} ${selectedClient.city}</span></div>}
                                                 </div>
                                                 {!editingProfile && <Button variant="ghost" size="sm" onClick={() => setSelectedClient(null)}>Changer</Button>}
                                             </div>
@@ -1077,7 +1078,7 @@ function Cvtheque() {
             <AlertDialog open={!!profileToDelete} onOpenChange={(open) => !open && setProfileToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
-                        <AlertDialogTitle>Supprimer le profil de {profileToDelete?.clientName} ?</AlertDialogTitle>
+                        <AlertDialogTitle>Supprimer le profil de ${profileToDelete?.clientName} ?</AlertDialogTitle>
                         <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>
@@ -1501,7 +1502,7 @@ function RomeManager() {
                                         <FormField
                                             control={form.control}
                                             name="accessConditions"
-                                            render={({ field }) => (
+                                            render={() => (
                                                 <FormItem>
                                                     <FormLabel>Condition d'accès (Fiches RNCP)</FormLabel>
                                                     <div className="p-2 border rounded-md">
@@ -1522,7 +1523,7 @@ function RomeManager() {
                                                         <Popover>
                                                             <PopoverTrigger asChild>
                                                                 <Button variant="outline" size="sm" className="w-full justify-start">
-                                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une fiche
+                                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une fiche RNCP
                                                                 </Button>
                                                             </PopoverTrigger>
                                                             <PopoverContent className="w-[300px] p-0" align="start">
