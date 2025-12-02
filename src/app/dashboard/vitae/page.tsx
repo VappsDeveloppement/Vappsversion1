@@ -5,7 +5,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -222,24 +222,25 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
     let y = 20;
 
     // --- HEADER ---
-    doc.setFontSize(26);
+    doc.setFontSize(22);
     doc.setFont('helvetica', 'bold');
     doc.text(profile.clientName, doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
-    y += 10;
+    y += 8;
 
     if (client) {
         doc.setFontSize(10);
         doc.setFont('helvetica', 'normal');
-        const contactInfo = [client.email, client.phone].filter(Boolean).join('  |  ');
+        const contactInfo = [client.email, client.phone].filter(Boolean).join('  •  ');
         doc.text(contactInfo, doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
         y += 10;
     }
 
     // --- PROJET PROFESSIONNEL ---
-    doc.setFontSize(16);
+    doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text("Projet Professionnel", 15, y);
-    y += 8;
+    doc.text("PROJET PROFESSIONNEL", 15, y);
+    doc.line(15, y + 2, 195, y + 2);
+    y += 10;
 
     const addSectionData = (label: string, value?: string[]) => {
         if (value && value.length > 0) {
@@ -253,21 +254,22 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
     };
 
     addSectionData("Métier(s) actuel(s)", profile.currentJobs);
-    addSectionData("Projet(s)", profile.searchedJobs);
-    addSectionData("Contrat(s)", profile.contractTypes);
-    addSectionData("Durée travail", profile.workDurations);
+    addSectionData("Projet(s) recherché(s)", profile.searchedJobs);
+    addSectionData("Type(s) de contrat", profile.contractTypes);
+    addSectionData("Durée de travail", profile.workDurations);
     addSectionData("Environnement", profile.workEnvironments);
     addSectionData("Salaire souhaité", profile.desiredSalary);
     addSectionData("Mobilité", profile.mobility);
     y += 5;
-    
+
     // --- PERMIS ---
     if (profile.drivingLicences && profile.drivingLicences.length > 0) {
         if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(16);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text("Permis", 15, y);
-        y += 8;
+        doc.text("PERMIS", 15, y);
+        doc.line(15, y + 2, 195, y + 2);
+        y += 10;
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
         doc.text(profile.drivingLicences.join(', '), 20, y);
@@ -277,10 +279,11 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
     // --- FORMATIONS ---
     if (profile.formations && profile.formations.length > 0) {
         if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(16);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text("Formations", 15, y);
-        y += 8;
+        doc.text("FORMATIONS", 15, y);
+        doc.line(15, y + 2, 195, y + 2);
+        y += 10;
 
         profile.formations.forEach(formation => {
             if (y > 260) { doc.addPage(); y = 20; }
@@ -304,14 +307,14 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
         y += 5;
     }
 
-
     // --- EXPÉRIENCES ---
     if (profile.experiences && profile.experiences.length > 0) {
         if (y > 220) { doc.addPage(); y = 20; }
-        doc.setFontSize(16);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text("Parcours Professionnel", 15, y);
-        y += 8;
+        doc.text("PARCOURS PROFESSIONNEL", 15, y);
+        doc.line(15, y + 2, 195, y + 2);
+        y += 10;
 
         profile.experiences.forEach(exp => {
             if (y > 250) { doc.addPage(); y = 20; }
@@ -354,10 +357,11 @@ const generateCvProfilePdf = async (profile: CvProfile, client?: Client | null) 
     // --- SOFTSKILLS ---
     if (profile.softSkills && profile.softSkills.length > 0) {
         if (y > 250) { doc.addPage(); y = 20; }
-        doc.setFontSize(16);
+        doc.setFontSize(14);
         doc.setFont('helvetica', 'bold');
-        doc.text("Savoir-être", 15, y);
-        y += 8;
+        doc.text("SAVOIR-ÊTRE", 15, y);
+        doc.line(15, y + 2, 195, y + 2);
+        y += 10;
         doc.setFontSize(11);
         doc.setFont('helvetica', 'normal');
         const softSkillsText = profile.softSkills.join(' • ');
@@ -728,7 +732,7 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: Cl
     useEffect(() => {
         if(defaultValue?.name && !selectedClientName) {
             setSelectedClientName(defaultValue.name);
-        } else if (!defaultValue?.name) {
+        } else if (!defaultValue) {
              setSelectedClientName(null);
         }
     }, [defaultValue, selectedClientName]);
@@ -795,7 +799,126 @@ function UnderConstruction({ title }: { title: string }) {
 }
 
 
-function RncpManager() { return <UnderConstruction title="FICHE RNCP" />; }
+function RncpManager() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [editingFiche, setEditingFiche] = useState<any>(null);
+
+  const rncpFichesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(collection(firestore, `users/${user.uid}/rncp_fiches`));
+  }, [user, firestore]);
+  const { data: fiches, isLoading } = useCollection(rncpFichesQuery);
+
+  const ficheFormSchema = z.object({
+    name: z.string().min(1, 'Le nom est requis.'),
+    rncpCodes: z.array(z.string()).optional(),
+    rncpLevel: z.array(z.string()).optional(),
+    rncpTitle: z.array(z.string()).optional(),
+    romeCodes: z.array(z.string()).optional(),
+    romeMetiers: z.array(z.string()).optional(),
+  });
+  
+  type FicheFormData = z.infer<typeof ficheFormSchema>;
+  
+  const form = useForm<FicheFormData>({
+    resolver: zodResolver(ficheFormSchema),
+    defaultValues: {
+      name: '',
+      rncpCodes: [],
+      rncpLevel: [],
+      rncpTitle: [],
+      romeCodes: [],
+      romeMetiers: [],
+    },
+  });
+
+  const handleNew = () => {
+    setEditingFiche(null);
+    form.reset();
+    setIsSheetOpen(true);
+  };
+  
+  const handleEdit = (fiche: any) => {
+    setEditingFiche(fiche);
+    form.reset(fiche);
+    setIsSheetOpen(true);
+  }
+
+  const onSubmit = async (data: FicheFormData) => {
+    if (!user) return;
+    const ficheData = { counselorId: user.uid, ...data };
+    if (editingFiche) {
+      await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/rncp_fiches`, editingFiche.id), ficheData, { merge: true });
+      toast({ title: 'Fiche RNCP mise à jour' });
+    } else {
+      await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/rncp_fiches`), ficheData);
+      toast({ title: 'Fiche RNCP créée' });
+    }
+    setIsSheetOpen(false);
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-center">
+            <CardTitle>Fiches RNCP/ROME</CardTitle>
+            <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle Fiche</Button>
+        </div>
+      </CardHeader>
+      <CardContent>
+          <Table>
+            <TableHeader><TableRow><TableHead>Nom de la fiche</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+            <TableBody>
+              {isLoading ? <TableRow><TableCell colSpan={2}><Skeleton className="h-8" /></TableCell></TableRow>
+              : fiches && fiches.length > 0 ? fiches.map((fiche: any) => (
+                <TableRow key={fiche.id}>
+                  <TableCell>{fiche.name}</TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
+                  </TableCell>
+                </TableRow>
+              )) : <TableRow><TableCell colSpan={2} className="text-center h-24">Aucune fiche créée.</TableCell></TableRow>}
+            </TableBody>
+          </Table>
+          <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+            <SheetContent className="sm:max-w-2xl w-full">
+              <SheetHeader>
+                <SheetTitle>{editingFiche ? 'Modifier la' : 'Nouvelle'} fiche RNCP/ROME</SheetTitle>
+              </SheetHeader>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)}>
+                  <ScrollArea className="h-[calc(100vh-8rem)]">
+                    <div className="py-4 pr-4 space-y-6">
+                      <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la fiche</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <section className="space-y-4 pt-4 border-t">
+                        <h3 className="font-semibold">Codification RNCP</h3>
+                        <FormField control={form.control} name="rncpCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) RNCP associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="rncpTitle" render={({ field }) => (<FormItem><FormLabel>Intitulé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="rncpLevel" render={({ field }) => (<FormItem><FormLabel>Niveau(x)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..." /></FormControl></FormItem>)} />
+                      </section>
+                      <section className="space-y-4 pt-4 border-t">
+                        <h3 className="font-semibold">Codification ROME</h3>
+                        <FormField control={form.control} name="romeCodes" render={({ field }) => (<FormItem><FormLabel>Code(s) ROME associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl></FormItem>)} />
+                        <FormField control={form.control} name="romeMetiers" render={({ field }) => (<FormItem><FormLabel>Métier(s) associé(s)</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl></FormItem>)} />
+                      </section>
+                    </div>
+                  </ScrollArea>
+                  <SheetFooter className="pt-4 border-t mt-auto">
+                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                    <Button type="submit">Sauvegarder</Button>
+                  </SheetFooter>
+                </form>
+              </Form>
+            </SheetContent>
+          </Sheet>
+      </CardContent>
+    </Card>
+  );
+}
+
 function RomeManager() { return <UnderConstruction title="FICHE ROME" />; }
 function JobOfferManager() { return <UnderConstruction title="OFFRE D'EMPLOI" />; }
 function TestManager() { return <UnderConstruction title="TEST" />; }
@@ -816,7 +939,7 @@ export default function VitaePage() {
                         <FileText className="mr-2 h-4 w-4" /> CVTHEQUE
                     </TabsTrigger>
                     <TabsTrigger value="rncp">
-                        <Search className="mr-2 h-4 w-4" /> FICHE RNCP
+                        <BookCopy className="mr-2 h-4 w-4" /> FICHE RNCP
                     </TabsTrigger>
                     <TabsTrigger value="rome">
                         <Search className="mr-2 h-4 w-4" /> FICHE ROME
@@ -847,3 +970,4 @@ export default function VitaePage() {
         </div>
     );
 }
+
