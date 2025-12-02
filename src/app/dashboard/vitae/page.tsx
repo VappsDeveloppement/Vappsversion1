@@ -1,13 +1,14 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, BarChart, FileCheck, BrainCircuit, Goal, Clock, MapPin, Euro, Upload } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc } from 'firebase/firestore';
-import { useFirestore } from '@/firebase/provider';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { useFirestore, useStorage } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
@@ -23,7 +24,7 @@ import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSub, DropdownMenuSubContent, DropdownMenuPortal, DropdownMenuSubTrigger } from '@/components/ui/dropdown-menu';
+import { Loader2 } from 'lucide-react';
 
 
 type JobApplication = {
@@ -164,6 +165,8 @@ const cvProfileSchema = z.object({
       skills: z.array(z.string()).optional(),
       activities: z.array(z.string()).optional(),
   })).optional(),
+  softSkills: z.array(z.string()).optional(),
+  cvUrl: z.string().optional().nullable(),
 });
 
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
@@ -178,16 +181,19 @@ type CvProfile = CvProfileFormData & {
 function Cvtheque() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const storage = useStorage();
     const { toast } = useToast();
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
+    const [cvFile, setCvFile] = useState<File | null>(null);
 
     const form = useForm<CvProfileFormData>({
         resolver: zodResolver(cvProfileSchema),
         defaultValues: {
             currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [],
             workEnvironments: [], desiredSalary: [], mobility: [], drivingLicences: [],
-            formations: [], experiences: []
+            formations: [], experiences: [], softSkills: [], cvUrl: null,
         }
     });
 
@@ -215,10 +221,44 @@ function Cvtheque() {
         return result.trim() || 'Moins d\'un mois';
     };
 
+    const handleCvFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            setCvFile(file);
+        }
+    };
+    
+    const onSubmit = async (data: CvProfileFormData) => {
+        if (!user) return;
+        setIsUploading(true);
 
-    const onSubmit = (data: CvProfileFormData) => {
-        console.log(data);
+        let fileUrl = editingProfile?.cvUrl || null;
+        
+        if (cvFile) {
+            try {
+                const filePath = `CV/${Date.now()}_${cvFile.name}`;
+                const fileRef = ref(storage, filePath);
+                await uploadBytes(fileRef, cvFile);
+                fileUrl = await getDownloadURL(fileRef);
+                toast({ title: "CV téléversé avec succès" });
+            } catch (error) {
+                console.error("Error uploading CV:", error);
+                toast({ title: "Erreur de téléversement", description: "Impossible d'envoyer le fichier CV.", variant: "destructive" });
+                setIsUploading(false);
+                return;
+            }
+        }
+        
+        const profileData = {
+            ...data,
+            cvUrl: fileUrl,
+        };
+
+        // Here you would typically also select a client/candidate
+        // For now, it's just a placeholder for the form logic.
+        console.log("Submitting:", profileData);
         toast({ title: "Profil sauvegardé (simulation)" });
+        setIsUploading(false);
         setIsSheetOpen(false);
     };
 
@@ -232,7 +272,7 @@ function Cvtheque() {
             </div>
              <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                 <SheetTrigger asChild>
-                    <Button onClick={() => { setEditingProfile(null); form.reset(); }}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un profil CV</Button>
+                    <Button onClick={() => { setEditingProfile(null); form.reset(); setCvFile(null); }}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un profil CV</Button>
                 </SheetTrigger>
                 <SheetContent className="sm:max-w-3xl w-full">
                      <SheetHeader>
@@ -302,8 +342,8 @@ function Cvtheque() {
                                                             <FormField control={form.control} name={`experiences.${index}.romeCode`} render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..." /></FormControl><FormMessage /></FormItem>)}/>
                                                             <FormField control={form.control} name={`experiences.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Développeur, etc." /></FormControl><FormMessage /></FormItem>)}/>
                                                             <div className="grid grid-cols-2 gap-4 items-end">
-                                                                <FormField control={form.control} name={`experiences.${index}.startDate`} render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
-                                                                <FormField control={form.control} name={`experiences.${index}.endDate`} render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                                                <FormField control={form.control} name={`experiences.${index}.startDate`} render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)}/>
+                                                                <FormField control={form.control} name={`experiences.${index}.endDate`} render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)}/>
                                                             </div>
                                                              {seniority && <div className="text-sm text-muted-foreground"><span className="font-semibold">Ancienneté :</span> {seniority}</div>}
                                                             <FormField control={form.control} name={`experiences.${index}.skills`} render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem>)}/>
@@ -317,11 +357,42 @@ function Cvtheque() {
                                             </div>
                                         </div>
                                     </section>
+                                     <section>
+                                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">Savoir-être (Softskills)</h3>
+                                        <div className="space-y-4">
+                                            <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Compétences comportementales</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un softskill..." /></FormControl><FormMessage /></FormItem>)}/>
+                                        </div>
+                                    </section>
+                                    <section>
+                                        <h3 className="text-lg font-semibold mb-4 border-b pb-2">Curriculum Vitae (PDF)</h3>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="cv-upload">Joindre un CV</Label>
+                                            <div className="flex items-center gap-2">
+                                                <div className="flex-grow border rounded-md h-10 px-3 py-2 text-sm bg-muted flex items-center gap-2">
+                                                    <FileText className="h-4 w-4 text-muted-foreground" />
+                                                    <span className="text-muted-foreground truncate">
+                                                        {cvFile?.name || (editingProfile?.cvUrl ? 'Fichier existant' : 'Aucun fichier')}
+                                                    </span>
+                                                </div>
+                                                <Input id="cv-upload" type="file" onChange={handleCvFileChange} className="hidden" accept=".pdf" />
+                                                <Button type="button" variant="outline" onClick={() => document.getElementById('cv-upload')?.click()}>
+                                                    <Upload className="mr-2 h-4 w-4" />
+                                                    Choisir
+                                                </Button>
+                                            </div>
+                                             {editingProfile?.cvUrl && !cvFile && (
+                                                <a href={editingProfile.cvUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary hover:underline">Voir le CV actuel</a>
+                                            )}
+                                        </div>
+                                    </section>
                                 </div>
                             </ScrollArea>
                             <SheetFooter className="pt-4 border-t mt-auto">
                                 <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                <Button type="submit">Sauvegarder</Button>
+                                <Button type="submit" disabled={isUploading}>
+                                    {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Sauvegarder
+                                </Button>
                             </SheetFooter>
                         </form>
                     </Form>
@@ -404,5 +475,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    

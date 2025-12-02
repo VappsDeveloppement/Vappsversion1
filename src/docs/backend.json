@@ -31,7 +31,25 @@
               "skills": { "type": "array", "items": { "type": "string" } }
             }
           }
-        }
+        },
+        "experiences": {
+          "type": "array",
+          "description": "Liste des expériences professionnelles du candidat.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "romeCode": { "type": "array", "items": { "type": "string" } },
+              "title": { "type": "array", "items": { "type": "string" } },
+              "startDate": { "type": "string", "format": "date" },
+              "endDate": { "type": "string", "format": "date" },
+              "skills": { "type": "array", "items": { "type": "string" } },
+              "activities": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "softSkills": { "type": "array", "items": { "type": "string" }, "description": "Compétences comportementales du candidat." },
+        "cvUrl": { "type": "string", "format": "uri", "description": "URL du fichier CV stocké." }
       }
     },
     "User": {
