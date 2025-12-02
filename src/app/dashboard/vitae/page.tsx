@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useMemo, useRef } from 'react';
@@ -28,7 +26,7 @@ import { differenceInMonths, differenceInYears } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuSubTrigger, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSub, DropdownMenuPortal, DropdownMenuSeparator, DropdownMenuSubContent } from '@/components/ui/dropdown-menu';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MoreHorizontal } from 'lucide-react';
 import jsPDF from 'jspdf';
@@ -1362,15 +1360,19 @@ function RomeManager() {
     const generateRomePdf = async (fiche: FicheROME) => {
         const doc = new jsPDF();
         let y = 20;
-
+    
         const checkArray = (arr: any): string[] => Array.isArray(arr) ? arr : [];
         const join = (arr: any) => checkArray(arr).join(', ');
-
+    
+        const rncpNames = fiche.accessConditions
+            ? fiche.accessConditions.map(id => fichesRncp?.find(f => f.id === id)?.formationName || id)
+            : [];
+    
         doc.setFontSize(18);
         doc.setFont('helvetica', 'bold');
         doc.text(fiche.name, 105, y, { align: 'center' });
         y += 12;
-
+    
         const addSection = (title: string, content: string | (string | null | undefined)[]) => {
             if ((Array.isArray(content) && content.length === 0) || !content) return;
             if (y > 260) { doc.addPage(); y = 20; }
@@ -1378,7 +1380,7 @@ function RomeManager() {
             doc.setFont('helvetica', 'bold');
             doc.text(title, 15, y);
             y += 8;
-
+    
             doc.setFontSize(10);
             doc.setFont('helvetica', 'normal');
             const contentText = Array.isArray(content) ? join(content) : content;
@@ -1386,16 +1388,16 @@ function RomeManager() {
             doc.text(lines, 15, y);
             y += (lines.length * 5) + 6;
         };
-
+    
         addSection("Code(s) ROME associé(s)", fiche.associatedRomeCode);
         addSection("Métier(s) associé(s)", fiche.associatedJobs);
         addSection("Mission", fiche.mission);
         addSection("Compétences", fiche.skills);
-        addSection("Conditions d'accès (Fiches RNCP)", fiche.accessConditions);
+        addSection("Conditions d'accès (Fiches RNCP)", rncpNames);
         addSection("Savoirs", fiche.knowledge);
         addSection("Savoir-faire et Activités", fiche.knowHowAndActivities);
         addSection("Savoir-être et Softskills", fiche.softSkills);
-
+    
         doc.save(`Fiche_ROME_${fiche.name.replace(/ /g, '_')}.pdf`);
     };
 
@@ -1417,6 +1419,17 @@ function RomeManager() {
         if (!searchTerm) return fiches;
         return fiches.filter(f => f.name.toLowerCase().includes(searchTerm.toLowerCase()));
     }, [fiches, searchTerm]);
+    
+    const { watch, setValue } = form;
+    const selectedRncpIds = watch('accessConditions') || [];
+
+    const handleRncpSelect = (rncpId: string) => {
+        const currentSelection = selectedRncpIds;
+        const newSelection = currentSelection.includes(rncpId)
+            ? currentSelection.filter(id => id !== rncpId)
+            : [...currentSelection, rncpId];
+        setValue('accessConditions', newSelection);
+    };
 
     return (
         <Card>
@@ -1484,66 +1497,59 @@ function RomeManager() {
                                          <FormField control={form.control} name="associatedJobs" render={({ field }) => ( <FormItem><FormLabel>Métiers associés</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..." /></FormControl><FormMessage /></FormItem> )}/>
                                          <FormField control={form.control} name="mission" render={({ field }) => ( <FormItem><FormLabel>Mission</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une mission..." /></FormControl><FormMessage /></FormItem> )}/>
                                          <FormField control={form.control} name="skills" render={({ field }) => ( <FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..." /></FormControl><FormMessage /></FormItem> )}/>
-                                          <FormField
+                                         
+                                        <FormField
                                             control={form.control}
                                             name="accessConditions"
                                             render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Condition d'accès (Fiches RNCP)</FormLabel>
-                                                <FormControl>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <Button
-                                                                variant="outline"
-                                                                role="combobox"
-                                                                className={cn(
-                                                                    "w-full justify-between",
-                                                                    !field.value || field.value.length === 0 && "text-muted-foreground"
-                                                                )}
-                                                                >
-                                                                {field.value && field.value.length > 0 ? 
-                                                                    `${field.value.length} fiche(s) sélectionnée(s)` : 
-                                                                    "Sélectionner des fiches RNCP"}
-                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                            </Button>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-[300px] p-0">
-                                                            <Command>
-                                                            <CommandInput placeholder="Rechercher..." />
-                                                            <CommandList>
-                                                                <CommandEmpty>Aucune fiche trouvée.</CommandEmpty>
-                                                                <CommandGroup>
-                                                                {fichesRncp?.map((fiche) => (
-                                                                    <CommandItem
-                                                                        key={fiche.id}
-                                                                        onSelect={() => {
-                                                                            const selected = field.value || [];
-                                                                            const newValue = selected.includes(fiche.id)
-                                                                                ? selected.filter((id) => id !== fiche.id)
-                                                                                : [...selected, fiche.id];
-                                                                            field.onChange(newValue);
-                                                                        }}
-                                                                    >
-                                                                        <Check
-                                                                            className={cn(
-                                                                            "mr-2 h-4 w-4",
-                                                                            field.value?.includes(fiche.id) ? "opacity-100" : "opacity-0"
-                                                                            )}
-                                                                        />
+                                                <FormItem>
+                                                    <FormLabel>Condition d'accès (Fiches RNCP)</FormLabel>
+                                                    <div className="p-2 border rounded-md">
+                                                        <div className="flex flex-wrap gap-1 mb-2 min-h-[24px]">
+                                                            {selectedRncpIds.map(id => {
+                                                                const fiche = fichesRncp?.find(f => f.id === id);
+                                                                if (!fiche) return null;
+                                                                return (
+                                                                    <Badge key={id} variant="secondary">
                                                                         {fiche.formationName}
-                                                                    </CommandItem>
-                                                                    ))}
-                                                                </CommandGroup>
-                                                            </CommandList>
-                                                            </Command>
-                                                        </PopoverContent>
-                                                    </Popover>
-                                                </FormControl>
-                                                <FormMessage/>
-                                            </FormItem>
+                                                                        <button type="button" onClick={() => handleRncpSelect(id)} className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                                                            <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
+                                                                        </button>
+                                                                    </Badge>
+                                                                );
+                                                            })}
+                                                        </div>
+                                                        <Popover>
+                                                            <PopoverTrigger asChild>
+                                                                <Button variant="outline" size="sm" className="w-full justify-start">
+                                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une fiche
+                                                                </Button>
+                                                            </PopoverTrigger>
+                                                            <PopoverContent className="w-[300px] p-0" align="start">
+                                                                <Command>
+                                                                    <CommandInput placeholder="Rechercher..." />
+                                                                    <CommandList>
+                                                                        <CommandEmpty>Aucune fiche RNCP trouvée.</CommandEmpty>
+                                                                        <CommandGroup>
+                                                                            {areFichesRncpLoading ? <CommandItem disabled>Chargement...</CommandItem> :
+                                                                                fichesRncp?.map((fiche) => (
+                                                                                    <CommandItem key={fiche.id} onSelect={() => handleRncpSelect(fiche.id)}>
+                                                                                        <Check className={cn("mr-2 h-4 w-4", selectedRncpIds.includes(fiche.id) ? "opacity-100" : "opacity-0")} />
+                                                                                        {fiche.formationName}
+                                                                                    </CommandItem>
+                                                                                ))
+                                                                            }
+                                                                        </CommandGroup>
+                                                                    </CommandList>
+                                                                </Command>
+                                                            </PopoverContent>
+                                                        </Popover>
+                                                    </div>
+                                                    <FormMessage />
+                                                </FormItem>
                                             )}
-                                         />
-                                          <FormField control={form.control} name="knowledge" render={({ field }) => ( <FormItem><FormLabel>Savoirs</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir..." /></FormControl><FormMessage /></FormItem> )}/>
+                                        />
+                                         <FormField control={form.control} name="knowledge" render={({ field }) => ( <FormItem><FormLabel>Savoirs</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir..." /></FormControl><FormMessage /></FormItem> )}/>
                                           <FormField control={form.control} name="knowHowAndActivities" render={({ field }) => ( <FormItem><FormLabel>Savoir-faire et Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-faire..." /></FormControl><FormMessage /></FormItem> )}/>
                                           <FormField control={form.control} name="softSkills" render={({ field }) => ( <FormItem><FormLabel>Savoir-être et Softskills</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..." /></FormControl><FormMessage /></FormItem> )}/>
                                     </div>
@@ -1654,6 +1660,7 @@ function JobOfferManager() {
         const join = (arr: any) => checkArray(arr).join(', ');
         
         const htmlToText = (html: string) => {
+            if (typeof document === 'undefined') return html; // SSR guard
             const tempDiv = document.createElement("div");
             tempDiv.innerHTML = html;
             return tempDiv.textContent || tempDiv.innerText || "";
