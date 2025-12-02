@@ -109,7 +109,6 @@ function ApplicationManager() {
     );
 }
 
-
 function Cvtheque() { return <UnderConstruction title="CVTHEQUE" />; }
 function RncpManager() { return <UnderConstruction title="FICHE RNCP" />; }
 function RomeManager() { return <UnderConstruction title="FICHE ROME" />; }
@@ -124,13 +123,12 @@ export default function VitaePage() {
                 <p className="text-muted-foreground">Votre outil de gestion de parcours professionnels</p>
             </div>
             
-            <Tabs defaultValue="applications" className="w-full">
-                <TabsList className="grid w-full grid-cols-6 h-auto">
+            <ApplicationManager />
+
+            <Tabs defaultValue="cvtheque" className="w-full">
+                <TabsList className="grid w-full grid-cols-5 h-auto">
                     <TabsTrigger value="cvtheque">
                         <FileText className="mr-2 h-4 w-4" /> CVTHEQUE
-                    </TabsTrigger>
-                     <TabsTrigger value="applications">
-                        <Inbox className="mr-2 h-4 w-4" /> Candidatures
                     </TabsTrigger>
                     <TabsTrigger value="rncp">
                         <Search className="mr-2 h-4 w-4" /> FICHE RNCP
@@ -147,9 +145,6 @@ export default function VitaePage() {
                 </TabsList>
                 <TabsContent value="cvtheque">
                     <Cvtheque />
-                </TabsContent>
-                 <TabsContent value="applications">
-                    <ApplicationManager />
                 </TabsContent>
                 <TabsContent value="rncp">
                     <RncpManager />
