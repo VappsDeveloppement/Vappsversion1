@@ -30,7 +30,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 
 
 type JobApplication = {
@@ -269,14 +269,14 @@ const generateCvProfilePdf = async (profile: CvProfile) => {
 
     // Expériences
     if (profile.experiences && profile.experiences.length > 0) {
-        doc.addPage();
-        y = 20;
+        if(y > 200) { doc.addPage(); y = 20; }
         doc.setFontSize(16);
         doc.setFont('helvetica', 'bold');
         doc.text("Parcours Professionnel", 15, y);
         y += 8;
         profile.experiences.forEach(exp => {
             y += 5;
+            if(y > 260) { doc.addPage(); y = 20; }
             const seniority = calculateSeniority(exp.startDate, exp.endDate);
             autoTable(doc, {
                 startY: y,
@@ -357,7 +357,12 @@ function Cvtheque() {
     useEffect(() => {
         if(isSheetOpen) {
             if(editingProfile) {
-                form.reset(editingProfile);
+                form.reset({
+                    ...editingProfile,
+                    formations: editingProfile.formations || [],
+                    experiences: editingProfile.experiences || [],
+                    softSkills: editingProfile.softSkills || [],
+                });
                  const client = clients?.find(c => c.id === editingProfile.clientId);
                 if (client) {
                     setSelectedClientForDisplay({ name: editingProfile.clientName, email: client.email, phone: client.phone });
@@ -411,10 +416,9 @@ function Cvtheque() {
         }
         
         const profileData = {
-            ...data,
             counselorId: user.uid,
-            cvUrl: fileUrl,
-            // Ensure array fields are not undefined
+            clientId: data.clientId,
+            clientName: data.clientName,
             currentJobs: data.currentJobs || [],
             searchedJobs: data.searchedJobs || [],
             contractTypes: data.contractTypes || [],
@@ -426,6 +430,7 @@ function Cvtheque() {
             formations: data.formations || [],
             experiences: data.experiences || [],
             softSkills: data.softSkills || [],
+            cvUrl: fileUrl,
         };
 
         if (editingProfile) {
@@ -792,3 +797,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
