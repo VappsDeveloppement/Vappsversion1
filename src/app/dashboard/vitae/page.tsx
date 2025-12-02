@@ -99,7 +99,7 @@ function ApplicationManager() {
         setDeletingApplication(null);
     };
 
-     const handleDownloadCv = (cvUrl: string, applicantName: string) => {
+    const handleDownloadCv = (cvUrl: string, applicantName: string) => {
         if (!cvUrl.startsWith('data:')) {
             window.open(cvUrl, '_blank');
             return;
@@ -169,7 +169,7 @@ function ApplicationManager() {
                                                         <Eye className="mr-2 h-4 w-4" /> Voir la candidature
                                                     </DropdownMenuItem>
                                                     <DropdownMenuItem onClick={() => handleDownloadCv(app.cvUrl, app.applicantName)} disabled={!app.cvUrl}>
-                                                        <Download className="mr-2 h-4 w-4" /> Télécharger le CV
+                                                        <Download className="mr-2 h-4 w-4" /> Voir le CV
                                                     </DropdownMenuItem>
                                                     <DropdownMenuSeparator />
                                                     <DropdownMenuItem onClick={() => handleUpdateStatus(app.id, 'reviewed')}>Examinée</DropdownMenuItem>
@@ -1407,7 +1407,7 @@ function TestManager() {
 
     const Selector = ({ items, title, onSelect, selectedItem }: { items: any[] | undefined, title: string, onSelect: (item: any) => void, selectedItem: any }) => {
         const [open, setOpen] = useState(false);
-        const itemName = selectedItem ? (selectedItem.clientName || selectedItem.name || selectedItem.title) : `Sélectionner ${title}...`;
+        const itemName = selectedItem ? (selectedItem.clientName || selectedItem.name || renderCell(selectedItem.title)) : `Sélectionner ${title}...`;
 
         return (
             <Popover open={open} onOpenChange={setOpen}>
@@ -1426,7 +1426,7 @@ function TestManager() {
                                 {(items || []).map((item) => (
                                     <CommandItem key={item.id} onSelect={() => { onSelect(item); setOpen(false); }}>
                                         <Check className={cn("mr-2 h-4 w-4", selectedItem?.id === item.id ? "opacity-100" : "opacity-0")} />
-                                        {item.clientName || item.name || item.title}
+                                        {item.clientName || item.name || renderCell(item.title)}
                                     </CommandItem>
                                 ))}
                             </CommandGroup>
@@ -1458,7 +1458,7 @@ function TestManager() {
                         <Selector items={romeFiches} title="une fiche ROME" onSelect={setSelectedRomeFiche} selectedItem={selectedRomeFiche} />
                     </div>
                      <div className="space-y-2">
-                        <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Offre d'emploi</Label>
+                        <Label className="flex items-center gap-2"><Briefcase className="h-4 w-4" />Offre d'emploi (Optionnel)</Label>
                         <Selector items={jobOffers} title="une offre" onSelect={setSelectedJobOffer} selectedItem={selectedJobOffer} />
                     </div>
                 </div>
@@ -1718,3 +1718,6 @@ export default function VitaePage() {
         </div>
     );
 }
+
+
+    
