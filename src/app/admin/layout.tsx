@@ -21,6 +21,7 @@ import {
   Settings,
   Folder,
   CalendarDays,
+  Share2,
 } from "lucide-react";
 import {
   SidebarProvider,
@@ -60,6 +61,7 @@ const adminMenuItems = [
 const settingsMenuItems = [
     { href: "/admin/settings/personalization", label: "Personnalisation", icon: <Palette /> },
     { href: "/admin/settings/gdpr", label: "Gestion RGPD", icon: <ShieldCheck /> },
+    { href: "/admin/settings/api", label: "API & Intégrations", icon: <Share2 /> },
 ]
 
 export default function AdminLayout({
