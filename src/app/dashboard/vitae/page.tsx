@@ -107,21 +107,17 @@ function ApplicationManager() {
             return;
         }
 
-        fetch(cvUrl)
-            .then(res => res.blob())
-            .then(blob => {
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
-                document.body.appendChild(link);
-                link.click();
-                document.body.removeChild(link);
-                URL.revokeObjectURL(link.href);
-            })
-            .catch(e => {
-                console.error("Error creating blob for CV:", e);
-                toast({ title: "Erreur de téléchargement", description: "Impossible de préparer le fichier pour le téléchargement.", variant: 'destructive'});
-            });
+        try {
+            const link = document.createElement('a');
+            link.href = cvUrl;
+            link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (e) {
+            console.error("Error downloading CV:", e);
+            toast({ title: "Erreur de téléchargement", description: "Impossible de télécharger le CV.", variant: 'destructive'});
+        }
     };
 
     return (
@@ -1793,7 +1789,7 @@ function TestManager() {
                     {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} fiche={selectedRncpFiche} allTrainings={trainings} />}
                     {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} fiche={selectedRomeFiche} />}
                     {jobAnalysisResult && <JobAnalysisResultCard results={jobAnalysisResult} />}
-                    {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && !suggestedOffers.length && (
+                    {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && suggestedOffers.length === 0 && (
                         <div className="text-center py-10 text-muted-foreground">
                             <p>Sélectionnez des éléments ci-dessus pour lancer l'analyse.</p>
                         </div>
@@ -1835,6 +1831,11 @@ function JobOfferManager() {
         location: z.array(z.string()).optional(),
         salary: z.array(z.string()).optional(),
         softSkills: z.array(z.string()).optional(),
+        recruiterInfo: z.object({
+            name: z.string().optional(),
+            email: z.string().email().optional().or(z.literal('')),
+            phone: z.string().optional(),
+        }).optional(),
         infoMatching: z.object({
             rncpCodes: z.array(z.string()).optional(),
             rncpLevels: z.array(z.string()).optional(),
@@ -1845,6 +1846,7 @@ function JobOfferManager() {
             romeTitles: z.array(z.string()).optional(),
             romeSkills: z.array(z.string()).optional(),
             romeActivities: z.array(z.string()).optional(),
+            internalNotes: z.string().optional(),
         }).optional(),
     });
     
@@ -1854,9 +1856,10 @@ function JobOfferManager() {
         defaultValues: {
             reference: '', title: [], description: '', contractType: [],
             workingHours: [], location: [], salary: [], softSkills: [],
+            recruiterInfo: { name: '', email: '', phone: '' },
             infoMatching: {
                 rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-                romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
+                romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [], internalNotes: '',
             }
         }
     });
@@ -1866,9 +1869,10 @@ function JobOfferManager() {
             form.reset(editingOffer || {
                 reference: '', title: [], description: '', contractType: [],
                 workingHours: [], location: [], salary: [], softSkills: [],
+                recruiterInfo: { name: '', email: '', phone: '' },
                 infoMatching: {
                     rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-                    romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
+                    romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [], internalNotes: ''
                 }
             });
         }
@@ -1959,6 +1963,12 @@ function JobOfferManager() {
                                 </div>
                               </section>
                               <section className="space-y-4 pt-4 border-t">
+                                <h3 className="text-lg font-semibold mb-4 border-b pb-2">Coordonnées du recruteur</h3>
+                                <FormField control={form.control} name="recruiterInfo.name" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="recruiterInfo.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="recruiterInfo.phone" render={({ field }) => (<FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
+                              </section>
+                              <section className="space-y-4 pt-4 border-t">
                                 <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Match</h3>
                                 <FicheSelector fiches={rncpFiches || []} title="RNCP" onSelect={handleSelectRncp}/>
                                 <div className="grid grid-cols-2 gap-4">
@@ -1975,6 +1985,9 @@ function JobOfferManager() {
                                 <FormField control={form.control} name="infoMatching.romeTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
                                 <FormField control={form.control} name="infoMatching.romeSkills" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
                                 <FormField control={form.control} name="infoMatching.romeActivities" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
+                                
+                                <div className="pt-4 border-t"/>
+                                <FormField control={form.control} name="infoMatching.internalNotes" render={({ field }) => (<FormItem><FormLabel>Notes internes</FormLabel><FormControl><Textarea {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
                               </section>
                             </div>
                           </ScrollArea>
@@ -2044,6 +2057,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
 
 

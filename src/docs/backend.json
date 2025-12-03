@@ -15,6 +15,15 @@
             "workingHours": { "type": "array", "items": { "type": "string" } },
             "location": { "type": "array", "items": { "type": "string" } },
             "salary": { "type": "array", "items": { "type": "string" } },
+            "softSkills": { "type": "array", "items": { "type": "string" } },
+            "recruiterInfo": {
+                "type": "object",
+                "properties": {
+                    "name": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "phone": { "type": "string" }
+                }
+            },
             "infoMatching": {
                 "type": "object",
                 "properties": {
@@ -26,7 +35,8 @@
                     "romeCodes": { "type": "array", "items": { "type": "string" } },
                     "romeTitles": { "type": "array", "items": { "type": "string" } },
                     "romeSkills": { "type": "array", "items": { "type": "string" } },
-                    "romeActivities": { "type": "array", "items": { "type": "string" } }
+                    "romeActivities": { "type": "array", "items": { "type": "string" } },
+                    "internalNotes": { "type": "string" }
                 }
             }
         },
