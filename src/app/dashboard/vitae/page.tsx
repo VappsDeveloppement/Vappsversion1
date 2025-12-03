@@ -5,6 +5,7 @@
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building, Percent, CheckCircle, XCircle } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
@@ -36,7 +37,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Training } from '@/app/dashboard/e-learning/page';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Link from 'next/link';
 
 type JobApplication = {
@@ -102,16 +102,26 @@ function ApplicationManager() {
     };
 
     const handleDownloadCv = (cvUrl: string, applicantName: string) => {
-        if (!cvUrl) {
-            toast({ title: "Erreur", description: "Aucun CV n'est associé à cette candidature.", variant: 'destructive'});
+        if (!cvUrl || !cvUrl.startsWith('data:')) {
+            toast({ title: "Erreur", description: "Le lien du CV est invalide ou manquant.", variant: 'destructive'});
             return;
         }
-        const link = document.createElement("a");
-        link.href = cvUrl;
-        link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+
+        fetch(cvUrl)
+            .then(res => res.blob())
+            .then(blob => {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = `CV_${applicantName.replace(/ /g, '_')}.pdf`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(link.href);
+            })
+            .catch(e => {
+                console.error("Error creating blob for CV:", e);
+                toast({ title: "Erreur de téléchargement", description: "Impossible de préparer le fichier pour le téléchargement.", variant: 'destructive'});
+            });
     };
 
     return (
@@ -1387,6 +1397,7 @@ function TestManager() {
     const [rncpAnalysisResult, setRncpAnalysisResult] = useState<any>(null);
     const [romeAnalysisResult, setRomeAnalysisResult] = useState<any>(null);
     const [jobAnalysisResult, setJobAnalysisResult] = useState<any>(null);
+    const [suggestedOffers, setSuggestedOffers] = useState<any[]>([]);
     
     // Data fetching
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
@@ -1406,9 +1417,54 @@ function TestManager() {
         return query(collection(firestore, 'trainings'), where('authorId', '==', user.uid));
     }, [user, firestore]);
     const { data: trainings } = useCollection<Training>(trainingsQuery);
+    
+    const calculateMatchScore = useCallback((cv: CvProfile, offer: any): number => {
+        let score = 0;
+        let totalPoints = 0;
+
+        const arrayMatch = (arr1: string[] = [], arr2: string[] = []) => arr1.some(item => arr2.includes(item));
+        const textMatch = (arr: string[] = [], text: string | undefined) => text && arr.some(item => text.toLowerCase().includes(item.toLowerCase()));
+        const calculatePercentage = (common: number, total: number) => total > 0 ? (common / total) * 100 : 0;
+        const intersect = (setA: Set<string>, setB: Set<string>) => new Set([...setA].filter(x => setB.has(x)));
+
+        // 1. Project (30 points)
+        if (arrayMatch(cv.searchedJobs, offer.title)) score += 15;
+        if (arrayMatch(cv.contractTypes, offer.contractType)) score += 10;
+        if (textMatch(cv.mobility, offer.location.join(', '))) score += 5;
+        totalPoints += 30;
+        
+        // 2. RNCP (35 points)
+        const cvRncpSkills = new Set(cv.formations?.flatMap(f => f.skills || []) || []);
+        const offerRncpSkills = new Set(offer.infoMatching?.rncpSkills || []);
+        const commonRncpSkills = intersect(cvRncpSkills, offerRncpSkills).size;
+        score += calculatePercentage(commonRncpSkills, offerRncpSkills.size) * 0.35;
+        totalPoints += 35;
+        
+        // 3. ROME (35 points)
+        const cvRomeSkills = new Set(cv.experiences?.flatMap(e => e.skills || []) || []);
+        const offerRomeSkills = new Set(offer.infoMatching?.romeSkills || []);
+        const commonRomeSkills = intersect(cvRomeSkills, offerRomeSkills).size;
+        score += calculatePercentage(commonRomeSkills, offerRomeSkills.size) * 0.35;
+        totalPoints += 35;
+        
+        return totalPoints > 0 ? (score / totalPoints) * 100 : 0;
+    }, []);
 
 
     useEffect(() => {
+        if (selectedCvProfile && jobOffers) {
+            const suggestions = jobOffers
+                .map(offer => ({
+                    ...offer,
+                    score: calculateMatchScore(selectedCvProfile, offer),
+                }))
+                .filter(offer => offer.score >= 50)
+                .sort((a, b) => b.score - a.score);
+            setSuggestedOffers(suggestions);
+        } else {
+            setSuggestedOffers([]);
+        }
+
         if (selectedCvProfile && selectedRncpFiche) {
             // RNCP Analysis
             const cvRncpCodes = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.rncpCode || []) || []);
@@ -1527,7 +1583,7 @@ function TestManager() {
             setJobAnalysisResult(null);
         }
 
-    }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche, selectedJobOffer, trainings]);
+    }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche, selectedJobOffer, trainings, jobOffers, calculateMatchScore]);
 
     const AnalysisResultCard = ({ title, results, fiche, allTrainings }: { title: string, results: any, fiche: any, allTrainings?: Training[] }) => {
         if (!results) return null;
@@ -1708,6 +1764,30 @@ function TestManager() {
                     </div>
                 </div>
 
+                {suggestedOffers.length > 0 && (
+                    <div className="pt-8 border-t space-y-4">
+                        <h3 className="text-lg font-semibold">Suggestions d'offres pour {selectedCvProfile?.clientName}</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {suggestedOffers.map(offer => (
+                                <Card key={offer.id} className="flex flex-col">
+                                    <CardHeader>
+                                        <CardTitle className="text-base">{renderCell(offer.title)}</CardTitle>
+                                        <CardDescription>{offer.location}</CardDescription>
+                                    </CardHeader>
+                                    <CardContent className="flex-1">
+                                        <Badge>{Math.round(offer.score)}%</Badge>
+                                    </CardContent>
+                                    <CardFooter>
+                                        <Button size="sm" variant="outline" onClick={() => setSelectedJobOffer(offer)}>
+                                            Analyser cette offre
+                                        </Button>
+                                    </CardFooter>
+                                </Card>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                
                 <div className="pt-8 border-t space-y-6">
                     <h3 className="text-lg font-semibold mb-4">Résultats de l'analyse</h3>
                     {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} fiche={selectedRncpFiche} allTrainings={trainings} />}
@@ -1962,4 +2042,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
