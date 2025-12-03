@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -1954,7 +1953,36 @@ function JobOfferManager() {
 
     const onSubmit = async (data: JobOfferFormData) => {
         if (!user) return;
-        const offerData = { counselorId: user.uid, ...data };
+
+        const offerData = {
+            counselorId: user.uid,
+            reference: data.reference || '',
+            title: data.title || [],
+            description: data.description || '',
+            contractType: data.contractType || [],
+            workingHours: data.workingHours || [],
+            location: data.location || [],
+            salary: data.salary || [],
+            softSkills: data.softSkills || [],
+            recruiterInfo: {
+                name: data.recruiterInfo?.name || '',
+                email: data.recruiterInfo?.email || '',
+                phone: data.recruiterInfo?.phone || '',
+            },
+            infoMatching: {
+                rncpCodes: data.infoMatching?.rncpCodes || [],
+                rncpLevels: data.infoMatching?.rncpLevels || [],
+                rncpTitles: data.infoMatching?.rncpTitles || [],
+                rncpSkills: data.infoMatching?.rncpSkills || [],
+                rncpActivities: data.infoMatching?.rncpActivities || [],
+                romeCodes: data.infoMatching?.romeCodes || [],
+                romeTitles: data.infoMatching?.romeTitles || [],
+                romeSkills: data.infoMatching?.romeSkills || [],
+                romeActivities: data.infoMatching?.romeActivities || [],
+                internalNotes: data.infoMatching?.internalNotes || '',
+            },
+        };
+
         if (editingOffer) {
             await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
             toast({ title: 'Offre mise à jour' });
@@ -2128,8 +2156,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-
-
-
-
