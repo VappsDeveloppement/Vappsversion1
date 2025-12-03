@@ -1,14 +1,21 @@
 
-import { initializeApp, getApp, getApps, App, cert } from 'firebase-admin/app';
+import { initializeApp, getApp, getApps, App } from 'firebase-admin/app';
+import { getFirestore } from 'firebase-admin/firestore';
+import { getAuth } from 'firebase-admin/auth';
 import { credential } from 'firebase-admin';
 
 // This is a simplified check. In a real app, you'd use environment variables
 // to securely store and access your service account key.
 const isFirebaseAdminInitialized = () => getApps().some(app => app.name === '[DEFAULT]');
 
-export const initializeAdminApp = (): { app: App } => {
+export const initializeAdminApp = (): { app: App, firestore: ReturnType<typeof getFirestore>, auth: ReturnType<typeof getAuth> } => {
   if (isFirebaseAdminInitialized()) {
-    return { app: getApp() };
+    const app = getApp();
+    return { 
+        app,
+        firestore: getFirestore(app),
+        auth: getAuth(app)
+    };
   }
 
   // IMPORTANT: For local development, you must have the
@@ -21,6 +28,9 @@ export const initializeAdminApp = (): { app: App } => {
   // for authentication.
   const app = initializeApp();
   
-  return { app };
+  return { 
+      app,
+      firestore: getFirestore(app),
+      auth: getAuth(app)
+  };
 };
-
