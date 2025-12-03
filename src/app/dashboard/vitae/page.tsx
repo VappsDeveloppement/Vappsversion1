@@ -1393,6 +1393,7 @@ function TestManager() {
     const [rncpAnalysisResult, setRncpAnalysisResult] = useState<any>(null);
     const [romeAnalysisResult, setRomeAnalysisResult] = useState<any>(null);
     const [jobAnalysisResult, setJobAnalysisResult] = useState<any>(null);
+    const [softSkillsAnalysisResult, setSoftSkillsAnalysisResult] = useState<any>(null);
     const [suggestedOffers, setSuggestedOffers] = useState<any[]>([]);
     
     // Data fetching
@@ -1448,6 +1449,9 @@ function TestManager() {
 
 
     useEffect(() => {
+        const intersect = (setA: Set<string>, setB: Set<string>) => new Set([...setA].filter(x => setB.has(x)));
+        const calculatePercentage = (common: number, total: number) => total > 0 ? (common / total) * 100 : 0;
+
         if (selectedCvProfile && jobOffers) {
             const suggestions = jobOffers
                 .map(offer => ({
@@ -1578,6 +1582,34 @@ function TestManager() {
         } else {
             setJobAnalysisResult(null);
         }
+        
+        if (selectedCvProfile && (selectedRomeFiche || selectedJobOffer)) {
+            const cvSoftSkills = new Set(selectedCvProfile.softSkills || []);
+            
+            let romeAnalysis = null;
+            if (selectedRomeFiche) {
+                const ficheSoftSkills = new Set(selectedRomeFiche.softSkills || []);
+                const common = intersect(cvSoftSkills, ficheSoftSkills);
+                romeAnalysis = {
+                    matches: Array.from(common),
+                    percentage: calculatePercentage(common.size, ficheSoftSkills.size).toFixed(0),
+                };
+            }
+            
+            let jobOfferAnalysis = null;
+            if (selectedJobOffer) {
+                const offerSoftSkills = new Set(selectedJobOffer.softSkills || []);
+                const common = intersect(cvSoftSkills, offerSoftSkills);
+                jobOfferAnalysis = {
+                    matches: Array.from(common),
+                    percentage: calculatePercentage(common.size, offerSoftSkills.size).toFixed(0),
+                };
+            }
+
+            setSoftSkillsAnalysisResult({ rome: romeAnalysis, jobOffer: jobOfferAnalysis });
+        } else {
+            setSoftSkillsAnalysisResult(null);
+        }
 
     }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche, selectedJobOffer, trainings, jobOffers, calculateMatchScore]);
 
@@ -1703,6 +1735,43 @@ function TestManager() {
         );
     };
 
+    const SoftSkillsAnalysisCard = ({ results }: { results: any }) => {
+        if (!results) return null;
+        
+        const { rome, jobOffer } = results;
+
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Analyse des Savoir-être (Soft Skills)</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                    {rome && (
+                        <div>
+                            <h4 className="font-medium text-sm text-muted-foreground">Adéquation avec la fiche ROME</h4>
+                            <div className="flex items-center gap-4 mt-2">
+                                <div className="text-3xl font-bold">{rome.percentage}%</div>
+                                <div className="text-xs"><strong>Compétences communes:</strong> {rome.matches.join(', ') || 'Aucune'}</div>
+                            </div>
+                        </div>
+                    )}
+                    {jobOffer && (
+                         <div>
+                            <h4 className="font-medium text-sm text-muted-foreground">Adéquation avec l'offre d'emploi</h4>
+                             <div className="flex items-center gap-4 mt-2">
+                                <div className="text-3xl font-bold">{jobOffer.percentage}%</div>
+                                <div className="text-xs"><strong>Compétences communes:</strong> {jobOffer.matches.join(', ') || 'Aucune'}</div>
+                            </div>
+                        </div>
+                    )}
+                     {!rome && !jobOffer && (
+                        <p className="text-sm text-muted-foreground">Aucune analyse de savoir-être disponible.</p>
+                     )}
+                </CardContent>
+            </Card>
+        );
+    };
+
     const Selector = ({ items, title, onSelect, selectedItem }: { items: any[] | undefined, title: string, onSelect: (item: any) => void, selectedItem: any }) => {
         const itemName = selectedItem ? (selectedItem.clientName || selectedItem.name || renderCell(selectedItem.title)) : `Sélectionner ${title}...`;
 
@@ -1789,7 +1858,9 @@ function TestManager() {
                     {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} fiche={selectedRncpFiche} allTrainings={trainings} />}
                     {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} fiche={selectedRomeFiche} />}
                     {jobAnalysisResult && <JobAnalysisResultCard results={jobAnalysisResult} />}
-                    {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && suggestedOffers.length === 0 && (
+                    {softSkillsAnalysisResult && <SoftSkillsAnalysisCard results={softSkillsAnalysisResult} />}
+
+                    {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && !softSkillsAnalysisResult && suggestedOffers.length === 0 && (
                         <div className="text-center py-10 text-muted-foreground">
                             <p>Sélectionnez des éléments ci-dessus pour lancer l'analyse.</p>
                         </div>
@@ -1859,7 +1930,7 @@ function JobOfferManager() {
             recruiterInfo: { name: '', email: '', phone: '' },
             infoMatching: {
                 rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-                romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [], internalNotes: '',
+                romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [], internalNotes: ''
             }
         }
     });
@@ -2057,6 +2128,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
 
 
