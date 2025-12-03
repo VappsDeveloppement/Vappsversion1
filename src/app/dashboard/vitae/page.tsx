@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -1802,11 +1803,119 @@ function TestManager() {
         );
     };
 
+    const handleExportAnalysis = async () => {
+        if (!selectedCvProfile) {
+            toast({ title: "Sélection requise", description: "Veuillez sélectionner au moins un profil CV.", variant: "destructive" });
+            return;
+        }
+
+        const doc = new jsPDF();
+        let y = 20;
+
+        const addTitle = (title: string) => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.setFontSize(16);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 10;
+        }
+
+        const addSubTitle = (title: string) => {
+            if (y > 270) { doc.addPage(); y = 20; }
+            doc.setFontSize(12);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 8;
+        }
+
+        const addText = (text: string) => {
+            if (y > 280) { doc.addPage(); y = 20; }
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            const lines = doc.splitTextToSize(text, 180);
+            doc.text(lines, 15, y);
+            y += lines.length * 5 + 4;
+        }
+        
+        const addKeyValue = (key: string, value: string) => {
+            if (y > 280) { doc.addPage(); y = 20; }
+             doc.setFontSize(10);
+            doc.setFont('helvetica', 'bold');
+            doc.text(`${key}:`, 20, y);
+            doc.setFont('helvetica', 'normal');
+            const lines = doc.splitTextToSize(value, 150);
+            doc.text(lines, 60, y);
+            y += lines.length * 5 + 2;
+        }
+
+        addTitle(`Rapport d'analyse pour ${selectedCvProfile.clientName}`);
+        
+        if (rncpAnalysisResult) {
+            addSubTitle("Analyse RNCP (Formation)");
+            addKeyValue("Correspondance Code/Titre", rncpAnalysisResult.hasCodeOrTitleMatch ? 'Oui' : 'Non');
+            addKeyValue("Compétences", `${rncpAnalysisResult.skills.percentage}% (${rncpAnalysisResult.skills.matches.join(', ') || 'Aucune'})`);
+            addKeyValue("Activités", `${rncpAnalysisResult.activities.percentage}% (${rncpAnalysisResult.activities.matches.join(', ') || 'Aucune'})`);
+        }
+
+        if (romeAnalysisResult) {
+            addSubTitle("Analyse ROME (Parcours Pro)");
+            addKeyValue("Correspondance Code/Titre", romeAnalysisResult.hasCodeOrTitleMatch ? 'Oui' : 'Non');
+            addKeyValue("Compétences", `${romeAnalysisResult.skills.percentage}% (${romeAnalysisResult.skills.matches.join(', ') || 'Aucune'})`);
+            addKeyValue("Activités", `${romeAnalysisResult.activities.percentage}% (${romeAnalysisResult.activities.matches.join(', ') || 'Aucune'})`);
+        }
+
+        if (jobAnalysisResult) {
+            addSubTitle(`Analyse Offre d'Emploi: ${renderCell(selectedJobOffer.title)}`);
+            
+            doc.setFont('helvetica', 'bold');
+            doc.text("Projet vs Offre:", 20, y);
+            y += 7;
+            addKeyValue("Titre", jobAnalysisResult.projectAnalysis.jobTitleMatch ? 'Correspond' : 'Ne correspond pas');
+            addKeyValue("Contrat", jobAnalysisResult.projectAnalysis.contractTypeMatch ? 'Correspond' : 'Ne correspond pas');
+            addKeyValue("Lieu", jobAnalysisResult.projectAnalysis.locationMatch ? 'Correspond' : 'Ne correspond pas');
+            
+            y += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text("CV vs RNCP (Offre):", 20, y);
+            y += 7;
+            addKeyValue("Code RNCP", jobAnalysisResult.rncpAnalysis.codeMatch ? 'Correspond' : 'Ne correspond pas');
+            addKeyValue("Compétences", `${jobAnalysisResult.rncpAnalysis.skills.percentage}%`);
+            addKeyValue("Activités", `${jobAnalysisResult.rncpAnalysis.activities.percentage}%`);
+
+            y += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text("CV vs ROME (Offre):", 20, y);
+            y += 7;
+            addKeyValue("Code ROME", jobAnalysisResult.romeAnalysis.codeMatch ? 'Correspond' : 'Ne correspond pas');
+            addKeyValue("Compétences", `${jobAnalysisResult.romeAnalysis.skills.percentage}%`);
+            addKeyValue("Activités", `${jobAnalysisResult.romeAnalysis.activities.percentage}%`);
+        }
+        
+        if(softSkillsAnalysisResult) {
+            addSubTitle("Analyse des Savoir-être");
+            if(softSkillsAnalysisResult.rome) {
+                addKeyValue("Fiche ROME", `${softSkillsAnalysisResult.rome.percentage}% (${softSkillsAnalysisResult.rome.matches.join(', ') || 'Aucun'})`);
+            }
+             if(softSkillsAnalysisResult.jobOffer) {
+                addKeyValue("Offre d'emploi", `${softSkillsAnalysisResult.jobOffer.percentage}% (${softSkillsAnalysisResult.jobOffer.matches.join(', ') || 'Aucun'})`);
+            }
+        }
+        
+        doc.save(`Analyse_Matching_${selectedCvProfile.clientName.replace(' ', '_')}.pdf`);
+    };
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Test de Matching</CardTitle>
-                <CardDescription>Sélectionnez des éléments pour voir les correspondances potentielles.</CardDescription>
+                <div className="flex justify-between items-center">
+                    <div>
+                        <CardTitle>Test de Matching</CardTitle>
+                        <CardDescription>Sélectionnez des éléments pour voir les correspondances potentielles.</CardDescription>
+                    </div>
+                     <Button onClick={handleExportAnalysis} variant="outline" disabled={!selectedCvProfile}>
+                        <Download className="mr-2 h-4 w-4" /> Exporter PDF
+                    </Button>
+                </div>
             </CardHeader>
             <CardContent className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -1836,7 +1945,7 @@ function TestManager() {
                                 <Card key={offer.id} className="flex flex-col">
                                     <CardHeader>
                                         <CardTitle className="text-base">{renderCell(offer.title)}</CardTitle>
-                                        <CardDescription>{offer.location}</CardDescription>
+                                        <CardDescription>{renderCell(offer.location)}</CardDescription>
                                     </CardHeader>
                                     <CardContent className="flex-1">
                                         <Badge>{Math.round(offer.score)}%</Badge>
@@ -1854,11 +1963,15 @@ function TestManager() {
                 
                 <div className="pt-8 border-t space-y-6">
                     <h3 className="text-lg font-semibold mb-4">Résultats de l'analyse</h3>
+                    
                     {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} fiche={selectedRncpFiche} allTrainings={trainings} />}
+                    
                     {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} fiche={selectedRomeFiche} />}
-                    {jobAnalysisResult && <JobAnalysisResultCard results={jobAnalysisResult} />}
+                    
                     {softSkillsAnalysisResult && <SoftSkillsAnalysisCard results={softSkillsAnalysisResult} />}
-
+                    
+                    {jobAnalysisResult && <JobAnalysisResultCard results={jobAnalysisResult} />}
+                    
                     {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && !softSkillsAnalysisResult && suggestedOffers.length === 0 && (
                         <div className="text-center py-10 text-muted-foreground">
                             <p>Sélectionnez des éléments ci-dessus pour lancer l'analyse.</p>
@@ -1953,7 +2066,7 @@ function JobOfferManager() {
 
     const onSubmit = async (data: JobOfferFormData) => {
         if (!user) return;
-
+    
         const offerData = {
             counselorId: user.uid,
             reference: data.reference || '',
@@ -1982,7 +2095,7 @@ function JobOfferManager() {
                 internalNotes: data.infoMatching?.internalNotes || '',
             },
         };
-
+    
         if (editingOffer) {
             await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
             toast({ title: 'Offre mise à jour' });
