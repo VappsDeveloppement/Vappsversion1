@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -1450,6 +1449,7 @@ function TestManager() {
 
     useEffect(() => {
         const intersect = (setA: Set<string>, setB: Set<string>) => new Set([...setA].filter(x => setB.has(x)));
+        const difference = (setA: Set<string>, setB: Set<string>) => new Set([...setA].filter(x => !setB.has(x)));
         const calculatePercentage = (common: number, total: number) => total > 0 ? (common / total) * 100 : 0;
 
         if (selectedCvProfile && jobOffers) {
@@ -1466,67 +1466,64 @@ function TestManager() {
         }
 
         if (selectedCvProfile && selectedRncpFiche) {
-            // RNCP Analysis
             const cvRncpCodes = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.rncpCode || []) || []);
             const cvFormationTitles = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.title || []) || []);
-            
             const ficheRncpCodes = new Set(selectedRncpFiche.rncpCodes || []);
             const ficheRncpTitles = new Set(selectedRncpFiche.rncpTitle || []);
-
             const codeMatch = [...cvRncpCodes].some(code => ficheRncpCodes.has(code));
             const titleMatch = [...cvFormationTitles].some(title => ficheRncpTitles.has(title));
 
             const cvSkills = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.skills || []) || []);
             const ficheSkills = new Set(selectedRncpFiche.competences || []);
-            const commonSkills = [...cvSkills].filter(skill => ficheSkills.has(skill));
-            const skillsPercentage = ficheSkills.size > 0 ? (commonSkills.length / ficheSkills.size) * 100 : 0;
+            const commonSkills = intersect(cvSkills, ficheSkills);
+            const missingSkills = difference(ficheSkills, cvSkills);
+            const skillsPercentage = ficheSkills.size > 0 ? (commonSkills.size / ficheSkills.size) * 100 : 0;
             
             const cvActivities = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.activities || []) || []);
             const ficheActivities = new Set(selectedRncpFiche.activites || []);
-            const commonActivities = [...cvActivities].filter(act => ficheActivities.has(act));
-            const activitiesPercentage = ficheActivities.size > 0 ? (commonActivities.length / ficheActivities.size) * 100 : 0;
+            const commonActivities = intersect(cvActivities, ficheActivities);
+            const missingActivities = difference(ficheActivities, cvActivities);
+            const activitiesPercentage = ficheActivities.size > 0 ? (commonActivities.size / ficheActivities.size) * 100 : 0;
 
             setRncpAnalysisResult({
                 hasCodeOrTitleMatch: codeMatch || titleMatch,
-                skills: { matches: commonSkills, percentage: skillsPercentage.toFixed(0) },
-                activities: { matches: commonActivities, percentage: activitiesPercentage.toFixed(0) },
+                skills: { matches: Array.from(commonSkills), missing: Array.from(missingSkills), percentage: skillsPercentage.toFixed(0) },
+                activities: { matches: Array.from(commonActivities), missing: Array.from(missingActivities), percentage: activitiesPercentage.toFixed(0) },
             });
         } else {
             setRncpAnalysisResult(null);
         }
 
         if (selectedCvProfile && selectedRomeFiche) {
-            // ROME Analysis
             const cvRomeCodes = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.romeCode || []) || []);
             const cvExperienceTitles = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.title || []) || []);
-
             const ficheRomeCodes = new Set(selectedRomeFiche.romeCodes || []);
             const ficheRomeMetiers = new Set(selectedRomeFiche.associatedJobs || []);
-
             const codeMatch = [...cvRomeCodes].some(code => ficheRomeCodes.has(code));
             const titleMatch = [...cvExperienceTitles].some(title => ficheRomeMetiers.has(title));
 
             const cvSkills = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.skills || []) || []);
             const ficheSkills = new Set(selectedRomeFiche.competences || []);
-            const commonSkills = [...cvSkills].filter(skill => ficheSkills.has(skill));
-            const skillsPercentage = ficheSkills.size > 0 ? (commonSkills.length / ficheSkills.size) * 100 : 0;
+            const commonSkills = intersect(cvSkills, ficheSkills);
+            const missingSkills = difference(ficheSkills, cvSkills);
+            const skillsPercentage = ficheSkills.size > 0 ? (commonSkills.size / ficheSkills.size) * 100 : 0;
 
             const cvActivities = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.activities || []) || []);
             const ficheActivities = new Set(selectedRomeFiche.activites || []);
-            const commonActivities = [...cvActivities].filter(act => ficheActivities.has(act));
-            const activitiesPercentage = ficheActivities.size > 0 ? (commonActivities.length / ficheActivities.size) * 100 : 0;
+            const commonActivities = intersect(cvActivities, ficheActivities);
+            const missingActivities = difference(ficheActivities, cvActivities);
+            const activitiesPercentage = ficheActivities.size > 0 ? (commonActivities.size / ficheActivities.size) * 100 : 0;
 
             setRomeAnalysisResult({
                 hasCodeOrTitleMatch: codeMatch || titleMatch,
-                skills: { matches: commonSkills, percentage: skillsPercentage.toFixed(0) },
-                activities: { matches: commonActivities, percentage: activitiesPercentage.toFixed(0) },
+                skills: { matches: Array.from(commonSkills), missing: Array.from(missingSkills), percentage: skillsPercentage.toFixed(0) },
+                activities: { matches: Array.from(commonActivities), missing: Array.from(missingActivities), percentage: activitiesPercentage.toFixed(0) },
             });
         } else {
             setRomeAnalysisResult(null);
         }
 
         if (selectedCvProfile && selectedJobOffer) {
-            // --- 1. Project Analysis ---
             const arrayMatch = (cvArray: string[] = [], offerArray: string[] = []) => cvArray.some(item => offerArray.includes(item));
             const textMatch = (cvArray: string[] = [], offerString: string | undefined) => offerString && cvArray.some(item => offerString.toLowerCase().includes(item.toLowerCase()));
     
@@ -1536,46 +1533,44 @@ function TestManager() {
                 locationMatch: textMatch(selectedCvProfile.mobility, selectedJobOffer.location.join(', ')),
             };
     
-            // --- 2. RNCP Analysis ---
             const cvRncpCodes = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.rncpCode || []) || []);
             const cvFormationSkills = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.skills || []) || []);
             const cvFormationActivities = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.activities || []) || []);
-
             const offerRncpCodes = new Set(selectedJobOffer.infoMatching?.rncpCodes || []);
             const offerRncpSkills = new Set(selectedJobOffer.infoMatching?.rncpSkills || []);
             const offerRncpActivities = new Set(selectedJobOffer.infoMatching?.rncpActivities || []);
-
             const rncpCodeMatch = [...cvRncpCodes].some(code => offerRncpCodes.has(code));
-            const commonRncpSkills = [...cvFormationSkills].filter(skill => offerRncpSkills.has(skill));
-            const rncpSkillsPercentage = offerRncpSkills.size > 0 ? (commonRncpSkills.length / offerRncpSkills.size) * 100 : 0;
-            const commonRncpActivities = [...cvFormationActivities].filter(act => offerRncpActivities.has(act));
-            const rncpActivitiesPercentage = offerRncpActivities.size > 0 ? (commonRncpActivities.length / offerRncpActivities.size) * 100 : 0;
+            const commonRncpSkills = intersect(cvFormationSkills, offerRncpSkills);
+            const missingRncpSkills = difference(offerRncpSkills, cvFormationSkills);
+            const rncpSkillsPercentage = offerRncpSkills.size > 0 ? (commonRncpSkills.size / offerRncpSkills.size) * 100 : 0;
+            const commonRncpActivities = intersect(cvFormationActivities, offerRncpActivities);
+            const missingRncpActivities = difference(offerRncpActivities, cvFormationActivities);
+            const rncpActivitiesPercentage = offerRncpActivities.size > 0 ? (commonRncpActivities.size / offerRncpActivities.size) * 100 : 0;
             
             const rncpAnalysis = {
                 codeMatch: rncpCodeMatch,
-                skills: { matches: commonRncpSkills, percentage: rncpSkillsPercentage.toFixed(0) },
-                activities: { matches: commonRncpActivities, percentage: rncpActivitiesPercentage.toFixed(0) },
+                skills: { matches: Array.from(commonRncpSkills), missing: Array.from(missingRncpSkills), percentage: rncpSkillsPercentage.toFixed(0) },
+                activities: { matches: Array.from(commonRncpActivities), missing: Array.from(missingRncpActivities), percentage: rncpActivitiesPercentage.toFixed(0) },
             };
     
-            // --- 3. ROME Analysis ---
             const cvRomeCodes = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.romeCode || []) || []);
             const cvExperienceSkills = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.skills || []) || []);
             const cvExperienceActivities = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.activities || []) || []);
-            
             const offerRomeCodes = new Set(selectedJobOffer.infoMatching?.romeCodes || []);
             const offerRomeSkills = new Set(selectedJobOffer.infoMatching?.romeSkills || []);
             const offerRomeActivities = new Set(selectedJobOffer.infoMatching?.romeActivities || []);
-            
             const romeCodeMatch = [...cvRomeCodes].some(code => offerRomeCodes.has(code));
-            const commonRomeSkills = [...cvExperienceSkills].filter(skill => offerRomeSkills.has(skill));
-            const romeSkillsPercentage = offerRomeSkills.size > 0 ? (commonRomeSkills.length / offerRomeSkills.size) * 100 : 0;
-            const commonRomeActivities = [...cvExperienceActivities].filter(act => offerRomeActivities.has(act));
-            const romeActivitiesPercentage = offerRomeActivities.size > 0 ? (commonRomeActivities.length / offerRomeActivities.size) * 100 : 0;
+            const commonRomeSkills = intersect(cvExperienceSkills, offerRomeSkills);
+            const missingRomeSkills = difference(offerRomeSkills, cvExperienceSkills);
+            const romeSkillsPercentage = offerRomeSkills.size > 0 ? (commonRomeSkills.size / offerRomeSkills.size) * 100 : 0;
+            const commonRomeActivities = intersect(cvExperienceActivities, offerRomeActivities);
+            const missingRomeActivities = difference(offerRomeActivities, cvExperienceActivities);
+            const romeActivitiesPercentage = offerRomeActivities.size > 0 ? (commonRomeActivities.size / offerRomeActivities.size) * 100 : 0;
             
             const romeAnalysis = {
                 codeMatch: romeCodeMatch,
-                skills: { matches: commonRomeSkills, percentage: romeSkillsPercentage.toFixed(0) },
-                activities: { matches: commonRomeActivities, percentage: romeActivitiesPercentage.toFixed(0) },
+                skills: { matches: Array.from(commonRomeSkills), missing: Array.from(missingRomeSkills), percentage: romeSkillsPercentage.toFixed(0) },
+                activities: { matches: Array.from(commonRomeActivities), missing: Array.from(missingRomeActivities), percentage: romeActivitiesPercentage.toFixed(0) },
             };
     
             setJobAnalysisResult({ projectAnalysis, rncpAnalysis, romeAnalysis });
@@ -1592,6 +1587,7 @@ function TestManager() {
                 const common = intersect(cvSoftSkills, ficheSoftSkills);
                 romeAnalysis = {
                     matches: Array.from(common),
+                    missing: Array.from(difference(ficheSoftSkills, cvSoftSkills)),
                     percentage: calculatePercentage(common.size, ficheSoftSkills.size).toFixed(0),
                 };
             }
@@ -1602,6 +1598,7 @@ function TestManager() {
                 const common = intersect(cvSoftSkills, offerSoftSkills);
                 jobOfferAnalysis = {
                     matches: Array.from(common),
+                    missing: Array.from(difference(offerSoftSkills, cvSoftSkills)),
                     percentage: calculatePercentage(common.size, offerSoftSkills.size).toFixed(0),
                 };
             }
@@ -1612,7 +1609,7 @@ function TestManager() {
         }
 
     }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche, selectedJobOffer, trainings, jobOffers, calculateMatchScore]);
-
+    
     const AnalysisResultCard = ({ title, results, fiche, allTrainings }: { title: string, results: any, fiche: any, allTrainings?: Training[] }) => {
         if (!results) return null;
 
@@ -1633,12 +1630,26 @@ function TestManager() {
                  )}
             </div>
         );
+        
+        const DetailList = ({ title, items }: { title: string, items: string[] }) => (
+            <div>
+                <h5 className="font-semibold">{title}</h5>
+                {items.length > 0 ? (
+                    <ul className="list-disc pl-5 text-muted-foreground">
+                        {items.map(item => <li key={item}>{item}</li>)}
+                    </ul>
+                ) : (
+                    <p className="text-sm text-muted-foreground">Aucun.</p>
+                )}
+            </div>
+        );
+
 
         return (
             <Card>
                 <CardHeader><CardTitle>{title}</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                         <ResultItem label="Code/Titre" isMatch={results.hasCodeOrTitleMatch} value={0}/>
                         <ResultItem label="Compétences" value={results.skills.percentage} unit="%" />
                         <ResultItem label="Activités" value={results.activities.percentage} unit="%" />
@@ -1647,9 +1658,11 @@ function TestManager() {
                         <AccordionItem value="details">
                             <AccordionTrigger>Voir les détails</AccordionTrigger>
                             <AccordionContent>
-                                <div className="text-xs space-y-2">
-                                    <p><strong>Compétences communes :</strong> {results.skills.matches.join(', ') || 'Aucune'}</p>
-                                    <p><strong>Activités communes :</strong> {results.activities.matches.join(', ') || 'Aucune'}</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                    <DetailList title="Compétences communes" items={results.skills.matches} />
+                                    <DetailList title="Compétences manquantes" items={results.skills.missing} />
+                                    <DetailList title="Activités communes" items={results.activities.matches} />
+                                    <DetailList title="Activités manquantes" items={results.activities.missing} />
                                 </div>
                             </AccordionContent>
                         </AccordionItem>
@@ -1708,28 +1721,42 @@ function TestManager() {
                             <ResultItem label="Localisation" isMatch={results.projectAnalysis.locationMatch} />
                         </div>
                     </section>
-                    <section>
-                        <h4 className="font-semibold text-md mb-3">Formation (CV) vs Prérequis RNCP (Offre)</h4>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="flex items-center justify-center p-3 rounded-lg bg-muted text-center flex-col">
-                                <div className="text-sm text-muted-foreground">Code RNCP</div>
-                                {results.rncpAnalysis.codeMatch ? <CheckCircle className="h-8 w-8 text-green-500 my-2"/> : <XCircle className="h-8 w-8 text-destructive my-2"/>}
-                            </div>
-                            <PercentItem label="Compétences (Formation)" percentage={results.rncpAnalysis.skills.percentage} />
-                            <PercentItem label="Activités (Formation)" percentage={results.rncpAnalysis.activities.percentage} />
-                        </div>
-                    </section>
-                    <section>
-                        <h4 className="font-semibold text-md mb-3">Parcours Pro (CV) vs Attentes ROME (Offre)</h4>
-                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                            <div className="flex items-center justify-center p-3 rounded-lg bg-muted text-center flex-col">
-                                <div className="text-sm text-muted-foreground">Code ROME</div>
-                                {results.romeAnalysis.codeMatch ? <CheckCircle className="h-8 w-8 text-green-500 my-2"/> : <XCircle className="h-8 w-8 text-destructive my-2"/>}
-                            </div>
-                            <PercentItem label="Compétences (Expérience)" percentage={results.romeAnalysis.skills.percentage} />
-                            <PercentItem label="Activités (Expérience)" percentage={results.romeAnalysis.activities.percentage} />
-                        </div>
-                    </section>
+                    <Accordion type="multiple" className="w-full space-y-4">
+                        <AccordionItem value="rncp-analysis" className="border rounded-md px-4">
+                            <AccordionTrigger>Analyse RNCP (Formation)</AccordionTrigger>
+                            <AccordionContent className="pt-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="flex items-center justify-center p-3 rounded-lg bg-muted text-center flex-col">
+                                        <div className="text-sm text-muted-foreground">Code RNCP</div>
+                                        {results.rncpAnalysis.codeMatch ? <CheckCircle className="h-8 w-8 text-green-500 my-2"/> : <XCircle className="h-8 w-8 text-destructive my-2"/>}
+                                    </div>
+                                    <PercentItem label="Compétences" percentage={results.rncpAnalysis.skills.percentage} />
+                                    <PercentItem label="Activités" percentage={results.rncpAnalysis.activities.percentage} />
+                                </div>
+                                <div className="mt-4 text-xs space-y-2">
+                                    <p><strong>Compétences manquantes:</strong> {results.rncpAnalysis.skills.missing.join(', ') || 'Aucune'}</p>
+                                    <p><strong>Activités manquantes:</strong> {results.rncpAnalysis.activities.missing.join(', ') || 'Aucune'}</p>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                        <AccordionItem value="rome-analysis" className="border rounded-md px-4">
+                             <AccordionTrigger>Analyse ROME (Parcours Pro)</AccordionTrigger>
+                            <AccordionContent className="pt-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                     <div className="flex items-center justify-center p-3 rounded-lg bg-muted text-center flex-col">
+                                        <div className="text-sm text-muted-foreground">Code ROME</div>
+                                        {results.romeAnalysis.codeMatch ? <CheckCircle className="h-8 w-8 text-green-500 my-2"/> : <XCircle className="h-8 w-8 text-destructive my-2"/>}
+                                    </div>
+                                    <PercentItem label="Compétences" percentage={results.romeAnalysis.skills.percentage} />
+                                    <PercentItem label="Activités" percentage={results.romeAnalysis.activities.percentage} />
+                                </div>
+                                 <div className="mt-4 text-xs space-y-2">
+                                    <p><strong>Compétences manquantes:</strong> {results.romeAnalysis.skills.missing.join(', ') || 'Aucune'}</p>
+                                    <p><strong>Activités manquantes:</strong> {results.romeAnalysis.activities.missing.join(', ') || 'Aucune'}</p>
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    </Accordion>
                 </CardContent>
             </Card>
         );
@@ -1751,7 +1778,10 @@ function TestManager() {
                             <h4 className="font-medium text-sm text-muted-foreground">Adéquation avec la fiche ROME</h4>
                             <div className="flex items-center gap-4 mt-2">
                                 <div className="text-3xl font-bold">{rome.percentage}%</div>
-                                <div className="text-xs"><strong>Compétences communes:</strong> {rome.matches.join(', ') || 'Aucune'}</div>
+                                <div className="text-xs">
+                                  <p><strong>Compétences communes:</strong> {rome.matches.join(', ') || 'Aucune'}</p>
+                                  <p className='text-destructive'><strong>Compétences manquantes:</strong> {rome.missing.join(', ') || 'Aucune'}</p>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1760,7 +1790,10 @@ function TestManager() {
                             <h4 className="font-medium text-sm text-muted-foreground">Adéquation avec l'offre d'emploi</h4>
                              <div className="flex items-center gap-4 mt-2">
                                 <div className="text-3xl font-bold">{jobOffer.percentage}%</div>
-                                <div className="text-xs"><strong>Compétences communes:</strong> {jobOffer.matches.join(', ') || 'Aucune'}</div>
+                                <div className="text-xs">
+                                  <p><strong>Compétences communes:</strong> {jobOffer.matches.join(', ') || 'Aucune'}</p>
+                                  <p className='text-destructive'><strong>Compétences manquantes:</strong> {jobOffer.missing.join(', ') || 'Aucune'}</p>
+                                </div>
                             </div>
                         </div>
                     )}
@@ -1827,15 +1860,6 @@ function TestManager() {
             doc.text(title, 15, y);
             y += 8;
         }
-
-        const addText = (text: string) => {
-            if (y > 280) { doc.addPage(); y = 20; }
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'normal');
-            const lines = doc.splitTextToSize(text, 180);
-            doc.text(lines, 15, y);
-            y += lines.length * 5 + 4;
-        }
         
         const addKeyValue = (key: string, value: string) => {
             if (y > 280) { doc.addPage(); y = 20; }
@@ -1854,17 +1878,34 @@ function TestManager() {
             addSubTitle("Analyse RNCP (Formation)");
             addKeyValue("Correspondance Code/Titre", rncpAnalysisResult.hasCodeOrTitleMatch ? 'Oui' : 'Non');
             addKeyValue("Compétences", `${rncpAnalysisResult.skills.percentage}% (${rncpAnalysisResult.skills.matches.join(', ') || 'Aucune'})`);
+            addKeyValue("Compétences manquantes", `${rncpAnalysisResult.skills.missing.join(', ') || 'Aucune'}`);
             addKeyValue("Activités", `${rncpAnalysisResult.activities.percentage}% (${rncpAnalysisResult.activities.matches.join(', ') || 'Aucune'})`);
+            addKeyValue("Activités manquantes", `${rncpAnalysisResult.activities.missing.join(', ') || 'Aucune'}`);
         }
 
         if (romeAnalysisResult) {
+            y += 5;
             addSubTitle("Analyse ROME (Parcours Pro)");
             addKeyValue("Correspondance Code/Titre", romeAnalysisResult.hasCodeOrTitleMatch ? 'Oui' : 'Non');
             addKeyValue("Compétences", `${romeAnalysisResult.skills.percentage}% (${romeAnalysisResult.skills.matches.join(', ') || 'Aucune'})`);
+            addKeyValue("Compétences manquantes", `${romeAnalysisResult.skills.missing.join(', ') || 'Aucune'}`);
             addKeyValue("Activités", `${romeAnalysisResult.activities.percentage}% (${romeAnalysisResult.activities.matches.join(', ') || 'Aucune'})`);
+            addKeyValue("Activités manquantes", `${romeAnalysisResult.activities.missing.join(', ') || 'Aucune'}`);
+        }
+        
+        if (softSkillsAnalysisResult) {
+            y += 5;
+            addSubTitle("Analyse des Savoir-être");
+            if(softSkillsAnalysisResult.rome) {
+                addKeyValue("Fiche ROME", `${softSkillsAnalysisResult.rome.percentage}% (${softSkillsAnalysisResult.rome.matches.join(', ') || 'Aucun'}) | Manquants: ${softSkillsAnalysisResult.rome.missing.join(', ') || 'Aucun'}`);
+            }
+             if(softSkillsAnalysisResult.jobOffer) {
+                addKeyValue("Offre d'emploi", `${softSkillsAnalysisResult.jobOffer.percentage}% (${softSkillsAnalysisResult.jobOffer.matches.join(', ') || 'Aucun'}) | Manquants: ${softSkillsAnalysisResult.jobOffer.missing.join(', ') || 'Aucun'}`);
+            }
         }
 
         if (jobAnalysisResult) {
+            y+=5;
             addSubTitle(`Analyse Offre d'Emploi: ${renderCell(selectedJobOffer.title)}`);
             
             doc.setFont('helvetica', 'bold');
@@ -1889,16 +1930,6 @@ function TestManager() {
             addKeyValue("Code ROME", jobAnalysisResult.romeAnalysis.codeMatch ? 'Correspond' : 'Ne correspond pas');
             addKeyValue("Compétences", `${jobAnalysisResult.romeAnalysis.skills.percentage}%`);
             addKeyValue("Activités", `${jobAnalysisResult.romeAnalysis.activities.percentage}%`);
-        }
-        
-        if(softSkillsAnalysisResult) {
-            addSubTitle("Analyse des Savoir-être");
-            if(softSkillsAnalysisResult.rome) {
-                addKeyValue("Fiche ROME", `${softSkillsAnalysisResult.rome.percentage}% (${softSkillsAnalysisResult.rome.matches.join(', ') || 'Aucun'})`);
-            }
-             if(softSkillsAnalysisResult.jobOffer) {
-                addKeyValue("Offre d'emploi", `${softSkillsAnalysisResult.jobOffer.percentage}% (${softSkillsAnalysisResult.jobOffer.matches.join(', ') || 'Aucun'})`);
-            }
         }
         
         doc.save(`Analyse_Matching_${selectedCvProfile.clientName.replace(' ', '_')}.pdf`);
