@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -1468,7 +1469,65 @@ function TestManager() {
             setRomeAnalysisResult(null);
         }
 
-    }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche]);
+        if (selectedCvProfile && selectedJobOffer) {
+            // --- 1. Project Analysis ---
+            const arrayMatch = (cvArray: string[] = [], offerArray: string[] = []) => cvArray.some(item => offerArray.includes(item));
+            const textMatch = (cvArray: string[] = [], offerString: string | undefined) => offerString && cvArray.some(item => offerString.toLowerCase().includes(item.toLowerCase()));
+    
+            const projectAnalysis = {
+                jobTitleMatch: textMatch(selectedCvProfile.searchedJobs, selectedJobOffer.title.join(', ')),
+                contractTypeMatch: arrayMatch(selectedCvProfile.contractTypes, selectedJobOffer.contractType),
+                locationMatch: textMatch(selectedCvProfile.mobility, selectedJobOffer.location.join(', ')),
+            };
+    
+            // --- 2. RNCP Analysis ---
+            const cvRncpCodes = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.rncpCode || []) || []);
+            const cvFormationSkills = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.skills || []) || []);
+            const cvFormationActivities = new Set(selectedCvProfile.formations?.flatMap((f: any) => f.activities || []) || []);
+
+            const offerRncpCodes = new Set(selectedJobOffer.infoMatching?.rncpCodes || []);
+            const offerRncpSkills = new Set(selectedJobOffer.infoMatching?.rncpSkills || []);
+            const offerRncpActivities = new Set(selectedJobOffer.infoMatching?.rncpActivities || []);
+
+            const rncpCodeMatch = [...cvRncpCodes].some(code => offerRncpCodes.has(code));
+            const commonRncpSkills = [...cvFormationSkills].filter(skill => offerRncpSkills.has(skill));
+            const rncpSkillsPercentage = offerRncpSkills.size > 0 ? (commonRncpSkills.length / offerRncpSkills.size) * 100 : 0;
+            const commonRncpActivities = [...cvFormationActivities].filter(act => offerRncpActivities.has(act));
+            const rncpActivitiesPercentage = offerRncpActivities.size > 0 ? (commonRncpActivities.length / offerRncpActivities.size) * 100 : 0;
+            
+            const rncpAnalysis = {
+                codeMatch: rncpCodeMatch,
+                skills: { matches: commonRncpSkills, percentage: rncpSkillsPercentage.toFixed(0) },
+                activities: { matches: commonRncpActivities, percentage: rncpActivitiesPercentage.toFixed(0) },
+            };
+    
+            // --- 3. ROME Analysis ---
+            const cvRomeCodes = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.romeCode || []) || []);
+            const cvExperienceSkills = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.skills || []) || []);
+            const cvExperienceActivities = new Set(selectedCvProfile.experiences?.flatMap((e: any) => e.activities || []) || []);
+            
+            const offerRomeCodes = new Set(selectedJobOffer.infoMatching?.romeCodes || []);
+            const offerRomeSkills = new Set(selectedJobOffer.infoMatching?.romeSkills || []);
+            const offerRomeActivities = new Set(selectedJobOffer.infoMatching?.romeActivities || []);
+            
+            const romeCodeMatch = [...cvRomeCodes].some(code => offerRomeCodes.has(code));
+            const commonRomeSkills = [...cvExperienceSkills].filter(skill => offerRomeSkills.has(skill));
+            const romeSkillsPercentage = offerRomeSkills.size > 0 ? (commonRomeSkills.length / offerRomeSkills.size) * 100 : 0;
+            const commonRomeActivities = [...cvExperienceActivities].filter(act => offerRomeActivities.has(act));
+            const romeActivitiesPercentage = offerRomeActivities.size > 0 ? (commonRomeActivities.length / offerRomeActivities.size) * 100 : 0;
+            
+            const romeAnalysis = {
+                codeMatch: romeCodeMatch,
+                skills: { matches: commonRomeSkills, percentage: romeSkillsPercentage.toFixed(0) },
+                activities: { matches: commonRomeActivities, percentage: romeActivitiesPercentage.toFixed(0) },
+            };
+    
+            setJobAnalysisResult({ projectAnalysis, rncpAnalysis, romeAnalysis });
+        } else {
+            setJobAnalysisResult(null);
+        }
+
+    }, [selectedCvProfile, selectedRncpFiche, selectedRomeFiche, selectedJobOffer, trainings]);
 
     const AnalysisResultCard = ({ title, results, fiche, allTrainings }: { title: string, results: any, fiche: any, allTrainings?: Training[] }) => {
         if (!results) return null;
@@ -1529,13 +1588,74 @@ function TestManager() {
             </Card>
         );
     };
+    
+    const JobAnalysisResultCard = ({ results }: { results: any }) => {
+        if (!results) return null;
+    
+        const ResultItem = ({ label, isMatch }: { label: string; isMatch: boolean }) => (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-muted text-sm">
+                <span className="text-muted-foreground">{label}</span>
+                {isMatch ? (
+                    <span className="flex items-center gap-1 font-semibold text-green-600"><CheckCircle className="h-4 w-4" /> Correspond</span>
+                ) : (
+                    <span className="flex items-center gap-1 font-semibold text-amber-600"><XCircle className="h-4 w-4" /> Ne correspond pas</span>
+                )}
+            </div>
+        );
+    
+        const PercentItem = ({ label, percentage }: { label: string; percentage: string | number }) => (
+            <div className="flex flex-col items-center justify-center p-3 rounded-lg bg-muted text-center">
+                <div className="text-sm text-muted-foreground">{label}</div>
+                <div className="text-2xl font-bold my-1">{percentage}<span className="text-base">%</span></div>
+            </div>
+        );
+    
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle>Analyse Offre d'Emploi</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <section>
+                        <h4 className="font-semibold text-md mb-3">Projet Professionnel vs Offre</h4>
+                        <div className="space-y-2">
+                            <ResultItem label="Titre du métier" isMatch={results.projectAnalysis.jobTitleMatch} />
+                            <ResultItem label="Type de contrat" isMatch={results.projectAnalysis.contractTypeMatch} />
+                            <ResultItem label="Localisation" isMatch={results.projectAnalysis.locationMatch} />
+                        </div>
+                    </section>
+                    <section>
+                        <h4 className="font-semibold text-md mb-3">Formation (CV) vs Prérequis RNCP (Offre)</h4>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="flex items-center justify-center p-3 rounded-lg bg-muted text-center flex-col">
+                                <div className="text-sm text-muted-foreground">Code RNCP</div>
+                                {results.rncpAnalysis.codeMatch ? <CheckCircle className="h-8 w-8 text-green-500 my-2"/> : <XCircle className="h-8 w-8 text-destructive my-2"/>}
+                            </div>
+                            <PercentItem label="Compétences (Formation)" percentage={results.rncpAnalysis.skills.percentage} />
+                            <PercentItem label="Activités (Formation)" percentage={results.rncpAnalysis.activities.percentage} />
+                        </div>
+                    </section>
+                    <section>
+                        <h4 className="font-semibold text-md mb-3">Parcours Pro (CV) vs Attentes ROME (Offre)</h4>
+                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="flex items-center justify-center p-3 rounded-lg bg-muted text-center flex-col">
+                                <div className="text-sm text-muted-foreground">Code ROME</div>
+                                {results.romeAnalysis.codeMatch ? <CheckCircle className="h-8 w-8 text-green-500 my-2"/> : <XCircle className="h-8 w-8 text-destructive my-2"/>}
+                            </div>
+                            <PercentItem label="Compétences (Expérience)" percentage={results.romeAnalysis.skills.percentage} />
+                            <PercentItem label="Activités (Expérience)" percentage={results.romeAnalysis.activities.percentage} />
+                        </div>
+                    </section>
+                </CardContent>
+            </Card>
+        );
+    };
 
     const Selector = ({ items, title, onSelect, selectedItem }: { items: any[] | undefined, title: string, onSelect: (item: any) => void, selectedItem: any }) => {
-        const [open, setOpen] = useState(false);
         const itemName = selectedItem ? (selectedItem.clientName || selectedItem.name || renderCell(selectedItem.title)) : `Sélectionner ${title}...`;
 
         return (
-            <Popover open={open} onOpenChange={setOpen}>
+            <Popover>
                 <PopoverTrigger asChild>
                     <Button variant="outline" role="combobox" className="w-full justify-between">
                         <span className="truncate">{itemName}</span>
@@ -1549,7 +1669,7 @@ function TestManager() {
                             <CommandEmpty>Aucun résultat.</CommandEmpty>
                             <CommandGroup>
                                 {(items || []).map((item) => (
-                                    <CommandItem key={item.id} onSelect={() => { onSelect(item); setOpen(false); }}>
+                                    <CommandItem key={item.id} onSelect={() => onSelect(item)}>
                                         <Check className={cn("mr-2 h-4 w-4", selectedItem?.id === item.id ? "opacity-100" : "opacity-0")} />
                                         {item.clientName || item.name || renderCell(item.title)}
                                     </CommandItem>
@@ -1592,7 +1712,8 @@ function TestManager() {
                     <h3 className="text-lg font-semibold mb-4">Résultats de l'analyse</h3>
                     {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} fiche={selectedRncpFiche} allTrainings={trainings} />}
                     {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} fiche={selectedRomeFiche} />}
-                    {!rncpAnalysisResult && !romeAnalysisResult && (
+                    {jobAnalysisResult && <JobAnalysisResultCard results={jobAnalysisResult} />}
+                    {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && (
                         <div className="text-center py-10 text-muted-foreground">
                             <p>Sélectionnez des éléments ci-dessus pour lancer l'analyse.</p>
                         </div>
