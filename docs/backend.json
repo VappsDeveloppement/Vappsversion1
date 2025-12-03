@@ -15,6 +15,7 @@
             "workingHours": { "type": "array", "items": { "type": "string" } },
             "location": { "type": "array", "items": { "type": "string" } },
             "salary": { "type": "array", "items": { "type": "string" } },
+            "softSkills": { "type": "array", "items": { "type": "string" } },
             "infoMatching": {
                 "type": "object",
                 "properties": {

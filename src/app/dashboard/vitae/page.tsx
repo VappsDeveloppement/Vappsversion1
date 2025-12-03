@@ -1793,7 +1793,7 @@ function TestManager() {
                     {rncpAnalysisResult && <AnalysisResultCard title="Analyse RNCP (Formation)" results={rncpAnalysisResult} fiche={selectedRncpFiche} allTrainings={trainings} />}
                     {romeAnalysisResult && <AnalysisResultCard title="Analyse ROME (Parcours Professionnel)" results={romeAnalysisResult} fiche={selectedRomeFiche} />}
                     {jobAnalysisResult && <JobAnalysisResultCard results={jobAnalysisResult} />}
-                    {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && (
+                    {!rncpAnalysisResult && !romeAnalysisResult && !jobAnalysisResult && !suggestedOffers.length && (
                         <div className="text-center py-10 text-muted-foreground">
                             <p>Sélectionnez des éléments ci-dessus pour lancer l'analyse.</p>
                         </div>
@@ -1834,6 +1834,7 @@ function JobOfferManager() {
         workingHours: z.array(z.string()).optional(),
         location: z.array(z.string()).optional(),
         salary: z.array(z.string()).optional(),
+        softSkills: z.array(z.string()).optional(),
         infoMatching: z.object({
             rncpCodes: z.array(z.string()).optional(),
             rncpLevels: z.array(z.string()).optional(),
@@ -1852,7 +1853,7 @@ function JobOfferManager() {
         resolver: zodResolver(jobOfferSchema),
         defaultValues: {
             reference: '', title: [], description: '', contractType: [],
-            workingHours: [], location: [], salary: [],
+            workingHours: [], location: [], salary: [], softSkills: [],
             infoMatching: {
                 rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
                 romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
@@ -1864,7 +1865,7 @@ function JobOfferManager() {
         if (isSheetOpen) {
             form.reset(editingOffer || {
                 reference: '', title: [], description: '', contractType: [],
-                workingHours: [], location: [], salary: [],
+                workingHours: [], location: [], salary: [], softSkills: [],
                 infoMatching: {
                     rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
                     romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [],
@@ -1954,6 +1955,7 @@ function JobOfferManager() {
                                   <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Temps de travail</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un lieu..." /></FormControl></FormItem>)}/>
                                   <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salaire</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
+                                  <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..."/></FormControl></FormItem>)}/>
                                 </div>
                               </section>
                               <section className="space-y-4 pt-4 border-t">
@@ -2042,5 +2044,6 @@ export default function VitaePage() {
         </div>
     );
 }
+
 
 
