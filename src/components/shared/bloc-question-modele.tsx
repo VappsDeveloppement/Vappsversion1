@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { TagInput } from './TagInput';
-import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, doc, where } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
@@ -21,9 +21,9 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { useToast } from '@/hooks/use-toast';
-import type { Product, Protocole } from '@/app/dashboard/aura/page';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import type { Product, Protocole } from '@/app/dashboard/aura/page';
 
 type WellnessSheet = {
     id: string;
@@ -236,7 +236,7 @@ export function BlocQuestionModele() {
             setIsAnalyzing(false);
         }, 500);
     };
-
+    
     const handleExportPdf = () => {
         if (!selectedSheet || !analysisResult) return;
 
@@ -387,18 +387,10 @@ export function BlocQuestionModele() {
                              <FormItem><FormLabel>Dernier IMC</FormLabel><FormControl><Input type="number" placeholder="Ex: 22.5" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
                          )}/>
                          
-                         <FormField control={form.control} name="foodHabits" render={({ field }) => (
-                             <FormItem><FormLabel>Habitudes Alimentaires</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>
-                         )}/>
-                         <FormField control={form.control} name="contraindications" render={({ field }) => (
-                             <FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Hypertension, diabète..." /></FormControl></FormItem>
-                         )}/>
-                         <FormField control={form.control} name="allergies" render={({ field }) => (
-                             <FormItem><FormLabel>Allergies</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Arachides, lactose..." /></FormControl></FormItem>
-                         )}/>
-                         <FormField control={form.control} name="holisticProfile" render={({ field }) => (
-                             <FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Stressé, anxieux..." /></FormControl></FormItem>
-                         )}/>
+                         <FormField control={form.control} name="foodHabits" render={({ field }) => (<FormItem><FormLabel>Habitudes Alimentaires</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>)}/>
+                         <FormField control={form.control} name="contraindications" render={({ field }) => (<FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Hypertension, diabète..." /></FormControl></FormItem>)}/>
+                         <FormField control={form.control} name="allergies" render={({ field }) => (<FormItem><FormLabel>Allergies</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Arachides, lactose..." /></FormControl></FormItem>)}/>
+                         <FormField control={form.control} name="holisticProfile" render={({ field }) => (<FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Stressé, anxieux..." /></FormControl></FormItem>)}/>
                          <div className="flex justify-end pt-4">
                             <Button type="submit" disabled={!selectedSheet || isSubmitting}>
                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
