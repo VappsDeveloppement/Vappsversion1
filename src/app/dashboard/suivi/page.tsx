@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 
 const scaleSubQuestionSchema = z.object({
   id: z.string(),
@@ -44,18 +46,36 @@ const auraBlockSchema = z.object({
   type: z.literal('aura'),
 });
 
+const scormAnswerSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, "Le texte de la réponse est requis."),
+  value: z.string().min(1, "La valeur est requise."),
+});
+
+const scormQuestionSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, "Le texte de la question est requis."),
+  answers: z.array(scormAnswerSchema).min(2, "Une question doit avoir au moins deux réponses."),
+});
+
+const scormResultSchema = z.object({
+    id: z.string(),
+    value: z.string().min(1, "La valeur de résultat est requise."),
+    text: z.string().min(1, "Le texte du résultat est requis."),
+});
+
 const scormBlockSchema = z.object({
     id: z.string(),
     type: z.literal('scorm'),
     title: z.string().min(1, "Le titre du bloc SCORM est requis."),
-    questions: z.array(z.object({})).optional(), // Sera détaillé plus tard
-    results: z.array(z.object({})).optional(),  // Sera détaillé plus tard
+    questions: z.array(scormQuestionSchema).optional(),
+    results: z.array(scormResultSchema).optional(),
 });
 
 const questionSchema = z.discriminatedUnion("type", [
   scaleQuestionSchema,
   auraBlockSchema,
-  scormBlockSchema, // Ajout du nouveau type de bloc
+  scormBlockSchema,
 ]);
 
 const questionModelSchema = z.object({
@@ -423,7 +443,10 @@ function FormTemplateManager() {
                                   <div>
                                       <Label>Blocs de questions</Label>
                                       <div className="space-y-4 mt-2">
-                                          {fields.map((field, index) => (
+                                          {fields.map((field, index) => {
+                                              const scormQuestions = (form.watch(`questions.${index}`) as any).questions;
+                                              const scormResults = (form.watch(`questions.${index}`) as any).results;
+                                              return (
                                               <Card key={field.id} className="p-4">
                                                 <div className="flex justify-between items-center mb-4">
                                                     <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
@@ -487,17 +510,56 @@ function FormTemplateManager() {
                                                     </div>
                                                 )}
                                                 {field.type === 'scorm' && (
-                                                    <div>
+                                                    <div className="space-y-4">
                                                         <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc SCORM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                         <div className="text-center text-muted-foreground p-4 mt-4 bg-muted/50 rounded-md">
-                                                            La gestion des questions et résultats pour le bloc SCORM sera bientôt disponible.
+                                                        
+                                                        {/* Gestion des questions SCORM */}
+                                                        <div>
+                                                            <h4 className="font-medium text-sm my-2">Questions</h4>
+                                                            {scormQuestions?.map((q: any, qIndex: number) => (
+                                                                <Card key={q.id} className="p-3 mb-3">
+                                                                    <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormLabel>Question {qIndex + 1}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                    {q.answers?.map((ans: any, aIndex: number) => (
+                                                                        <div key={ans.id} className="flex gap-2 items-end mb-2">
+                                                                             <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.answers.${aIndex}.text`} render={({field}) => (<FormItem className="flex-1"><FormLabel>Réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                             <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.answers.${aIndex}.value`} render={({field}) => (<FormItem className="w-24"><FormLabel>Valeur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                                             <Button type="button" variant="ghost" size="icon" onClick={() => {
+                                                                                const currentQuestions = (form.getValues(`questions.${index}`) as any)?.questions || [];
+                                                                                const currentAnswers = currentQuestions[qIndex]?.answers || [];
+                                                                                const newAnswers = currentAnswers.filter((_: any, idx: number) => idx !== aIndex);
+                                                                                const newQuestions = [...currentQuestions];
+                                                                                newQuestions[qIndex] = { ...newQuestions[qIndex], answers: newAnswers };
+                                                                                update(index, { ...field, questions: newQuestions });
+                                                                            }}><Trash2 className="h-4 w-4"/></Button>
+                                                                        </div>
+                                                                    ))}
+                                                                    <Button type="button" variant="outline" size="sm" onClick={() => {
+                                                                        const currentQuestions = (form.getValues(`questions.${index}`) as any)?.questions || [];
+                                                                        const currentAnswers = currentQuestions[qIndex]?.answers || [];
+                                                                        const newAnswers = [...currentAnswers, { id: `ans-${Date.now()}`, text: '', value: '' }];
+                                                                        const newQuestions = [...currentQuestions];
+                                                                        newQuestions[qIndex] = { ...newQuestions[qIndex], answers: newAnswers };
+                                                                        update(index, { ...field, questions: newQuestions });
+                                                                    }}>+ Réponse</Button>
+                                                                </Card>
+                                                            ))}
+                                                            <Button type="button" variant="outline" size="sm" onClick={() => {
+                                                                const currentQuestions = (form.getValues(`questions.${index}`) as any)?.questions || [];
+                                                                update(index, { ...field, questions: [...currentQuestions, {id: `scorm-q-${Date.now()}`, text: '', answers: []}]});
+                                                            }}>+ Question</Button>
+                                                        </div>
+
+                                                        {/* Gestion des résultats SCORM (placeholder) */}
+                                                        <div className="mt-4">
+                                                             <h4 className="font-medium text-sm my-2">Résultats</h4>
+                                                            <p className="text-xs text-muted-foreground p-3 border rounded-md">La gestion des textes de résultats sera disponible ici bientôt.</p>
                                                         </div>
                                                     </div>
                                                 )}
                                               </Card>
-                                          ))}
+                                          )})}
                                           <div className="flex flex-wrap gap-2">
-                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', title: 'Questions sur une échelle', questions: [{id: `sq-${Date.now()}`, text: ''}] })}>
+                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', title: '', questions: [{id: `sq-${Date.now()}`, text: ''}] })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "Échelle"
                                               </Button>
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>
