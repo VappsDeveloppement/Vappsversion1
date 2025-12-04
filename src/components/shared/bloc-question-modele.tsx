@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,7 +12,7 @@ import { useFirestore } from '@/firebase/provider';
 import { collection, query, doc } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Button } from '../ui/button';
-import { ChevronsUpDown, Check, Loader2, Wand2 } from 'lucide-react';
+import { ChevronsUpDown, Check, Loader2, Wand2, Download } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,8 @@ import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Protocole } from '@/app/dashboard/aura/page';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 
 type WellnessSheet = {
@@ -67,10 +69,10 @@ export function BlocQuestionModele() {
     const [analysisResult, setAnalysisResult] = useState<any>(null);
 
     // Queries to fetch products and protocols
-    const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products')) : null, [user, firestore]);
+    const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
     const { data: allProducts, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
-    const protocolsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'protocols')) : null, [user, firestore]);
+    const protocolsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'protocols'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
     const { data: allProtocols, isLoading: areProtocolsLoading } = useCollection<Protocole>(protocolsQuery);
 
     const wellnessSheetsQuery = useMemoFirebase(() => {
@@ -236,6 +238,91 @@ export function BlocQuestionModele() {
         }, 500);
     };
 
+    const handleExportPdf = () => {
+        if (!selectedSheet || !analysisResult) return;
+
+        const doc = new jsPDF();
+        let y = 20;
+
+        // Header
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text(`Analyse Bien-être pour ${selectedSheet.clientName}`, doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
+        y += 15;
+
+        // Client Info
+        doc.setFontSize(16);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Informations du Client', 15, y);
+        y += 8;
+
+        const formData = form.getValues();
+        const clientInfo = [
+            ['Date de naissance', formData.dob ? new Date(formData.dob).toLocaleDateString('fr-FR') : 'N/A'],
+            ['Genre', formData.gender || 'N/A'],
+            ['IMC', formData.bmi?.toString() || 'N/A'],
+            ['Habitudes alimentaires', formData.foodHabits?.join(', ') || 'Aucune'],
+            ['Allergies', formData.allergies?.join(', ') || 'Aucune'],
+            ['Antécédents / Contre-indications', formData.contraindications?.join(', ') || 'Aucun'],
+            ['Contre-indications temporaires', tempContraindications.join(', ') || 'Aucune'],
+            ['Profil Holistique', formData.holisticProfile?.join(', ') || 'Aucun'],
+            ['Pathologies / Emotions à traiter', pathologiesToTreat.join(', ') || 'Aucune'],
+        ];
+
+        autoTable(doc, {
+            startY: y,
+            head: [['Critère', 'Information']],
+            body: clientInfo,
+            theme: 'striped',
+            headStyles: { fillColor: [41, 128, 185] },
+        });
+
+        y = (doc as any).lastAutoTable.finalY + 15;
+
+        // Analysis Results
+        doc.addPage();
+        y = 20;
+        doc.setFontSize(18);
+        doc.text('Résultats de l\'Analyse', 15, y);
+        y += 10;
+        
+        const addResultSection = (title: string, data: { products: any[], protocoles: any[] }) => {
+            if (y > 250) { doc.addPage(); y = 20; }
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text(title, 15, y);
+            y += 8;
+            
+            const body = [];
+            if (data.products.length > 0) {
+                 body.push(['Produits', data.products.map(p => p.title).join('\n')]);
+            }
+            if (data.protocoles.length > 0) {
+                 body.push(['Protocoles', data.protocoles.map(p => p.name).join('\n')]);
+            }
+             if (body.length === 0) {
+                body.push(['Aucune suggestion trouvée', '']);
+            }
+
+            autoTable(doc, { startY: y, head: [['Type', 'Suggestions']], body, theme: 'grid' });
+            y = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        if (analysisResult.byPathology.length > 0) {
+             doc.setFontSize(16);
+            doc.text("Correspondance par Pathologie", 15, y);
+            y += 8;
+            analysisResult.byPathology.forEach((item: any) => {
+                addResultSection(item.pathology, { products: item.products, protocoles: item.protocoles });
+            });
+        }
+        
+        addResultSection("Adapté au Profil Holistique", analysisResult.byHolisticProfile);
+        addResultSection("Cohérence Parfaite", analysisResult.perfectMatch);
+
+        doc.save(`Analyse_${selectedSheet.clientName.replace(' ', '_')}.pdf`);
+    };
+
     return (
         <Card>
             <CardHeader>
@@ -351,8 +438,12 @@ export function BlocQuestionModele() {
                 
                  {analysisResult && (
                     <div className="mt-8 pt-6 border-t space-y-8">
-                        <h3 className="text-xl font-bold text-center">Résultats de l'Analyse</h3>
-                        
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-bold">Résultats de l'Analyse</h3>
+                             <Button variant="outline" onClick={handleExportPdf}>
+                                <Download className="mr-2 h-4 w-4" /> Exporter en PDF
+                            </Button>
+                        </div>
                         <section>
                             <h4 className="font-semibold text-lg mb-4">Correspondance par Pathologie</h4>
                              {analysisResult.byPathology.length > 0 ? analysisResult.byPathology.map((item: any) => (
