@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -14,6 +15,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 
 type FollowUp = {
@@ -26,10 +28,19 @@ type FollowUp = {
     answers?: { questionId: string; answer: any }[];
 };
 
+type ScormAnswer = { id: string; text: string; value: string; };
+type ScormQuestion = { id: string; text: string; answers: ScormAnswer[]; };
+type ScormResult = { id: string; value: string; text: string; };
+
+type QuestionBlock = 
+    | { id: string; type: 'scale'; title?: string, questions: { id: string; text: string }[] } 
+    | { id: string; type: 'aura' }
+    | { id: string; type: 'scorm', title: string; questions: ScormQuestion[]; results: ScormResult[] };
+
 type QuestionModel = {
     id: string;
     name: string;
-    questions?: ({ id: string; type: 'scale'; title?: string, questions: { id: string; text: string }[] } | { id: string; type: 'aura' })[];
+    questions?: QuestionBlock[];
 };
 
 export default function FollowUpPage() {
@@ -67,7 +78,7 @@ export default function FollowUpPage() {
     const handleAnswerChange = (questionId: string, answer: any) => {
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
     };
-    
+
     const handleSave = async () => {
         if (!followUpRef || !followUp) return;
         setIsSubmitting(true);
@@ -87,6 +98,26 @@ export default function FollowUpPage() {
             setIsSubmitting(false);
         }
     };
+
+    const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>) => {
+        if (!scormBlock.questions || scormBlock.questions.length === 0) return null;
+
+        const totalValue = scormBlock.questions.reduce((sum, question) => {
+            const answerId = answers[question.id];
+            if (!answerId) return sum;
+            const answer = question.answers.find(a => a.id === answerId);
+            return sum + (answer ? parseInt(answer.value, 10) : 0);
+        }, 0);
+
+        // Simple result logic: find the result whose value is the closest floor.
+        // This can be adapted for more complex range-based logic.
+        const result = scormBlock.results
+            .filter(r => parseInt(r.value, 10) <= totalValue)
+            .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
+
+        return result;
+    };
+
 
     const isLoading = isFollowUpLoading || isModelLoading;
 
@@ -154,6 +185,42 @@ export default function FollowUpPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <BlocQuestionModele />
+                                </CardContent>
+                            </Card>
+                        )
+                    }
+                     if (questionBlock.type === 'scorm') {
+                        const result = calculateScormResult(questionBlock);
+                        return (
+                            <Card key={questionBlock.id}>
+                                <CardHeader>
+                                    <CardTitle>{questionBlock.title}</CardTitle>
+                                    <CardDescription>Répondez aux questions suivantes.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-8">
+                                    {(questionBlock.questions || []).map(question => (
+                                        <div key={question.id}>
+                                            <Label className="font-semibold">{question.text}</Label>
+                                            <RadioGroup
+                                                value={answers[question.id]}
+                                                onValueChange={(value) => handleAnswerChange(question.id, value)}
+                                                className="mt-2 space-y-2"
+                                            >
+                                                {question.answers.map(answer => (
+                                                    <div key={answer.id} className="flex items-center space-x-2">
+                                                        <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
+                                                        <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
+                                                    </div>
+                                                ))}
+                                            </RadioGroup>
+                                        </div>
+                                    ))}
+                                    {result && (
+                                        <div className="pt-6 mt-6 border-t">
+                                            <h4 className="font-semibold text-lg mb-2">Résultat</h4>
+                                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: result.text }} />
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
                         )
