@@ -3,8 +3,8 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit } from "lucide-react";
-import React, { useState, useEffect } from 'react';
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog } from "lucide-react";
+import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -20,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from "@/components/ui/label";
+import { BlocQuestionModele } from "@/components/shared/bloc-question-modele";
 
 const scaleQuestionSchema = z.object({
   id: z.string(),
@@ -27,9 +28,19 @@ const scaleQuestionSchema = z.object({
   questionText: z.string().min(1, 'Le texte de la question est requis.'),
 });
 
+const auraBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal('aura'),
+});
+
+const questionSchema = z.discriminatedUnion("type", [
+  scaleQuestionSchema,
+  auraBlockSchema,
+]);
+
 const questionModelSchema = z.object({
   name: z.string().min(1, "Le nom du modèle est requis."),
-  questions: z.array(scaleQuestionSchema).optional(),
+  questions: z.array(questionSchema).optional(),
 });
 
 type QuestionModelFormData = z.infer<typeof questionModelSchema>;
@@ -162,10 +173,14 @@ function FormTemplateManager() {
                                       <div className="space-y-4 mt-2">
                                           {fields.map((field, index) => (
                                               <Card key={field.id} className="p-4">
-                                                  <div className="flex justify-between items-center mb-4">
-                                                    <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Scale className="h-4 w-4"/>Question sur une échelle</div>
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                                <div className="flex justify-between items-center mb-4">
+                                                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                                                    {field.type === 'scale' && <><Scale className="h-4 w-4"/>Question sur une échelle</>}
+                                                    {field.type === 'aura' && <><BrainCog className="h-4 w-4"/>Bloc d'analyse AURA</>}
                                                   </div>
+                                                  <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                                </div>
+                                                {field.type === 'scale' && (
                                                   <FormField control={form.control} name={`questions.${index}.questionText`} render={({ field }) => (
                                                       <FormItem>
                                                           <FormLabel>Texte de la question</FormLabel>
@@ -173,11 +188,22 @@ function FormTemplateManager() {
                                                           <FormMessage />
                                                       </FormItem>
                                                   )}/>
+                                                )}
+                                                {field.type === 'aura' && (
+                                                    <div className="text-center text-muted-foreground p-4 bg-muted/50 rounded-md">
+                                                        Le bloc d'analyse AURA sera inséré ici.
+                                                    </div>
+                                                )}
                                               </Card>
                                           ))}
-                                          <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', questionText: '' })}>
-                                              <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "Échelle"
-                                          </Button>
+                                          <div className="flex flex-wrap gap-2">
+                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', questionText: '' })}>
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "Échelle"
+                                              </Button>
+                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "AURA"
+                                              </Button>
+                                          </div>
                                       </div>
                                   </div>
                               </div>
