@@ -37,7 +37,7 @@ type WellnessSheet = {
 const blocQuestionSchema = z.object({
   dob: z.string().optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
-  bmi: z.number().optional(),
+  bmi: z.coerce.number().optional(),
   foodHabits: z.array(z.string()).optional(),
   contraindications: z.array(z.string()).optional(),
   allergies: z.array(z.string()).optional(),
@@ -45,6 +45,8 @@ const blocQuestionSchema = z.object({
 });
 
 type BlocQuestionFormData = z.infer<typeof blocQuestionSchema>;
+
+const LOCAL_STORAGE_KEY = 'lastSelectedWellnessSheetId';
 
 export function BlocQuestionModele() {
     const { user } = useUser();
@@ -75,6 +77,18 @@ export function BlocQuestionModele() {
     });
 
     useEffect(() => {
+        if (sheets && sheets.length > 0) {
+            const lastSelectedId = localStorage.getItem(LOCAL_STORAGE_KEY);
+            if (lastSelectedId) {
+                const sheet = sheets.find(s => s.id === lastSelectedId);
+                if (sheet) {
+                    setSelectedSheet(sheet);
+                }
+            }
+        }
+    }, [sheets]);
+
+    useEffect(() => {
         if (selectedSheet) {
             form.reset({
                 dob: selectedSheet.dob || '',
@@ -97,6 +111,12 @@ export function BlocQuestionModele() {
             });
         }
     }, [selectedSheet, form]);
+
+    const handleSelectSheet = (sheet: WellnessSheet) => {
+        setSelectedSheet(sheet);
+        localStorage.setItem(LOCAL_STORAGE_KEY, sheet.id);
+        setOpen(false);
+    }
 
     const onSubmit = async (data: BlocQuestionFormData) => {
         if (!selectedSheet || !user) {
@@ -153,10 +173,7 @@ export function BlocQuestionModele() {
                                                         <CommandItem
                                                             key={sheet.id}
                                                             value={sheet.clientName}
-                                                            onSelect={() => {
-                                                                setSelectedSheet(sheet);
-                                                                setOpen(false);
-                                                            }}
+                                                            onSelect={() => handleSelectSheet(sheet)}
                                                         >
                                                             <Check className={cn("mr-2 h-4 w-4", selectedSheet?.id === sheet.id ? "opacity-100" : "opacity-0")}/>
                                                             {sheet.clientName}
@@ -171,13 +188,13 @@ export function BlocQuestionModele() {
                         </div>
 
                         <FormField control={form.control} name="dob" render={({ field }) => (
-                             <FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} readOnly disabled /></FormControl></FormItem>
+                             <FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl></FormItem>
                         )}/>
 
                         <FormField control={form.control} name="gender" render={({ field }) => (
                             <FormItem><FormLabel>Genre</FormLabel>
                                 <FormControl>
-                                <RadioGroup value={field.value} className="flex gap-4 pt-2" disabled>
+                                <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="female" /></FormControl><FormLabel>Femme</FormLabel></FormItem>
                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="male" /></FormControl><FormLabel>Homme</FormLabel></FormItem>
                                     <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="other" /></FormControl><FormLabel>Autre</FormLabel></FormItem>
@@ -187,7 +204,7 @@ export function BlocQuestionModele() {
                         )}/>
 
                          <FormField control={form.control} name="bmi" render={({ field }) => (
-                             <FormItem><FormLabel>Dernier IMC</FormLabel><FormControl><Input type="number" placeholder="Ex: 22.5" {...field} value={field.value ?? ''} readOnly disabled /></FormControl></FormItem>
+                             <FormItem><FormLabel>Dernier IMC</FormLabel><FormControl><Input type="number" placeholder="Ex: 22.5" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
                          )}/>
                          
                          <FormField control={form.control} name="foodHabits" render={({ field }) => (
