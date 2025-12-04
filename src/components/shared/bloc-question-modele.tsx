@@ -66,6 +66,13 @@ export function BlocQuestionModele() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<any>(null);
 
+    // Queries to fetch products and protocols
+    const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products')) : null, [user, firestore]);
+    const { data: allProducts, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
+
+    const protocolsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'protocols')) : null, [user, firestore]);
+    const { data: allProtocols, isLoading: areProtocolsLoading } = useCollection<Protocole>(protocolsQuery);
+
     const wellnessSheetsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, `users/${user.uid}/wellness_sheets`));
@@ -153,16 +160,80 @@ export function BlocQuestionModele() {
     };
     
     const handleAnalyze = () => {
-        // Placeholder for analysis logic
         setIsAnalyzing(true);
+        const formData = form.getValues();
+        const allContraindications = new Set([
+            ...(formData.contraindications || []),
+            ...(formData.allergies || []),
+            ...tempContraindications
+        ]);
+
+        const filterItems = (items: (Product | Protocole)[]) => {
+            return items.filter(item => {
+                const itemContraindications = new Set(item.contraindications || []);
+                for (const contra of allContraindications) {
+                    if (itemContraindications.has(contra)) {
+                        return false;
+                    }
+                }
+                return true;
+            });
+        };
+
+        const availableProducts = filterItems(allProducts || []);
+        const availableProtocols = filterItems(allProtocols || []);
+
+        const byPathology = pathologiesToTreat.map(pathology => {
+            const products = availableProducts.filter(p => p.pathologies?.includes(pathology));
+            const protocoles = availableProtocols.filter(p => p.pathologies?.includes(pathology));
+            return { pathology, products, protocoles };
+        });
+
+        const byHolisticProfile = () => {
+            const profileTags = new Set(formData.holisticProfile || []);
+            if (profileTags.size === 0) return { products: [], protocoles: [] };
+            
+            const products = availableProducts.filter(p => 
+                p.holisticProfile?.some(tag => profileTags.has(tag))
+            );
+            const protocoles = availableProtocols.filter(p => 
+                p.holisticProfile?.some(tag => profileTags.has(tag))
+            );
+            return { products, protocoles };
+        };
+
+        const perfectMatch = () => {
+             const profileTags = new Set(formData.holisticProfile || []);
+             const pathologyTags = new Set(pathologiesToTreat);
+             if (pathologyTags.size === 0) return { products: [], protocoles: []};
+
+             const products = availableProducts.filter(p => {
+                const productPathologies = new Set(p.pathologies || []);
+                const productHolistic = new Set(p.holisticProfile || []);
+                const matchesAllPathologies = [...pathologyTags].every(tag => productPathologies.has(tag));
+                const matchesAnyHolistic = profileTags.size > 0 ? [...profileTags].some(tag => productHolistic.has(tag)) : true;
+                return matchesAllPathologies && matchesAnyHolistic;
+             });
+
+              const protocoles = availableProtocols.filter(p => {
+                const protocolPathologies = new Set(p.pathologies || []);
+                const protocolHolistic = new Set(p.holisticProfile || []);
+                const matchesAllPathologies = [...pathologyTags].every(tag => protocolPathologies.has(tag));
+                const matchesAnyHolistic = profileTags.size > 0 ? [...profileTags].some(tag => protocolHolistic.has(tag)) : true;
+                return matchesAllPathologies && matchesAnyHolistic;
+             });
+
+             return { products, protocoles };
+        };
+
         setTimeout(() => {
             setAnalysisResult({
-                byPathology: [{pathology: 'Stress', products: [{name: 'Huile Essentielle de Lavande'}], protocoles: [{name: 'Protocole de Relaxation'}]}],
-                byHolisticProfile: {products: [], protocoles: []},
-                perfectMatch: {products: [], protocoles: []}
+                byPathology: byPathology,
+                byHolisticProfile: byHolisticProfile(),
+                perfectMatch: perfectMatch(),
             });
             setIsAnalyzing(false);
-        }, 1500)
+        }, 500);
     };
 
     return (
@@ -271,7 +342,7 @@ export function BlocQuestionModele() {
                 </div>
 
                 <div className="mt-8 pt-6 border-t flex flex-col items-center gap-4">
-                    <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing} className="w-full sm:w-auto">
+                    <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing}>
                         {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                         Analyser
                     </Button>
@@ -282,30 +353,27 @@ export function BlocQuestionModele() {
                     <div className="mt-8 pt-6 border-t space-y-8">
                         <h3 className="text-xl font-bold text-center">Résultats de l'Analyse</h3>
                         
-                        {/* Section par pathologie */}
                         <section>
                             <h4 className="font-semibold text-lg mb-4">Correspondance par Pathologie</h4>
                              {analysisResult.byPathology.length > 0 ? analysisResult.byPathology.map((item: any) => (
                                 <div key={item.pathology} className="mb-4 p-4 border rounded-md">
                                     <p className="font-medium text-primary">{item.pathology}</p>
-                                    <p className="text-sm">Produits: {item.products.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
-                                    <p className="text-sm">Protocoles: {item.protocoles.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                                    <p className="text-sm">Produits: {item.products.length > 0 ? item.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
+                                    <p className="text-sm">Protocoles: {item.protocoles.length > 0 ? item.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
                                 </div>
                             )) : <p className="text-sm text-muted-foreground">Aucune correspondance trouvée.</p>}
                         </section>
 
-                        {/* Section profil holistique */}
                         <section>
                             <h4 className="font-semibold text-lg mb-2">Adapté au Profil Holistique</h4>
-                            <p className="text-sm">Produits: {analysisResult.byHolisticProfile.products.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
-                            <p className="text-sm">Protocoles: {analysisResult.byHolisticProfile.protocoles.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                            <p className="text-sm">Produits: {analysisResult.byHolisticProfile.products.length > 0 ? analysisResult.byHolisticProfile.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
+                            <p className="text-sm">Protocoles: {analysisResult.byHolisticProfile.protocoles.length > 0 ? analysisResult.byHolisticProfile.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
                         </section>
 
-                        {/* Section cohérence parfaite */}
                         <section>
                             <h4 className="font-semibold text-lg mb-2">Cohérence Parfaite</h4>
-                             <p className="text-sm">Produits: {analysisResult.perfectMatch.products.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
-                            <p className="text-sm">Protocoles: {analysisResult.perfectMatch.protocoles.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                             <p className="text-sm">Produits: {analysisResult.perfectMatch.products.length > 0 ? analysisResult.perfectMatch.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
+                            <p className="text-sm">Protocoles: {analysisResult.perfectMatch.protocoles.length > 0 ? analysisResult.perfectMatch.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
                         </section>
                     </div>
                  )}
