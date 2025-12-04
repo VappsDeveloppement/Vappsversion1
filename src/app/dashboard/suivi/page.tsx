@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal } from "lucide-react";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -21,6 +21,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from "@/components/ui/label";
 import { BlocQuestionModele } from "@/components/shared/bloc-question-modele";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 
 const scaleQuestionSchema = z.object({
   id: z.string(),
@@ -50,6 +54,224 @@ type QuestionModel = {
   counselorId: string;
 } & QuestionModelFormData;
 
+type Client = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+};
+
+type FollowUp = {
+    id: string;
+    counselorId: string;
+    clientId: string;
+    clientName: string;
+    modelId: string;
+    modelName: string;
+    createdAt: string;
+    status: 'pending' | 'completed';
+};
+
+const newFollowUpSchema = z.object({
+    clientId: z.string().min(1, "Veuillez sélectionner un client."),
+    modelId: z.string().min(1, "Veuillez sélectionner un modèle."),
+});
+
+type NewFollowUpFormData = z.infer<typeof newFollowUpSchema>;
+
+function FollowUpManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    
+    const form = useForm<NewFollowUpFormData>({
+        resolver: zodResolver(newFollowUpSchema)
+    });
+
+    const clientsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
+
+    const modelsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/question_models`));
+    }, [user, firestore]);
+    const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
+    
+    const followUpsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/follow_ups`));
+    }, [user, firestore]);
+    const { data: followUps, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
+
+
+    const onSubmit = (data: NewFollowUpFormData) => {
+        if (!user) return;
+        
+        const client = clients?.find(c => c.id === data.clientId);
+        const model = models?.find(m => m.id === data.modelId);
+
+        if (!client || !model) return;
+
+        const newFollowUp: Omit<FollowUp, 'id'> = {
+            counselorId: user.uid,
+            clientId: client.id,
+            clientName: `${client.firstName} ${client.lastName}`,
+            modelId: model.id,
+            modelName: model.name,
+            createdAt: new Date().toISOString(),
+            status: 'pending',
+        };
+        
+        addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUp);
+        setIsSheetOpen(false);
+        form.reset();
+    };
+
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Suivi des clients</CardTitle>
+                        <CardDescription>
+                            Associez un client à un modèle de formulaire pour initier un nouveau suivi.
+                        </CardDescription>
+                    </div>
+                     <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                        <SheetTrigger asChild>
+                            <Button><PlusCircle className="mr-2 h-4 w-4" /> Nouveau Suivi</Button>
+                        </SheetTrigger>
+                        <SheetContent>
+                             <SheetHeader>
+                                <SheetTitle>Lancer un nouveau suivi</SheetTitle>
+                                <SheetDescription>Sélectionnez un client et un modèle de formulaire.</SheetDescription>
+                            </SheetHeader>
+                            <Form {...form}>
+                                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-6">
+                                     <FormField
+                                        control={form.control}
+                                        name="clientId"
+                                        render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Client</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
+                                                            {field.value ? clients?.find(c => c.id === field.value)?.email : "Sélectionner un client"}
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                    <Command>
+                                                        <CommandInput placeholder="Rechercher un client..." />
+                                                        <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                                                        <CommandList>
+                                                            {clients?.map((client) => (
+                                                                <CommandItem value={client.email} key={client.id} onSelect={() => { form.setValue("clientId", client.id) }}>
+                                                                    <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                    {client.firstName} {client.lastName}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name="modelId"
+                                        render={({ field }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Modèle de formulaire</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl>
+                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
+                                                            {field.value ? models?.find(m => m.id === field.value)?.name : "Sélectionner un modèle"}
+                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                        </Button>
+                                                    </FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                     <Command>
+                                                        <CommandInput placeholder="Rechercher un modèle..." />
+                                                        <CommandEmpty>Aucun modèle trouvé.</CommandEmpty>
+                                                        <CommandList>
+                                                            {models?.map((model) => (
+                                                                <CommandItem value={model.name} key={model.id} onSelect={() => { form.setValue("modelId", model.id) }}>
+                                                                    <Check className={cn("mr-2 h-4 w-4", model.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                    {model.name}
+                                                                </CommandItem>
+                                                            ))}
+                                                        </CommandList>
+                                                    </Command>
+                                                </PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                    <Button type="submit" className="w-full">Démarrer le suivi</Button>
+                                </form>
+                            </Form>
+                        </SheetContent>
+                    </Sheet>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Client</TableHead>
+                            <TableHead>Modèle</TableHead>
+                            <TableHead>Date</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                         {areFollowUpsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                         : followUps && followUps.length > 0 ? (
+                            followUps.map(suivi => (
+                                <TableRow key={suivi.id}>
+                                    <TableCell>{suivi.clientName}</TableCell>
+                                    <TableCell>{suivi.modelName}</TableCell>
+                                    <TableCell>{new Date(suivi.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell className="text-right">
+                                         <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent>
+                                                <DropdownMenuItem>Ouvrir</DropdownMenuItem>
+                                                <DropdownMenuItem>Modifier</DropdownMenuItem>
+                                                <DropdownMenuItem>Exporter PDF</DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive">Supprimer</DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                         ) : (
+                            <TableRow>
+                                <TableCell colSpan={4} className="h-24 text-center">Aucun suivi en cours.</TableCell>
+                            </TableRow>
+                         )}
+                    </TableBody>
+                </Table>
+            </CardContent>
+        </Card>
+    )
+}
 
 function FormTemplateManager() {
   const { user } = useUser();
@@ -246,19 +468,7 @@ export default function SuiviPage() {
         </TabsList>
 
         <TabsContent value="suivi">
-          <Card>
-            <CardHeader>
-              <CardTitle>Suivi des clients</CardTitle>
-              <CardDescription>
-                Cette section est en cours de développement.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-12 text-muted-foreground">
-                <p>Le module de suivi des clients sera bientôt disponible ici.</p>
-              </div>
-            </CardContent>
-          </Card>
+            <FollowUpManager />
         </TabsContent>
         <TabsContent value="form-templates">
           <FormTemplateManager />
