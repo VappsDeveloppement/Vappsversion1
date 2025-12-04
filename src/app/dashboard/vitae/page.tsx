@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -453,6 +452,7 @@ const cvProfileSchema = z.object({
 
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 type CvProfile = CvProfileFormData & { id: string; counselorId: string; clientName: string; };
+type Client = { id: string; firstName: string; lastName: string; email: string; };
 
 function CvManager() {
     const { user } = useUser();
@@ -610,40 +610,59 @@ function CvManager() {
     );
 }
 
-const jobOfferSchema = z.object({
-  title: z.array(z.string()).min(1, "Le titre est requis."),
-  reference: z.string().optional(),
-  description: z.string().optional(),
-  contractType: z.array(z.string()).optional(),
-  workingHours: z.array(z.string()).optional(),
-  environment: z.array(z.string()).optional(),
-  location: z.array(z.string()).optional(),
-  salary: z.array(z.string()).optional(),
-  infoMatching: z.object({
-    trainingLevels: z.array(z.string()).optional(),
-    trainingRncps: z.array(z.string()).optional(),
-    trainingTitles: z.array(z.string()).optional(),
-    jobRomeCodes: z.array(z.string()).optional(),
-    jobTitles: z.array(z.string()).optional(),
-    competences: z.array(z.object({
-      id: z.string(),
-      name: z.string().min(1, 'La compétence est requise.'),
-      activities: z.array(z.string()).optional(),
-    })).optional(),
-    softSkills: z.array(z.string()).optional(),
-  }).optional(),
-  additionalInfo: z.object({
-    companyCoordinates: z.string().optional(),
-    internalNotes: z.string().optional(),
-  }).optional(),
+const jobOfferFormSchema = z.object({
+    title: z.array(z.string()).min(1, "Le titre est requis."),
+    reference: z.string().optional(),
+    description: z.string().optional(),
+    contractType: z.array(z.string()).optional(),
+    workingHours: z.array(z.string()).optional(),
+    environment: z.array(z.string()).optional(),
+    location: z.array(z.string()).optional(),
+    salary: z.array(z.string()).optional(),
+    infoMatching: z.object({
+        trainingLevels: z.array(z.string()).optional(),
+        trainingRncps: z.array(z.string()).optional(),
+        trainingTitles: z.array(z.string()).optional(),
+        jobRomeCodes: z.array(z.string()).optional(),
+        jobTitles: z.array(z.string()).optional(),
+        competences: z.array(z.object({
+            id: z.string(),
+            name: z.string().min(1, 'La compétence est requise.'),
+            activities: z.array(z.string()).optional(),
+        })).optional(),
+        softSkills: z.array(z.string()).optional(),
+    }).optional(),
+    additionalInfo: z.object({
+        companyCoordinates: z.string().optional(),
+        internalNotes: z.string().optional(),
+    }).optional(),
 });
-type JobOfferFormData = z.infer<typeof jobOfferSchema>;
-type JobOffer = Omit<JobOfferFormData, 'title'> & {
+type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
+type JobOffer = {
   id: string;
   counselorId: string;
   title: string;
+  reference?: string;
+  description?: string;
+  contractType?: string[];
+  workingHours?: string[];
+  environment?: string[];
+  location?: string[];
+  salary?: string[];
+  infoMatching?: {
+    trainingLevels?: string[];
+    trainingRncps?: string[];
+    trainingTitles?: string[];
+    jobRomeCodes?: string[];
+    jobTitles?: string[];
+    competences?: { id: string; name: string; activities?: string[] }[];
+    softSkills?: string[];
+  };
+  additionalInfo?: {
+    companyCoordinates?: string;
+    internalNotes?: string;
+  };
 };
-
 
 function JobOfferManager() {
     const { user } = useUser();
@@ -656,30 +675,7 @@ function JobOfferManager() {
     const { data: jobOffers, isLoading } = useCollection<JobOffer>(jobOffersQuery);
 
     const form = useForm<JobOfferFormData>({
-        resolver: zodResolver(jobOfferSchema),
-        defaultValues: {
-            title: [],
-            reference: '',
-            description: '',
-            contractType: [],
-            workingHours: [],
-            environment: [],
-            location: [],
-            salary: [],
-            infoMatching: {
-                trainingLevels: [],
-                trainingRncps: [],
-                trainingTitles: [],
-                jobRomeCodes: [],
-                jobTitles: [],
-                competences: [],
-                softSkills: [],
-            },
-            additionalInfo: {
-                companyCoordinates: '',
-                internalNotes: '',
-            }
-        },
+        resolver: zodResolver(jobOfferFormSchema),
     });
 
     const { fields, append, remove } = useFieldArray({
@@ -719,7 +715,21 @@ function JobOfferManager() {
         const offerData = {
           counselorId: user.uid,
           ...data,
-          title: data.title?.[0] || 'Titre non défini', // Legacy support, take first title
+          infoMatching: {
+            ...data.infoMatching,
+            trainingLevels: data.infoMatching?.trainingLevels || [],
+            trainingRncps: data.infoMatching?.trainingRncps || [],
+            trainingTitles: data.infoMatching?.trainingTitles || [],
+            jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
+            jobTitles: data.infoMatching?.jobTitles || [],
+            competences: data.infoMatching?.competences || [],
+            softSkills: data.infoMatching?.softSkills || [],
+          },
+          additionalInfo: {
+            ...data.additionalInfo,
+            companyCoordinates: data.additionalInfo?.companyCoordinates || '',
+            internalNotes: data.additionalInfo?.internalNotes || '',
+          }
         };
 
         if (editingOffer) {
@@ -759,7 +769,7 @@ function JobOfferManager() {
                         : jobOffers && jobOffers.length > 0 ? (
                             jobOffers.map(offer => (
                                 <TableRow key={offer.id}>
-                                    <TableCell>{offer.title}</TableCell>
+                                    <TableCell>{Array.isArray(offer.title) ? offer.title.join(', ') : offer.title}</TableCell>
                                     <TableCell>{offer.reference}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
@@ -891,6 +901,7 @@ function TestManager() {
                         jobRomeCodes: fiche.associatedRomeCode,
                         trainingRncps: fiche.associatedRncp,
                         trainingLevels: fiche.entryLevel,
+                        trainingTitles: fiche.associatedTraining,
                         competences: fiche.competences,
                     },
                     contractType: [],
@@ -925,6 +936,20 @@ function TestManager() {
             }
         };
 
+        const cvFormations = cv.formations || [];
+        const cvLevels = new Set(cvFormations.flatMap(f => f.level || []));
+        const cvRncpCodes = new Set(cvFormations.flatMap(f => f.rncpCode || []));
+        const cvFormationTitles = new Set(cvFormations.flatMap(f => f.title || []));
+
+        const offerLevels = new Set(offer.infoMatching?.trainingLevels || []);
+        const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
+        const offerFormationTitles = new Set(offer.infoMatching?.trainingTitles || []);
+        
+        checkMatch(cvLevels, offerLevels, "Niveaux de formation correspondants", "Niveaux de formation manquants");
+        checkMatch(cvRncpCodes, offerRncpCodes, "Certifications RNCP correspondantes", "Certifications RNCP requises");
+        checkMatch(cvFormationTitles, offerFormationTitles, "Intitulés de formation correspondants", "Formations spécifiques manquantes");
+
+
         const cvSoftSkills = new Set(cv.softSkills || []);
         const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
         checkMatch(cvSoftSkills, offerSoftSkills, "Soft skills communs", "Soft skills manquants");
@@ -933,12 +958,8 @@ function TestManager() {
         const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
         checkMatch(cvRomeCodes, offerRomeCodes, "Codes ROME correspondants", "Codes ROME requis");
 
-        const cvRncpCodes = new Set(cv.formations?.flatMap(f => f.rncpCode || []));
-        const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
-        checkMatch(cvRncpCodes, offerRncpCodes, "Certifications RNCP correspondantes", "Certifications RNCP requises");
-        
         const cvCompetences = new Set(cv.experiences?.flatMap(e => e.skills || []));
-        const offerCompetences = new Set(offer.infoMatching?.competences?.map((c: any) => c.name || c.competence));
+        const offerCompetences = new Set(offer.infoMatching?.competences?.map((c: any) => c.name || c.competence) || []);
         if(offerCompetences.size > 0) {
             totalChecks++;
             const matches = [...cvCompetences].filter(item => offerCompetences.has(item));
@@ -1016,7 +1037,7 @@ function TestManager() {
                              <Select onValueChange={setSelectedComparisonId} disabled={areJobOffersLoading}>
                                 <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
                                 <SelectContent>
-                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
+                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{Array.isArray(o.title) ? o.title.join(', ') : o.title}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         ) : (
