@@ -236,22 +236,24 @@ export function BlocQuestionModele() {
         };
 
         setTimeout(() => {
-            setAnalysisResult({
+            const result = {
                 byPathology: byPathology,
                 byHolisticProfile: byHolisticProfile(),
                 perfectMatch: perfectMatch(),
-            });
+            };
+            setAnalysisResult(result);
+            localStorage.setItem(LOCAL_STORAGE_KEY_ANALYSIS, JSON.stringify(result));
             setIsAnalyzing(false);
         }, 500);
     };
-    
+
     const handleSaveAnalysis = () => {
         if (analysisResult) {
             localStorage.setItem(LOCAL_STORAGE_KEY_ANALYSIS, JSON.stringify(analysisResult));
-            toast({ title: "Analyse sauvegardée", description: "Les résultats actuels ont été mémorisés." });
+            toast({ title: "Analyse sauvegardée", description: "Les résultats actuels ont été mémorisés localement." });
         }
     };
-
+    
     const handleExportPdf = () => {
         if (!selectedSheet || !analysisResult) return;
 
@@ -340,7 +342,7 @@ export function BlocQuestionModele() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Bloc Question Modèle</CardTitle>
+                <CardTitle>Analyse AURA</CardTitle>
                 <CardDescription>
                     Recherchez une fiche bien-être existante pour pré-remplir les informations.
                 </CardDescription>
@@ -484,5 +486,3 @@ export function BlocQuestionModele() {
         </Card>
     );
 }
-
-    
