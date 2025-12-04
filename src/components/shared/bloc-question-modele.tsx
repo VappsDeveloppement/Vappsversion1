@@ -9,10 +9,10 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { TagInput } from './TagInput';
 import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, doc, where } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Button } from '../ui/button';
-import { ChevronsUpDown, Check, Loader2, Wand2, Download } from 'lucide-react';
+import { ChevronsUpDown, Check, Loader2, Wand2, Download, Save } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -49,7 +49,8 @@ const blocQuestionSchema = z.object({
 
 type BlocQuestionFormData = z.infer<typeof blocQuestionSchema>;
 
-const LOCAL_STORAGE_KEY = 'lastSelectedWellnessSheetId';
+const LOCAL_STORAGE_KEY_SHEET = 'lastSelectedWellnessSheetId';
+const LOCAL_STORAGE_KEY_ANALYSIS = 'lastAuraAnalysisResult';
 
 export function BlocQuestionModele() {
     const { user } = useUser();
@@ -94,9 +95,16 @@ export function BlocQuestionModele() {
         },
     });
 
+     useEffect(() => {
+        const savedAnalysis = localStorage.getItem(LOCAL_STORAGE_KEY_ANALYSIS);
+        if (savedAnalysis) {
+            setAnalysisResult(JSON.parse(savedAnalysis));
+        }
+    }, []);
+
     useEffect(() => {
         if (sheets && sheets.length > 0) {
-            const lastSelectedId = localStorage.getItem(LOCAL_STORAGE_KEY);
+            const lastSelectedId = localStorage.getItem(LOCAL_STORAGE_KEY_SHEET);
             if (lastSelectedId) {
                 const sheet = sheets.find(s => s.id === lastSelectedId);
                 if (sheet) {
@@ -132,7 +140,7 @@ export function BlocQuestionModele() {
 
     const handleSelectSheet = (sheet: WellnessSheet) => {
         setSelectedSheet(sheet);
-        localStorage.setItem(LOCAL_STORAGE_KEY, sheet.id);
+        localStorage.setItem(LOCAL_STORAGE_KEY_SHEET, sheet.id);
         setOpen(false);
     }
 
@@ -237,6 +245,13 @@ export function BlocQuestionModele() {
         }, 500);
     };
     
+    const handleSaveAnalysis = () => {
+        if (analysisResult) {
+            localStorage.setItem(LOCAL_STORAGE_KEY_ANALYSIS, JSON.stringify(analysisResult));
+            toast({ title: "Analyse sauvegardée", description: "Les résultats actuels ont été mémorisés." });
+        }
+    };
+
     const handleExportPdf = () => {
         if (!selectedSheet || !analysisResult) return;
 
@@ -431,9 +446,14 @@ export function BlocQuestionModele() {
                     <div className="mt-8 pt-6 border-t space-y-8">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-bold">Résultats de l'Analyse</h3>
-                             <Button variant="outline" onClick={handleExportPdf}>
-                                <Download className="mr-2 h-4 w-4" /> Exporter en PDF
-                            </Button>
+                             <div className="flex gap-2">
+                                <Button variant="outline" onClick={handleSaveAnalysis}>
+                                    <Save className="mr-2 h-4 w-4" /> Enregistrer l'analyse
+                                </Button>
+                                <Button variant="secondary" onClick={handleExportPdf}>
+                                    <Download className="mr-2 h-4 w-4" /> Exporter en PDF
+                                </Button>
+                            </div>
                         </div>
                         <section>
                             <h4 className="font-semibold text-lg mb-4">Correspondance par Pathologie</h4>
@@ -464,3 +484,5 @@ export function BlocQuestionModele() {
         </Card>
     );
 }
+
+    
