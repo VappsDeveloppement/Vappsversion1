@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -1520,6 +1521,22 @@ function TestManager() {
             </CardContent>
         </Card>
     );
+}
+
+function JobOfferManager() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Offres d'emploi</CardTitle>
+                <CardDescription>Gérez vos offres d'emploi ici.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                 <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
+                    <p>La gestion des offres d'emploi est en cours de développement.</p>
+                </div>
+            </CardContent>
+        </Card>
+    )
 }
 
 export default function VitaePage() {
