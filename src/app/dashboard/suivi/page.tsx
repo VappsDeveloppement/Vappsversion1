@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy } from "lucide-react";
 import React, { useState, useEffect, useCallback } from 'react';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
@@ -28,6 +29,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { RichTextEditor } from "@/components/ui/rich-text-editor";
+
 
 const scaleSubQuestionSchema = z.object({
   id: z.string(),
@@ -444,120 +447,17 @@ function FormTemplateManager() {
                                       <Label>Blocs de questions</Label>
                                       <div className="space-y-4 mt-2">
                                           {fields.map((field, index) => {
-                                              const scormQuestions = (form.watch(`questions.${index}`) as any).questions;
-                                              const scormResults = (form.watch(`questions.${index}`) as any).results;
-                                              return (
-                                              <Card key={field.id} className="p-4">
-                                                <div className="flex justify-between items-center mb-4">
-                                                    <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                                                        {field.type === 'scale' && <><Scale className="h-4 w-4"/>Bloc de questions sur une échelle</>}
-                                                        {field.type === 'aura' && <><BrainCog className="h-4 w-4"/>Analyse AURA</>}
-                                                        {field.type === 'scorm' && <><BookCopy className="h-4 w-4"/>Bloc SCORM</>}
-                                                    </div>
-                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                                                </div>
-                                                {field.type === 'scale' && (
-                                                   <div className='space-y-4'>
-                                                        <FormField
-                                                            control={form.control}
-                                                            name={`questions.${index}.title`}
-                                                            render={({ field }) => (
-                                                                <FormItem>
-                                                                    <FormLabel>Titre du bloc</FormLabel>
-                                                                    <FormControl><Input {...field} /></FormControl>
-                                                                    <FormMessage />
-                                                                </FormItem>
-                                                            )}
-                                                        />
-                                                        {(field.questions || []).map((subQuestion, subIndex) => (
-                                                             <div key={subQuestion.id} className="flex items-end gap-2">
-                                                                <FormField 
-                                                                    control={form.control} 
-                                                                    name={`questions.${index}.questions.${subIndex}.text`}
-                                                                    render={({ field }) => (
-                                                                        <FormItem className='flex-1'>
-                                                                            <FormLabel>Texte de la question {subIndex + 1}</FormLabel>
-                                                                            <FormControl><Input {...field} /></FormControl>
-                                                                            <FormMessage />
-                                                                        </FormItem>
-                                                                    )}
-                                                                />
-                                                                 <Button type="button" variant="ghost" size="icon" onClick={() => {
-                                                                     const currentQuestions = (form.getValues(`questions.${index}.questions`) || []);
-                                                                     update(index, {
-                                                                         ...field,
-                                                                         questions: currentQuestions.filter((_, i) => i !== subIndex)
-                                                                     });
-                                                                 }}>
-                                                                    <Trash2 className="h-4 w-4 text-destructive/70"/>
-                                                                 </Button>
-                                                            </div>
-                                                        ))}
-                                                        <Button type="button" variant="outline" size="sm" onClick={() => {
-                                                            const currentQuestions = form.getValues(`questions.${index}.questions`) || [];
-                                                            update(index, {
-                                                                ...field,
-                                                                questions: [...currentQuestions, { id: `sq-${Date.now()}`, text: '' }]
-                                                            });
-                                                        }}>
-                                                            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une question
-                                                        </Button>
-                                                   </div>
-                                                )}
-                                                {field.type === 'aura' && (
-                                                    <div className="text-center text-muted-foreground p-4 bg-muted/50 rounded-md">
-                                                        Le bloc d'analyse AURA sera inséré ici.
-                                                    </div>
-                                                )}
-                                                {field.type === 'scorm' && (
-                                                    <div className="space-y-4">
-                                                        <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc SCORM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                        
-                                                        {/* Gestion des questions SCORM */}
-                                                        <div>
-                                                            <h4 className="font-medium text-sm my-2">Questions</h4>
-                                                            {scormQuestions?.map((q: any, qIndex: number) => (
-                                                                <Card key={q.id} className="p-3 mb-3">
-                                                                    <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormLabel>Question {qIndex + 1}</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                    {q.answers?.map((ans: any, aIndex: number) => (
-                                                                        <div key={ans.id} className="flex gap-2 items-end mb-2">
-                                                                             <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.answers.${aIndex}.text`} render={({field}) => (<FormItem className="flex-1"><FormLabel>Réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                             <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.answers.${aIndex}.value`} render={({field}) => (<FormItem className="w-24"><FormLabel>Valeur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                                             <Button type="button" variant="ghost" size="icon" onClick={() => {
-                                                                                const currentQuestions = (form.getValues(`questions.${index}`) as any)?.questions || [];
-                                                                                const currentAnswers = currentQuestions[qIndex]?.answers || [];
-                                                                                const newAnswers = currentAnswers.filter((_: any, idx: number) => idx !== aIndex);
-                                                                                const newQuestions = [...currentQuestions];
-                                                                                newQuestions[qIndex] = { ...newQuestions[qIndex], answers: newAnswers };
-                                                                                update(index, { ...field, questions: newQuestions });
-                                                                            }}><Trash2 className="h-4 w-4"/></Button>
-                                                                        </div>
-                                                                    ))}
-                                                                    <Button type="button" variant="outline" size="sm" onClick={() => {
-                                                                        const currentQuestions = (form.getValues(`questions.${index}`) as any)?.questions || [];
-                                                                        const currentAnswers = currentQuestions[qIndex]?.answers || [];
-                                                                        const newAnswers = [...currentAnswers, { id: `ans-${Date.now()}`, text: '', value: '' }];
-                                                                        const newQuestions = [...currentQuestions];
-                                                                        newQuestions[qIndex] = { ...newQuestions[qIndex], answers: newAnswers };
-                                                                        update(index, { ...field, questions: newQuestions });
-                                                                    }}>+ Réponse</Button>
-                                                                </Card>
-                                                            ))}
-                                                            <Button type="button" variant="outline" size="sm" onClick={() => {
-                                                                const currentQuestions = (form.getValues(`questions.${index}`) as any)?.questions || [];
-                                                                update(index, { ...field, questions: [...currentQuestions, {id: `scorm-q-${Date.now()}`, text: '', answers: []}]});
-                                                            }}>+ Question</Button>
-                                                        </div>
-
-                                                        {/* Gestion des résultats SCORM (placeholder) */}
-                                                        <div className="mt-4">
-                                                             <h4 className="font-medium text-sm my-2">Résultats</h4>
-                                                            <p className="text-xs text-muted-foreground p-3 border rounded-md">La gestion des textes de résultats sera disponible ici bientôt.</p>
-                                                        </div>
-                                                    </div>
-                                                )}
-                                              </Card>
-                                          )})}
+                                              if (field.type === 'scale') {
+                                                  return <ScaleBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
+                                              }
+                                              if (field.type === 'aura') {
+                                                  return <AuraBlockEditor key={field.id} remove={() => remove(index)} />;
+                                              }
+                                              if (field.type === 'scorm') {
+                                                  return <ScormBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
+                                              }
+                                              return null;
+                                          })}
                                           <div className="flex flex-wrap gap-2">
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', title: '', questions: [{id: `sq-${Date.now()}`, text: ''}] })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "Échelle"
@@ -565,7 +465,7 @@ function FormTemplateManager() {
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Analyse AURA"
                                               </Button>
-                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM' })}>
+                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM', questions: [], results: [] })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "SCORM"
                                               </Button>
                                           </div>
@@ -586,6 +486,155 @@ function FormTemplateManager() {
   );
 }
 
+// ----- Child Editor Components -----
+type EditorProps = {
+    index: number;
+    form: ReturnType<typeof useForm<QuestionModelFormData>>;
+    update: ReturnType<typeof useFieldArray<QuestionModelFormData>>['update'];
+    remove: ReturnType<typeof useFieldArray<QuestionModelFormData>>['remove'];
+}
+
+function ScaleBlockEditor({ index, form, update, remove }: EditorProps) {
+    const field = form.watch(`questions.${index}`) as z.infer<typeof scaleQuestionSchema>;
+
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Scale className="h-4 w-4"/>Bloc de questions sur une échelle</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className='space-y-4'>
+                <FormField
+                    control={form.control}
+                    name={`questions.${index}.title`}
+                    render={({ field }) => (
+                        <FormItem><FormLabel>Titre du bloc</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                    )}
+                />
+                {(field.questions || []).map((subQuestion, subIndex) => (
+                     <div key={subQuestion.id} className="flex items-end gap-2">
+                        <FormField 
+                            control={form.control} 
+                            name={`questions.${index}.questions.${subIndex}.text`}
+                            render={({ field }) => (
+                                <FormItem className='flex-1'>
+                                    <FormLabel>Texte de la question {subIndex + 1}</FormLabel>
+                                    <FormControl><Input {...field} /></FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <Button type="button" variant="ghost" size="icon" onClick={() => {
+                             const currentQuestions = (form.getValues(`questions.${index}.questions`) || []);
+                             update(index, {
+                                 ...field,
+                                 questions: currentQuestions.filter((_, i) => i !== subIndex)
+                             });
+                         }}><Trash2 className="h-4 w-4 text-destructive/70"/></Button>
+                    </div>
+                ))}
+                <Button type="button" variant="outline" size="sm" onClick={() => {
+                    const currentQuestions = form.getValues(`questions.${index}.questions`) || [];
+                    update(index, {
+                        ...field,
+                        questions: [...currentQuestions, { id: `sq-${Date.now()}`, text: '' }]
+                    });
+                }}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une question
+                </Button>
+           </div>
+        </Card>
+    )
+}
+
+function AuraBlockEditor({ remove }: { remove: () => void }) {
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><BrainCog className="h-4 w-4"/>Analyse AURA</div>
+                <Button type="button" variant="ghost" size="icon" onClick={remove}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className="text-center text-muted-foreground p-4 rounded-md mt-4">
+                Le bloc d'analyse AURA sera inséré ici lors du suivi.
+            </div>
+        </Card>
+    );
+}
+
+function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Control<any>, qIndex: number, questionIndex: number}) {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `questions.${questionIndex}.questions.${qIndex}.answers`
+    });
+
+    return (
+        <div className="pl-4 border-l ml-4 space-y-3">
+            {fields.map((answer, aIndex) => (
+                 <div key={answer.id} className="flex gap-2 items-end">
+                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({field}) => (<FormItem className="flex-1"><FormLabel>Réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.value`} render={({field}) => (<FormItem className="w-24"><FormLabel>Valeur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(aIndex)}><Trash2 className="h-4 w-4"/></Button>
+                 </div>
+            ))}
+             <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `ans-${Date.now()}`, text: '', value: '' })}>+ Réponse</Button>
+        </div>
+    )
+}
+
+
+function ScormBlockEditor({ index, form, remove }: EditorProps) {
+    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({
+        control: form.control,
+        name: `questions.${index}.questions`
+    });
+    
+    const { fields: resultFields, append: appendResult, remove: removeResult } = useFieldArray({
+        control: form.control,
+        name: `questions.${index}.results`
+    });
+
+    return (
+         <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><BookCopy className="h-4 w-4"/>Bloc SCORM</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className="space-y-4">
+                <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc SCORM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <div>
+                    <h4 className="font-medium text-sm my-2">Questions</h4>
+                    {questionFields.map((question, qIndex) => (
+                        <Card key={question.id} className="p-3 mb-3 bg-background">
+                            <div className="flex justify-between items-center mb-2">
+                                <Label>Question {qIndex + 1}</Label>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+                            <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
+                        </Card>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `scorm-q-${Date.now()}`, text: '', answers: []})}>+ Question</Button>
+                </div>
+                 <div className="mt-4 pt-4 border-t">
+                    <h4 className="font-medium text-sm my-2">Résultats</h4>
+                     {resultFields.map((result, rIndex) => (
+                        <div key={result.id} className="p-3 mb-3 border rounded-md bg-background">
+                            <div className="flex justify-between items-center mb-2">
+                                <Label>Résultat {rIndex + 1}</Label>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeResult(rIndex)}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4">
+                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.value`} render={({field}) => (<FormItem><FormLabel>Valeur du résultat</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.text`} render={({field}) => (<FormItem><FormLabel>Texte du résultat</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                        </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendResult({id: `scorm-r-${Date.now()}`, value: '', text: ''})}>+ Résultat</Button>
+                </div>
+            </div>
+        </Card>
+    );
+}
 
 export default function SuiviPage() {
   return (
