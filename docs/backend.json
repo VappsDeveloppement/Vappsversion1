@@ -4,26 +4,129 @@
     "QuestionModel": {
         "title": "Question Model",
         "type": "object",
-        "description": "A reusable template of questions.",
+        "description": "A reusable template of questions for follow-ups.",
         "properties": {
             "id": { "type": "string" },
             "counselorId": { "type": "string" },
             "name": { "type": "string" },
             "questions": {
                 "type": "array",
+                "description": "An array of question blocks.",
                 "items": {
                     "type": "object",
-                    "properties": {
-                        "id": { "type": "string" },
-                        "text": { "type": "string" },
-                        "type": { "type": "string", "enum": ["text", "textarea", "select", "checkbox", "radio"] },
-                        "options": { "type": "array", "items": { "type": "string" } }
-                    },
-                    "required": ["id", "text", "type"]
+                    "oneOf": [
+                        { "$ref": "#/entities/ScaleQuestionBlock" },
+                        { "$ref": "#/entities/AuraBlock" },
+                        { "$ref": "#/entities/ScormBlock" }
+                    ]
                 }
             }
         },
         "required": ["counselorId", "name"]
+    },
+    "ScaleQuestionBlock": {
+        "title": "Scale Question Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "scale" },
+            "title": { "type": "string" },
+            "questions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "string" },
+                        "text": { "type": "string" }
+                    },
+                    "required": ["id", "text"]
+                }
+            }
+        },
+        "required": ["id", "type", "questions"]
+    },
+    "AuraBlock": {
+        "title": "AURA Analysis Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "aura" }
+        },
+        "required": ["id", "type"]
+    },
+    "ScormBlock": {
+        "title": "SCORM Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "scorm" },
+            "title": { "type": "string" },
+            "questions": {
+                "type": "array",
+                "items": { "$ref": "#/entities/ScormQuestion" }
+            },
+            "results": {
+                "type": "array",
+                "items": { "$ref": "#/entities/ScormResult" }
+            }
+        },
+        "required": ["id", "type", "title"]
+    },
+    "ScormQuestion": {
+        "title": "SCORM Question",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "text": { "type": "string" },
+            "answers": {
+                "type": "array",
+                "items": { "$ref": "#/entities/ScormAnswer" }
+            }
+        }
+    },
+    "ScormAnswer": {
+        "title": "SCORM Answer",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "text": { "type": "string" },
+            "value": { "type": "string" }
+        }
+    },
+    "ScormResult": {
+        "title": "SCORM Result",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "value": { "type": "string" },
+            "text": { "type": "string" }
+        }
+    },
+    "FollowUp": {
+        "title": "Follow-Up",
+        "type": "object",
+        "description": "Represents a follow-up session for a client using a form model.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "clientId": { "type": "string" },
+            "clientName": { "type": "string" },
+            "modelId": { "type": "string" },
+            "modelName": { "type": "string" },
+            "status": { "type": "string", "enum": ["pending", "completed"] },
+            "createdAt": { "type": "string", "format": "date-time" },
+            "answers": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "questionId": { "type": "string" },
+                        "answer": { "type": "any" }
+                    }
+                }
+            }
+        },
+        "required": ["counselorId", "clientId", "modelId"]
     },
     "JobOffer": {
         "title": "Job Offer",
@@ -1561,6 +1664,14 @@
             "$ref": "#/backend/entities/User"
           },
           "description": "Stores all user profiles (superadmin, counselors, members). Path-based ownership enables secure access based on user ID. counselorIds is used for data segregation."
+        }
+      },
+       {
+        "path": "/users/{userId}/follow_ups/{followUpId}",
+        "definition": {
+          "entityName": "FollowUp",
+          "schema": { "$ref": "#/entities/FollowUp" },
+          "description": "Stores client follow-up sessions created by a counselor."
         }
       },
       {

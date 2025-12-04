@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -126,7 +125,6 @@ export default function FollowUpPage() {
                              <Card key={questionBlock.id}>
                                 <CardHeader>
                                     <CardTitle>{questionBlock.title || "Questions sur une échelle"}</CardTitle>
-                                    <CardDescription>Évaluez chaque point sur une échelle de 1 à 10.</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-6">
                                     {questionBlock.questions.map(question => (
@@ -150,9 +148,14 @@ export default function FollowUpPage() {
                     }
                     if (questionBlock.type === 'aura') {
                         return (
-                            <div key={questionBlock.id}>
-                                <BlocQuestionModele />
-                            </div>
+                             <Card key={questionBlock.id}>
+                                <CardHeader>
+                                    <CardTitle>Analyse AURA</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <BlocQuestionModele />
+                                </CardContent>
+                            </Card>
                         )
                     }
                     return null;

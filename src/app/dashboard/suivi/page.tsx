@@ -426,15 +426,26 @@ function FormTemplateManager() {
                                           {fields.map((field, index) => (
                                               <Card key={field.id} className="p-4">
                                                 <div className="flex justify-between items-center mb-4">
-                                                  <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                                                    {field.type === 'scale' && <><Scale className="h-4 w-4"/>Bloc de questions sur une échelle</>}
-                                                    {field.type === 'aura' && <><BrainCog className="h-4 w-4"/>Analyse AURA</>}
-                                                    {field.type === 'scorm' && <><BookCopy className="h-4 w-4"/>Bloc SCORM</>}
-                                                  </div>
-                                                  <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                                    <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+                                                        {field.type === 'scale' && <><Scale className="h-4 w-4"/>Bloc de questions sur une échelle</>}
+                                                        {field.type === 'aura' && <><BrainCog className="h-4 w-4"/>Analyse AURA</>}
+                                                        {field.type === 'scorm' && <><BookCopy className="h-4 w-4"/>Bloc SCORM</>}
+                                                    </div>
+                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                                 </div>
                                                 {field.type === 'scale' && (
                                                    <div className='space-y-4'>
+                                                        <FormField
+                                                            control={form.control}
+                                                            name={`questions.${index}.title`}
+                                                            render={({ field }) => (
+                                                                <FormItem>
+                                                                    <FormLabel>Titre du bloc</FormLabel>
+                                                                    <FormControl><Input {...field} /></FormControl>
+                                                                    <FormMessage />
+                                                                </FormItem>
+                                                            )}
+                                                        />
                                                         {(field.questions || []).map((subQuestion, subIndex) => (
                                                              <div key={subQuestion.id} className="flex items-end gap-2">
                                                                 <FormField 
