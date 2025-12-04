@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye } from "lucide-react";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -25,6 +25,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 const scaleQuestionSchema = z.object({
   id: z.string(),
@@ -128,6 +130,11 @@ function FollowUpManager() {
         addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUp);
         setIsSheetOpen(false);
         form.reset();
+    };
+    
+     const handleDeleteFollowUp = (followUpId: string) => {
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/follow_ups`, followUpId));
     };
 
 
@@ -234,28 +241,33 @@ function FollowUpManager() {
                             <TableHead>Client</TableHead>
                             <TableHead>Modèle</TableHead>
                             <TableHead>Date</TableHead>
+                            <TableHead>Statut</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                         {areFollowUpsLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                         {areFollowUpsLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                          : followUps && followUps.length > 0 ? (
                             followUps.map(suivi => (
                                 <TableRow key={suivi.id}>
                                     <TableCell>{suivi.clientName}</TableCell>
                                     <TableCell>{suivi.modelName}</TableCell>
                                     <TableCell>{new Date(suivi.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell><Badge>{suivi.status}</Badge></TableCell>
                                     <TableCell className="text-right">
                                          <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
                                                 <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent>
-                                                <DropdownMenuItem>Ouvrir</DropdownMenuItem>
-                                                <DropdownMenuItem>Modifier</DropdownMenuItem>
-                                                <DropdownMenuItem>Exporter PDF</DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={`/dashboard/suivi/${suivi.id}`}>
+                                                        <Eye className="mr-2 h-4 w-4" /> Ouvrir / Modifier
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem disabled>Exporter PDF</DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive">Supprimer</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteFollowUp(suivi.id)}>Supprimer</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
@@ -263,7 +275,7 @@ function FollowUpManager() {
                             ))
                          ) : (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">Aucun suivi en cours.</TableCell>
+                                <TableCell colSpan={5} className="h-24 text-center">Aucun suivi en cours.</TableCell>
                             </TableRow>
                          )}
                     </TableBody>
