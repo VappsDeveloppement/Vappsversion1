@@ -454,6 +454,13 @@ const cvProfileSchema = z.object({
 
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 type CvProfile = CvProfileFormData & { id: string; counselorId: string; clientName: string; };
+type Client = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    counselorIds?: string[];
+};
 
 function CvManager() {
     const { user } = useUser();
@@ -645,7 +652,6 @@ function TestManager() {
         } else {
             const fiche = fichesMetiers?.find(f => f.id === selectedComparisonId);
             if(fiche) {
-                // Adapt fiche to look like an offer for matching logic
                 offer = {
                     infoMatching: {
                         softSkills: fiche.expectedSoftSkills,
@@ -670,7 +676,6 @@ function TestManager() {
         const details: string[] = [];
         let totalChecks = 0;
 
-        // Soft Skills
         const cvSoftSkills = new Set(cv.softSkills || []);
         const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
         if (offerSoftSkills.size > 0) {
@@ -682,7 +687,6 @@ function TestManager() {
             }
         }
 
-        // ROME Codes
         const cvRomeCodes = new Set(cv.experiences?.flatMap((e:any) => e.romeCode || []) || []);
         const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
         if (offerRomeCodes.size > 0) {
@@ -694,8 +698,6 @@ function TestManager() {
             }
         }
 
-
-        // RNCP Codes from Formations
         const cvRncpCodes = new Set(cv.formations?.flatMap((f:any) => f.rncpCode || []) || []);
         const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
         if(offerRncpCodes.size > 0) {
@@ -708,7 +710,6 @@ function TestManager() {
         }
 
         if (comparisonType === 'offer') {
-            // Contract Type
             const cvContracts = new Set(cv.contractTypes || []);
             const offerContracts = new Set(offer.contractType || []);
             if (offerContracts.size > 0) {
@@ -719,8 +720,6 @@ function TestManager() {
                 }
             }
            
-            
-            // Location/Mobility
             const cvMobility = new Set(cv.mobility?.map((m:string) => m.toLowerCase()) || []);
             const offerLocation = new Set(offer.location?.map((l:string) => l.toLowerCase()) || []);
             if(offerLocation.size > 0) {
@@ -740,7 +739,7 @@ function TestManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Analyse de Parcours Professionnel</CardTitle>
+                <CardTitle>ANALYSE DE PARCOURS PROFESSIONNEL</CardTitle>
                 <CardDescription>Simulez un matching entre un profil de CV et une offre d'emploi ou une fiche métier.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -873,7 +872,32 @@ function JobOfferManager() {
 
     const onSubmit = (data: JobOfferFormData) => {
         if (!user) return;
-        const offerData = { counselorId: user.uid, ...data };
+        
+        const offerData = { 
+            counselorId: user.uid, 
+            title: data.title,
+            reference: data.reference || '',
+            description: data.description || '',
+            contractType: data.contractType || [],
+            workingHours: data.workingHours || [],
+            environment: data.environment || [],
+            location: data.location || [],
+            salary: data.salary || [],
+            infoMatching: {
+                trainingLevels: data.infoMatching?.trainingLevels || [],
+                trainingRncps: data.infoMatching?.trainingRncps || [],
+                trainingTitles: data.infoMatching?.trainingTitles || [],
+                jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
+                jobTitles: data.infoMatching?.jobTitles || [],
+                competences: data.infoMatching?.competences || [],
+                softSkills: data.infoMatching?.softSkills || [],
+            },
+            additionalInfo: {
+                companyCoordinates: data.additionalInfo?.companyCoordinates || '',
+                internalNotes: data.additionalInfo?.internalNotes || '',
+            }
+        };
+
         if (editingOffer) {
             setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
             toast({ title: "Offre d'emploi mise à jour" });
