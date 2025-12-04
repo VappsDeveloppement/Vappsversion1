@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion } from "lucide-react";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,10 +75,30 @@ const scormBlockSchema = z.object({
     results: z.array(scormResultSchema).optional(),
 });
 
+const qcmAnswerSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, "Le texte de la réponse est requis."),
+  resultText: z.string().optional(),
+});
+
+const qcmQuestionSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, "Le texte de la question est requis."),
+  answers: z.array(qcmAnswerSchema).min(1, "Une question doit avoir au moins une réponse."),
+});
+
+const qcmBlockSchema = z.object({
+    id: z.string(),
+    type: z.literal('qcm'),
+    title: z.string().min(1, "Le titre du bloc QCM est requis."),
+    questions: z.array(qcmQuestionSchema).optional(),
+});
+
 const questionSchema = z.discriminatedUnion("type", [
   scaleQuestionSchema,
   auraBlockSchema,
   scormBlockSchema,
+  qcmBlockSchema,
 ]);
 
 const questionModelSchema = z.object({
@@ -456,6 +476,9 @@ function FormTemplateManager() {
                                               if (field.type === 'scorm') {
                                                   return <ScormBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
                                               }
+                                              if (field.type === 'qcm') {
+                                                  return <QcmBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
+                                              }
                                               return null;
                                           })}
                                           <div className="flex flex-wrap gap-2">
@@ -467,6 +490,9 @@ function FormTemplateManager() {
                                               </Button>
                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM', questions: [], results: [] })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "SCORM"
+                                              </Button>
+                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'qcm', title: 'Nouveau QCM', questions: [] })}>
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "QCM"
                                               </Button>
                                           </div>
                                       </div>
@@ -630,6 +656,62 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                         </div>
                     ))}
                     <Button type="button" variant="outline" size="sm" onClick={() => appendResult({id: `scorm-r-${Date.now()}`, value: '', text: ''})}>+ Résultat</Button>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function QcmAnswersEditor({ control, qIndex, questionIndex }: { control: Control<any>, qIndex: number, questionIndex: number}) {
+    const { fields, append, remove } = useFieldArray({
+        control,
+        name: `questions.${questionIndex}.questions.${qIndex}.answers`
+    });
+
+    return (
+        <div className="pl-4 border-l ml-4 space-y-4">
+            {fields.map((answer, aIndex) => (
+                 <div key={answer.id} className="flex flex-col gap-2 p-3 border rounded-md bg-white">
+                    <div className="flex justify-between items-center">
+                        <Label>Réponse {aIndex + 1}</Label>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(aIndex)}><Trash2 className="h-4 w-4 text-destructive/70"/></Button>
+                    </div>
+                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({field}) => (<FormItem><FormLabel>Texte de la réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.resultText`} render={({field}) => (<FormItem><FormLabel>Texte de résultat personnalisé</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+                 </div>
+            ))}
+             <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `qcm-ans-${Date.now()}`, text: '', resultText: '' })}>+ Réponse</Button>
+        </div>
+    )
+}
+
+function QcmBlockEditor({ index, form, remove }: EditorProps) {
+    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({
+        control: form.control,
+        name: `questions.${index}.questions`
+    });
+
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><FileQuestion className="h-4 w-4"/>Bloc QCM</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className="space-y-4">
+                <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc QCM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <div>
+                    <h4 className="font-medium text-sm my-2">Questions</h4>
+                    {questionFields.map((question, qIndex) => (
+                        <Card key={question.id} className="p-3 mb-3 bg-background">
+                            <div className="flex justify-between items-center mb-2">
+                                <Label>Question {qIndex + 1}</Label>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+                            <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <QcmAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
+                        </Card>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `qcm-q-${Date.now()}`, text: '', answers: []})}>+ Question</Button>
                 </div>
             </div>
         </Card>

@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -32,10 +33,14 @@ type ScormAnswer = { id: string; text: string; value: string; };
 type ScormQuestion = { id: string; text: string; answers: ScormAnswer[]; };
 type ScormResult = { id: string; value: string; text: string; };
 
+type QcmAnswer = { id: string; text: string; resultText?: string; };
+type QcmQuestion = { id: string; text: string; answers: QcmAnswer[]; };
+
 type QuestionBlock = 
     | { id: string; type: 'scale'; title?: string, questions: { id: string; text: string }[] } 
     | { id: string; type: 'aura' }
-    | { id: string; type: 'scorm', title: string; questions: ScormQuestion[]; results: ScormResult[] };
+    | { id: string; type: 'scorm', title: string; questions: ScormQuestion[]; results: ScormResult[] }
+    | { id: string; type: 'qcm', title: string; questions: QcmQuestion[]; };
 
 type QuestionModel = {
     id: string;
@@ -109,8 +114,6 @@ export default function FollowUpPage() {
             return sum + (answer ? parseInt(answer.value, 10) : 0);
         }, 0);
 
-        // Simple result logic: find the result whose value is the closest floor.
-        // This can be adapted for more complex range-based logic.
         const result = scormBlock.results
             .filter(r => parseInt(r.value, 10) <= totalValue)
             .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
@@ -221,6 +224,43 @@ export default function FollowUpPage() {
                                             <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: result.text }} />
                                         </div>
                                     )}
+                                </CardContent>
+                            </Card>
+                        )
+                    }
+                     if (questionBlock.type === 'qcm') {
+                        return (
+                            <Card key={questionBlock.id}>
+                                <CardHeader>
+                                    <CardTitle>{questionBlock.title}</CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-8">
+                                    {(questionBlock.questions || []).map(question => {
+                                        const selectedAnswerId = answers[question.id];
+                                        const selectedAnswer = question.answers.find(a => a.id === selectedAnswerId);
+                                        return (
+                                            <div key={question.id}>
+                                                <Label className="font-semibold">{question.text}</Label>
+                                                <RadioGroup
+                                                    value={selectedAnswerId}
+                                                    onValueChange={(value) => handleAnswerChange(question.id, value)}
+                                                    className="mt-2 space-y-2"
+                                                >
+                                                    {question.answers.map(answer => (
+                                                        <div key={answer.id} className="flex items-center space-x-2">
+                                                            <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
+                                                            <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
+                                                        </div>
+                                                    ))}
+                                                </RadioGroup>
+                                                {selectedAnswer && selectedAnswer.resultText && (
+                                                    <div className="mt-4 p-4 bg-muted rounded-md border">
+                                                        <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText }} />
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )
+                                    })}
                                 </CardContent>
                             </Card>
                         )

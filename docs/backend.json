@@ -17,7 +17,8 @@
                     "oneOf": [
                         { "$ref": "#/entities/ScaleQuestionBlock" },
                         { "$ref": "#/entities/AuraBlock" },
-                        { "$ref": "#/entities/ScormBlock" }
+                        { "$ref": "#/entities/ScormBlock" },
+                        { "$ref": "#/entities/QcmBlock" }
                     ]
                 }
             }
@@ -101,6 +102,43 @@
             "value": { "type": "string" },
             "text": { "type": "string" }
         }
+    },
+     "QcmBlock": {
+        "title": "QCM Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "qcm" },
+            "title": { "type": "string" },
+            "questions": {
+                "type": "array",
+                "items": { "$ref": "#/entities/QcmQuestion" }
+            }
+        },
+        "required": ["id", "type", "title"]
+    },
+    "QcmQuestion": {
+        "title": "QCM Question",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "text": { "type": "string" },
+            "answers": {
+                "type": "array",
+                "items": { "$ref": "#/entities/QcmAnswer" }
+            }
+        },
+        "required": ["id", "text"]
+    },
+    "QcmAnswer": {
+        "title": "QCM Answer",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "text": { "type": "string" },
+            "resultText": { "type": "string", "description": "The personalized text to show when this answer is selected." }
+        },
+        "required": ["id", "text"]
     },
     "FollowUp": {
         "title": "Follow-Up",
