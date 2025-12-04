@@ -9,7 +9,7 @@ import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, E
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore, useStorage } from '@/firebase/provider';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '../ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { formatDistanceToNow, differenceInYears, differenceInMonths } from 'date-fns';
@@ -37,6 +37,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { Training } from '@/app/dashboard/e-learning/page';
 import Link from 'next/link';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 type JobApplication = {
     id: string;
@@ -453,7 +454,6 @@ const cvProfileSchema = z.object({
 
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 type CvProfile = CvProfileFormData & { id: string; counselorId: string; clientName: string; };
-type Client = { id: string; firstName: string; lastName: string; email: string; };
 
 function CvManager() {
     const { user } = useUser();
