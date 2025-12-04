@@ -23,8 +23,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import type { Product, Protocole } from '@/app/dashboard/aura/page';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
+import autoTable from 'jspdf-autotable';
 
 type WellnessSheet = {
     id: string;
