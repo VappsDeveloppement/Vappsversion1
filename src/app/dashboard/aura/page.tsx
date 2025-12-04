@@ -947,7 +947,7 @@ function WellnessSheetGenerator() {
 }
 
 function TestManager() {
-    return <div className="text-center p-12 text-muted-foreground">Contenu à venir.</div>
+    return <div className="text-center p-12 text-muted-foreground"></div>
 }
 
 export default function AuraPage() {
@@ -969,8 +969,8 @@ export default function AuraPage() {
                     <TabsTrigger value="catalog">
                         <ShoppingBag className="mr-2 h-4 w-4" /> Catalogue
                     </TabsTrigger>
-                    <TabsTrigger value="test">
-                        <FlaskConical className="mr-2 h-4 w-4" /> Test
+                    <TabsTrigger value="bloc">
+                        <FlaskConical className="mr-2 h-4 w-4" /> BLOC
                     </TabsTrigger>
                 </TabsList>
 
@@ -983,10 +983,11 @@ export default function AuraPage() {
                 <TabsContent value="catalog">
                     <ProductManager />
                 </TabsContent>
-                <TabsContent value="test">
+                <TabsContent value="bloc">
                     <TestManager />
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
+
