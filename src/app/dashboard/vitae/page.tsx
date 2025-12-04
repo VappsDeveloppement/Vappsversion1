@@ -454,13 +454,6 @@ const cvProfileSchema = z.object({
 
 type CvProfileFormData = z.infer<typeof cvProfileSchema>;
 type CvProfile = CvProfileFormData & { id: string; counselorId: string; clientName: string; };
-type Client = {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-    counselorIds?: string[];
-};
 
 function CvManager() {
     const { user } = useUser();
@@ -619,7 +612,7 @@ function CvManager() {
 }
 
 const jobOfferSchema = z.object({
-  title: z.string().min(1, 'Le titre est requis.'),
+  title: z.array(z.string()).min(1, 'Le titre est requis.'),
   reference: z.string().optional(),
   description: z.string().optional(),
   contractType: z.array(z.string()).optional(),
@@ -661,7 +654,7 @@ function JobOfferManager() {
     const form = useForm<JobOfferFormData>({
         resolver: zodResolver(jobOfferSchema),
         defaultValues: {
-            title: '',
+            title: [],
             infoMatching: { competences: [] }
         },
     });
@@ -674,7 +667,7 @@ function JobOfferManager() {
     useEffect(() => {
         if (isSheetOpen) {
             form.reset(editingOffer || { 
-                title: '',
+                title: [],
                 infoMatching: { competences: [] }
             });
         }
@@ -686,6 +679,7 @@ function JobOfferManager() {
         const offerData = {
           counselorId: user.uid,
           ...data,
+          title: data.title || [],
           contractType: data.contractType || [],
           workingHours: data.workingHours || [],
           environment: data.environment || [],
@@ -765,7 +759,7 @@ function JobOfferManager() {
                                         <AccordionItem value="public" className="border p-4 rounded-lg">
                                             <AccordionTrigger className="font-semibold text-lg py-0">Infos Publiques</AccordionTrigger>
                                             <AccordionContent className="pt-6 space-y-4">
-                                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du poste</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl><FormMessage/></FormItem>)}/>
                                                 <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description du poste</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                                 <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
@@ -833,7 +827,7 @@ function TestManager() {
     const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
     const [selectedComparisonId, setSelectedComparisonId] = useState<string | null>(null);
     const [comparisonType, setComparisonType] = useState<'offer' | 'fiche'>('offer');
-    const [matchResult, setMatchResult] = useState<{ score: number; details: string[] } | null>(null);
+    const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[] } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
@@ -882,66 +876,36 @@ function TestManager() {
 
 
         let score = 0;
-        const details: string[] = [];
+        const matchingDetails: string[] = [];
+        const missingDetails: string[] = [];
         let totalChecks = 0;
 
-        const cvSoftSkills = new Set(cv.softSkills || []);
-        const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
-        if (offerSoftSkills.size > 0) {
-            totalChecks++;
-            const matchingSoftSkills = [...cvSoftSkills].filter(skill => offerSoftSkills.has(skill));
-            if (matchingSoftSkills.length > 0) {
-                score++;
-                details.push(`Compétences comportementales communes : ${matchingSoftSkills.join(', ')}.`);
+        const checkMatch = (cvItems: Set<string>, offerItems: Set<string>, matchText: string, mismatchText: string) => {
+            if (offerItems.size > 0) {
+                totalChecks++;
+                const matches = [...cvItems].filter(item => offerItems.has(item));
+                const misses = [...offerItems].filter(item => !cvItems.has(item));
+                if (matches.length > 0) {
+                    score++;
+                    matchingDetails.push(`${matchText}: ${matches.join(', ')}.`);
+                }
+                if (misses.length > 0) {
+                    missingDetails.push(`${mismatchText}: ${misses.join(', ')}.`);
+                }
             }
-        }
+        };
 
-        const cvRomeCodes = new Set(cv.experiences?.flatMap((e:any) => e.romeCode || []) || []);
-        const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
-        if (offerRomeCodes.size > 0) {
-            totalChecks++;
-            const matchingRomeCodes = [...cvRomeCodes].filter(code => offerRomeCodes.has(code));
-            if (matchingRomeCodes.length > 0) {
-                score++;
-                details.push(`Codes ROME correspondants : ${matchingRomeCodes.join(', ')}.`);
-            }
-        }
-
-        const cvRncpCodes = new Set(cv.formations?.flatMap((f:any) => f.rncpCode || []) || []);
-        const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
-        if(offerRncpCodes.size > 0) {
-            totalChecks++;
-            const matchingRncpCodes = [...cvRncpCodes].filter(code => offerRncpCodes.has(code));
-            if (matchingRncpCodes.length > 0) {
-                score++;
-                details.push(`Certifications RNCP correspondantes : ${matchingRncpCodes.join(', ')}.`);
-            }
-        }
-
+        checkMatch(new Set(cv.softSkills), new Set(offer.infoMatching?.softSkills), "Soft skills communs", "Soft skills manquants");
+        checkMatch(new Set(cv.experiences?.flatMap(e => e.romeCode || [])), new Set(offer.infoMatching?.jobRomeCodes), "Codes ROME correspondants", "Codes ROME requis");
+        checkMatch(new Set(cv.formations?.flatMap(f => f.rncpCode || [])), new Set(offer.infoMatching?.trainingRncps), "Certifications RNCP correspondantes", "Certifications RNCP requises");
+        
         if (comparisonType === 'offer') {
-            const cvContracts = new Set(cv.contractTypes || []);
-            const offerContracts = new Set(offer.contractType || []);
-            if (offerContracts.size > 0) {
-                totalChecks++;
-                 if ([...cvContracts].some(c => offerContracts.has(c))) {
-                    score++;
-                    details.push("Le type de contrat est compatible.");
-                }
-            }
-           
-            const cvMobility = new Set(cv.mobility?.map((m:string) => m.toLowerCase()) || []);
-            const offerLocation = new Set(offer.location?.map((l:string) => l.toLowerCase()) || []);
-            if(offerLocation.size > 0) {
-                totalChecks++;
-                if ([...cvMobility].some(m => offerLocation.has(m))) {
-                    score++;
-                    details.push("La localisation est compatible.");
-                }
-            }
+            checkMatch(new Set(cv.contractTypes), new Set(offer.contractType), "Type de contrat compatible", "Type de contrat non spécifié");
+            checkMatch(new Set(cv.mobility?.map(m => m.toLowerCase())), new Set(offer.location?.map(l => l.toLowerCase())), "Localisation compatible", "Mobilité requise");
         }
 
         const finalScore = totalChecks > 0 ? (score / totalChecks) * 100 : 0;
-        setMatchResult({ score: Math.round(finalScore), details });
+        setMatchResult({ score: Math.round(finalScore), matching: matchingDetails, missing: missingDetails });
         setIsLoading(false);
     };
 
@@ -992,9 +956,9 @@ function TestManager() {
                     Lancer l'analyse
                 </Button>
                 {matchResult && (
-                    <div className="pt-6 border-t space-y-4">
+                    <div className="pt-6 border-t space-y-6">
                         <h3 className="text-xl font-semibold">Résultat de l'analyse</h3>
-                        <div className="flex items-center gap-4">
+                        <div className="flex flex-col md:flex-row items-center gap-6">
                              <div className="relative h-24 w-24">
                                 <svg className="h-full w-full" viewBox="0 0 36 36">
                                     <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e6e6e6" strokeWidth="3" />
@@ -1002,19 +966,25 @@ function TestManager() {
                                 </svg>
                                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold">{matchResult.score}%</div>
                             </div>
-                            <div className="flex-1 space-y-2">
-                                {matchResult.details.map((detail, index) => (
-                                    <div key={index} className="flex items-start gap-2 text-sm">
-                                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
-                                        <span>{detail}</span>
-                                    </div>
-                                ))}
-                                {matchResult.details.length === 0 && (
-                                     <div className="flex items-start gap-2 text-sm text-destructive">
-                                        <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                                        <span>Aucun point de correspondance trouvé.</span>
-                                    </div>
-                                )}
+                            <div className="flex-1 grid grid-cols-1 xl:grid-cols-2 gap-4 w-full">
+                                <div className='space-y-2'>
+                                    <h4 className='font-semibold'>Points de correspondance</h4>
+                                    {matchResult.matching.length > 0 ? matchResult.matching.map((detail, index) => (
+                                        <div key={index} className="flex items-start gap-2 text-sm">
+                                            <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                            <span>{detail}</span>
+                                        </div>
+                                    )) : <p className="text-sm text-muted-foreground">Aucun point de correspondance direct trouvé.</p>}
+                                </div>
+                                <div className='space-y-2'>
+                                     <h4 className='font-semibold'>Axes d'amélioration</h4>
+                                     {matchResult.missing.length > 0 ? matchResult.missing.map((detail, index) => (
+                                        <div key={index} className="flex items-start gap-2 text-sm">
+                                            <XCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                                            <span>{detail}</span>
+                                        </div>
+                                    )) : <p className="text-sm text-muted-foreground">Aucun axe d'amélioration identifié.</p>}
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1065,5 +1035,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
