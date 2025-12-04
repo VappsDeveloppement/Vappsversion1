@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain, Download, FlaskConical, TestTube2, BrainCog } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain, Download, TestTube2, BrainCog } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -243,7 +243,7 @@ function ProductManager() {
                                                 <Label>Image</Label>
                                                 <div className="flex items-center gap-4 mt-2">
                                                     <Image src={imagePreview || '/placeholder.svg'} alt="Aperçu" width={80} height={80} className="rounded-md object-cover border" />
-                                                    <input type="file" id="product-image-upload" onChange={handleImageUpload} className="hidden" />
+                                                    <input type="file" id="product-image-upload" onChange={handleImageUpload} className="hidden" accept="image/*" />
                                                     <Button type="button" variant="outline" size="sm" onClick={() => document.getElementById('product-image-upload')?.click()}>Uploader</Button>
                                                 </div>
                                             </div>
