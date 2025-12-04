@@ -240,9 +240,8 @@
         "contractTypes": { "type": "array", "items": { "type": "string" }, "description": "Types de contrat souhaités." },
         "workDurations": { "type": "array", "items": { "type": "string" }, "description": "Durée de travail souhaitée (temps plein, partiel)." },
         "workEnvironments": { "type": "array", "items": { "type": "string" }, "description": "Environnement de travail souhaité (bureau, télétravail)." },
-        "desiredSalary": { "type": "array", "items": { "type": "string" }, "description": "Fourchette de salaire souhaitée." },
+        "salary": { "type": "array", "items": { "type": "string" }, "description": "Fourchette de salaire souhaitée." },
         "mobility": { "type": "array", "items": { "type": "string" }, "description": "Mobilité et lieux de travail souhaités." },
-        "drivingLicences": { "type": "array", "items": { "type": "string" }, "description": "Permis de conduire possédés." },
         "formations": {
           "type": "array",
           "description": "Liste des formations suivies par le candidat.",
@@ -250,10 +249,9 @@
             "type": "object",
             "properties": {
               "id": { "type": "string" },
-              "rncpCode": { "type": "array", "items": { "type": "string" } },
-              "title": { "type": "array", "items": { "type": "string" } },
               "level": { "type": "array", "items": { "type": "string" } },
-              "skills": { "type": "array", "items": { "type": "string" } }
+              "rncpCode": { "type": "array", "items": { "type": "string" } },
+              "title": { "type": "array", "items": { "type": "string" } }
             }
           }
         },
@@ -273,9 +271,9 @@
             }
           }
         },
-        "softSkills": { "type": "array", "items": { "type": "string" }, "description": "Compétences comportementales du candidat." },
-        "cvUrl": { "type": "string", "format": "uri", "description": "URL du fichier CV stocké." }
-      }
+        "softSkills": { "type": "array", "items": { "type": "string" }, "description": "Compétences comportementales du candidat." }
+      },
+      "required": ["counselorId", "clientId", "clientName"]
     },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",

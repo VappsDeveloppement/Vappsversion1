@@ -421,6 +421,196 @@ function FichesMetiersManager() {
     );
 }
 
+const cvProfileSchema = z.object({
+    clientId: z.string().min(1, "Veuillez sélectionner un client."),
+    currentJobs: z.array(z.string()).optional(),
+    searchedJobs: z.array(z.string()).optional(),
+    contractTypes: z.array(z.string()).optional(),
+    workDurations: z.array(z.string()).optional(),
+    workEnvironments: z.array(z.string()).optional(),
+    salary: z.array(z.string()).optional(),
+    mobility: z.array(z.string()).optional(),
+    
+    formations: z.array(z.object({
+        id: z.string(),
+        level: z.array(z.string()).optional(),
+        rncpCode: z.array(z.string()).optional(),
+        title: z.array(z.string()).optional(),
+    })).optional(),
+    
+    experiences: z.array(z.object({
+        id: z.string(),
+        romeCode: z.array(z.string()).optional(),
+        title: z.array(z.string()).optional(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        skills: z.array(z.string()).optional(),
+        activities: z.array(z.string()).optional(),
+    })).optional(),
+    
+    softSkills: z.array(z.string()).optional(),
+});
+
+type CvProfileFormData = z.infer<typeof cvProfileSchema>;
+type CvProfile = CvProfileFormData & { id: string; counselorId: string; clientName: string; };
+type Client = { id: string; firstName: string; lastName: string; email: string; };
+
+function CvManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingProfile, setEditingProfile] = useState<CvProfile | null>(null);
+
+    const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
+    const { data: cvProfiles, isLoading } = useCollection<CvProfile>(cvProfilesQuery);
+    
+    const clientsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid)) : null, [user, firestore]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
+    
+    const form = useForm<CvProfileFormData>({
+        resolver: zodResolver(cvProfileSchema),
+        defaultValues: { clientId: '', currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [], workEnvironments: [], salary: [], mobility: [], formations: [], experiences: [], softSkills: [] }
+    });
+
+    const { fields: formationFields, append: appendFormation, remove: removeFormation } = useFieldArray({ control: form.control, name: "formations" });
+    const { fields: experienceFields, append: appendExperience, remove: removeExperience } = useFieldArray({ control: form.control, name: "experiences" });
+
+    const onSubmit = (data: CvProfileFormData) => {
+        if (!user || !clients) return;
+        const client = clients.find(c => c.id === data.clientId);
+        if (!client) return;
+
+        const profileData = { counselorId: user.uid, clientName: `${client.firstName} ${client.lastName}`, ...data };
+        if (editingProfile) {
+            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/cv_profiles`, editingProfile.id), profileData, { merge: true });
+            toast({ title: "Profil CV mis à jour" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/cv_profiles`), profileData);
+            toast({ title: "Profil CV créé" });
+        }
+        setIsSheetOpen(false);
+    };
+
+    const handleEdit = (profile: CvProfile) => {
+        setEditingProfile(profile);
+        setIsSheetOpen(true);
+    };
+
+    const handleDelete = (profileId: string) => {
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/cv_profiles`, profileId));
+        toast({ title: "Profil CV supprimé" });
+    };
+
+     useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingProfile || { clientId: '', currentJobs: [], searchedJobs: [], contractTypes: [], workDurations: [], workEnvironments: [], salary: [], mobility: [], formations: [], experiences: [], softSkills: [] });
+        }
+    }, [isSheetOpen, editingProfile, form]);
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div><CardTitle>CV-Thèque</CardTitle><CardDescription>Gérez les profils de CV de vos clients.</CardDescription></div>
+                    <Button onClick={() => setIsSheetOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter un profil CV</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Client</TableHead><TableHead>Métier recherché</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                        : cvProfiles && cvProfiles.length > 0 ? (
+                            cvProfiles.map(profile => (
+                                <TableRow key={profile.id}>
+                                    <TableCell>{profile.clientName}</TableCell>
+                                    <TableCell>{profile.searchedJobs?.join(', ')}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(profile)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(profile.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucun profil CV.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-3xl w-full">
+                        <SheetHeader><SheetTitle>{editingProfile ? 'Modifier le' : 'Nouveau'} Profil CV</SheetTitle></SheetHeader>
+                        <Form {...form}><form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                            <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-8">
+                                <FormField control={form.control} name="clientId" render={({ field }) => (
+                                    <FormItem><FormLabel>Client</FormLabel>
+                                        <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!!editingProfile}>
+                                            <FormControl><SelectTrigger disabled={areClientsLoading}>{clients?.find(c => c.id === field.value)?.email || "Sélectionner un client"}</SelectTrigger></FormControl>
+                                            <SelectContent>{clients?.map(c => <SelectItem key={c.id} value={c.id}>{c.firstName} {c.lastName}</SelectItem>)}</SelectContent>
+                                        </Select><FormMessage />
+                                    </FormItem>
+                                )}/>
+                                <Accordion type="multiple" defaultValue={['projet']} className="w-full space-y-4">
+                                    <AccordionItem value="projet" className="border p-4 rounded-lg">
+                                        <AccordionTrigger className="font-semibold text-lg py-0">Projet Professionnel</AccordionTrigger>
+                                        <AccordionContent className="pt-6 space-y-4">
+                                            <FormField control={form.control} name="currentJobs" render={({ field }) => (<FormItem><FormLabel>Métier actuel</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..."/></FormControl></FormItem>)}/>
+                                            <FormField control={form.control} name="searchedJobs" render={({ field }) => (<FormItem><FormLabel>Métier recherché</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un métier..."/></FormControl></FormItem>)}/>
+                                            <FormField control={form.control} name="contractTypes" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="CDI, CDD..."/></FormControl></FormItem>)}/>
+                                            <FormField control={form.control} name="workDurations" render={({ field }) => (<FormItem><FormLabel>Durée du travail</FormLabel><FormControl><TagInput {...field} placeholder="Temps plein..."/></FormControl></FormItem>)}/>
+                                            <FormField control={form.control} name="workEnvironments" render={({ field }) => (<FormItem><FormLabel>Environnement de travail</FormLabel><FormControl><TagInput {...field} placeholder="Bureau, télétravail..."/></FormControl></FormItem>)}/>
+                                            <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salaire souhaité</FormLabel><FormControl><TagInput {...field} placeholder="min, max..."/></FormControl></FormItem>)}/>
+                                            <FormField control={form.control} name="mobility" render={({ field }) => (<FormItem><FormLabel>Mobilité</FormLabel><FormControl><TagInput {...field} placeholder="Ville, département..."/></FormControl></FormItem>)}/>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                    <AccordionItem value="formation" className="border p-4 rounded-lg">
+                                        <AccordionTrigger className="font-semibold text-lg py-0">Formation</AccordionTrigger>
+                                        <AccordionContent className="pt-6 space-y-4">
+                                            {formationFields.map((field, index) => (
+                                                <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-muted/50">
+                                                    <div className="flex justify-between items-center"><h4 className="font-medium">Formation {index + 1}</h4><Button type="button" variant="ghost" size="icon" onClick={() => removeFormation(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+                                                    <FormField control={form.control} name={`formations.${index}.level`} render={({ field }) => (<FormItem><FormLabel>Niveau</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..."/></FormControl></FormItem>)}/>
+                                                    <FormField control={form.control} name={`formations.${index}.rncpCode`} render={({ field }) => (<FormItem><FormLabel>RNCP associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
+                                                    <FormField control={form.control} name={`formations.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Intitulé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
+                                                </div>
+                                            ))}
+                                            <Button type="button" variant="outline" size="sm" onClick={() => appendFormation({ id: `form-${Date.now()}` })}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter une formation</Button>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                    <AccordionItem value="experience" className="border p-4 rounded-lg">
+                                        <AccordionTrigger className="font-semibold text-lg py-0">Expériences</AccordionTrigger>
+                                        <AccordionContent className="pt-6 space-y-4">
+                                            {experienceFields.map((field, index) => (
+                                                <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-muted/50">
+                                                    <div className="flex justify-between items-center"><h4 className="font-medium">Expérience {index + 1}</h4><Button type="button" variant="ghost" size="icon" onClick={() => removeExperience(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button></div>
+                                                    <FormField control={form.control} name={`experiences.${index}.romeCode`} render={({ field }) => (<FormItem><FormLabel>Code ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
+                                                    <FormField control={form.control} name={`experiences.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Intitulé du poste</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
+                                                    <FormField control={form.control} name={`experiences.${index}.skills`} render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une compétence..."/></FormControl></FormItem>)}/>
+                                                    <FormField control={form.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..."/></FormControl></FormItem>)}/>
+                                                </div>
+                                            ))}
+                                            <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}` })}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter une expérience</Button>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                     <AccordionItem value="softskills" className="border p-4 rounded-lg">
+                                        <AccordionTrigger className="font-semibold text-lg py-0">Soft Skills</AccordionTrigger>
+                                        <AccordionContent className="pt-6">
+                                            <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un soft skill..."/></FormControl></FormItem>)}/>
+                                        </AccordionContent>
+                                    </AccordionItem>
+                                </Accordion>
+                            </div></ScrollArea>
+                            <SheetFooter className="pt-4 border-t mt-auto">
+                                <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                <Button type="submit">Sauvegarder</Button>
+                            </SheetFooter>
+                        </form></Form>
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    );
+}
+
 function TestManager() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -449,7 +639,7 @@ function TestManager() {
 
         let score = 0;
         const details: string[] = [];
-        const totalChecks = 5; // Nombre de critères de matching
+        const totalChecks = 5;
 
         // 1. Soft Skills
         const cvSoftSkills = new Set(cv.softSkills || []);
@@ -591,9 +781,12 @@ export default function VitaePage() {
             <ApplicationManager />
 
             <Tabs defaultValue="fiches-metiers" className="w-full">
-                <TabsList className="grid w-full grid-cols-3 h-auto">
+                <TabsList className="grid w-full grid-cols-4 h-auto">
                     <TabsTrigger value="fiches-metiers">
                         <BookCopy className="mr-2 h-4 w-4" /> FICHES METIERS
+                    </TabsTrigger>
+                    <TabsTrigger value="cv-theque">
+                        <FileSymlink className="mr-2 h-4 w-4" /> CV-THÈQUE
                     </TabsTrigger>
                     <TabsTrigger value="jobs">
                         <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
@@ -604,6 +797,9 @@ export default function VitaePage() {
                 </TabsList>
                 <TabsContent value="fiches-metiers">
                     <FichesMetiersManager />
+                </TabsContent>
+                <TabsContent value="cv-theque">
+                    <CvManager />
                 </TabsContent>
                 <TabsContent value="jobs">
                     <JobOfferManager />
