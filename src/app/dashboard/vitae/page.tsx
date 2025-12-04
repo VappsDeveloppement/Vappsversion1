@@ -573,7 +573,7 @@ function CvManager() {
                                                     <FormField control={form.control} name={`formations.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Intitulé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
                                                 </div>
                                             ))}
-                                            <Button type="button" variant="outline" size="sm" onClick={() => appendFormation({ id: `form-${Date.now()}` })}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter une formation</Button>
+                                            <Button type="button" variant="outline" size="sm" onClick={() => appendFormation({ id: `form-${Date.now()}`, level: [], rncpCode: [], title: [] })}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter une formation</Button>
                                         </AccordionContent>
                                     </AccordionItem>
                                     <AccordionItem value="experience" className="border p-4 rounded-lg">
@@ -588,7 +588,7 @@ function CvManager() {
                                                     <FormField control={form.control} name={`experiences.${index}.activities`} render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..."/></FormControl></FormItem>)}/>
                                                 </div>
                                             ))}
-                                            <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}` })}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter une expérience</Button>
+                                            <Button type="button" variant="outline" size="sm" onClick={() => appendExperience({ id: `exp-${Date.now()}`, romeCode: [], title: [], skills: [], activities: [] })}><PlusCircle className="mr-2 h-4 w-4"/>Ajouter une expérience</Button>
                                         </AccordionContent>
                                     </AccordionItem>
                                      <AccordionItem value="softskills" className="border p-4 rounded-lg">
@@ -615,77 +615,124 @@ function TestManager() {
     const { user } = useUser();
     const firestore = useFirestore();
     const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
-    const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+    const [selectedComparisonId, setSelectedComparisonId] = useState<string | null>(null);
+    const [comparisonType, setComparisonType] = useState<'offer' | 'fiche'>('offer');
     const [matchResult, setMatchResult] = useState<{ score: number; details: string[] } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
-    const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<any>(cvProfilesQuery);
+    const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
     
     const jobOffersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
-    const { data: jobOffers, isLoading: areJobOffersLoading } = useCollection<any>(jobOffersQuery);
+    const { data: jobOffers, isLoading: areJobOffersLoading } = useCollection<JobOffer>(jobOffersQuery);
+    
+    const fichesMetiersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/fiches_metiers`)) : null, [user, firestore]);
+    const { data: fichesMetiers, isLoading: areFichesMetiersLoading } = useCollection<FicheMetier>(fichesMetiersQuery);
 
     const handleRunMatch = () => {
-        if (!selectedCvId || !selectedOfferId || !cvProfiles || !jobOffers) return;
+        if (!selectedCvId || !selectedComparisonId || !cvProfiles) return;
         setIsLoading(true);
 
         const cv = cvProfiles.find(p => p.id === selectedCvId);
-        const offer = jobOffers.find(o => o.id === selectedOfferId);
-
-        if (!cv || !offer) {
+        if (!cv) {
             setIsLoading(false);
             return;
         }
 
-        let score = 0;
-        const details: string[] = [];
-        const totalChecks = 5;
-
-        // 1. Soft Skills
-        const cvSoftSkills = new Set(cv.softSkills || []);
-        const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
-        const matchingSoftSkills = [...cvSoftSkills].filter(skill => offerSoftSkills.has(skill));
-        if (matchingSoftSkills.length > 0) {
-            score++;
-            details.push(`Compétences comportementales communes : ${matchingSoftSkills.join(', ')}.`);
-        }
-
-        // 2. ROME Codes
-        const cvRomeCodes = new Set(cv.experiences?.flatMap((e:any) => e.romeCode || []) || []);
-        const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
-        const matchingRomeCodes = [...cvRomeCodes].filter(code => offerRomeCodes.has(code));
-        if (matchingRomeCodes.length > 0) {
-            score++;
-            details.push(`Codes ROME correspondants : ${matchingRomeCodes.join(', ')}.`);
-        }
-
-        // 3. RNCP Codes from Formations
-        const cvRncpCodes = new Set(cv.formations?.flatMap((f:any) => f.rncpCode || []) || []);
-        const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
-        const matchingRncpCodes = [...cvRncpCodes].filter(code => offerRncpCodes.has(code));
-        if (matchingRncpCodes.length > 0) {
-            score++;
-            details.push(`Certifications RNCP correspondantes : ${matchingRncpCodes.join(', ')}.`);
-        }
-
-        // 4. Contract Type
-        const cvContracts = new Set(cv.contractTypes || []);
-        const offerContracts = new Set(offer.contractType || []);
-        if ([...cvContracts].some(c => offerContracts.has(c))) {
-            score++;
-            details.push("Le type de contrat est compatible.");
+        let offer: any = null;
+        if (comparisonType === 'offer') {
+            offer = jobOffers?.find(o => o.id === selectedComparisonId);
+        } else {
+            const fiche = fichesMetiers?.find(f => f.id === selectedComparisonId);
+            if(fiche) {
+                // Adapt fiche to look like an offer for matching logic
+                offer = {
+                    infoMatching: {
+                        softSkills: fiche.expectedSoftSkills,
+                        jobRomeCodes: fiche.associatedRomeCode,
+                        trainingRncps: fiche.associatedRncp,
+                        trainingLevels: fiche.entryLevel,
+                        competences: fiche.competences,
+                    },
+                    contractType: [],
+                    location: []
+                };
+            }
         }
         
-        // 5. Location/Mobility
-        const cvMobility = new Set(cv.mobility?.map((m:string) => m.toLowerCase()) || []);
-        const offerLocation = new Set(offer.location?.map((l:string) => l.toLowerCase()) || []);
-        if ([...cvMobility].some(m => offerLocation.has(m))) {
-            score++;
-            details.push("La localisation est compatible.");
+        if (!offer) {
+            setIsLoading(false);
+            return;
         }
 
 
-        const finalScore = (score / totalChecks) * 100;
+        let score = 0;
+        const details: string[] = [];
+        let totalChecks = 0;
+
+        // Soft Skills
+        const cvSoftSkills = new Set(cv.softSkills || []);
+        const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
+        if (offerSoftSkills.size > 0) {
+            totalChecks++;
+            const matchingSoftSkills = [...cvSoftSkills].filter(skill => offerSoftSkills.has(skill));
+            if (matchingSoftSkills.length > 0) {
+                score++;
+                details.push(`Compétences comportementales communes : ${matchingSoftSkills.join(', ')}.`);
+            }
+        }
+
+        // ROME Codes
+        const cvRomeCodes = new Set(cv.experiences?.flatMap((e:any) => e.romeCode || []) || []);
+        const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
+        if (offerRomeCodes.size > 0) {
+            totalChecks++;
+            const matchingRomeCodes = [...cvRomeCodes].filter(code => offerRomeCodes.has(code));
+            if (matchingRomeCodes.length > 0) {
+                score++;
+                details.push(`Codes ROME correspondants : ${matchingRomeCodes.join(', ')}.`);
+            }
+        }
+
+
+        // RNCP Codes from Formations
+        const cvRncpCodes = new Set(cv.formations?.flatMap((f:any) => f.rncpCode || []) || []);
+        const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
+        if(offerRncpCodes.size > 0) {
+            totalChecks++;
+            const matchingRncpCodes = [...cvRncpCodes].filter(code => offerRncpCodes.has(code));
+            if (matchingRncpCodes.length > 0) {
+                score++;
+                details.push(`Certifications RNCP correspondantes : ${matchingRncpCodes.join(', ')}.`);
+            }
+        }
+
+        if (comparisonType === 'offer') {
+            // Contract Type
+            const cvContracts = new Set(cv.contractTypes || []);
+            const offerContracts = new Set(offer.contractType || []);
+            if (offerContracts.size > 0) {
+                totalChecks++;
+                 if ([...cvContracts].some(c => offerContracts.has(c))) {
+                    score++;
+                    details.push("Le type de contrat est compatible.");
+                }
+            }
+           
+            
+            // Location/Mobility
+            const cvMobility = new Set(cv.mobility?.map((m:string) => m.toLowerCase()) || []);
+            const offerLocation = new Set(offer.location?.map((l:string) => l.toLowerCase()) || []);
+            if(offerLocation.size > 0) {
+                totalChecks++;
+                if ([...cvMobility].some(m => offerLocation.has(m))) {
+                    score++;
+                    details.push("La localisation est compatible.");
+                }
+            }
+        }
+
+        const finalScore = totalChecks > 0 ? (score / totalChecks) * 100 : 0;
         setMatchResult({ score: Math.round(finalScore), details });
         setIsLoading(false);
     };
@@ -693,11 +740,11 @@ function TestManager() {
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Test de Matching Vitae</CardTitle>
-                <CardDescription>Simulez un matching entre un profil de CV et une offre d'emploi.</CardDescription>
+                <CardTitle>Analyse de Parcours Professionnel</CardTitle>
+                <CardDescription>Simulez un matching entre un profil de CV et une offre d'emploi ou une fiche métier.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Profil CV</Label>
                         <Select onValueChange={setSelectedCvId} disabled={areCvProfilesLoading}>
@@ -708,22 +755,37 @@ function TestManager() {
                         </Select>
                     </div>
                      <div className="space-y-2">
-                        <Label>Offre d'emploi</Label>
-                        <Select onValueChange={setSelectedOfferId} disabled={areJobOffersLoading}>
-                            <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
-                            <SelectContent>
-                                {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                        <Label>Comparer avec</Label>
+                         <Tabs value={comparisonType} onValueChange={(val) => {setComparisonType(val as any); setSelectedComparisonId(null); setMatchResult(null);}}>
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="offer">Offre d'emploi</TabsTrigger>
+                                <TabsTrigger value="fiche">Fiche Métier</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        {comparisonType === 'offer' ? (
+                             <Select onValueChange={setSelectedComparisonId} disabled={areJobOffersLoading}>
+                                <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
+                                <SelectContent>
+                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Select onValueChange={setSelectedComparisonId} disabled={areFichesMetiersLoading}>
+                                <SelectTrigger><SelectValue placeholder="Sélectionner une fiche..." /></SelectTrigger>
+                                <SelectContent>
+                                    {fichesMetiers?.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
                     </div>
                 </div>
-                <Button onClick={handleRunMatch} disabled={!selectedCvId || !selectedOfferId || isLoading}>
+                <Button onClick={handleRunMatch} disabled={!selectedCvId || !selectedComparisonId || isLoading}>
                     {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FlaskConical className="mr-2 h-4 w-4" />}
-                    Lancer le matching
+                    Lancer l'analyse
                 </Button>
                 {matchResult && (
                     <div className="pt-6 border-t space-y-4">
-                        <h3 className="text-xl font-semibold">Résultat du Matching</h3>
+                        <h3 className="text-xl font-semibold">Résultat de l'analyse</h3>
                         <div className="flex items-center gap-4">
                              <div className="relative h-24 w-24">
                                 <svg className="h-full w-full" viewBox="0 0 36 36">
@@ -739,10 +801,10 @@ function TestManager() {
                                         <span>{detail}</span>
                                     </div>
                                 ))}
-                                {matchResult.score < 50 && (
-                                    <div className="flex items-start gap-2 text-sm text-destructive">
+                                {matchResult.details.length === 0 && (
+                                     <div className="flex items-start gap-2 text-sm text-destructive">
                                         <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                                        <span>Peu de points communs trouvés.</span>
+                                        <span>Aucun point de correspondance trouvé.</span>
                                     </div>
                                 )}
                             </div>
@@ -954,8 +1016,8 @@ export default function VitaePage() {
                     <TabsTrigger value="jobs">
                         <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
                     </TabsTrigger>
-                    <TabsTrigger value="test">
-                        <FlaskConical className="mr-2 h-4 w-4" /> TEST
+                     <TabsTrigger value="bloc-question-vitae">
+                        <FlaskConical className="mr-2 h-4 w-4" /> BLOC QUESTION VITAE
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="fiches-metiers">
@@ -967,12 +1029,10 @@ export default function VitaePage() {
                 <TabsContent value="jobs">
                     <JobOfferManager />
                 </TabsContent>
-                <TabsContent value="test">
+                 <TabsContent value="bloc-question-vitae">
                     <TestManager />
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
-
-    
