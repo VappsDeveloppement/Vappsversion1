@@ -55,6 +55,11 @@ export function BlocQuestionModele() {
     const [selectedSheet, setSelectedSheet] = useState<WellnessSheet | null>(null);
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // State for the new independent fields
+    const [tempContraindications, setTempContraindications] = useState<string[]>([]);
+    const [pathologiesToTreat, setPathologiesToTreat] = useState<string[]>([]);
+
 
     const wellnessSheetsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -93,7 +98,7 @@ export function BlocQuestionModele() {
             form.reset({
                 dob: selectedSheet.dob || '',
                 gender: selectedSheet.gender,
-                bmi: selectedSheet.bmiRecords?.[0]?.bmi,
+                bmi: selectedSheet.bmiRecords?.[0]?.bmi || undefined,
                 foodHabits: selectedSheet.foodHabits || [],
                 contraindications: selectedSheet.contraindications || [],
                 allergies: selectedSheet.allergies || [],
@@ -227,6 +232,26 @@ export function BlocQuestionModele() {
                          </div>
                     </form>
                 </Form>
+                
+                <div className="mt-8 pt-6 border-t space-y-6">
+                    <div className="space-y-2">
+                        <Label>Contre-indication temporaire</Label>
+                        <TagInput 
+                            value={tempContraindications} 
+                            onChange={setTempContraindications} 
+                            placeholder="Ajouter une contre-indication..."
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <Label>Pathologie ou Emotion à traiter</Label>
+                         <TagInput 
+                            value={pathologiesToTreat} 
+                            onChange={setPathologiesToTreat} 
+                            placeholder="Ajouter une pathologie/émotion..."
+                        />
+                    </div>
+                </div>
+
             </CardContent>
         </Card>
     );
