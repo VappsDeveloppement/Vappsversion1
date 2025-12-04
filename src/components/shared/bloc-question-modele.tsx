@@ -9,7 +9,7 @@ import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { TagInput } from './TagInput';
 import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, doc } from 'firebase/firestore';
+import { collection, query, doc, where } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Button } from '../ui/button';
 import { ChevronsUpDown, Check, Loader2, Wand2, Download } from 'lucide-react';
