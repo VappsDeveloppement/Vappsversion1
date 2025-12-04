@@ -86,7 +86,15 @@ export function BlocQuestionModele() {
                 holisticProfile: selectedSheet.holisticProfile || [],
             });
         } else {
-            form.reset();
+            form.reset({
+                dob: '',
+                gender: undefined,
+                bmi: undefined,
+                foodHabits: [],
+                contraindications: [],
+                allergies: [],
+                holisticProfile: [],
+            });
         }
     }, [selectedSheet, form]);
 
@@ -163,7 +171,7 @@ export function BlocQuestionModele() {
                         </div>
 
                         <FormField control={form.control} name="dob" render={({ field }) => (
-                             <FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} readOnly disabled /></FormControl></FormItem>
+                             <FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} readOnly disabled /></FormControl></FormItem>
                         )}/>
 
                         <FormField control={form.control} name="gender" render={({ field }) => (
@@ -179,20 +187,20 @@ export function BlocQuestionModele() {
                         )}/>
 
                          <FormField control={form.control} name="bmi" render={({ field }) => (
-                             <FormItem><FormLabel>Dernier IMC</FormLabel><FormControl><Input type="number" placeholder="Ex: 22.5" {...field} readOnly disabled /></FormControl></FormItem>
+                             <FormItem><FormLabel>Dernier IMC</FormLabel><FormControl><Input type="number" placeholder="Ex: 22.5" {...field} value={field.value ?? ''} readOnly disabled /></FormControl></FormItem>
                          )}/>
                          
                          <FormField control={form.control} name="foodHabits" render={({ field }) => (
-                             <FormItem><FormLabel>Habitudes Alimentaires</FormLabel><FormControl><TagInput {...field} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>
+                             <FormItem><FormLabel>Habitudes Alimentaires</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>
                          )}/>
                          <FormField control={form.control} name="contraindications" render={({ field }) => (
-                             <FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} placeholder="Hypertension, diabète..." /></FormControl></FormItem>
+                             <FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Hypertension, diabète..." /></FormControl></FormItem>
                          )}/>
                          <FormField control={form.control} name="allergies" render={({ field }) => (
-                             <FormItem><FormLabel>Allergies</FormLabel><FormControl><TagInput {...field} placeholder="Arachides, lactose..." /></FormControl></FormItem>
+                             <FormItem><FormLabel>Allergies</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Arachides, lactose..." /></FormControl></FormItem>
                          )}/>
                          <FormField control={form.control} name="holisticProfile" render={({ field }) => (
-                             <FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} placeholder="Stressé, anxieux..." /></FormControl></FormItem>
+                             <FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Stressé, anxieux..." /></FormControl></FormItem>
                          )}/>
                          <div className="flex justify-end pt-4">
                             <Button type="submit" disabled={!selectedSheet || isSubmitting}>
