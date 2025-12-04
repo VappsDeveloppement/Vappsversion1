@@ -223,57 +223,6 @@
       },
       "required": ["name", "counselorId"]
     },
-    "CvProfile": {
-      "title": "CV Profile",
-      "type": "object",
-      "description": "Represents a candidate's CV profile created by a counselor.",
-      "properties": {
-        "id": { "type": "string" },
-        "counselorId": { "type": "string" },
-        "clientId": { "type": "string" },
-        "clientName": { "type": "string" },
-        "currentJobs": { "type": "array", "items": { "type": "string" }, "description": "Métiers actuels du candidat." },
-        "searchedJobs": { "type": "array", "items": { "type": "string" }, "description": "Métiers recherchés ou projet professionnel." },
-        "contractTypes": { "type": "array", "items": { "type": "string" }, "description": "Types de contrat souhaités." },
-        "workDurations": { "type": "array", "items": { "type": "string" }, "description": "Durée de travail souhaitée (temps plein, partiel)." },
-        "workEnvironments": { "type": "array", "items": { "type": "string" }, "description": "Environnement de travail souhaité (bureau, télétravail)." },
-        "desiredSalary": { "type": "array", "items": { "type": "string" }, "description": "Fourchette de salaire souhaitée." },
-        "mobility": { "type": "array", "items": { "type": "string" }, "description": "Mobilité et lieux de travail souhaités." },
-        "drivingLicences": { "type": "array", "items": { "type": "string" }, "description": "Permis de conduire possédés." },
-        "formations": {
-          "type": "array",
-          "description": "Liste des formations suivies par le candidat.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "rncpCode": { "type": "array", "items": { "type": "string" } },
-              "title": { "type": "array", "items": { "type": "string" } },
-              "level": { "type": "array", "items": { "type": "string" } },
-              "skills": { "type": "array", "items": { "type": "string" } }
-            }
-          }
-        },
-        "experiences": {
-          "type": "array",
-          "description": "Liste des expériences professionnelles du candidat.",
-          "items": {
-            "type": "object",
-            "properties": {
-              "id": { "type": "string" },
-              "romeCode": { "type": "array", "items": { "type": "string" } },
-              "title": { "type": "array", "items": { "type": "string" } },
-              "startDate": { "type": "string", "format": "date" },
-              "endDate": { "type": "string", "format": "date" },
-              "skills": { "type": "array", "items": { "type": "string" } },
-              "activities": { "type": "array", "items": { "type": "string" } }
-            }
-          }
-        },
-        "softSkills": { "type": "array", "items": { "type": "string" }, "description": "Compétences comportementales du candidat." },
-        "cvUrl": { "type": "string", "format": "uri", "description": "URL du fichier CV stocké." }
-      }
-    },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "User",
@@ -1718,14 +1667,6 @@
           "entityName": "WellnessSheet",
           "schema": { "$ref": "#/entities/WellnessSheet" },
           "description": "Stores wellness sheets created by a counselor for their clients."
-        }
-      },
-      {
-        "path": "/users/{userId}/cv_profiles/{profileId}",
-        "definition": {
-            "entityName": "CvProfile",
-            "schema": { "$ref": "#/entities/CvProfile" },
-            "description": "Stores CV profiles created by a counselor for their clients."
         }
       },
        {
