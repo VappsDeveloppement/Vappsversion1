@@ -3,8 +3,8 @@
 
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 
 export function BlocQuestionModele() {
@@ -16,35 +16,29 @@ export function BlocQuestionModele() {
             </CardHeader>
             <CardContent className="space-y-6">
                 <div className="space-y-2">
-                    <FormLabel>Date de naissance</FormLabel>
-                    <Input type="date" />
+                    <Label htmlFor="dob">Date de naissance</Label>
+                    <Input id="dob" type="date" />
                 </div>
                 <div className="space-y-2">
-                    <FormLabel>Genre</FormLabel>
+                    <Label>Genre</Label>
                     <RadioGroup className="flex gap-4 pt-2">
-                        <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                                <RadioGroupItem value="female" />
-                            </FormControl>
-                            <FormLabel>Femme</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                                <RadioGroupItem value="male" />
-                            </FormControl>
-                            <FormLabel>Homme</FormLabel>
-                        </FormItem>
-                        <FormItem className="flex items-center space-x-2">
-                            <FormControl>
-                                <RadioGroupItem value="other" />
-                            </FormControl>
-                            <FormLabel>Autre</FormLabel>
-                        </FormItem>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="female" id="female" />
+                            <Label htmlFor="female">Femme</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="male" id="male" />
+                             <Label htmlFor="male">Homme</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="other" id="other" />
+                            <Label htmlFor="other">Autre</Label>
+                        </div>
                     </RadioGroup>
                 </div>
                 <div className="space-y-2">
-                    <FormLabel>Dernier IMC</FormLabel>
-                    <Input type="number" placeholder="Ex: 22.5" />
+                    <Label htmlFor="bmi">Dernier IMC</Label>
+                    <Input id="bmi" type="number" placeholder="Ex: 22.5" />
                 </div>
             </CardContent>
         </Card>
