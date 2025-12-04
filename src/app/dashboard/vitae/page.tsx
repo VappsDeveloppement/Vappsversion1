@@ -12,8 +12,6 @@ import { useFirestore, useStorage } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { formatDistanceToNow } from 'date-fns';
-import { fr } from 'date-fns/locale';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -151,7 +149,7 @@ function ApplicationManager() {
                                             <div className="text-sm text-muted-foreground">{app.applicantEmail}</div>
                                         </TableCell>
                                         <TableCell>{app.jobOfferTitle}</TableCell>
-                                        <TableCell>{formatDistanceToNow(new Date(app.appliedAt), { addSuffix: true, locale: fr })}</TableCell>
+                                        <TableCell>{new Date(app.appliedAt).toLocaleDateString()}</TableCell>
                                         <TableCell>
                                             <Badge variant={statusVariant[app.status]}>{statusText[app.status]}</Badge>
                                         </TableCell>
@@ -655,7 +653,26 @@ function JobOfferManager() {
         resolver: zodResolver(jobOfferSchema),
         defaultValues: {
             title: [],
-            infoMatching: { competences: [] }
+            reference: '',
+            description: '',
+            contractType: [],
+            workingHours: [],
+            environment: [],
+            location: [],
+            salary: [],
+            infoMatching: {
+                trainingLevels: [],
+                trainingRncps: [],
+                trainingTitles: [],
+                jobRomeCodes: [],
+                jobTitles: [],
+                competences: [],
+                softSkills: [],
+            },
+            additionalInfo: {
+                companyCoordinates: '',
+                internalNotes: '',
+            }
         },
     });
 
@@ -666,9 +683,28 @@ function JobOfferManager() {
 
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingOffer || { 
+            form.reset(editingOffer || {
                 title: [],
-                infoMatching: { competences: [] }
+                reference: '',
+                description: '',
+                contractType: [],
+                workingHours: [],
+                environment: [],
+                location: [],
+                salary: [],
+                infoMatching: {
+                    trainingLevels: [],
+                    trainingRncps: [],
+                    trainingTitles: [],
+                    jobRomeCodes: [],
+                    jobTitles: [],
+                    competences: [],
+                    softSkills: [],
+                },
+                additionalInfo: {
+                    companyCoordinates: '',
+                    internalNotes: '',
+                }
             });
         }
     }, [isSheetOpen, editingOffer, form]);
@@ -678,15 +714,15 @@ function JobOfferManager() {
         
         const offerData = {
           counselorId: user.uid,
-          ...data,
           title: data.title || [],
+          reference: data.reference || '',
+          description: data.description || '',
           contractType: data.contractType || [],
           workingHours: data.workingHours || [],
           environment: data.environment || [],
           location: data.location || [],
           salary: data.salary || [],
           infoMatching: {
-            ...data.infoMatching,
             trainingLevels: data.infoMatching?.trainingLevels || [],
             trainingRncps: data.infoMatching?.trainingRncps || [],
             trainingTitles: data.infoMatching?.trainingTitles || [],
@@ -696,7 +732,8 @@ function JobOfferManager() {
             softSkills: data.infoMatching?.softSkills || [],
           },
           additionalInfo: {
-            ...data.additionalInfo,
+            companyCoordinates: data.additionalInfo?.companyCoordinates || '',
+            internalNotes: data.additionalInfo?.internalNotes || '',
           },
         };
 
@@ -737,7 +774,7 @@ function JobOfferManager() {
                         : jobOffers && jobOffers.length > 0 ? (
                             jobOffers.map(offer => (
                                 <TableRow key={offer.id}>
-                                    <TableCell>{offer.title}</TableCell>
+                                    <TableCell>{offer.title.join(', ')}</TableCell>
                                     <TableCell>{offer.reference}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
@@ -827,7 +864,7 @@ function TestManager() {
     const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
     const [selectedComparisonId, setSelectedComparisonId] = useState<string | null>(null);
     const [comparisonType, setComparisonType] = useState<'offer' | 'fiche'>('offer');
-    const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[] } | null>(null);
+    const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[]; } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
@@ -895,13 +932,31 @@ function TestManager() {
             }
         };
 
-        checkMatch(new Set(cv.softSkills), new Set(offer.infoMatching?.softSkills), "Soft skills communs", "Soft skills manquants");
-        checkMatch(new Set(cv.experiences?.flatMap(e => e.romeCode || [])), new Set(offer.infoMatching?.jobRomeCodes), "Codes ROME correspondants", "Codes ROME requis");
-        checkMatch(new Set(cv.formations?.flatMap(f => f.rncpCode || [])), new Set(offer.infoMatching?.trainingRncps), "Certifications RNCP correspondantes", "Certifications RNCP requises");
+        const cvSoftSkills = new Set(cv.softSkills || []);
+        const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
+        checkMatch(cvSoftSkills, offerSoftSkills, "Soft skills communs", "Soft skills manquants");
+
+        const cvRomeCodes = new Set(cv.experiences?.flatMap(e => e.romeCode || []));
+        const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
+        checkMatch(cvRomeCodes, offerRomeCodes, "Codes ROME correspondants", "Codes ROME requis");
+
+        const cvRncpCodes = new Set(cv.formations?.flatMap(f => f.rncpCode || []));
+        const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
+        checkMatch(cvRncpCodes, offerRncpCodes, "Certifications RNCP correspondantes", "Certifications RNCP requises");
+        
+        // Competences & Activities
+        const cvCompetences = new Set(cv.experiences?.flatMap(e => e.skills || []));
+        const offerCompetences = new Set(offer.infoMatching?.competences?.map((c: any) => c.name || c.competence));
+        checkMatch(cvCompetences, offerCompetences, "Compétences correspondantes", "Compétences manquantes");
+
+        const cvActivities = new Set(cv.experiences?.flatMap(e => e.activities || []));
+        const offerActivities = new Set(offer.infoMatching?.competences?.flatMap((c: any) => c.activities || []));
+        checkMatch(cvActivities, offerActivities, "Activités correspondantes", "Activités manquantes");
+
         
         if (comparisonType === 'offer') {
             checkMatch(new Set(cv.contractTypes), new Set(offer.contractType), "Type de contrat compatible", "Type de contrat non spécifié");
-            checkMatch(new Set(cv.mobility?.map(m => m.toLowerCase())), new Set(offer.location?.map(l => l.toLowerCase())), "Localisation compatible", "Mobilité requise");
+            checkMatch(new Set(cv.mobility?.map(m => m.toLowerCase())), new Set(offer.location?.map((l: string) => l.toLowerCase())), "Localisation compatible", "Mobilité requise");
         }
 
         const finalScore = totalChecks > 0 ? (score / totalChecks) * 100 : 0;
@@ -938,7 +993,7 @@ function TestManager() {
                              <Select onValueChange={setSelectedComparisonId} disabled={areJobOffersLoading}>
                                 <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
                                 <SelectContent>
-                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
+                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title.join(', ')}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         ) : (
