@@ -909,20 +909,172 @@ function Cvtheque() {
     );
 }
 
+const ficheMetierSchema = z.object({
+  name: z.string().min(1, 'Le nom de la fiche est requis.'),
+  entryLevel: z.array(z.string()).optional(),
+  associatedRncp: z.array(z.string()).optional(),
+  associatedTraining: z.array(z.string()).optional(),
+  associatedRomeCode: z.array(z.string()).optional(),
+  associatedJobs: z.array(z.string()).optional(),
+  expectedSoftSkills: z.array(z.string()).optional(),
+  competences: z.array(z.object({
+      id: z.string(),
+      competence: z.string().min(1, 'La compétence est requise.'),
+      activities: z.array(z.string()).optional(),
+  })).optional(),
+});
+
+type FicheMetierFormData = z.infer<typeof ficheMetierSchema>;
+
+type FicheMetier = FicheMetierFormData & {
+  id: string;
+  counselorId: string;
+};
+
 function FichesMetiersManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingFiche, setEditingFiche] = useState<FicheMetier | null>(null);
+
+    const fichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/fiches_metiers`)) : null, [user, firestore]);
+    const { data: fiches, isLoading } = useCollection<FicheMetier>(fichesQuery);
+    
+    const form = useForm<FicheMetierFormData>({
+        resolver: zodResolver(ficheMetierSchema),
+        defaultValues: { name: '', entryLevel: [], associatedRncp: [], associatedTraining: [], associatedRomeCode: [], associatedJobs: [], expectedSoftSkills: [], competences: [] }
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "competences",
+    });
+
+    const onSubmit = (data: FicheMetierFormData) => {
+        if (!user) return;
+        const ficheData = { counselorId: user.uid, ...data };
+        if (editingFiche) {
+            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/fiches_metiers`, editingFiche.id), ficheData, { merge: true });
+            toast({ title: "Fiche métier mise à jour" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/fiches_metiers`), ficheData);
+            toast({ title: "Fiche métier créée" });
+        }
+        setIsSheetOpen(false);
+    };
+    
+    const handleEdit = (fiche: FicheMetier) => {
+        setEditingFiche(fiche);
+        setIsSheetOpen(true);
+    };
+
+    const handleDelete = (ficheId: string) => {
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/fiches_metiers`, ficheId));
+        toast({ title: "Fiche métier supprimée" });
+    };
+    
+     useEffect(() => {
+        if (isSheetOpen) {
+            if (editingFiche) {
+                form.reset(editingFiche);
+            } else {
+                 form.reset({ name: '', entryLevel: [], associatedRncp: [], associatedTraining: [], associatedRomeCode: [], associatedJobs: [], expectedSoftSkills: [], competences: [] });
+            }
+        }
+    }, [isSheetOpen, editingFiche, form]);
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Fiches Métiers</CardTitle>
-                <CardDescription>Gérez vos fiches métiers (ROME, RNCP).</CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Fiches Métiers</CardTitle>
+                        <CardDescription>Gérez vos fiches métiers (ROME, RNCP).</CardDescription>
+                    </div>
+                    <Button onClick={() => setIsSheetOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Ajouter une fiche</Button>
+                </div>
             </CardHeader>
             <CardContent>
-                 <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                    <p>Le gestionnaire de fiches métiers est en cours de développement.</p>
-                </div>
+                {isLoading ? <Skeleton className="h-40 w-full" /> : (
+                <Table>
+                     <TableHeader><TableRow><TableHead>Nom de la fiche</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                     <TableBody>
+                        {fiches && fiches.length > 0 ? (
+                            fiches.map(fiche => (
+                                <TableRow key={fiche.id}>
+                                    <TableCell>{fiche.name}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(fiche)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(fiche.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : (
+                            <TableRow><TableCell colSpan={2} className="h-24 text-center">Aucune fiche métier créée.</TableCell></TableRow>
+                        )}
+                     </TableBody>
+                </Table>
+                )}
+
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-2xl w-full">
+                        <SheetHeader>
+                            <SheetTitle>{editingFiche ? 'Modifier' : 'Nouvelle'} Fiche Métier</SheetTitle>
+                        </SheetHeader>
+                        <Form {...form}>
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                            <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
+                                <div className="space-y-8">
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la fiche</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                                <section>
+                                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Formation</h3>
+                                    <div className="space-y-4">
+                                        <FormField control={form.control} name="entryLevel" render={({ field }) => (<FormItem><FormLabel>Niveau d'accès</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..." /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={form.control} name="associatedRncp" render={({ field }) => (<FormItem><FormLabel>RNCP associés</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code RNCP..." /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField control={form.control} name="associatedTraining" render={({ field }) => (<FormItem><FormLabel>Intitulé de formation associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem>)}/>
+                                    </div>
+                                </section>
+                                 <section>
+                                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Métiers</h3>
+                                    <div className="space-y-4">
+                                         <FormField control={form.control} name="associatedRomeCode" render={({ field }) => (<FormItem><FormLabel>Code Rome associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code ROME..." /></FormControl><FormMessage /></FormItem>)}/>
+                                         <FormField control={form.control} name="associatedJobs" render={({ field }) => (<FormItem><FormLabel>Libellés métiers associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un libellé..." /></FormControl><FormMessage /></FormItem>)}/>
+                                    </div>
+                                </section>
+                                <section>
+                                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Savoir-être</h3>
+                                    <FormField control={form.control} name="expectedSoftSkills" render={({ field }) => (<FormItem><FormLabel>Softskills attendus</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un softskill..." /></FormControl><FormMessage /></FormItem>)}/>
+                                </section>
+                                <section>
+                                    <h3 className="text-lg font-semibold mb-4 border-b pb-2">Compétences</h3>
+                                    <div className="space-y-4">
+                                        {fields.map((field, index) => (
+                                            <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-muted/50">
+                                                <div className="flex justify-between items-center"><h4 className="font-medium">Compétence {index + 1}</h4><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+                                                <FormField control={form.control} name={`competences.${index}.competence`} render={({ field }) => ( <FormItem><FormLabel>Compétence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                <FormField control={form.control} name={`competences.${index}.activities`} render={({ field }) => ( <FormItem><FormLabel>Activités associées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
+                                            </div>
+                                        ))}
+                                        <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `comp-${Date.now()}`, competence: '', activities: [] })}>
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une compétence
+                                        </Button>
+                                    </div>
+                                </section>
+                                </div>
+                            </ScrollArea>
+                            <SheetFooter className="pt-4 border-t mt-auto">
+                                <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                <Button type="submit">Sauvegarder</Button>
+                            </SheetFooter>
+                        </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
             </CardContent>
         </Card>
-    )
+    );
 }
 
 function TestManager() {

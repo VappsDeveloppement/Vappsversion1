@@ -17,7 +17,8 @@
                     "oneOf": [
                         { "$ref": "#/entities/ScaleQuestionBlock" },
                         { "$ref": "#/entities/AuraBlock" },
-                        { "$ref": "#/entities/ScormBlock" }
+                        { "$ref": "#/entities/ScormBlock" },
+                        { "$ref": "#/entities/QcmBlock" }
                     ]
                 }
             }
@@ -102,6 +103,43 @@
             "text": { "type": "string" }
         }
     },
+     "QcmBlock": {
+        "title": "QCM Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "qcm" },
+            "title": { "type": "string" },
+            "questions": {
+                "type": "array",
+                "items": { "$ref": "#/entities/QcmQuestion" }
+            }
+        },
+        "required": ["id", "type", "title"]
+    },
+    "QcmQuestion": {
+        "title": "QCM Question",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "text": { "type": "string" },
+            "answers": {
+                "type": "array",
+                "items": { "$ref": "#/entities/QcmAnswer" }
+            }
+        },
+        "required": ["id", "text"]
+    },
+    "QcmAnswer": {
+        "title": "QCM Answer",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "text": { "type": "string" },
+            "resultText": { "type": "string", "description": "The personalized text to show when this answer is selected." }
+        },
+        "required": ["id", "text"]
+    },
     "FollowUp": {
         "title": "Follow-Up",
         "type": "object",
@@ -160,46 +198,33 @@
         },
         "required": ["counselorId", "title"]
     },
-    "RomeFiche": {
-        "title": "Fiche ROME",
-        "type": "object",
-        "description": "Represents a sheet for ROME codifications.",
-        "properties": {
-            "id": { "type": "string" },
-            "counselorId": { "type": "string" },
-            "name": { "type": "string" },
-            "romeCodes": { "type": "array", "items": { "type": "string" } },
-            "romeTitles": { "type": "array", "items": { "type": "string" } },
-            "associatedJobs": { "type": "array", "items": { "type": "string" } },
-            "associatedRncp": { "type": "array", "items": { "type": "string" } },
-            "softSkills": { "type": "array", "items": { "type": "string" } },
-            "competences": { "type": "array", "items": { "type": "string" } },
-            "activites": { "type": "array", "items": { "type": "string" } }
-        },
-        "required": ["name", "counselorId"]
-    },
-    "RncpFiche": {
-        "title": "Fiche RNCP",
-        "type": "object",
-        "description": "Represents a sheet for RNCP and ROME codifications.",
-        "properties": {
-            "id": { "type": "string" },
-            "counselorId": { "type": "string" },
-            "name": { "type": "string" },
-            "rncpCodes": { "type": "array", "items": { "type": "string" } },
-            "rncpLevel": { "type": "array", "items": { "type": "string" } },
-            "rncpTitle": { "type": "array", "items": { "type": "string" } },
-            "romeCodes": { "type": "array", "items": { "type": "string" } },
-            "romeMetiers": { "type": "array", "items": { "type": "string" } },
-            "competences": { "type": "array", "items": { "type": "string" } },
-            "activites": { "type": "array", "items": { "type": "string" } },
-            "associatedTrainings": {
-                "type": "array",
-                "items": { "type": "string" },
-                "description": "IDs of associated trainings from the e-learning catalog."
+    "FicheMetier": {
+      "title": "Fiche Métier",
+      "type": "object",
+      "description": "A unified sheet for ROME and RNCP codifications, created by a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "name": { "type": "string" },
+        "entryLevel": { "type": "array", "items": { "type": "string" } },
+        "associatedRncp": { "type": "array", "items": { "type": "string" } },
+        "associatedTraining": { "type": "array", "items": { "type": "string" } },
+        "associatedRomeCode": { "type": "array", "items": { "type": "string" } },
+        "associatedJobs": { "type": "array", "items": { "type": "string" } },
+        "expectedSoftSkills": { "type": "array", "items": { "type": "string" } },
+        "competences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "competence": { "type": "string" },
+              "activities": { "type": "array", "items": { "type": "string" } }
             }
-        },
-        "required": ["name", "counselorId"]
+          }
+        }
+      },
+      "required": ["name", "counselorId"]
     },
     "CvProfile": {
       "title": "CV Profile",
@@ -1707,19 +1732,11 @@
         }
       },
        {
-        "path": "/users/{userId}/rncp_fiches/{ficheId}",
+        "path": "/users/{userId}/fiches_metiers/{ficheId}",
         "definition": {
-            "entityName": "RncpFiche",
-            "schema": { "$ref": "#/entities/RncpFiche" },
-            "description": "Stores RNCP sheets created by a counselor."
-        }
-      },
-      {
-        "path": "/users/{userId}/rome_fiches/{ficheId}",
-        "definition": {
-            "entityName": "RomeFiche",
-            "schema": { "$ref": "#/entities/RomeFiche" },
-            "description": "Stores ROME sheets created by a counselor."
+            "entityName": "FicheMetier",
+            "schema": { "$ref": "#/entities/FicheMetier" },
+            "description": "Stores unified ROME and RNCP sheets created by a counselor."
         }
       },
       {
