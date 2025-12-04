@@ -1,10 +1,9 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain, Download, FlaskConical } from "lucide-react";
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -946,14 +945,104 @@ function WellnessSheetGenerator() {
 }
 
 function TestManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [selectedSheetId, setSelectedSheetId] = useState<string | null>(null);
+    const [pathologies, setPathologies] = useState<string[]>([]);
+    const [emotions, setEmotions] = useState<string[]>([]);
+    const [matchResults, setMatchResults] = useState<{ products: Product[], protocols: Protocole[] } | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const sheetsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/wellness_sheets`)) : null, [user, firestore]);
+    const { data: sheets, isLoading: areSheetsLoading } = useCollection<WellnessSheet>(sheetsQuery);
+
+    const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: products } = useCollection<Product>(productsQuery);
+
+    const protocolsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'protocols'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: protocols } = useCollection<Protocole>(protocolsQuery);
+
+    const handleRunAnalysis = () => {
+        if (!products || !protocols) return;
+        setIsLoading(true);
+
+        const selectedSheet = sheets?.find(s => s.id === selectedSheetId);
+        const searchTags = new Set([
+            ...(selectedSheet?.holisticProfile || []),
+            ...(selectedSheet?.contraindications || []),
+            ...pathologies,
+            ...emotions
+        ]);
+
+        const matchedProducts = products.filter(p => 
+            p.holisticProfile?.some(tag => searchTags.has(tag)) ||
+            p.pathologies?.some(tag => searchTags.has(tag))
+        );
+
+        const matchedProtocols = protocols.filter(p => 
+            p.holisticProfile?.some(tag => searchTags.has(tag)) ||
+            p.pathologies?.some(tag => searchTags.has(tag))
+        );
+
+        setMatchResults({ products: matchedProducts, protocols: matchedProtocols });
+        setIsLoading(false);
+    };
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Test</CardTitle>
-                <CardDescription>Section de test pour le matching.</CardDescription>
+                <CardTitle>Test de Matching Aura</CardTitle>
+                <CardDescription>Simulez une recherche pour un client pour trouver les produits et protocoles adaptés.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <p>Contenu à venir pour l'outil de test.</p>
+            <CardContent className="space-y-6">
+                <div className="space-y-2">
+                    <Label>Fiche Bien-être du Client</Label>
+                    <Select onValueChange={setSelectedSheetId} disabled={areSheetsLoading}>
+                        <SelectTrigger><SelectValue placeholder="Sélectionner une fiche..." /></SelectTrigger>
+                        <SelectContent>
+                            {sheets?.map(s => <SelectItem key={s.id} value={s.id}>{s.clientName}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label>Pathologies (tags)</Label>
+                    <TagInput value={pathologies} onChange={setPathologies} placeholder="Ajouter une pathologie et appuyer sur Entrée" />
+                </div>
+                <div className="space-y-2">
+                    <Label>Émotions (tags)</Label>
+                    <TagInput value={emotions} onChange={setEmotions} placeholder="Ajouter une émotion et appuyer sur Entrée" />
+                </div>
+                <Button onClick={handleRunAnalysis} disabled={!selectedSheetId && pathologies.length === 0 && emotions.length === 0}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <BrainCircuit className="mr-2 h-4 w-4" />}
+                    Lancer l'analyse
+                </Button>
+
+                {matchResults && (
+                    <div className="pt-6 border-t space-y-6">
+                        <h3 className="text-xl font-semibold">Résultats de l'analyse</h3>
+                        <div>
+                            <h4 className="font-semibold text-lg mb-2">Produits Recommandés ({matchResults.products.length})</h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                {matchResults.products.length > 0 ? matchResults.products.map(p => (
+                                    <Card key={p.id} className="p-4 flex items-center gap-4">
+                                        <Image src={p.imageUrl || '/placeholder.svg'} alt={p.title} width={60} height={60} className="rounded-md border object-cover"/>
+                                        <p className="font-medium">{p.title}</p>
+                                    </Card>
+                                )) : <p className="text-sm text-muted-foreground">Aucun produit ne correspond.</p>}
+                            </div>
+                        </div>
+                         <div>
+                            <h4 className="font-semibold text-lg mb-2">Protocoles Recommandés ({matchResults.protocols.length})</h4>
+                            <div className="space-y-2">
+                                {matchResults.protocols.length > 0 ? matchResults.protocols.map(p => (
+                                    <Card key={p.id} className="p-4">
+                                        <p className="font-medium">{p.name}</p>
+                                    </Card>
+                                )) : <p className="text-sm text-muted-foreground">Aucun protocole ne correspond.</p>}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );

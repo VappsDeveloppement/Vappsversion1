@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -1381,253 +1380,143 @@ function RomeManager() {
 }
 
 function TestManager() {
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Test</CardTitle>
-                <CardDescription>Section de test pour le matching.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <p>Contenu à venir pour l'outil de test.</p>
-            </CardContent>
-        </Card>
-    );
-}
-
-const renderCell = (value: string | string[] | undefined) => {
-    if (Array.isArray(value)) return value.join(', ');
-    return value || '-';
-};
-
-function JobOfferManager() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [editingOffer, setEditingOffer] = useState<any>(null);
-    const [offerToDelete, setOfferToDelete] = useState<any>(null);
+    const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
+    const [selectedOfferId, setSelectedOfferId] = useState<string | null>(null);
+    const [matchResult, setMatchResult] = useState<{ score: number; details: string[] } | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
 
-    const offersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
-    const { data: offers, isLoading: areOffersLoading } = useCollection(offersQuery);
-
-    const rncpFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rncp_fiches`)) : null, [user, firestore]);
-    const { data: rncpFiches } = useCollection(rncpFichesQuery);
-
-    const romeFichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/rome_fiches`)) : null, [user, firestore]);
-    const { data: romeFiches } = useCollection(romeFichesQuery);
-
-    const jobOfferSchema = z.object({
-        reference: z.string().optional(),
-        title: z.array(z.string()).optional(),
-        description: z.string().optional(),
-        contractType: z.array(z.string()).optional(),
-        workingHours: z.array(z.string()).optional(),
-        location: z.array(z.string()).optional(),
-        salary: z.array(z.string()).optional(),
-        softSkills: z.array(z.string()).optional(),
-        recruiterInfo: z.object({
-            name: z.string().optional(),
-            email: z.string().email().optional().or(z.literal('')),
-            phone: z.string().optional(),
-        }).optional(),
-        infoMatching: z.object({
-            rncpCodes: z.array(z.string()).optional(),
-            rncpLevels: z.array(z.string()).optional(),
-            rncpTitles: z.array(z.string()).optional(),
-            rncpSkills: z.array(z.string()).optional(),
-            rncpActivities: z.array(z.string()).optional(),
-            romeCodes: z.array(z.string()).optional(),
-            romeTitles: z.array(z.string()).optional(),
-            romeSkills: z.array(z.string()).optional(),
-            romeActivities: z.array(z.string()).optional(),
-            internalNotes: z.string().optional(),
-        }).optional(),
-    });
+    const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
+    const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
     
-    type JobOfferFormData = z.infer<typeof jobOfferSchema>;
-    const form = useForm<JobOfferFormData>({
-        resolver: zodResolver(jobOfferSchema),
-        defaultValues: {
-            reference: '', title: [], description: '', contractType: [],
-            workingHours: [], location: [], salary: [], softSkills: [],
-            recruiterInfo: { name: '', email: '', phone: '' },
-            infoMatching: {
-                rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-                romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [], internalNotes: ''
-            }
+    const jobOffersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
+    const { data: jobOffers, isLoading: areJobOffersLoading } = useCollection<any>(jobOffersQuery);
+
+    const handleRunMatch = () => {
+        if (!selectedCvId || !selectedOfferId || !cvProfiles || !jobOffers) return;
+        setIsLoading(true);
+
+        const cv = cvProfiles.find(p => p.id === selectedCvId);
+        const offer = jobOffers.find(o => o.id === selectedOfferId);
+
+        if (!cv || !offer) {
+            setIsLoading(false);
+            return;
         }
-    });
 
-    useEffect(() => {
-        if (isSheetOpen) {
-            form.reset(editingOffer || {
-                reference: '', title: [], description: '', contractType: [],
-                workingHours: [], location: [], salary: [], softSkills: [],
-                recruiterInfo: { name: '', email: '', phone: '' },
-                infoMatching: {
-                    rncpCodes: [], rncpLevels: [], rncpTitles: [], rncpSkills: [], rncpActivities: [],
-                    romeCodes: [], romeTitles: [], romeSkills: [], romeActivities: [], internalNotes: ''
-                }
-            });
+        let score = 0;
+        const details: string[] = [];
+        const totalChecks = 5; // Nombre de critères de matching
+
+        // 1. Soft Skills
+        const cvSoftSkills = new Set(cv.softSkills || []);
+        const offerSoftSkills = new Set(offer.softSkills || []);
+        const matchingSoftSkills = [...cvSoftSkills].filter(skill => offerSoftSkills.has(skill));
+        if (matchingSoftSkills.length > 0) {
+            score++;
+            details.push(`Compétences comportementales communes : ${matchingSoftSkills.join(', ')}.`);
         }
-    }, [isSheetOpen, editingOffer, form]);
 
-    const handleNew = () => { setEditingOffer(null); setIsSheetOpen(true); };
-    const handleEdit = (offer: any) => { setEditingOffer(offer); setIsSheetOpen(true); };
-
-    const onSubmit = async (data: JobOfferFormData) => {
-        if (!user) return;
-    
-        const offerData = {
-            counselorId: user.uid,
-            reference: data.reference || '',
-            title: data.title || [],
-            description: data.description || '',
-            contractType: data.contractType || [],
-            workingHours: data.workingHours || [],
-            location: data.location || [],
-            salary: data.salary || [],
-            softSkills: data.softSkills || [],
-            recruiterInfo: {
-                name: data.recruiterInfo?.name || '',
-                email: data.recruiterInfo?.email || '',
-                phone: data.recruiterInfo?.phone || '',
-            },
-            infoMatching: {
-                rncpCodes: data.infoMatching?.rncpCodes || [],
-                rncpLevels: data.infoMatching?.rncpLevels || [],
-                rncpTitles: data.infoMatching?.rncpTitles || [],
-                rncpSkills: data.infoMatching?.rncpSkills || [],
-                rncpActivities: data.infoMatching?.rncpActivities || [],
-                romeCodes: data.infoMatching?.romeCodes || [],
-                romeTitles: data.infoMatching?.romeTitles || [],
-                romeSkills: data.infoMatching?.romeSkills || [],
-                romeActivities: data.infoMatching?.romeActivities || [],
-                internalNotes: data.infoMatching?.internalNotes || '',
-            },
-        };
-    
-        if (editingOffer) {
-            await setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
-            toast({ title: 'Offre mise à jour' });
-        } else {
-            await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/job_offers`), offerData);
-            toast({ title: 'Offre créée' });
+        // 2. ROME Codes
+        const cvRomeCodes = new Set(cv.experiences?.flatMap(e => e.romeCode || []) || []);
+        const offerRomeCodes = new Set(offer.infoMatching?.romeCodes || []);
+        const matchingRomeCodes = [...cvRomeCodes].filter(code => offerRomeCodes.has(code));
+        if (matchingRomeCodes.length > 0) {
+            score++;
+            details.push(`Codes ROME correspondants : ${matchingRomeCodes.join(', ')}.`);
         }
-        setIsSheetOpen(false);
+
+        // 3. RNCP Codes from Formations
+        const cvRncpCodes = new Set(cv.formations?.flatMap(f => f.rncpCode || []) || []);
+        const offerRncpCodes = new Set(offer.infoMatching?.rncpCodes || []);
+        const matchingRncpCodes = [...cvRncpCodes].filter(code => offerRncpCodes.has(code));
+        if (matchingRncpCodes.length > 0) {
+            score++;
+            details.push(`Certifications RNCP correspondantes : ${matchingRncpCodes.join(', ')}.`);
+        }
+
+        // 4. Contract Type
+        const cvContracts = new Set(cv.contractTypes || []);
+        const offerContracts = new Set(offer.contractType || []);
+        if ([...cvContracts].some(c => offerContracts.has(c))) {
+            score++;
+            details.push("Le type de contrat est compatible.");
+        }
+        
+        // 5. Location/Mobility
+        const cvMobility = new Set(cv.mobility?.map(m => m.toLowerCase()) || []);
+        const offerLocation = new Set(offer.location?.map(l => l.toLowerCase()) || []);
+        if ([...cvMobility].some(m => offerLocation.has(m))) {
+            score++;
+            details.push("La localisation est compatible.");
+        }
+
+
+        const finalScore = (score / totalChecks) * 100;
+        setMatchResult({ score: Math.round(finalScore), details });
+        setIsLoading(false);
     };
 
-    const handleDelete = async () => {
-        if (!offerToDelete || !user) return;
-        await deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerToDelete.id));
-        toast({ title: "Offre supprimée" });
-        setOfferToDelete(null);
-    };
-
-    const handleSelectRncp = (fiche: any) => {
-        form.setValue('infoMatching.rncpCodes', fiche.rncpCodes);
-        form.setValue('infoMatching.rncpLevels', fiche.rncpLevel);
-        form.setValue('infoMatching.rncpTitles', fiche.rncpTitle);
-        form.setValue('infoMatching.rncpSkills', fiche.competences);
-        form.setValue('infoMatching.rncpActivities', fiche.activites);
-    };
-    
-    const handleSelectRome = (fiche: any) => {
-        form.setValue('infoMatching.romeCodes', fiche.romeCodes);
-        form.setValue('infoMatching.romeTitles', fiche.romeTitles);
-        form.setValue('infoMatching.romeSkills', fiche.competences);
-        form.setValue('infoMatching.romeActivities', fiche.activites);
-    };
-  
     return (
         <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle>Offres d'emploi</CardTitle>
-                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4"/>Nouvelle Offre</Button>
-                </div>
+                <CardTitle>Test de Matching Vitae</CardTitle>
+                <CardDescription>Simulez un matching entre un profil de CV et une offre d'emploi.</CardDescription>
             </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Contrat</TableHead><TableHead>Lieu</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                        {areOffersLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8"/></TableCell></TableRow>
-                        : offers && offers.length > 0 ? offers.map((offer: any) => (
-                          <TableRow key={offer.id}>
-                            <TableCell>{renderCell(offer.title)}</TableCell>
-                            <TableCell>{renderCell(offer.contractType)}</TableCell>
-                            <TableCell>{renderCell(offer.location)}</TableCell>
-                            <TableCell className="text-right">
-                                <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4"/></Button>
-                                <Button variant="ghost" size="icon" onClick={() => setOfferToDelete(offer)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-                            </TableCell>
-                          </TableRow>
-                        )) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucune offre créée.</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
-                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-4xl w-full">
-                      <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} Offre d'Emploi</SheetTitle></SheetHeader>
-                      <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)}>
-                          <ScrollArea className="h-[calc(100vh-8rem)]">
-                            <div className="py-4 pr-4 space-y-6">
-                              <section>
-                                <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Générales</h3>
-                                <div className="space-y-4">
-                                  <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Métier - Titre de l'annonce</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un titre..."/></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description de l'offre</FormLabel><FormControl><Textarea rows={5} {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un type..." /></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Temps de travail</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un lieu..." /></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salaire</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter..."/></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="softSkills" render={({ field }) => (<FormItem><FormLabel>Savoir-être</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un savoir-être..."/></FormControl></FormItem>)}/>
-                                </div>
-                              </section>
-                              <section className="space-y-4 pt-4 border-t">
-                                <h3 className="text-lg font-semibold mb-4 border-b pb-2">Coordonnées du recruteur</h3>
-                                <FormField control={form.control} name="recruiterInfo.name" render={({ field }) => (<FormItem><FormLabel>Nom</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="recruiterInfo.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="recruiterInfo.phone" render={({ field }) => (<FormItem><FormLabel>Téléphone</FormLabel><FormControl><Input type="tel" {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                              </section>
-                              <section className="space-y-4 pt-4 border-t">
-                                <h3 className="text-lg font-semibold mb-4 border-b pb-2">Infos Match</h3>
-                                <FicheSelector fiches={rncpFiches || []} title="RNCP" onSelect={handleSelectRncp}/>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <FormField control={form.control} name="infoMatching.rncpCodes" render={({ field }) => (<FormItem><FormLabel>Codes RNCP</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                  <FormField control={form.control} name="infoMatching.rncpLevels" render={({ field }) => (<FormItem><FormLabel>Niveaux</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                </div>
-                                <FormField control={form.control} name="infoMatching.rncpTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="infoMatching.rncpSkills" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="infoMatching.rncpActivities" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-  
-                                <div className="pt-4 border-t"/>
-                                <FicheSelector fiches={romeFiches || []} title="ROME" onSelect={handleSelectRome}/>
-                                <FormField control={form.control} name="infoMatching.romeCodes" render={({ field }) => (<FormItem><FormLabel>Codes ROME</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="infoMatching.romeTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="infoMatching.romeSkills" render={({ field }) => (<FormItem><FormLabel>Compétences</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                <FormField control={form.control} name="infoMatching.romeActivities" render={({ field }) => (<FormItem><FormLabel>Activités</FormLabel><FormControl><TagInput {...field} placeholder="" /></FormControl></FormItem>)}/>
-                                
-                                <div className="pt-4 border-t"/>
-                                <FormField control={form.control} name="infoMatching.internalNotes" render={({ field }) => (<FormItem><FormLabel>Notes internes</FormLabel><FormControl><Textarea {...field} value={field.value || ''} /></FormControl></FormItem>)}/>
-                              </section>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Profil CV</Label>
+                        <Select onValueChange={setSelectedCvId} disabled={areCvProfilesLoading}>
+                            <SelectTrigger><SelectValue placeholder="Sélectionner un profil..." /></SelectTrigger>
+                            <SelectContent>
+                                {cvProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Offre d'emploi</Label>
+                        <Select onValueChange={setSelectedOfferId} disabled={areJobOffersLoading}>
+                            <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
+                            <SelectContent>
+                                {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title?.join(', ')}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+                <Button onClick={handleRunMatch} disabled={!selectedCvId || !selectedOfferId || isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FlaskConical className="mr-2 h-4 w-4" />}
+                    Lancer le matching
+                </Button>
+                {matchResult && (
+                    <div className="pt-6 border-t space-y-4">
+                        <h3 className="text-xl font-semibold">Résultat du Matching</h3>
+                        <div className="flex items-center gap-4">
+                             <div className="relative h-24 w-24">
+                                <svg className="h-full w-full" viewBox="0 0 36 36">
+                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="#e6e6e6" strokeWidth="3" />
+                                    <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" fill="none" stroke="hsl(var(--primary))" strokeWidth="3" strokeDasharray={`${matchResult.score}, 100`} />
+                                </svg>
+                                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-2xl font-bold">{matchResult.score}%</div>
                             </div>
-                          </ScrollArea>
-                          <SheetFooter className="pt-4 border-t mt-auto">
-                            <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                            <Button type="submit">Sauvegarder</Button>
-                          </SheetFooter>
-                        </form>
-                      </Form>
-                    </SheetContent>
-                  </Sheet>
-                  <AlertDialog open={!!offerToDelete} onOpenChange={(open) => !open && setOfferToDelete(null)}>
-                      <AlertDialogContent>
-                          <AlertDialogHeader><AlertDialogTitle>Supprimer cette offre ?</AlertDialogTitle><AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription></AlertDialogHeader>
-                          <AlertDialogFooter><AlertDialogCancel>Annuler</AlertDialogCancel><AlertDialogAction onClick={handleDelete} className="bg-destructive hover:bg-destructive/90">Supprimer</AlertDialogAction></AlertDialogFooter>
-                      </AlertDialogContent>
-                  </AlertDialog>
+                            <div className="flex-1 space-y-2">
+                                {matchResult.details.map((detail, index) => (
+                                    <div key={index} className="flex items-start gap-2 text-sm">
+                                        <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
+                                        <span>{detail}</span>
+                                    </div>
+                                ))}
+                                {matchResult.score < 50 && (
+                                    <div className="flex items-start gap-2 text-sm text-destructive">
+                                        <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                                        <span>Peu de points communs trouvés.</span>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
