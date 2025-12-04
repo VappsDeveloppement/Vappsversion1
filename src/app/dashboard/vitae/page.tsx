@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -610,7 +611,7 @@ function CvManager() {
 }
 
 const jobOfferSchema = z.object({
-  title: z.array(z.string()).min(1, 'Le titre est requis.'),
+  title: z.string().min(1, 'Le titre est requis.'),
   reference: z.string().optional(),
   description: z.string().optional(),
   contractType: z.array(z.string()).optional(),
@@ -637,7 +638,12 @@ const jobOfferSchema = z.object({
   }).optional(),
 });
 type JobOfferFormData = z.infer<typeof jobOfferSchema>;
-type JobOffer = JobOfferFormData & { id: string; counselorId: string };
+type JobOffer = Omit<JobOfferFormData, 'title'> & {
+  id: string;
+  counselorId: string;
+  title: string;
+};
+
 
 function JobOfferManager() {
     const { user } = useUser();
@@ -683,58 +689,37 @@ function JobOfferManager() {
 
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingOffer || {
-                title: [],
-                reference: '',
-                description: '',
-                contractType: [],
-                workingHours: [],
-                environment: [],
-                location: [],
-                salary: [],
+             const defaultValues = {
+                title: [], reference: '', description: '', contractType: [], workingHours: [],
+                environment: [], location: [], salary: [],
                 infoMatching: {
-                    trainingLevels: [],
-                    trainingRncps: [],
-                    trainingTitles: [],
-                    jobRomeCodes: [],
-                    jobTitles: [],
-                    competences: [],
-                    softSkills: [],
+                    trainingLevels: [], trainingRncps: [], trainingTitles: [],
+                    jobRomeCodes: [], jobTitles: [], competences: [], softSkills: []
                 },
-                additionalInfo: {
-                    companyCoordinates: '',
-                    internalNotes: '',
-                }
-            });
+                additionalInfo: { companyCoordinates: '', internalNotes: '' }
+            };
+            
+            if (editingOffer) {
+                form.reset({
+                    ...editingOffer,
+                    title: Array.isArray(editingOffer.title) ? editingOffer.title : [editingOffer.title],
+                    infoMatching: { ...defaultValues.infoMatching, ...editingOffer.infoMatching },
+                    additionalInfo: { ...defaultValues.additionalInfo, ...editingOffer.additionalInfo },
+                });
+            } else {
+                form.reset(defaultValues);
+            }
         }
     }, [isSheetOpen, editingOffer, form]);
+
 
     const onSubmit = (data: JobOfferFormData) => {
         if (!user) return;
         
         const offerData = {
           counselorId: user.uid,
-          title: data.title || [],
-          reference: data.reference || '',
-          description: data.description || '',
-          contractType: data.contractType || [],
-          workingHours: data.workingHours || [],
-          environment: data.environment || [],
-          location: data.location || [],
-          salary: data.salary || [],
-          infoMatching: {
-            trainingLevels: data.infoMatching?.trainingLevels || [],
-            trainingRncps: data.infoMatching?.trainingRncps || [],
-            trainingTitles: data.infoMatching?.trainingTitles || [],
-            jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
-            jobTitles: data.infoMatching?.jobTitles || [],
-            competences: data.infoMatching?.competences || [],
-            softSkills: data.infoMatching?.softSkills || [],
-          },
-          additionalInfo: {
-            companyCoordinates: data.additionalInfo?.companyCoordinates || '',
-            internalNotes: data.additionalInfo?.internalNotes || '',
-          },
+          ...data,
+          title: data.title?.[0] || 'Titre non défini', // Legacy support, take first title
         };
 
         if (editingOffer) {
@@ -774,7 +759,7 @@ function JobOfferManager() {
                         : jobOffers && jobOffers.length > 0 ? (
                             jobOffers.map(offer => (
                                 <TableRow key={offer.id}>
-                                    <TableCell>{offer.title.join(', ')}</TableCell>
+                                    <TableCell>{offer.title}</TableCell>
                                     <TableCell>{offer.reference}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
@@ -947,11 +932,34 @@ function TestManager() {
         // Competences & Activities
         const cvCompetences = new Set(cv.experiences?.flatMap(e => e.skills || []));
         const offerCompetences = new Set(offer.infoMatching?.competences?.map((c: any) => c.name || c.competence));
-        checkMatch(cvCompetences, offerCompetences, "Compétences correspondantes", "Compétences manquantes");
+        if(offerCompetences.size > 0) {
+            totalChecks++;
+            const matches = [...cvCompetences].filter(item => offerCompetences.has(item));
+            if (matches.length > 0) {
+                score++;
+                matchingDetails.push(`Compétences correspondantes: ${matches.join(', ')}.`);
+            }
+            const misses = [...offerCompetences].filter(item => !cvCompetences.has(item));
+            if(misses.length > 0) {
+                 missingDetails.push(`Compétences manquantes: ${misses.join(', ')}.`);
+            }
+        }
+
 
         const cvActivities = new Set(cv.experiences?.flatMap(e => e.activities || []));
         const offerActivities = new Set(offer.infoMatching?.competences?.flatMap((c: any) => c.activities || []));
-        checkMatch(cvActivities, offerActivities, "Activités correspondantes", "Activités manquantes");
+        if(offerActivities.size > 0) {
+            totalChecks++;
+            const matches = [...cvActivities].filter(item => offerActivities.has(item));
+            if (matches.length > 0) {
+                score++;
+                matchingDetails.push(`Activités correspondantes: ${matches.join(', ')}.`);
+            }
+             const misses = [...offerActivities].filter(item => !cvActivities.has(item));
+            if(misses.length > 0) {
+                 missingDetails.push(`Activités manquantes: ${misses.join(', ')}.`);
+            }
+        }
 
         
         if (comparisonType === 'offer') {
@@ -993,7 +1001,7 @@ function TestManager() {
                              <Select onValueChange={setSelectedComparisonId} disabled={areJobOffersLoading}>
                                 <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
                                 <SelectContent>
-                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title.join(', ')}</SelectItem>)}
+                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         ) : (
