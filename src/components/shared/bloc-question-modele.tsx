@@ -7,12 +7,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from '../ui/radio-group';
 import { TagInput } from './TagInput';
-import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, setDocumentNonBlocking, addDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, doc } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Button } from '../ui/button';
-import { ChevronsUpDown, Check, Loader2 } from 'lucide-react';
+import { ChevronsUpDown, Check, Loader2, Wand2 } from 'lucide-react';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '../ui/command';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
@@ -21,6 +21,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { useToast } from '@/hooks/use-toast';
+import type { Product, Protocole } from '@/app/dashboard/aura/page';
+
 
 type WellnessSheet = {
     id: string;
@@ -60,6 +62,9 @@ export function BlocQuestionModele() {
     const [tempContraindications, setTempContraindications] = useState<string[]>([]);
     const [pathologiesToTreat, setPathologiesToTreat] = useState<string[]>([]);
 
+    // Analysis state
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisResult, setAnalysisResult] = useState<any>(null);
 
     const wellnessSheetsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -145,6 +150,19 @@ export function BlocQuestionModele() {
         } finally {
             setIsSubmitting(false);
         }
+    };
+    
+    const handleAnalyze = () => {
+        // Placeholder for analysis logic
+        setIsAnalyzing(true);
+        setTimeout(() => {
+            setAnalysisResult({
+                byPathology: [{pathology: 'Stress', products: [{name: 'Huile Essentielle de Lavande'}], protocoles: [{name: 'Protocole de Relaxation'}]}],
+                byHolisticProfile: {products: [], protocoles: []},
+                perfectMatch: {products: [], protocoles: []}
+            });
+            setIsAnalyzing(false);
+        }, 1500)
     };
 
     return (
@@ -251,6 +269,46 @@ export function BlocQuestionModele() {
                         />
                     </div>
                 </div>
+
+                <div className="mt-8 pt-6 border-t flex flex-col items-center gap-4">
+                    <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing} className="w-full sm:w-auto">
+                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                        Analyser
+                    </Button>
+                    {isAnalyzing && <p className="text-sm text-muted-foreground">Analyse en cours...</p>}
+                </div>
+                
+                 {analysisResult && (
+                    <div className="mt-8 pt-6 border-t space-y-8">
+                        <h3 className="text-xl font-bold text-center">Résultats de l'Analyse</h3>
+                        
+                        {/* Section par pathologie */}
+                        <section>
+                            <h4 className="font-semibold text-lg mb-4">Correspondance par Pathologie</h4>
+                             {analysisResult.byPathology.length > 0 ? analysisResult.byPathology.map((item: any) => (
+                                <div key={item.pathology} className="mb-4 p-4 border rounded-md">
+                                    <p className="font-medium text-primary">{item.pathology}</p>
+                                    <p className="text-sm">Produits: {item.products.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                                    <p className="text-sm">Protocoles: {item.protocoles.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                                </div>
+                            )) : <p className="text-sm text-muted-foreground">Aucune correspondance trouvée.</p>}
+                        </section>
+
+                        {/* Section profil holistique */}
+                        <section>
+                            <h4 className="font-semibold text-lg mb-2">Adapté au Profil Holistique</h4>
+                            <p className="text-sm">Produits: {analysisResult.byHolisticProfile.products.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                            <p className="text-sm">Protocoles: {analysisResult.byHolisticProfile.protocoles.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                        </section>
+
+                        {/* Section cohérence parfaite */}
+                        <section>
+                            <h4 className="font-semibold text-lg mb-2">Cohérence Parfaite</h4>
+                             <p className="text-sm">Produits: {analysisResult.perfectMatch.products.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                            <p className="text-sm">Protocoles: {analysisResult.perfectMatch.protocoles.map((p: any) => p.name).join(', ') || 'Aucun'}</p>
+                        </section>
+                    </div>
+                 )}
 
             </CardContent>
         </Card>
