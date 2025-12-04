@@ -1,15 +1,14 @@
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy } from "lucide-react";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -40,21 +39,30 @@ const scaleQuestionSchema = z.object({
   questions: z.array(scaleSubQuestionSchema).min(1, "Le bloc doit contenir au moins une question."),
 });
 
-
 const auraBlockSchema = z.object({
   id: z.string(),
   type: z.literal('aura'),
 });
 
+const scormBlockSchema = z.object({
+    id: z.string(),
+    type: z.literal('scorm'),
+    title: z.string().min(1, "Le titre du bloc SCORM est requis."),
+    questions: z.array(z.object({})).optional(), // Sera détaillé plus tard
+    results: z.array(z.object({})).optional(),  // Sera détaillé plus tard
+});
+
 const questionSchema = z.discriminatedUnion("type", [
   scaleQuestionSchema,
   auraBlockSchema,
+  scormBlockSchema, // Ajout du nouveau type de bloc
 ]);
 
 const questionModelSchema = z.object({
   name: z.string().min(1, "Le nom du modèle est requis."),
   questions: z.array(questionSchema).optional(),
 });
+
 
 type QuestionModelFormData = z.infer<typeof questionModelSchema>;
 
@@ -189,7 +197,10 @@ function FollowUpManager() {
                                                             {clients?.map((client) => (
                                                                 <CommandItem value={client.email} key={client.id} onSelect={() => { form.setValue("clientId", client.id) }}>
                                                                     <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                                    {client.firstName} {client.lastName}
+                                                                    <div>
+                                                                        <p>{client.firstName} {client.lastName}</p>
+                                                                        <p className="text-xs text-muted-foreground">{client.email}</p>
+                                                                    </div>
                                                                 </CommandItem>
                                                             ))}
                                                         </CommandList>
@@ -375,7 +386,7 @@ function FormTemplateManager() {
             <TableHeader>
                 <TableRow>
                     <TableHead>Nom du modèle</TableHead>
-                    <TableHead>Nombre de questions</TableHead>
+                    <TableHead>Nombre de blocs</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
             </TableHeader>
@@ -410,14 +421,15 @@ function FormTemplateManager() {
                                   <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du modèle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                   
                                   <div>
-                                      <Label>Questions</Label>
+                                      <Label>Blocs de questions</Label>
                                       <div className="space-y-4 mt-2">
                                           {fields.map((field, index) => (
                                               <Card key={field.id} className="p-4">
                                                 <div className="flex justify-between items-center mb-4">
                                                   <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
                                                     {field.type === 'scale' && <><Scale className="h-4 w-4"/>Bloc de questions sur une échelle</>}
-                                                    {field.type === 'aura' && <><BrainCog className="h-4 w-4"/>Bloc d'analyse AURA</>}
+                                                    {field.type === 'aura' && <><BrainCog className="h-4 w-4"/>Analyse AURA</>}
+                                                    {field.type === 'scorm' && <><BookCopy className="h-4 w-4"/>Bloc SCORM</>}
                                                   </div>
                                                   <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                                 </div>
@@ -463,6 +475,14 @@ function FormTemplateManager() {
                                                         Le bloc d'analyse AURA sera inséré ici.
                                                     </div>
                                                 )}
+                                                {field.type === 'scorm' && (
+                                                    <div>
+                                                        <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc SCORM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                         <div className="text-center text-muted-foreground p-4 mt-4 bg-muted/50 rounded-md">
+                                                            La gestion des questions et résultats pour le bloc SCORM sera bientôt disponible.
+                                                        </div>
+                                                    </div>
+                                                )}
                                               </Card>
                                           ))}
                                           <div className="flex flex-wrap gap-2">
@@ -470,7 +490,10 @@ function FormTemplateManager() {
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "Échelle"
                                               </Button>
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "AURA"
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Analyse AURA"
+                                              </Button>
+                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM' })}>
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "SCORM"
                                               </Button>
                                           </div>
                                       </div>
