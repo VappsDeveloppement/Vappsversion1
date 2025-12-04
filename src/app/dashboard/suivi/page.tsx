@@ -24,15 +24,22 @@ import { BlocQuestionModele } from "@/components/shared/bloc-question-modele";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+
+const scaleSubQuestionSchema = z.object({
+  id: z.string(),
+  text: z.string().min(1, 'Le texte de la question est requis.'),
+});
 
 const scaleQuestionSchema = z.object({
   id: z.string(),
   type: z.literal('scale'),
-  questionText: z.string().min(1, 'Le texte de la question est requis.'),
+  title: z.string().optional(),
+  questions: z.array(scaleSubQuestionSchema).min(1, "Le bloc doit contenir au moins une question."),
 });
+
 
 const auraBlockSchema = z.object({
   id: z.string(),
@@ -262,7 +269,7 @@ function FollowUpManager() {
                                             <DropdownMenuContent>
                                                 <DropdownMenuItem asChild>
                                                     <Link href={`/dashboard/suivi/${suivi.id}`}>
-                                                        <Eye className="mr-2 h-4 w-4" /> Ouvrir / Modifier
+                                                        <Eye className="mr-2 h-4 w-4" /> Ouvrir
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem disabled>Exporter PDF</DropdownMenuItem>
@@ -304,7 +311,7 @@ function FormTemplateManager() {
     defaultValues: { name: '', questions: [] },
   });
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields, append, remove, update } = useFieldArray({
     control: form.control,
     name: "questions",
   });
@@ -392,7 +399,7 @@ function FormTemplateManager() {
           </Table>
 
           <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-              <SheetContent className="sm:max-w-2xl w-full flex flex-col">
+              <SheetContent className="sm:max-w-3xl w-full flex flex-col">
                   <SheetHeader>
                       <SheetTitle>{editingModel ? "Modifier le" : "Nouveau"} modèle de formulaire</SheetTitle>
                   </SheetHeader>
@@ -409,19 +416,47 @@ function FormTemplateManager() {
                                               <Card key={field.id} className="p-4">
                                                 <div className="flex justify-between items-center mb-4">
                                                   <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
-                                                    {field.type === 'scale' && <><Scale className="h-4 w-4"/>Question sur une échelle</>}
+                                                    {field.type === 'scale' && <><Scale className="h-4 w-4"/>Bloc de questions sur une échelle</>}
                                                     {field.type === 'aura' && <><BrainCog className="h-4 w-4"/>Bloc d'analyse AURA</>}
                                                   </div>
                                                   <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
                                                 </div>
                                                 {field.type === 'scale' && (
-                                                  <FormField control={form.control} name={`questions.${index}.questionText`} render={({ field }) => (
-                                                      <FormItem>
-                                                          <FormLabel>Texte de la question</FormLabel>
-                                                          <FormControl><Input {...field} /></FormControl>
-                                                          <FormMessage />
-                                                      </FormItem>
-                                                  )}/>
+                                                   <div className='space-y-4'>
+                                                        {(field.questions || []).map((subQuestion, subIndex) => (
+                                                             <div key={subQuestion.id} className="flex items-end gap-2">
+                                                                <FormField 
+                                                                    control={form.control} 
+                                                                    name={`questions.${index}.questions.${subIndex}.text`}
+                                                                    render={({ field }) => (
+                                                                        <FormItem className='flex-1'>
+                                                                            <FormLabel>Texte de la question {subIndex + 1}</FormLabel>
+                                                                            <FormControl><Input {...field} /></FormControl>
+                                                                            <FormMessage />
+                                                                        </FormItem>
+                                                                    )}
+                                                                />
+                                                                 <Button type="button" variant="ghost" size="icon" onClick={() => {
+                                                                     const currentQuestions = (form.getValues(`questions.${index}.questions`) || []);
+                                                                     update(index, {
+                                                                         ...field,
+                                                                         questions: currentQuestions.filter((_, i) => i !== subIndex)
+                                                                     });
+                                                                 }}>
+                                                                    <Trash2 className="h-4 w-4 text-destructive/70"/>
+                                                                 </Button>
+                                                            </div>
+                                                        ))}
+                                                        <Button type="button" variant="outline" size="sm" onClick={() => {
+                                                            const currentQuestions = form.getValues(`questions.${index}.questions`) || [];
+                                                            update(index, {
+                                                                ...field,
+                                                                questions: [...currentQuestions, { id: `sq-${Date.now()}`, text: '' }]
+                                                            });
+                                                        }}>
+                                                            <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une question
+                                                        </Button>
+                                                   </div>
                                                 )}
                                                 {field.type === 'aura' && (
                                                     <div className="text-center text-muted-foreground p-4 bg-muted/50 rounded-md">
@@ -431,7 +466,7 @@ function FormTemplateManager() {
                                               </Card>
                                           ))}
                                           <div className="flex flex-wrap gap-2">
-                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', questionText: '' })}>
+                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', title: 'Questions sur une échelle', questions: [{id: `sq-${Date.now()}`, text: ''}] })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "Échelle"
                                               </Button>
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>

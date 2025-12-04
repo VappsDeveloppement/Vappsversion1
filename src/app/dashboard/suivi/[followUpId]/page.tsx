@@ -30,7 +30,7 @@ type FollowUp = {
 type QuestionModel = {
     id: string;
     name: string;
-    questions?: ({ id: string; type: 'scale'; questionText: string } | { id: string; type: 'aura' })[];
+    questions?: ({ id: string; type: 'scale'; title?: string, questions: { id: string; text: string }[] } | { id: string; type: 'aura' })[];
 };
 
 export default function FollowUpPage() {
@@ -120,32 +120,37 @@ export default function FollowUpPage() {
             </div>
             
             <div className="space-y-8">
-                {model.questions?.map(question => {
-                    if (question.type === 'scale') {
+                {model.questions?.map(questionBlock => {
+                    if (questionBlock.type === 'scale') {
                         return (
-                            <Card key={question.id}>
+                             <Card key={questionBlock.id}>
                                 <CardHeader>
-                                    <CardTitle>{question.questionText}</CardTitle>
-                                    <CardDescription>Évaluez sur une échelle de 1 à 10.</CardDescription>
+                                    <CardTitle>{questionBlock.title || "Questions sur une échelle"}</CardTitle>
+                                    <CardDescription>Évaluez chaque point sur une échelle de 1 à 10.</CardDescription>
                                 </CardHeader>
-                                <CardContent>
-                                    <div className="flex items-center gap-4">
-                                        <Slider
-                                            min={1}
-                                            max={10}
-                                            step={1}
-                                            value={[answers[question.id] || 5]}
-                                            onValueChange={(value) => handleAnswerChange(question.id, value[0])}
-                                        />
-                                        <div className="font-bold text-lg w-10 text-center">{answers[question.id] || '5'}</div>
-                                    </div>
+                                <CardContent className="space-y-6">
+                                    {questionBlock.questions.map(question => (
+                                         <div key={question.id} className="space-y-3">
+                                            <Label>{question.text}</Label>
+                                            <div className="flex items-center gap-4">
+                                                <Slider
+                                                    min={1}
+                                                    max={10}
+                                                    step={1}
+                                                    value={[answers[question.id] || 5]}
+                                                    onValueChange={(value) => handleAnswerChange(question.id, value[0])}
+                                                />
+                                                <div className="font-bold text-lg w-10 text-center">{answers[question.id] || '5'}</div>
+                                            </div>
+                                         </div>
+                                    ))}
                                 </CardContent>
                             </Card>
                         )
                     }
-                    if (question.type === 'aura') {
+                    if (questionBlock.type === 'aura') {
                         return (
-                            <div key={question.id}>
+                            <div key={questionBlock.id}>
                                 <BlocQuestionModele />
                             </div>
                         )
