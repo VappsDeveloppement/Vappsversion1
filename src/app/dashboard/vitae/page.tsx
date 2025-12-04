@@ -618,6 +618,215 @@ function CvManager() {
     );
 }
 
+const jobOfferSchema = z.object({
+  title: z.string().min(1, 'Le titre est requis.'),
+  reference: z.string().optional(),
+  description: z.string().optional(),
+  contractType: z.array(z.string()).optional(),
+  workingHours: z.array(z.string()).optional(),
+  environment: z.array(z.string()).optional(),
+  location: z.array(z.string()).optional(),
+  salary: z.array(z.string()).optional(),
+  infoMatching: z.object({
+    trainingLevels: z.array(z.string()).optional(),
+    trainingRncps: z.array(z.string()).optional(),
+    trainingTitles: z.array(z.string()).optional(),
+    jobRomeCodes: z.array(z.string()).optional(),
+    jobTitles: z.array(z.string()).optional(),
+    competences: z.array(z.object({
+      id: z.string(),
+      name: z.string().min(1, 'La compétence est requise.'),
+      activities: z.array(z.string()).optional(),
+    })).optional(),
+    softSkills: z.array(z.string()).optional(),
+  }).optional(),
+  additionalInfo: z.object({
+    companyCoordinates: z.string().optional(),
+    internalNotes: z.string().optional(),
+  }).optional(),
+});
+type JobOfferFormData = z.infer<typeof jobOfferSchema>;
+type JobOffer = JobOfferFormData & { id: string; counselorId: string };
+
+function JobOfferManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingOffer, setEditingOffer] = useState<JobOffer | null>(null);
+
+    const jobOffersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
+    const { data: jobOffers, isLoading } = useCollection<JobOffer>(jobOffersQuery);
+
+    const form = useForm<JobOfferFormData>({
+        resolver: zodResolver(jobOfferSchema),
+        defaultValues: {
+            title: '',
+            infoMatching: { competences: [] }
+        },
+    });
+
+    const { fields, append, remove } = useFieldArray({
+        control: form.control,
+        name: "infoMatching.competences",
+    });
+
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingOffer || { 
+                title: '',
+                infoMatching: { competences: [] }
+            });
+        }
+    }, [isSheetOpen, editingOffer, form]);
+
+    const onSubmit = (data: JobOfferFormData) => {
+        if (!user) return;
+        
+        const offerData = {
+          counselorId: user.uid,
+          ...data,
+          contractType: data.contractType || [],
+          workingHours: data.workingHours || [],
+          environment: data.environment || [],
+          location: data.location || [],
+          salary: data.salary || [],
+          infoMatching: {
+            ...data.infoMatching,
+            trainingLevels: data.infoMatching?.trainingLevels || [],
+            trainingRncps: data.infoMatching?.trainingRncps || [],
+            trainingTitles: data.infoMatching?.trainingTitles || [],
+            jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
+            jobTitles: data.infoMatching?.jobTitles || [],
+            competences: data.infoMatching?.competences || [],
+            softSkills: data.infoMatching?.softSkills || [],
+          },
+          additionalInfo: {
+            ...data.additionalInfo,
+          },
+        };
+
+        if (editingOffer) {
+            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
+            toast({ title: "Offre d'emploi mise à jour" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/job_offers`), offerData);
+            toast({ title: "Offre d'emploi créée" });
+        }
+        setIsSheetOpen(false);
+    };
+
+    const handleEdit = (offer: JobOffer) => {
+        setEditingOffer(offer);
+        setIsSheetOpen(true);
+    };
+
+    const handleDelete = (offerId: string) => {
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerId));
+        toast({ title: "Offre d'emploi supprimée" });
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div><CardTitle>Offres d'emploi</CardTitle><CardDescription>Gérez vos offres d'emploi ici.</CardDescription></div>
+                    <Button onClick={() => setIsSheetOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle offre</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Référence</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                        : jobOffers && jobOffers.length > 0 ? (
+                            jobOffers.map(offer => (
+                                <TableRow key={offer.id}>
+                                    <TableCell>{offer.title}</TableCell>
+                                    <TableCell>{offer.reference}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(offer.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucune offre d'emploi créée.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-3xl w-full">
+                        <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} Offre d'Emploi</SheetTitle></SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                                <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-8">
+                                    <Accordion type="multiple" defaultValue={['public']} className="w-full space-y-4">
+                                        <AccordionItem value="public" className="border p-4 rounded-lg">
+                                            <AccordionTrigger className="font-semibold text-lg py-0">Infos Publiques</AccordionTrigger>
+                                            <AccordionContent className="pt-6 space-y-4">
+                                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                                <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description du poste</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                                <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Durée du travail</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="environment" render={({ field }) => (<FormItem><FormLabel>Environnement</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salaire</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        <AccordionItem value="matching" className="border p-4 rounded-lg">
+                                            <AccordionTrigger className="font-semibold text-lg py-0">Infos de Matching</AccordionTrigger>
+                                            <AccordionContent className="pt-6 space-y-4">
+                                                <h4 className="font-medium text-base mb-2">Formation</h4>
+                                                <FormField control={form.control} name="infoMatching.trainingLevels" render={({ field }) => (<FormItem><FormLabel>Niveau Requis</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..."/></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.trainingRncps" render={({ field }) => (<FormItem><FormLabel>Codes RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.trainingTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
+                                                
+                                                <h4 className="font-medium text-base mb-2 pt-4 border-t">Métier</h4>
+                                                <FormField control={form.control} name="infoMatching.jobRomeCodes" render={({ field }) => (<FormItem><FormLabel>Codes ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="infoMatching.jobTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés de poste</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
+                                                
+                                                <h4 className="font-medium text-base mb-2 pt-4 border-t">Compétences</h4>
+                                                <div className="space-y-4">
+                                                    {fields.map((field, index) => (
+                                                        <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-background">
+                                                            <div className="flex justify-between items-center"><h5 className="font-medium">Compétence {index + 1}</h5><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
+                                                            <FormField control={form.control} name={`infoMatching.competences.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Compétence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
+                                                            <FormField control={form.control} name={`infoMatching.competences.${index}.activities`} render={({ field }) => ( <FormItem><FormLabel>Activités associées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
+                                                        </div>
+                                                    ))}
+                                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `comp-offer-${Date.now()}`, name: '', activities: [] })}>
+                                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une compétence
+                                                    </Button>
+                                                </div>
+
+                                                <h4 className="font-medium text-base mb-2 pt-4 border-t">Soft Skills</h4>
+                                                <FormField control={form.control} name="infoMatching.softSkills" render={({ field }) => (<FormItem><FormLabel>Softskills attendus</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un softskill..."/></FormControl></FormItem>)}/>
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                        <AccordionItem value="additional" className="border p-4 rounded-lg">
+                                             <AccordionTrigger className="font-semibold text-lg py-0">Infos Supplémentaires</AccordionTrigger>
+                                             <AccordionContent className="pt-6 space-y-4">
+                                                <FormField control={form.control} name="additionalInfo.companyCoordinates" render={({ field }) => (<FormItem><FormLabel>Coordonnées de l'entreprise</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)}/>
+                                                <FormField control={form.control} name="additionalInfo.internalNotes" render={({ field }) => (<FormItem><FormLabel>Notes internes</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)}/>
+                                             </AccordionContent>
+                                        </AccordionItem>
+                                    </Accordion>
+                                </div></ScrollArea>
+                                <SheetFooter className="pt-4 border-t mt-auto">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    );
+}
+
 function TestManager() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -815,210 +1024,6 @@ function TestManager() {
     );
 }
 
-const jobOfferSchema = z.object({
-    title: z.string().min(1, 'Le titre est requis.'),
-    reference: z.string().optional(),
-    description: z.string().optional(),
-    contractType: z.array(z.string()).optional(),
-    workingHours: z.array(z.string()).optional(),
-    environment: z.array(z.string()).optional(),
-    location: z.array(z.string()).optional(),
-    salary: z.array(z.string()).optional(),
-    infoMatching: z.object({
-        trainingLevels: z.array(z.string()).optional(),
-        trainingRncps: z.array(z.string()).optional(),
-        trainingTitles: z.array(z.string()).optional(),
-        jobRomeCodes: z.array(z.string()).optional(),
-        jobTitles: z.array(z.string()).optional(),
-        competences: z.array(z.object({
-            id: z.string(),
-            name: z.string().min(1, "La compétence est requise."),
-            activities: z.array(z.string()).optional(),
-        })).optional(),
-        softSkills: z.array(z.string()).optional(),
-    }).optional(),
-    additionalInfo: z.object({
-        companyCoordinates: z.string().optional(),
-        internalNotes: z.string().optional(),
-    }).optional(),
-});
-type JobOfferFormData = z.infer<typeof jobOfferSchema>;
-type JobOffer = JobOfferFormData & { id: string; counselorId: string };
-
-function JobOfferManager() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [editingOffer, setEditingOffer] = useState<JobOffer | null>(null);
-
-    const jobOffersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/job_offers`)) : null, [user, firestore]);
-    const { data: jobOffers, isLoading } = useCollection<JobOffer>(jobOffersQuery);
-
-    const form = useForm<JobOfferFormData>({
-        resolver: zodResolver(jobOfferSchema),
-    });
-
-    const { fields, append, remove } = useFieldArray({
-        control: form.control,
-        name: "infoMatching.competences",
-    });
-
-    useEffect(() => {
-        if (isSheetOpen) {
-            form.reset(editingOffer || { title: '' });
-        }
-    }, [isSheetOpen, editingOffer, form]);
-
-    const onSubmit = (data: JobOfferFormData) => {
-        if (!user) return;
-        
-        const offerData = { 
-            counselorId: user.uid, 
-            title: data.title,
-            reference: data.reference || '',
-            description: data.description || '',
-            contractType: data.contractType || [],
-            workingHours: data.workingHours || [],
-            environment: data.environment || [],
-            location: data.location || [],
-            salary: data.salary || [],
-            infoMatching: {
-                trainingLevels: data.infoMatching?.trainingLevels || [],
-                trainingRncps: data.infoMatching?.trainingRncps || [],
-                trainingTitles: data.infoMatching?.trainingTitles || [],
-                jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
-                jobTitles: data.infoMatching?.jobTitles || [],
-                competences: data.infoMatching?.competences || [],
-                softSkills: data.infoMatching?.softSkills || [],
-            },
-            additionalInfo: {
-                companyCoordinates: data.additionalInfo?.companyCoordinates || '',
-                internalNotes: data.additionalInfo?.internalNotes || '',
-            }
-        };
-
-        if (editingOffer) {
-            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, editingOffer.id), offerData, { merge: true });
-            toast({ title: "Offre d'emploi mise à jour" });
-        } else {
-            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/job_offers`), offerData);
-            toast({ title: "Offre d'emploi créée" });
-        }
-        setIsSheetOpen(false);
-    };
-
-    const handleEdit = (offer: JobOffer) => {
-        setEditingOffer(offer);
-        setIsSheetOpen(true);
-    };
-
-    const handleDelete = (offerId: string) => {
-        if (!user) return;
-        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/job_offers`, offerId));
-        toast({ title: "Offre d'emploi supprimée" });
-    };
-
-    return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div><CardTitle>Offres d'emploi</CardTitle><CardDescription>Gérez vos offres d'emploi ici.</CardDescription></div>
-                    <Button onClick={() => setIsSheetOpen(true)}><PlusCircle className="mr-2 h-4 w-4" /> Nouvelle offre</Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader><TableRow><TableHead>Titre</TableHead><TableHead>Référence</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                        {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
-                        : jobOffers && jobOffers.length > 0 ? (
-                            jobOffers.map(offer => (
-                                <TableRow key={offer.id}>
-                                    <TableCell>{offer.title}</TableCell>
-                                    <TableCell>{offer.reference}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(offer.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucune offre d'emploi créée.</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
-
-                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-3xl w-full">
-                        <SheetHeader><SheetTitle>{editingOffer ? 'Modifier' : 'Nouvelle'} Offre d'Emploi</SheetTitle></SheetHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
-                                <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-8">
-                                    <Accordion type="multiple" defaultValue={['public']} className="w-full space-y-4">
-                                        <AccordionItem value="public" className="border p-4 rounded-lg">
-                                            <AccordionTrigger className="font-semibold text-lg py-0">Infos Publiques</AccordionTrigger>
-                                            <AccordionContent className="pt-6 space-y-4">
-                                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
-                                                <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
-                                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description du poste</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage/></FormItem>)}/>
-                                                <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="workingHours" render={({ field }) => (<FormItem><FormLabel>Durée du travail</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="environment" render={({ field }) => (<FormItem><FormLabel>Environnement</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="salary" render={({ field }) => (<FormItem><FormLabel>Salaire</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="location" render={({ field }) => (<FormItem><FormLabel>Lieu</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                        <AccordionItem value="matching" className="border p-4 rounded-lg">
-                                            <AccordionTrigger className="font-semibold text-lg py-0">Infos de Matching</AccordionTrigger>
-                                            <AccordionContent className="pt-6 space-y-4">
-                                                <h4 className="font-medium text-base mb-2">Formation</h4>
-                                                <FormField control={form.control} name="infoMatching.trainingLevels" render={({ field }) => (<FormItem><FormLabel>Niveau Requis</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..."/></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="infoMatching.trainingRncps" render={({ field }) => (<FormItem><FormLabel>Codes RNCP</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="infoMatching.trainingTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés de formation</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
-                                                
-                                                <h4 className="font-medium text-base mb-2 pt-4 border-t">Métier</h4>
-                                                <FormField control={form.control} name="infoMatching.jobRomeCodes" render={({ field }) => (<FormItem><FormLabel>Codes ROME</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code..."/></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="infoMatching.jobTitles" render={({ field }) => (<FormItem><FormLabel>Intitulés de poste</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..."/></FormControl></FormItem>)}/>
-                                                
-                                                <h4 className="font-medium text-base mb-2 pt-4 border-t">Compétences</h4>
-                                                <div className="space-y-4">
-                                                    {fields.map((field, index) => (
-                                                        <div key={field.id} className="p-4 border rounded-lg space-y-4 bg-background">
-                                                            <div className="flex justify-between items-center"><h5 className="font-medium">Compétence {index + 1}</h5><Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button></div>
-                                                            <FormField control={form.control} name={`infoMatching.competences.${index}.name`} render={({ field }) => ( <FormItem><FormLabel>Compétence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem> )}/>
-                                                            <FormField control={form.control} name={`infoMatching.competences.${index}.activities`} render={({ field }) => ( <FormItem><FormLabel>Activités associées</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter une activité..." /></FormControl><FormMessage /></FormItem> )}/>
-                                                        </div>
-                                                    ))}
-                                                    <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `comp-offer-${Date.now()}`, name: '', activities: [] })}>
-                                                        <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une compétence
-                                                    </Button>
-                                                </div>
-
-                                                <h4 className="font-medium text-base mb-2 pt-4 border-t">Soft Skills</h4>
-                                                <FormField control={form.control} name="infoMatching.softSkills" render={({ field }) => (<FormItem><FormLabel>Softskills attendus</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un softskill..."/></FormControl></FormItem>)}/>
-                                            </AccordionContent>
-                                        </AccordionItem>
-                                        <AccordionItem value="additional" className="border p-4 rounded-lg">
-                                             <AccordionTrigger className="font-semibold text-lg py-0">Infos Supplémentaires</AccordionTrigger>
-                                             <AccordionContent className="pt-6 space-y-4">
-                                                <FormField control={form.control} name="additionalInfo.companyCoordinates" render={({ field }) => (<FormItem><FormLabel>Coordonnées de l'entreprise</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)}/>
-                                                <FormField control={form.control} name="additionalInfo.internalNotes" render={({ field }) => (<FormItem><FormLabel>Notes internes</FormLabel><FormControl><Textarea {...field} /></FormControl></FormItem>)}/>
-                                             </AccordionContent>
-                                        </AccordionItem>
-                                    </Accordion>
-                                </div></ScrollArea>
-                                <SheetFooter className="pt-4 border-t mt-auto">
-                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                    <Button type="submit">Sauvegarder</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
-                    </SheetContent>
-                </Sheet>
-            </CardContent>
-        </Card>
-    );
-}
-
 export default function VitaePage() {
     return (
         <div className="space-y-8">
@@ -1060,3 +1065,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
