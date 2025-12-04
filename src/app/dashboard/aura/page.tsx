@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -33,6 +34,7 @@ import { ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Product, ProductFormData, productSchema } from '@/lib/types';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 const toBase64 = (file: File): Promise<string> =>
@@ -950,7 +952,7 @@ function TestManager() {
     const [selectedSheetId, setSelectedSheetId] = useState<string | null>(null);
     const [pathologies, setPathologies] = useState<string[]>([]);
     const [emotions, setEmotions] = useState<string[]>([]);
-    const [matchResults, setMatchResults] = useState<{ products: Product[], protocols: Protocole[] } | null>(null);
+    const [matchResult, setMatchResult] = useState<{ products: Product[], protocols: Protocole[] } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
     const sheetsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/wellness_sheets`)) : null, [user, firestore]);
@@ -984,7 +986,7 @@ function TestManager() {
             p.pathologies?.some(tag => searchTags.has(tag))
         );
 
-        setMatchResults({ products: matchedProducts, protocols: matchedProtocols });
+        setMatchResult({ products: matchedProducts, protocols: matchedProtocols });
         setIsLoading(false);
     };
 
@@ -1017,13 +1019,13 @@ function TestManager() {
                     Lancer l'analyse
                 </Button>
 
-                {matchResults && (
+                {matchResult && (
                     <div className="pt-6 border-t space-y-6">
                         <h3 className="text-xl font-semibold">Résultats de l'analyse</h3>
                         <div>
-                            <h4 className="font-semibold text-lg mb-2">Produits Recommandés ({matchResults.products.length})</h4>
+                            <h4 className="font-semibold text-lg mb-2">Produits Recommandés ({matchResult.products.length})</h4>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                {matchResults.products.length > 0 ? matchResults.products.map(p => (
+                                {matchResult.products.length > 0 ? matchResult.products.map(p => (
                                     <Card key={p.id} className="p-4 flex items-center gap-4">
                                         <Image src={p.imageUrl || '/placeholder.svg'} alt={p.title} width={60} height={60} className="rounded-md border object-cover"/>
                                         <p className="font-medium">{p.title}</p>
@@ -1032,9 +1034,9 @@ function TestManager() {
                             </div>
                         </div>
                          <div>
-                            <h4 className="font-semibold text-lg mb-2">Protocoles Recommandés ({matchResults.protocols.length})</h4>
+                            <h4 className="font-semibold text-lg mb-2">Protocoles Recommandés ({matchResult.protocols.length})</h4>
                             <div className="space-y-2">
-                                {matchResults.protocols.length > 0 ? matchResults.protocols.map(p => (
+                                {matchResult.protocols.length > 0 ? matchResult.protocols.map(p => (
                                     <Card key={p.id} className="p-4">
                                         <p className="font-medium">{p.name}</p>
                                     </Card>
