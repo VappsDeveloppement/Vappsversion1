@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -368,8 +367,7 @@ function FichesMetiersManager() {
                         </SheetHeader>
                         <Form {...form}>
                         <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
-                            <ScrollArea className="flex-1 pr-6 py-4 -mr-6">
-                                <div className="space-y-8">
+                            <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-8">
                                 <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom de la fiche</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)}/>
                                 <section>
                                     <h3 className="text-lg font-semibold mb-4 border-b pb-2">Formation</h3>
@@ -405,8 +403,7 @@ function FichesMetiersManager() {
                                         </Button>
                                     </div>
                                 </section>
-                                </div>
-                            </ScrollArea>
+                                </div></ScrollArea>
                             <SheetFooter className="pt-4 border-t mt-auto">
                                 <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                 <Button type="submit">Sauvegarder</Button>
@@ -611,7 +608,7 @@ function CvManager() {
 }
 
 const jobOfferFormSchema = z.object({
-    title: z.array(z.string()).min(1, "Le titre est requis."),
+    title: z.string().min(1, "Le titre est requis."),
     reference: z.string().optional(),
     description: z.string().optional(),
     contractType: z.array(z.string()).optional(),
@@ -686,7 +683,7 @@ function JobOfferManager() {
     useEffect(() => {
         if (isSheetOpen) {
              const defaultValues = {
-                title: [], reference: '', description: '', contractType: [], workingHours: [],
+                title: '', reference: '', description: '', contractType: [], workingHours: [],
                 environment: [], location: [], salary: [],
                 infoMatching: {
                     trainingLevels: [], trainingRncps: [], trainingTitles: [],
@@ -697,8 +694,8 @@ function JobOfferManager() {
             
             if (editingOffer) {
                 form.reset({
+                    ...defaultValues,
                     ...editingOffer,
-                    title: Array.isArray(editingOffer.title) ? editingOffer.title : [editingOffer.title],
                     infoMatching: { ...defaultValues.infoMatching, ...editingOffer.infoMatching },
                     additionalInfo: { ...defaultValues.additionalInfo, ...editingOffer.additionalInfo },
                 });
@@ -715,21 +712,6 @@ function JobOfferManager() {
         const offerData = {
           counselorId: user.uid,
           ...data,
-          infoMatching: {
-            ...data.infoMatching,
-            trainingLevels: data.infoMatching?.trainingLevels || [],
-            trainingRncps: data.infoMatching?.trainingRncps || [],
-            trainingTitles: data.infoMatching?.trainingTitles || [],
-            jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
-            jobTitles: data.infoMatching?.jobTitles || [],
-            competences: data.infoMatching?.competences || [],
-            softSkills: data.infoMatching?.softSkills || [],
-          },
-          additionalInfo: {
-            ...data.additionalInfo,
-            companyCoordinates: data.additionalInfo?.companyCoordinates || '',
-            internalNotes: data.additionalInfo?.internalNotes || '',
-          }
         };
 
         if (editingOffer) {
@@ -769,7 +751,7 @@ function JobOfferManager() {
                         : jobOffers && jobOffers.length > 0 ? (
                             jobOffers.map(offer => (
                                 <TableRow key={offer.id}>
-                                    <TableCell>{Array.isArray(offer.title) ? offer.title.join(', ') : offer.title}</TableCell>
+                                    <TableCell>{offer.title}</TableCell>
                                     <TableCell>{offer.reference}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => handleEdit(offer)}><Edit className="h-4 w-4" /></Button>
@@ -791,7 +773,7 @@ function JobOfferManager() {
                                         <AccordionItem value="public" className="border p-4 rounded-lg">
                                             <AccordionTrigger className="font-semibold text-lg py-0">Infos Publiques</AccordionTrigger>
                                             <AccordionContent className="pt-6 space-y-4">
-                                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du poste</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl><FormMessage/></FormItem>)}/>
+                                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du poste</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                                 <FormField control={form.control} name="reference" render={({ field }) => (<FormItem><FormLabel>Référence</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description du poste</FormLabel><FormControl><Textarea rows={5} {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                                 <FormField control={form.control} name="contractType" render={({ field }) => (<FormItem><FormLabel>Type de contrat</FormLabel><FormControl><TagInput {...field} placeholder="..."/></FormControl></FormItem>)}/>
@@ -953,40 +935,23 @@ function TestManager() {
         const cvSoftSkills = new Set(cv.softSkills || []);
         const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
         checkMatch(cvSoftSkills, offerSoftSkills, "Soft skills communs", "Soft skills manquants");
-
-        const cvRomeCodes = new Set(cv.experiences?.flatMap(e => e.romeCode || []));
+        
+        const cvExperiences = cv.experiences || [];
+        const cvRomeCodes = new Set(cvExperiences.flatMap(e => e.romeCode || []));
         const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
         checkMatch(cvRomeCodes, offerRomeCodes, "Codes ROME correspondants", "Codes ROME requis");
-
-        const cvCompetences = new Set(cv.experiences?.flatMap(e => e.skills || []));
+        
+        const cvJobTitles = new Set(cvExperiences.flatMap(e => e.title || []));
+        const offerJobTitles = new Set(offer.infoMatching?.jobTitles || []);
+        checkMatch(cvJobTitles, offerJobTitles, "Intitulés de poste correspondants", "Intitulés de poste requis");
+        
+        const cvCompetences = new Set(cvExperiences.flatMap(e => e.skills || []));
         const offerCompetences = new Set(offer.infoMatching?.competences?.map((c: any) => c.name || c.competence) || []);
-        if(offerCompetences.size > 0) {
-            totalChecks++;
-            const matches = [...cvCompetences].filter(item => offerCompetences.has(item));
-             const misses = [...offerCompetences].filter(item => !cvCompetences.has(item));
-            if (matches.length > 0) {
-                score++;
-                matchingDetails.push(`Compétences correspondantes: ${matches.join(', ')}.`);
-            }
-            if(misses.length > 0) {
-                 missingDetails.push(`Compétences manquantes: ${misses.join(', ')}.`);
-            }
-        }
-
-        const cvActivities = new Set(cv.experiences?.flatMap(e => e.activities || []));
+        checkMatch(cvCompetences, offerCompetences, "Compétences techniques correspondantes", "Compétences techniques manquantes");
+        
+        const cvActivities = new Set(cvExperiences.flatMap(e => e.activities || []));
         const offerActivities = new Set(offer.infoMatching?.competences?.flatMap((c: any) => c.activities || []));
-        if(offerActivities.size > 0) {
-            totalChecks++;
-            const matches = [...cvActivities].filter(item => offerActivities.has(item));
-            const misses = [...offerActivities].filter(item => !cvActivities.has(item));
-            if (matches.length > 0) {
-                score++;
-                matchingDetails.push(`Activités correspondantes: ${matches.join(', ')}.`);
-            }
-            if(misses.length > 0) {
-                 missingDetails.push(`Activités manquantes: ${misses.join(', ')}.`);
-            }
-        }
+        checkMatch(cvActivities, offerActivities, "Activités correspondantes", "Activités manquantes");
 
         if (comparisonType === 'offer') {
             checkMatch(new Set(cv.contractTypes), new Set(offer.contractType), "Type de contrat compatible", "Type de contrat non spécifié");
@@ -1037,7 +1002,7 @@ function TestManager() {
                              <Select onValueChange={setSelectedComparisonId} disabled={areJobOffersLoading}>
                                 <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
                                 <SelectContent>
-                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{Array.isArray(o.title) ? o.title.join(', ') : o.title}</SelectItem>)}
+                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                         ) : (
