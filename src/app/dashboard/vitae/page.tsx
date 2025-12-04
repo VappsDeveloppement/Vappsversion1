@@ -6,7 +6,7 @@ import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building, Percent, CheckCircle, XCircle } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building, Percent, CheckCircle, XCircle, Save } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore, useStorage } from '@/firebase/provider';
@@ -611,7 +611,7 @@ function CvManager() {
 }
 
 const jobOfferSchema = z.object({
-  title: z.string().min(1, 'Le titre est requis.'),
+  title: z.array(z.string()).min(1, "Le titre est requis."),
   reference: z.string().optional(),
   description: z.string().optional(),
   contractType: z.array(z.string()).optional(),
@@ -851,6 +851,14 @@ function TestManager() {
     const [comparisonType, setComparisonType] = useState<'offer' | 'fiche'>('offer');
     const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[]; } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
+    const { toast } = useToast();
+
+    useEffect(() => {
+        const savedAnalysis = localStorage.getItem('lastVitaeAnalysisResult');
+        if (savedAnalysis) {
+            setMatchResult(JSON.parse(savedAnalysis));
+        }
+    }, []);
 
     const cvProfilesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/cv_profiles`)) : null, [user, firestore]);
     const { data: cvProfiles, isLoading: areCvProfilesLoading } = useCollection<CvProfile>(cvProfilesQuery);
@@ -929,48 +937,55 @@ function TestManager() {
         const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
         checkMatch(cvRncpCodes, offerRncpCodes, "Certifications RNCP correspondantes", "Certifications RNCP requises");
         
-        // Competences & Activities
         const cvCompetences = new Set(cv.experiences?.flatMap(e => e.skills || []));
         const offerCompetences = new Set(offer.infoMatching?.competences?.map((c: any) => c.name || c.competence));
         if(offerCompetences.size > 0) {
             totalChecks++;
             const matches = [...cvCompetences].filter(item => offerCompetences.has(item));
+             const misses = [...offerCompetences].filter(item => !cvCompetences.has(item));
             if (matches.length > 0) {
                 score++;
                 matchingDetails.push(`Compétences correspondantes: ${matches.join(', ')}.`);
             }
-            const misses = [...offerCompetences].filter(item => !cvCompetences.has(item));
             if(misses.length > 0) {
                  missingDetails.push(`Compétences manquantes: ${misses.join(', ')}.`);
             }
         }
-
 
         const cvActivities = new Set(cv.experiences?.flatMap(e => e.activities || []));
         const offerActivities = new Set(offer.infoMatching?.competences?.flatMap((c: any) => c.activities || []));
         if(offerActivities.size > 0) {
             totalChecks++;
             const matches = [...cvActivities].filter(item => offerActivities.has(item));
+            const misses = [...offerActivities].filter(item => !cvActivities.has(item));
             if (matches.length > 0) {
                 score++;
                 matchingDetails.push(`Activités correspondantes: ${matches.join(', ')}.`);
             }
-             const misses = [...offerActivities].filter(item => !cvActivities.has(item));
             if(misses.length > 0) {
                  missingDetails.push(`Activités manquantes: ${misses.join(', ')}.`);
             }
         }
 
-        
         if (comparisonType === 'offer') {
             checkMatch(new Set(cv.contractTypes), new Set(offer.contractType), "Type de contrat compatible", "Type de contrat non spécifié");
             checkMatch(new Set(cv.mobility?.map(m => m.toLowerCase())), new Set(offer.location?.map((l: string) => l.toLowerCase())), "Localisation compatible", "Mobilité requise");
         }
 
         const finalScore = totalChecks > 0 ? (score / totalChecks) * 100 : 0;
-        setMatchResult({ score: Math.round(finalScore), matching: matchingDetails, missing: missingDetails });
+        const result = { score: Math.round(finalScore), matching: matchingDetails, missing: missingDetails };
+        setMatchResult(result);
+        localStorage.setItem('lastVitaeAnalysisResult', JSON.stringify(result));
         setIsLoading(false);
     };
+
+    const handleSaveAnalysis = () => {
+        if (matchResult) {
+            localStorage.setItem('lastVitaeAnalysisResult', JSON.stringify(matchResult));
+            toast({ title: "Analyse sauvegardée", description: "Les résultats actuels ont été mémorisés localement." });
+        }
+    };
+
 
     return (
         <Card>
@@ -1020,7 +1035,12 @@ function TestManager() {
                 </Button>
                 {matchResult && (
                     <div className="pt-6 border-t space-y-6">
-                        <h3 className="text-xl font-semibold">Résultat de l'analyse</h3>
+                        <div className="flex justify-between items-center">
+                            <h3 className="text-xl font-semibold">Résultat de l'analyse</h3>
+                            <Button variant="outline" size="sm" onClick={handleSaveAnalysis}>
+                                <Save className="mr-2 h-4 w-4" /> Enregistrer l'analyse
+                            </Button>
+                        </div>
                         <div className="flex flex-col md:flex-row items-center gap-6">
                              <div className="relative h-24 w-24">
                                 <svg className="h-full w-full" viewBox="0 0 36 36">
