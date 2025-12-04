@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -545,6 +544,19 @@ function WellnessSheetGenerator() {
         },
     });
     
+    const newUserSchema = z.object({
+        firstName: z.string().min(1, "Le prénom est requis."),
+        lastName: z.string().min(1, "Le nom est requis."),
+        email: z.string().email("L'adresse email est invalide."),
+        phone: z.string().optional(),
+        address: z.string().optional(),
+        zipCode: z.string().optional(),
+        city: z.string().optional(),
+        password: z.string().min(6, "Le mot de passe doit comporter au moins 6 caractères."),
+    });
+
+    type NewUserFormData = z.infer<typeof newUserSchema>;
+    
     const newUserForm = useForm<NewUserFormData>({
         resolver: zodResolver(newUserSchema),
     });
@@ -951,39 +963,34 @@ export default function VitaePage() {
     return (
         <div className="space-y-8">
             <div>
-                <h1 className="text-3xl font-bold font-headline">Vitae</h1>
-                <p className="text-muted-foreground">Votre outil de gestion de parcours professionnels</p>
+                <h1 className="text-3xl font-bold font-headline">Aura</h1>
+                <p className="text-muted-foreground">Votre outil de gestion de bien-être.</p>
             </div>
-             <ApplicationManager />
-            <Tabs defaultValue="cvtheque" className="w-full">
-                <TabsList className="grid w-full grid-cols-5 h-auto">
-                    <TabsTrigger value="cvtheque">
-                        <FileText className="mr-2 h-4 w-4" /> CVTHEQUE
+            
+            <Tabs defaultValue="wellness-sheet" className="w-full">
+                <TabsList className="grid w-full grid-cols-4 h-auto">
+                    <TabsTrigger value="wellness-sheet">
+                        <User className="mr-2 h-4 w-4" /> Fiche Bien-être
                     </TabsTrigger>
-                    <TabsTrigger value="rncp">
-                        <Search className="mr-2 h-4 w-4" /> FICHE RNCP
+                     <TabsTrigger value="protocols">
+                        <BrainCircuit className="mr-2 h-4 w-4" /> Protocoles
                     </TabsTrigger>
-                    <TabsTrigger value="rome">
-                        <Search className="mr-2 h-4 w-4" /> FICHE ROME
-                    </TabsTrigger>
-                    <TabsTrigger value="jobs">
-                        <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
+                    <TabsTrigger value="catalog">
+                        <ShoppingBag className="mr-2 h-4 w-4" /> Catalogue
                     </TabsTrigger>
                     <TabsTrigger value="test">
-                        <FlaskConical className="mr-2 h-4 w-4" /> TEST
+                        <FlaskConical className="mr-2 h-4 w-4" /> Test
                     </TabsTrigger>
                 </TabsList>
-                <TabsContent value="cvtheque">
-                    <Cvtheque />
+
+                 <TabsContent value="wellness-sheet">
+                    <WellnessSheetGenerator />
                 </TabsContent>
-                <TabsContent value="rncp">
-                    <RncpManager />
+                <TabsContent value="protocols">
+                    <ProtocoleManager />
                 </TabsContent>
-                 <TabsContent value="rome">
-                    <RomeManager />
-                </TabsContent>
-                <TabsContent value="jobs">
-                    <JobOfferManager />
+                <TabsContent value="catalog">
+                    <ProductManager />
                 </TabsContent>
                 <TabsContent value="test">
                     <TestManager />
