@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain, Download, FlaskConical } from "lucide-react";
+import { FileText, ShoppingBag, Beaker, ClipboardList, PlusCircle, Edit, Trash2, Loader2, Image as ImageIcon, X, Star, Search, UserPlus, Eye, EyeOff, User, Mail, Phone, Info, HeartPulse, BrainCircuit, Check, Brain, Download, FlaskConical, TestTube2, BrainCog } from "lucide-react";
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, Control, UseFormSetValue } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Product, ProductFormData, productSchema } from '@/lib/types';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { BlocQuestionModele } from "@/components/shared/bloc-question-modele";
 
 
 const toBase64 = (file: File): Promise<string> =>
@@ -503,8 +504,6 @@ type WellnessSheet = {
     updatedAt: string;
 };
 
-type Client = { id: string; firstName: string; lastName: string; email: string; phone?: string; counselorIds?: string[] };
-
 
 function WellnessSheetGenerator() {
     const { user } = useUser();
@@ -947,7 +946,7 @@ function WellnessSheetGenerator() {
 }
 
 function TestManager() {
-    return <div className="text-center p-12 text-muted-foreground"></div>
+    return <div className="text-center p-12 text-muted-foreground">Contenu à venir.</div>
 }
 
 export default function AuraPage() {
@@ -970,7 +969,7 @@ export default function AuraPage() {
                         <ShoppingBag className="mr-2 h-4 w-4" /> Catalogue
                     </TabsTrigger>
                     <TabsTrigger value="bloc">
-                        <FlaskConical className="mr-2 h-4 w-4" /> BLOC
+                        <BrainCog className="mr-2 h-4 w-4" /> BLOC
                     </TabsTrigger>
                 </TabsList>
 
@@ -984,10 +983,9 @@ export default function AuraPage() {
                     <ProductManager />
                 </TabsContent>
                 <TabsContent value="bloc">
-                    <TestManager />
+                    <BlocQuestionModele />
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
-

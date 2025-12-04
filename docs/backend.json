@@ -1,6 +1,30 @@
 
 {
   "entities": {
+    "QuestionModel": {
+        "title": "Question Model",
+        "type": "object",
+        "description": "A reusable template of questions.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "name": { "type": "string" },
+            "questions": {
+                "type": "array",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "string" },
+                        "text": { "type": "string" },
+                        "type": { "type": "string", "enum": ["text", "textarea", "select", "checkbox", "radio"] },
+                        "options": { "type": "array", "items": { "type": "string" } }
+                    },
+                    "required": ["id", "text", "type"]
+                }
+            }
+        },
+        "required": ["counselorId", "name"]
+    },
     "JobOffer": {
         "title": "Job Offer",
         "type": "object",
@@ -1585,6 +1609,14 @@
             "entityName": "RomeFiche",
             "schema": { "$ref": "#/entities/RomeFiche" },
             "description": "Stores ROME sheets created by a counselor."
+        }
+      },
+      {
+        "path": "/users/{userId}/question_models/{modelId}",
+        "definition": {
+          "entityName": "QuestionModel",
+          "schema": { "$ref": "#/entities/QuestionModel" },
+          "description": "Stores question templates created by a counselor."
         }
       },
       {
