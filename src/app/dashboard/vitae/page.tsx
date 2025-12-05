@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -731,23 +732,23 @@ function JobOfferManager() {
     });
 
     useEffect(() => {
+        const defaultValues = {
+            title: '', reference: '', description: '', contractType: [], workingHours: [],
+            environment: [], location: [], salary: [],
+            infoMatching: {
+                trainingLevels: [], trainingRncps: [], trainingTitles: [],
+                jobRomeCodes: [], jobTitles: [], competences: [], softSkills: []
+            },
+            additionalInfo: { companyCoordinates: '', internalNotes: '' }
+        };
+        
         if (isSheetOpen) {
-             const defaultValues = {
-                title: '', reference: '', description: '', contractType: [], workingHours: [],
-                environment: [], location: [], salary: [],
-                infoMatching: {
-                    trainingLevels: [], trainingRncps: [], trainingTitles: [],
-                    jobRomeCodes: [], jobTitles: [], competences: [], softSkills: []
-                },
-                additionalInfo: { companyCoordinates: '', internalNotes: '' }
-            };
-            
             if (editingOffer) {
                 form.reset({
                     ...defaultValues,
                     ...editingOffer,
-                    infoMatching: { ...defaultValues.infoMatching, ...editingOffer.infoMatching },
-                    additionalInfo: { ...defaultValues.additionalInfo, ...editingOffer.additionalInfo },
+                    infoMatching: { ...defaultValues.infoMatching, ...(editingOffer.infoMatching || {}) },
+                    additionalInfo: { ...defaultValues.additionalInfo, ...(editingOffer.additionalInfo || {}) },
                 });
             } else {
                 form.reset(defaultValues);
@@ -761,7 +762,9 @@ function JobOfferManager() {
         
         const offerData = {
           counselorId: user.uid,
-          ...data,
+          title: data.title,
+          reference: data.reference || '',
+          description: data.description || '',
           contractType: data.contractType || [],
           workingHours: data.workingHours || [],
           environment: data.environment || [],
@@ -1139,11 +1142,9 @@ function TestManager() {
                                 <h4 className="font-semibold text-lg mb-4">Formations suggérées</h4>
                                 <div className="space-y-2">
                                     {matchResult.suggestedTrainings.map(training => (
-                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id} passHref>
-                                            <a className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
-                                                <p className="font-semibold">{training.title}</p>
-                                                <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
-                                            </a>
+                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id} className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
+                                            <p className="font-semibold">{training.title}</p>
+                                            <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
                                         </Link>
                                     ))}
                                 </div>
