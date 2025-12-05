@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -685,30 +686,9 @@ const jobOfferFormSchema = z.object({
     }).optional(),
 });
 type JobOfferFormData = z.infer<typeof jobOfferFormSchema>;
-type JobOffer = {
+type JobOffer = JobOfferFormData & {
   id: string;
   counselorId: string;
-  title: string;
-  reference?: string;
-  description?: string;
-  contractType?: string[];
-  workingHours?: string[];
-  environment?: string[];
-  location?: string[];
-  salary?: string[];
-  infoMatching?: {
-    trainingLevels?: string[];
-    trainingRncps?: string[];
-    trainingTitles?: string[];
-    jobRomeCodes?: string[];
-    jobTitles?: string[];
-    competences?: { id: string; name: string; activities?: string[] }[];
-    softSkills?: string[];
-  };
-  additionalInfo?: {
-    companyCoordinates?: string;
-    internalNotes?: string;
-  };
 };
 
 function JobOfferManager() {
@@ -764,19 +744,19 @@ function JobOfferManager() {
           title: data.title,
           reference: data.reference,
           description: data.description,
-          contractType: data.contractType,
-          workingHours: data.workingHours,
-          environment: data.environment,
-          location: data.location,
-          salary: data.salary,
+          contractType: data.contractType || [],
+          workingHours: data.workingHours || [],
+          environment: data.environment || [],
+          location: data.location || [],
+          salary: data.salary || [],
           infoMatching: {
-            trainingLevels: data.infoMatching?.trainingLevels,
-            trainingRncps: data.infoMatching?.trainingRncps,
-            trainingTitles: data.infoMatching?.trainingTitles,
-            jobRomeCodes: data.infoMatching?.jobRomeCodes,
-            jobTitles: data.infoMatching?.jobTitles,
-            competences: data.infoMatching?.competences,
-            softSkills: data.infoMatching?.softSkills,
+            trainingLevels: data.infoMatching?.trainingLevels || [],
+            trainingRncps: data.infoMatching?.trainingRncps || [],
+            trainingTitles: data.infoMatching?.trainingTitles || [],
+            jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
+            jobTitles: data.infoMatching?.jobTitles || [],
+            competences: data.infoMatching?.competences || [],
+            softSkills: data.infoMatching?.softSkills || [],
           },
           additionalInfo: {
             companyCoordinates: data.additionalInfo?.companyCoordinates,
@@ -1156,11 +1136,9 @@ function TestManager() {
                                 <h4 className="font-semibold text-lg mb-4">Formations suggérées</h4>
                                 <div className="space-y-2">
                                     {matchResult.suggestedTrainings.map(training => (
-                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id}>
-                                            <div className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
-                                                <p className="font-semibold">{training.title}</p>
-                                                <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
-                                            </div>
+                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id} className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
+                                            <p className="font-semibold">{training.title}</p>
+                                            <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
                                         </Link>
                                     ))}
                                 </div>
@@ -1225,7 +1203,7 @@ export default function VitaePage() {
                         <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
                     </TabsTrigger>
                      <TabsTrigger value="bloc-question-vitae">
-                        <FlaskConical className="mr-2 h-4 w-4" /> ANALYSE DE PARCOURS PROFESSIONNEL
+                        <FlaskConical className="mr-2 h-4 w-4" /> BLOC
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="fiches-metiers">
