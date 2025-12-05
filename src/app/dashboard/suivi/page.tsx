@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -168,7 +166,6 @@ type FollowUp = {
     createdAt: string;
     status: 'pending' | 'completed';
     answers?: { questionId: string; answer: any }[];
-    type?: 'form';
 };
 
 type PathEnrollment = {
@@ -180,8 +177,9 @@ type PathEnrollment = {
     pathName: string;
     enrolledAt: string;
     status: 'pending' | 'completed';
-    type?: 'path';
 };
+
+type CombinedFollowUp = (FollowUp & { type: 'form' }) | (PathEnrollment & { type: 'path' });
 
 const newFollowUpSchema = z.object({
     assignationType: z.enum(['form', 'path']).default('form'),
@@ -244,8 +242,8 @@ function FollowUpManager() {
     const { data: pathEnrollmentsData, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(pathEnrollmentsQuery);
 
     const combinedFollowUps = useMemo(() => {
-        const forms = (followUpsData || []).map(f => ({ ...f, type: 'form' as const, pathName: f.modelName, enrolledAt: f.createdAt, userId: f.clientId }));
-        const paths = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' as const, modelId: p.pathId, modelName: p.pathName, createdAt: p.enrolledAt }));
+        const forms: CombinedFollowUp[] = (followUpsData || []).map(f => ({ ...f, type: 'form' }));
+        const paths: CombinedFollowUp[] = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' }));
         return [...forms, ...paths].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
     }, [followUpsData, pathEnrollmentsData]);
 
@@ -289,7 +287,7 @@ function FollowUpManager() {
         form.reset();
     };
     
-     const handleDeleteFollowUp = (item: FollowUp | PathEnrollment) => {
+     const handleDeleteFollowUp = (item: CombinedFollowUp) => {
         if (!user) return;
         const collectionName = item.type === 'path' ? 'path_enrollments' : 'follow_ups';
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/${collectionName}`, item.id));
@@ -1112,7 +1110,7 @@ function LearningPathManager() {
                                     <TableCell>{path.steps.length}</TableCell>
                                     <TableCell className="text-right">
                                         <Button variant="ghost" size="icon" onClick={() => { setEditingPath(path); setIsSheetOpen(true); }}><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/learning_paths`, path.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => deleteDocumentNonBlocking(doc(firestore, `users/${user!.uid}/learning_paths`, path.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
                                     </TableCell>
                                 </TableRow>
                             ))
@@ -1298,7 +1296,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     }
                     break;
                 case 'scorm':
-                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
                          if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                         const questionIds = scormBlock.questions.map(q => q.id);
                         if (questionIds.some(qId => !scormAnswers[qId])) {
@@ -1430,7 +1428,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
                  if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                 const questionIds = scormBlock.questions.map(q => q.id);
                 if (questionIds.some(qId => !scormAnswers[qId])) {
@@ -1517,7 +1515,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: string) => {
+            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: any) => {
                 if (!data || (!data.products?.length && !data.protocoles?.length)) {
                     return (
                         <div key={key} className="mb-4">
@@ -1550,7 +1548,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${item.pathology}-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>

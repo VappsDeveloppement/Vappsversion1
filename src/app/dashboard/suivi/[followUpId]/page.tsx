@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -7,7 +8,7 @@ import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Search, Download, Image as ImageIcon, CheckCircle, FileText, Route } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Download, CheckCircle, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -18,15 +19,14 @@ import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
 import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { X, Mail, Phone } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Check } from 'lucide-react';
+import { Mail, Phone } from 'lucide-react';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+
 
 // Types pour le suivi simple (formulaire)
 type FollowUp = {
@@ -37,6 +37,8 @@ type FollowUp = {
     modelName: string;
     status: 'pending' | 'completed';
     answers?: { questionId: string; answer: any }[];
+    counselorId: string;
+    createdAt: string;
 };
 
 type QuestionBlock = 
@@ -63,6 +65,8 @@ type PathEnrollment = {
     pathId: string;
     pathName: string;
     status: 'pending' | 'completed';
+    counselorId: string;
+    enrolledAt: string;
 };
 
 type LearningPath = {
@@ -155,7 +159,7 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath }: { pathEnroll
     const handleOpenOrCreateFollowUp = async (step: { modelId: string, modelName: string }) => {
         if (!user || !clientFollowUps) return;
 
-        const existingFollowUp = clientFollowUps.find(f => f.modelId === step.modelId);
+        const existingFollowUp = clientFollowUps.find(f => f.modelId === step.modelId && f.clientId === pathEnrollment.userId);
         
         if (existingFollowUp) {
             router.push(`/dashboard/suivi/${existingFollowUp.id}`);
@@ -359,7 +363,7 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                             <div key={question.id}>
                                                 <Label className="font-semibold">{question.text}</Label>
                                                 <RadioGroup value={blockAnswer?.[question.id]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})} className="mt-2 space-y-2">
-                                                    {question.answers.map(answer => (
+                                                    {question.answers.map((answer: any) => (
                                                         <div key={answer.id} className="flex items-center space-x-2">
                                                             <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
                                                             <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
@@ -384,7 +388,7 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                                 <div key={question.id}>
                                                     <Label className="font-semibold">{question.text}</Label>
                                                     <RadioGroup value={selectedAnswerId} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})} className="mt-2 space-y-2">
-                                                        {question.answers.map(answer => (
+                                                        {question.answers.map((answer: any) => (
                                                             <div key={answer.id} className="flex items-center space-x-2">
                                                                 <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
                                                                 <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
@@ -456,6 +460,14 @@ const cleanDataForFirestore = (data: any): any => {
     return data;
 };
 
+type Partner = {
+  id: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  specialties: string[];
+};
+
 function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -481,7 +493,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
     const allSectors = useMemo(() => {
         if (!allPartners) return [];
         const sectors = new Set<string>();
-        allPartners.forEach(p => p.sectors?.forEach(s => sectors.add(s)));
+        (allPartners as any[]).forEach(p => p.sectors?.forEach((s:string) => sectors.add(s)));
         return Array.from(sectors).sort();
     }, [allPartners]);
     
@@ -489,7 +501,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
         if (!allPartners) return [];
         return allPartners.filter(partner => {
             const specialtyMatch = specialtyFilter === 'all' || partner.specialties?.includes(specialtyFilter);
-            const sectorMatch = sectorFilter === 'all' || partner.sectors?.includes(sectorFilter);
+            const sectorMatch = sectorFilter === 'all' || (partner as any).sectors?.includes(sectorFilter);
             return specialtyMatch && sectorMatch;
         });
     }, [allPartners, specialtyFilter, sectorFilter]);
@@ -639,7 +651,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                     if (!answer) break;
                     if (block.questions.length > 1) {
                          const body = block.questions.map(q => [q.text, answer[q.id] !== undefined ? answer[q.id] : 'N/A']);
-                        autoTable(docJs, { head: [['Question', 'Score']], body, startY: yPos });
+                        (autoTable as any)(docJs, { head: [['Question', 'Score']], body, startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     } else if (block.questions.length === 1) {
                         const q = block.questions[0];
@@ -662,7 +674,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                     if (answer?.partners?.length > 0) {
                         docJs.text("Partenaires associés:", 15, yPos);
                         yPos += 8;
-                        autoTable(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
+                        (autoTable as any)(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     }
                     break;
@@ -747,7 +759,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
         case 'scale':
             const scaleAnswers = answer || {};
             return (
-                <Card>
+                <Card key={block.id}>
                     <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
                     <CardContent>
                         {block.questions.length > 1 ? (
@@ -769,11 +781,11 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'free-text':
             return (
-                <Card><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
+                <Card key={block.id}><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
             );
         case 'report':
              return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                <Card key={block.id}><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
                         <h4 className="font-semibold mb-2">Compte rendu</h4>
                         <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
@@ -808,7 +820,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     const answerId = scormAnswers[qId];
                     if (!answerId) continue;
                     const question = scormBlock.questions.find(q => q.id === qId);
-                    const answerData = question?.answers.find(a => a.id === answerId);
+                    const answerData = question?.answers.find((a:any) => a.id === answerId);
                     if (answerData?.value) {
                         valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
                     }
@@ -822,7 +834,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
 
             const scormResult = calculateScormResult(block, answer);
              return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                <Card key={block.id}><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
                          {scormResult ? (
                             <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
@@ -832,11 +844,11 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
              );
         case 'qcm':
              return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                <Card key={block.id}><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         {(block.questions || []).map(q => {
                              const selectedAnswerId = answer?.[q.id];
-                             const selectedAnswer = q.answers.find(a => a.id === selectedAnswerId);
+                             const selectedAnswer = q.answers.find((a:any) => a.id === selectedAnswerId);
                              return (
                                  <div key={q.id}>
                                      <p className="font-semibold">{q.text}</p>
@@ -852,7 +864,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'prisme':
             return (
-                <Card><CardHeader><CardTitle>Analyse Prisme</CardTitle></CardHeader>
+                <Card key={block.id}><CardHeader><CardTitle>Analyse Prisme</CardTitle></CardHeader>
                     <CardContent>
                          {answer?.drawnCards?.length > 0 ? (
                             <div className="space-y-4">
@@ -875,7 +887,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'vitae':
             return (
-                <Card>
+                <Card key={block.id}>
                     <CardHeader><CardTitle>Analyse Vitae</CardTitle></CardHeader>
                     <CardContent>
                         <VitaeAnalysisBlock savedAnalysis={answer} onSaveAnalysis={() => {}} onSaveBlock={async () => {}} readOnly />
@@ -883,7 +895,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: string) => {
+            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: any) => {
                  if (!data || (!data.products?.length && !data.protocoles?.length)) {
                     return (
                         <div key={key} className="mb-4">
@@ -903,7 +915,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
 
             if (!answer) {
                 return (
-                    <Card>
+                    <Card key={block.id}>
                         <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                         <CardContent><p className="text-muted-foreground">Analyse non effectuée.</p></CardContent>
                     </Card>
@@ -911,12 +923,12 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             }
 
             return (
-                <Card>
+                <Card key={block.id}>
                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, item.pathology)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
@@ -932,7 +944,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
         default:
              const unknownAnswerText = answer ? JSON.stringify(answer, null, 2) : "Non répondu";
             return (
-                <Card>
+                <Card key={block.id}>
                     <CardHeader><CardTitle>{(block as any).title || block.type}</CardTitle></CardHeader>
                     <CardContent>
                         <pre className="text-xs whitespace-pre-wrap bg-muted p-2 rounded-md">{unknownAnswerText}</pre>
