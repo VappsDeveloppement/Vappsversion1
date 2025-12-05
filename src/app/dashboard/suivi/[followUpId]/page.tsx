@@ -287,7 +287,7 @@ export default function FollowUpPage() {
     const handleAnswerChange = (questionId: string, answer: any) => {
         setAnswers(prev => {
             const newAnswers = { ...prev, [questionId]: answer };
-            persistAnswers(newAnswers);
+            persistAnswers(newAnswers); // Save automatically on change
             return newAnswers;
         });
     };
@@ -736,8 +736,8 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-             const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
-                if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                 const questionIds = scormBlock.questions.map(q => q.id);
                 if (questionIds.some(qId => !scormAnswers[qId])) {
                     return null;
