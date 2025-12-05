@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
@@ -763,25 +762,25 @@ function JobOfferManager() {
         const offerData = {
           counselorId: user.uid,
           title: data.title,
-          reference: data.reference || '',
-          description: data.description || '',
-          contractType: data.contractType || [],
-          workingHours: data.workingHours || [],
-          environment: data.environment || [],
-          location: data.location || [],
-          salary: data.salary || [],
+          reference: data.reference,
+          description: data.description,
+          contractType: data.contractType,
+          workingHours: data.workingHours,
+          environment: data.environment,
+          location: data.location,
+          salary: data.salary,
           infoMatching: {
-            trainingLevels: data.infoMatching?.trainingLevels || [],
-            trainingRncps: data.infoMatching?.trainingRncps || [],
-            trainingTitles: data.infoMatching?.trainingTitles || [],
-            jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
-            jobTitles: data.infoMatching?.jobTitles || [],
-            competences: data.infoMatching?.competences || [],
-            softSkills: data.infoMatching?.softSkills || [],
+            trainingLevels: data.infoMatching?.trainingLevels,
+            trainingRncps: data.infoMatching?.trainingRncps,
+            trainingTitles: data.infoMatching?.trainingTitles,
+            jobRomeCodes: data.infoMatching?.jobRomeCodes,
+            jobTitles: data.infoMatching?.jobTitles,
+            competences: data.infoMatching?.competences,
+            softSkills: data.infoMatching?.softSkills,
           },
           additionalInfo: {
-            companyCoordinates: data.additionalInfo?.companyCoordinates || '',
-            internalNotes: data.additionalInfo?.internalNotes || '',
+            companyCoordinates: data.additionalInfo?.companyCoordinates,
+            internalNotes: data.additionalInfo?.internalNotes,
           }
         };
 
@@ -912,7 +911,7 @@ function TestManager() {
     const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
     const [selectedComparisonId, setSelectedComparisonId] = useState<string | null>(null);
     const [comparisonType, setComparisonType] = useState<'offer' | 'fiche'>('offer');
-    const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[]; suggestedTrainings: Training[] } | null>(null);
+    const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[]; suggestedTrainings: Training[]; otherMatchingOffers?: (JobOffer & { score: number })[], otherMatchingFiches?: (FicheMetier & { score: number })[] } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
 
@@ -932,46 +931,7 @@ function TestManager() {
     const fichesMetiersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/fiches_metiers`)) : null, [user, firestore]);
     const { data: fichesMetiers, isLoading: areFichesMetiersLoading } = useCollection<FicheMetier>(fichesMetiersQuery);
 
-    const handleRunMatch = async () => {
-        if (!selectedCvId || !selectedComparisonId || !cvProfiles) return;
-        setIsLoading(true);
-
-        const cv = cvProfiles.find(p => p.id === selectedCvId);
-        if (!cv) {
-            setIsLoading(false);
-            return;
-        }
-
-        let offer: any = null;
-        let suggestedTrainingIds: string[] = [];
-
-        if (comparisonType === 'offer') {
-            offer = jobOffers?.find(o => o.id === selectedComparisonId);
-        } else {
-            const fiche = fichesMetiers?.find(f => f.id === selectedComparisonId);
-            if(fiche) {
-                offer = {
-                    infoMatching: {
-                        softSkills: fiche.expectedSoftSkills,
-                        jobRomeCodes: fiche.associatedRomeCode,
-                        trainingRncps: fiche.associatedRncp,
-                        trainingLevels: fiche.entryLevel,
-                        trainingTitles: fiche.associatedTraining,
-                        competences: fiche.competences,
-                    },
-                    contractType: [],
-                    location: []
-                };
-                suggestedTrainingIds = fiche.associatedTrainings || [];
-            }
-        }
-        
-        if (!offer) {
-            setIsLoading(false);
-            return;
-        }
-
-
+    const runAnalysis = (cv: CvProfile, target: any, targetType: 'offer' | 'fiche') => {
         let score = 0;
         const matchingDetails: string[] = [];
         const missingDetails: string[] = [];
@@ -996,40 +956,95 @@ function TestManager() {
         const cvLevels = new Set(cvFormations.flatMap(f => f.level || []));
         const cvRncpCodes = new Set(cvFormations.flatMap(f => f.rncpCode || []));
         const cvFormationTitles = new Set(cvFormations.flatMap(f => f.title || []));
-
-        const offerLevels = new Set(offer.infoMatching?.trainingLevels || []);
-        const offerRncpCodes = new Set(offer.infoMatching?.trainingRncps || []);
-        const offerFormationTitles = new Set(offer.infoMatching?.trainingTitles || []);
+        const offerLevels = new Set(target.infoMatching?.trainingLevels || []);
+        const offerRncpCodes = new Set(target.infoMatching?.trainingRncps || []);
+        const offerFormationTitles = new Set(target.infoMatching?.trainingTitles || []);
         
         checkMatch(cvLevels, offerLevels, "Niveaux de formation correspondants", "Niveaux de formation manquants");
         checkMatch(cvRncpCodes, offerRncpCodes, "Certifications RNCP correspondantes", "Certifications RNCP requises");
         checkMatch(cvFormationTitles, offerFormationTitles, "Intitulés de formation correspondants", "Formations spécifiques manquantes");
 
         const cvSoftSkills = new Set(cv.softSkills || []);
-        const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
+        const offerSoftSkills = new Set(target.infoMatching?.softSkills || []);
         checkMatch(cvSoftSkills, offerSoftSkills, "Soft skills communs", "Soft skills manquants");
         
         const cvExperiences = cv.experiences || [];
         const cvRomeCodes = new Set(cvExperiences.flatMap(e => e.romeCode || []));
-        const offerRomeCodes = new Set(offer.infoMatching?.jobRomeCodes || []);
+        const offerRomeCodes = new Set(target.infoMatching?.jobRomeCodes || []);
         checkMatch(cvRomeCodes, offerRomeCodes, "Codes ROME correspondants", "Codes ROME requis");
         
         const cvJobTitles = new Set(cvExperiences.flatMap(e => e.title || []));
-        const offerJobTitles = new Set(offer.infoMatching?.jobTitles || []);
+        const offerJobTitles = new Set(target.infoMatching?.jobTitles || []);
         checkMatch(cvJobTitles, offerJobTitles, "Intitulés de poste correspondants", "Intitulés de poste requis");
         
         const cvCompetences = new Set(cvExperiences.flatMap(e => e.skills || []));
-        const offerCompetences = new Set(offer.infoMatching?.competences?.map((c: any) => c.name || c.competence) || []);
+        const offerCompetences = new Set(target.infoMatching?.competences?.map((c: any) => c.name || c.competence) || []);
         checkMatch(cvCompetences, offerCompetences, "Compétences techniques correspondantes", "Compétences techniques manquantes");
         
         const cvActivities = new Set(cvExperiences.flatMap(e => e.activities || []));
-        const offerActivities = new Set(offer.infoMatching?.competences?.flatMap((c: any) => c.activities || []));
+        const offerActivities = new Set(target.infoMatching?.competences?.flatMap((c: any) => c.activities || []));
         checkMatch(cvActivities, offerActivities, "Activités correspondantes", "Activités manquantes");
 
-        if (comparisonType === 'offer') {
-            checkMatch(new Set(cv.contractTypes), new Set(offer.contractType), "Type de contrat compatible", "Type de contrat non spécifié");
-            checkMatch(new Set(cv.mobility?.map(m => m.toLowerCase())), new Set(offer.location?.map((l: string) => l.toLowerCase())), "Localisation compatible", "Mobilité requise");
+        if (targetType === 'offer') {
+            checkMatch(new Set(cv.contractTypes), new Set(target.contractType), "Type de contrat compatible", "Type de contrat non spécifié");
+            checkMatch(new Set(cv.mobility?.map(m => m.toLowerCase())), new Set(target.location?.map((l: string) => l.toLowerCase())), "Localisation compatible", "Mobilité requise");
         }
+
+        const finalScore = totalChecks > 0 ? (score / totalChecks) * 100 : 0;
+        return { score: Math.round(finalScore), matching: matchingDetails, missing: missingDetails };
+    };
+
+    const handleRunMatch = async () => {
+        if (!selectedCvId || !selectedComparisonId || !cvProfiles) return;
+        setIsLoading(true);
+
+        const cv = cvProfiles.find(p => p.id === selectedCvId);
+        if (!cv) { setIsLoading(false); return; }
+
+        let target: any = null;
+        let suggestedTrainingIds: string[] = [];
+        let otherMatchingOffers: (JobOffer & { score: number })[] | undefined = undefined;
+        let otherMatchingFiches: (FicheMetier & { score: number })[] | undefined = undefined;
+
+        if (comparisonType === 'offer') {
+            target = jobOffers?.find(o => o.id === selectedComparisonId);
+            if (jobOffers && cv) {
+                otherMatchingOffers = jobOffers
+                    .filter(o => o.id !== selectedComparisonId)
+                    .map(offer => ({ ...offer, score: runAnalysis(cv, offer, 'offer').score }))
+                    .filter(offer => offer.score >= 50)
+                    .sort((a, b) => b.score - a.score);
+            }
+        } else {
+            const fiche = fichesMetiers?.find(f => f.id === selectedComparisonId);
+            if(fiche) {
+                target = {
+                    infoMatching: {
+                        softSkills: fiche.expectedSoftSkills,
+                        jobRomeCodes: fiche.associatedRomeCode,
+                        trainingRncps: fiche.associatedRncp,
+                        trainingLevels: fiche.entryLevel,
+                        trainingTitles: fiche.associatedTraining,
+                        competences: fiche.competences,
+                    }
+                };
+                suggestedTrainingIds = fiche.associatedTrainings || [];
+            }
+             if (fichesMetiers && cv) {
+                otherMatchingFiches = fichesMetiers
+                    .filter(f => f.id !== selectedComparisonId)
+                    .map(fiche => {
+                        const ficheTarget = { infoMatching: { softSkills: fiche.expectedSoftSkills, jobRomeCodes: fiche.associatedRomeCode, trainingRncps: fiche.associatedRncp, trainingLevels: fiche.entryLevel, trainingTitles: fiche.associatedTraining, competences: fiche.competences }};
+                        return { ...fiche, score: runAnalysis(cv, ficheTarget, 'fiche').score };
+                    })
+                    .filter(fiche => fiche.score >= 50)
+                    .sort((a, b) => b.score - a.score);
+            }
+        }
+        
+        if (!target) { setIsLoading(false); return; }
+        
+        const { score, matching, missing } = runAnalysis(cv, target, comparisonType);
 
         let suggestedTrainingsData: Training[] = [];
         if (suggestedTrainingIds.length > 0) {
@@ -1039,8 +1054,7 @@ function TestManager() {
             suggestedTrainingsData = trainingsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Training));
         }
 
-        const finalScore = totalChecks > 0 ? (score / totalChecks) * 100 : 0;
-        const result = { score: Math.round(finalScore), matching: matchingDetails, missing: missingDetails, suggestedTrainings: suggestedTrainingsData };
+        const result = { score, matching, missing, suggestedTrainings: suggestedTrainingsData, otherMatchingOffers, otherMatchingFiches };
         setMatchResult(result);
         localStorage.setItem('lastVitaeAnalysisResult', JSON.stringify(result));
         setIsLoading(false);
@@ -1142,10 +1156,42 @@ function TestManager() {
                                 <h4 className="font-semibold text-lg mb-4">Formations suggérées</h4>
                                 <div className="space-y-2">
                                     {matchResult.suggestedTrainings.map(training => (
-                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id} className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
-                                            <p className="font-semibold">{training.title}</p>
-                                            <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
+                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id}>
+                                            <div className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
+                                                <p className="font-semibold">{training.title}</p>
+                                                <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
+                                            </div>
                                         </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {(matchResult.otherMatchingOffers && matchResult.otherMatchingOffers.length > 0) && (
+                            <div className="pt-6 border-t">
+                                <h4 className="font-semibold text-lg mb-4">Autres offres correspondantes</h4>
+                                <div className="space-y-2">
+                                    {matchResult.otherMatchingOffers.map(offer => (
+                                        <div key={offer.id} className="p-3 border rounded-md">
+                                            <div className="flex justify-between items-center">
+                                                <p className="font-semibold">{offer.title}</p>
+                                                <Badge>{offer.score}%</Badge>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                        {(matchResult.otherMatchingFiches && matchResult.otherMatchingFiches.length > 0) && (
+                            <div className="pt-6 border-t">
+                                <h4 className="font-semibold text-lg mb-4">Autres fiches métiers correspondantes</h4>
+                                <div className="space-y-2">
+                                    {matchResult.otherMatchingFiches.map(fiche => (
+                                        <div key={fiche.id} className="p-3 border rounded-md">
+                                            <div className="flex justify-between items-center">
+                                                <p className="font-semibold">{fiche.name}</p>
+                                                <Badge>{fiche.score}%</Badge>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -1198,7 +1244,3 @@ export default function VitaePage() {
         </div>
     );
 }
-
-    
-
-    
