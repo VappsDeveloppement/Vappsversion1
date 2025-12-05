@@ -922,3 +922,5 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
     }
 }
+
+    
