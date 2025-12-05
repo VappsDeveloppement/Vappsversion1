@@ -268,10 +268,6 @@ export default function FollowUpPage() {
         }
     }, [followUp]);
 
-    const handleAnswerChange = (questionId: string, answer: any) => {
-        setAnswers(prev => ({ ...prev, [questionId]: answer }));
-    };
-    
     const persistAnswers = async (updatedAnswers: Record<string, any>) => {
         if (!followUpRef) return;
         
@@ -284,18 +280,20 @@ export default function FollowUpPage() {
         await setDocumentNonBlocking(followUpRef, { answers: answersArray }, { merge: true });
     };
 
+    const handleAnswerChange = async (questionId: string, answer: any) => {
+        const newAnswers = { ...answers, [questionId]: answer };
+        setAnswers(newAnswers);
+        await persistAnswers(newAnswers);
+    };
+
     const handleSave = async () => {
         if (!followUpRef || !followUp) return;
         setIsSubmitting(true);
         
-        const answersArray = Object.entries(answers).map(([questionId, answer]) => ({
-            questionId,
-            answer: cleanDataForFirestore(answer),
-        }));
-
         try {
-            await setDocumentNonBlocking(followUpRef, { answers: answersArray, status: 'completed' }, { merge: true });
-            toast({ title: "Suivi enregistré", description: "Vos réponses ont été sauvegardées." });
+            await persistAnswers(answers);
+            await setDocumentNonBlocking(followUpRef, { status: 'completed' }, { merge: true });
+            toast({ title: "Suivi enregistré et complété", description: "Vos réponses ont été sauvegardées." });
             router.push('/dashboard/suivi');
         } catch (error) {
             toast({ title: "Erreur", description: "Impossible de sauvegarder le suivi.", variant: "destructive" });
@@ -426,9 +424,10 @@ export default function FollowUpPage() {
                             const allAnswered = questionIds.every(qId => currentAnswers[qId]);
                             if (!allAnswered) return null;
                     
-                            const valueCounts: Record<string, number> = {};
+                           const valueCounts: Record<string, number> = {};
                             for (const qId of questionIds) {
                                 const answerId = currentAnswers[qId];
+                                if (!answerId) continue;
                                 const question = scormBlock.questions.find(q => q.id === qId);
                                 const answer = question?.answers.find(a => a.id === answerId);
                                 if (answer?.value) {
@@ -749,15 +748,15 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'scorm':
             const scormResult = answer?.__scorm_result;
-            return (
-               <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
-                   <CardContent>
-                        {scormResult ? (
-                           <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
-                       ) : 'Résultat non calculé.'}
-                   </CardContent>
-               </Card>
-            );
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent>
+                         {scormResult ? (
+                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
+                        ) : 'Résultat non calculé.'}
+                    </CardContent>
+                </Card>
+             );
         case 'qcm':
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
