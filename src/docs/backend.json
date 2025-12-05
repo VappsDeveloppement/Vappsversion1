@@ -193,6 +193,7 @@
             "clientName": { "type": "string" },
             "modelId": { "type": "string" },
             "modelName": { "type": "string" },
+            "pathEnrollmentId": { "type": "string", "description": "Link to the learning path this follow-up is part of." },
             "status": { "type": "string", "enum": ["pending", "completed"] },
             "createdAt": { "type": "string", "format": "date-time" },
             "answers": {
@@ -1601,7 +1602,10 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "pathId": { "type": "string" },
+        "pathName": { "type": "string" },
+        "counselorId": { "type": "string" },
         "enrolledAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
         "progress": {
           "type": "object",
           "description": "Key-value pair where key is step itemId and value is completion status.",
@@ -1756,6 +1760,14 @@
           "entityName": "FollowUp",
           "schema": { "$ref": "#/entities/FollowUp" },
           "description": "Stores client follow-up sessions created by a counselor."
+        }
+      },
+       {
+        "path": "/users/{userId}/path_enrollments/{enrollmentId}",
+        "definition": {
+          "entityName": "PathEnrollment",
+          "schema": { "$ref": "#/entities/PathEnrollment" },
+          "description": "Stores client enrollments in learning paths created by a counselor."
         }
       },
       {

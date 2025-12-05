@@ -39,6 +39,7 @@ type FollowUp = {
     answers?: { questionId: string; answer: any }[];
     counselorId: string;
     createdAt: string;
+    pathEnrollmentId?: string; // Lien vers l'inscription au parcours
 };
 
 type QuestionBlock = 
@@ -150,16 +151,17 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath }: { pathEnroll
         if (!user) return null;
         return query(
             collection(firestore, `users/${user.uid}/follow_ups`),
-            where('clientId', '==', pathEnrollment.userId)
+            where('pathEnrollmentId', '==', pathEnrollment.id)
         );
-    }, [user, firestore, pathEnrollment.userId]);
+    }, [user, firestore, pathEnrollment.id]);
     
     const { data: clientFollowUps, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
 
     const handleOpenOrCreateFollowUp = async (step: { modelId: string, modelName: string }) => {
-        if (!user || !clientFollowUps) return;
+        if (!user || areFollowUpsLoading) return;
 
-        const existingFollowUp = clientFollowUps.find(f => f.modelId === step.modelId && f.clientId === pathEnrollment.userId);
+        // Check if a follow-up for this specific step in this enrollment already exists
+        const existingFollowUp = clientFollowUps?.find(f => f.modelId === step.modelId);
         
         if (existingFollowUp) {
             router.push(`/dashboard/suivi/${existingFollowUp.id}`);
@@ -170,6 +172,7 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath }: { pathEnroll
                 clientName: pathEnrollment.clientName,
                 modelId: step.modelId,
                 modelName: step.modelName,
+                pathEnrollmentId: pathEnrollment.id, // Link to the enrollment
                 createdAt: new Date().toISOString(),
                 status: 'pending',
             };
@@ -383,7 +386,7 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                     <CardContent className="space-y-8">
                                         {(questionBlock.questions || []).map(question => {
                                             const selectedAnswerId = qcmAnswers[question.id];
-                                            const selectedAnswer = question.answers.find(a => a.id === selectedAnswerId);
+                                            const selectedAnswer = question.answers.find((a:any) => a.id === selectedAnswerId);
                                             return (
                                                 <div key={question.id}>
                                                     <Label className="font-semibold">{question.text}</Label>
@@ -690,7 +693,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                             const answerId = scormAnswers[qId];
                             if (!answerId) continue;
                             const question = scormBlock.questions.find(q => q.id === qId);
-                            const answerData = question?.answers.find(a => a.id === answerId);
+                            const answerData = question?.answers.find((a:any) => a.id === answerId);
                             if (answerData?.value) {
                                 valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
                             }
@@ -759,7 +762,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
         case 'scale':
             const scaleAnswers = answer || {};
             return (
-                <Card key={block.id}>
+                <Card>
                     <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
                     <CardContent>
                         {block.questions.length > 1 ? (
@@ -781,11 +784,11 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'free-text':
             return (
-                <Card key={block.id}><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
+                <Card><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
             );
         case 'report':
              return (
-                <Card key={block.id}><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
                         <h4 className="font-semibold mb-2">Compte rendu</h4>
                         <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
@@ -834,7 +837,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
 
             const scormResult = calculateScormResult(block, answer);
              return (
-                <Card key={block.id}><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
                          {scormResult ? (
                             <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
@@ -844,7 +847,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
              );
         case 'qcm':
              return (
-                <Card key={block.id}><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         {(block.questions || []).map(q => {
                              const selectedAnswerId = answer?.[q.id];
@@ -864,7 +867,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'prisme':
             return (
-                <Card key={block.id}><CardHeader><CardTitle>Analyse Prisme</CardTitle></CardHeader>
+                <Card><CardHeader><CardTitle>Analyse Prisme</CardTitle></CardHeader>
                     <CardContent>
                          {answer?.drawnCards?.length > 0 ? (
                             <div className="space-y-4">
@@ -887,7 +890,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'vitae':
             return (
-                <Card key={block.id}>
+                <Card>
                     <CardHeader><CardTitle>Analyse Vitae</CardTitle></CardHeader>
                     <CardContent>
                         <VitaeAnalysisBlock savedAnalysis={answer} onSaveAnalysis={() => {}} onSaveBlock={async () => {}} readOnly />
@@ -897,12 +900,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
         case 'aura':
             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: any) => {
                  if (!data || (!data.products?.length && !data.protocoles?.length)) {
-                    return (
-                        <div key={key} className="mb-4">
-                            <h4 className="font-semibold text-primary">{title}</h4>
-                            <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
-                        </div>
-                    );
+                    return null;
                 }
                 return (
                     <div key={key} className="mb-4">
@@ -915,7 +913,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
 
             if (!answer) {
                 return (
-                    <Card key={block.id}>
+                    <Card>
                         <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                         <CardContent><p className="text-muted-foreground">Analyse non effectuée.</p></CardContent>
                     </Card>
@@ -923,7 +921,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             }
 
             return (
-                <Card key={block.id}>
+                <Card>
                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         <div>
@@ -944,7 +942,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
         default:
              const unknownAnswerText = answer ? JSON.stringify(answer, null, 2) : "Non répondu";
             return (
-                <Card key={block.id}>
+                <Card>
                     <CardHeader><CardTitle>{(block as any).title || block.type}</CardTitle></CardHeader>
                     <CardContent>
                         <pre className="text-xs whitespace-pre-wrap bg-muted p-2 rounded-md">{unknownAnswerText}</pre>
@@ -952,4 +950,4 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
     }
-}
+};
