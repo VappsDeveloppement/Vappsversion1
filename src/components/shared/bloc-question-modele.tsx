@@ -24,6 +24,8 @@ import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import type { Product, Protocole } from '@/app/dashboard/aura/page';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
 
 type WellnessSheet = {
     id: string;
@@ -242,7 +244,7 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
                 perfectMatch: perfectMatch(),
             };
             setAnalysisResult(result);
-            onSaveAnalysis(result); // This line saves the result to the parent form state
+            onSaveAnalysis(result);
             setIsAnalyzing(false);
         }, 500);
     };
@@ -367,3 +369,4 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
     );
 }
 
+    
