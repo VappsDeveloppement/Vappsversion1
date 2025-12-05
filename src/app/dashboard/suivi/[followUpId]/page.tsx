@@ -85,6 +85,15 @@ export default function FollowUpPage() {
     const handleAnswerChange = (questionId: string, answer: any) => {
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
     };
+    
+    const persistAnswers = async (updatedAnswers: Record<string, any>) => {
+        if (!followUpRef) return;
+         const answersArray = Object.entries(updatedAnswers).map(([questionId, answer]) => ({
+            questionId,
+            answer
+        }));
+        await setDocumentNonBlocking(followUpRef, { answers: answersArray }, { merge: true });
+    };
 
     const handleSave = async () => {
         if (!followUpRef || !followUp) return;
@@ -204,6 +213,10 @@ export default function FollowUpPage() {
                                     <VitaeAnalysisBlock 
                                         savedAnalysis={answers[questionBlock.id]} 
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
+                                        onSaveBlock={async () => {
+                                            const newAnswers = { ...answers, [questionBlock.id]: answers[questionBlock.id] };
+                                            await persistAnswers(newAnswers);
+                                        }}
                                         clientId={followUp.clientId}
                                     />
                                 </CardContent>

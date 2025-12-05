@@ -33,9 +33,10 @@ interface VitaeAnalysisBlockProps {
     savedAnalysis: any | null;
     onSaveAnalysis: (result: any) => void;
     clientId?: string;
+    onSaveBlock: () => Promise<void>;
 }
 
-export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId }: VitaeAnalysisBlockProps) {
+export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId, onSaveBlock }: VitaeAnalysisBlockProps) {
     const { user } = useUser();
     const firestore = useFirestore();
     const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
@@ -196,6 +197,14 @@ export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId }: 
         setIsLoading(false);
     };
 
+    const handleSaveAndPersist = async () => {
+        if (matchResult) {
+            onSaveAnalysis(matchResult);
+            await onSaveBlock();
+            toast({ title: "Analyse sauvegardée", description: "Les résultats actuels ont été sauvegardés dans le suivi." });
+        }
+    }
+
     return (
         <div className="space-y-6">
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -242,7 +251,7 @@ export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId }: 
                     <div className="pt-6 border-t space-y-6">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-semibold">Résultat de l'analyse</h3>
-                            <Button variant="outline" size="sm" onClick={() => onSaveAnalysis(matchResult)}>
+                            <Button variant="outline" size="sm" onClick={handleSaveAndPersist}>
                                 <Save className="mr-2 h-4 w-4" /> Enregistrer l'analyse dans le suivi
                             </Button>
                         </div>
@@ -280,7 +289,7 @@ export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId }: 
                                 <h4 className="font-semibold text-lg mb-4">Formations suggérées</h4>
                                 <div className="space-y-2">
                                     {matchResult.suggestedTrainings.map((training: Training) => (
-                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id} className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
+                                         <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id} className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
                                             <p className="font-semibold">{training.title}</p>
                                             <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
                                         </Link>
