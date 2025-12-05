@@ -206,16 +206,23 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                     )}
 
                     {selectedPartners.length > 0 && (
-                        <div>
-                            <h4 className="text-sm font-medium mb-2">Partenaires attachés :</h4>
-                            <div className="flex flex-wrap gap-2">
+                        <div className="space-y-3">
+                            <h4 className="text-sm font-medium">Partenaires attachés :</h4>
+                             <div className="space-y-2">
                                 {selectedPartners.map(partner => (
-                                    <Badge key={partner.id} variant="secondary">
-                                        {partner.name}
-                                        <button onClick={() => removePartner(partner.id)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </Badge>
+                                    <div key={partner.id} className="flex justify-between items-start p-3 border rounded-lg bg-secondary/50">
+                                         <div>
+                                            <p className="font-semibold">{partner.name}</p>
+                                            <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                                                {partner.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</p>}
+                                                {partner.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</p>}
+                                                {partner.specialties && <p><strong>Spéc:</strong> {partner.specialties.join(', ')}</p>}
+                                            </div>
+                                        </div>
+                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removePartner(partner.id)}>
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
                                 ))}
                             </div>
                         </div>
@@ -548,4 +555,3 @@ export default function FollowUpPage() {
     );
 }
 
-    
