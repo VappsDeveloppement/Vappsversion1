@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -238,6 +237,45 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
     );
 }
 
+function AuraAnalysisResultBlock({ savedAnalysis }: { savedAnalysis: any }) {
+    if (!savedAnalysis) {
+        return <p className="text-muted-foreground">Analyse non effectuée.</p>;
+    }
+
+    const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => (
+        <div className="mb-4">
+            <h4 className="font-semibold text-primary">{title}</h4>
+            {(!data || !data.products || data.products.length === 0) && (!data.protocoles || data.protocoles.length === 0) ? (
+                <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
+            ) : (
+                <>
+                    {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
+                    {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
+                </>
+            )}
+        </div>
+    );
+
+    return (
+        <div className="space-y-4">
+            <div>
+                 <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
+                 {savedAnalysis.byPathology && savedAnalysis.byPathology.length > 0 ? savedAnalysis.byPathology.map((item: any, index: number) => (
+                    renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })
+                 )) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+            </div>
+             <div className="pt-4 border-t">
+                <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
+                {renderSuggestions('', savedAnalysis.byHolisticProfile)}
+            </div>
+            <div className="pt-4 border-t">
+                <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
+                 {renderSuggestions('', savedAnalysis.perfectMatch)}
+            </div>
+        </div>
+    );
+}
+
 export default function FollowUpPage() {
     const params = useParams();
     const { followUpId } = params;
@@ -248,19 +286,21 @@ export default function FollowUpPage() {
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-
+    
     const followUpRef = useMemoFirebase(() => {
         if (!user || !followUpId) return null;
         return doc(firestore, `users/${user.uid}/follow_ups`, followUpId as string);
-    }, [user, firestore, followUpId]);
+    }, [firestore, user, followUpId]);
+    
     const { data: followUp, isLoading: isFollowUpLoading } = useDoc<FollowUp>(followUpRef);
 
     const modelRef = useMemoFirebase(() => {
-        if (!user || !followUp?.modelId) return null;
+        if (!user || !followUp) return null;
         return doc(firestore, `users/${user.uid}/question_models`, followUp.modelId);
-    }, [user, firestore, followUp]);
+    }, [firestore, user, followUp]);
+    
     const { data: model, isLoading: isModelLoading } = useDoc<QuestionModel>(modelRef);
-
+    
     useEffect(() => {
         if (followUp?.answers) {
             const initialAnswers = followUp.answers.reduce((acc, current) => {
@@ -270,66 +310,36 @@ export default function FollowUpPage() {
             setAnswers(initialAnswers);
         }
     }, [followUp]);
-    
-    const persistAnswers = async (updatedAnswers: Record<string, any>) => {
-        if (!followUpRef) return;
-        
-        const cleanedAnswers = cleanDataForFirestore(updatedAnswers);
-        
-        const answersArray = Object.entries(cleanedAnswers).map(([questionId, answer]) => ({
-            questionId,
-            answer
-        }));
 
-        await setDocumentNonBlocking(followUpRef, { answers: answersArray }, { merge: true });
-    };
-    
     const handleAnswerChange = (questionId: string, answer: any) => {
-        setAnswers(prev => {
-            const newAnswers = { ...prev, [questionId]: answer };
-            
-            const block = model?.questions?.find(q => q.id === questionId);
-            if (block?.type === 'scorm') {
-                const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
-                    if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
-                    const questionIds = scormBlock.questions.map(q => q.id);
-                    if (questionIds.some(qId => !scormAnswers[qId])) {
-                        return null;
-                    }
-                    const valueCounts: Record<string, number> = {};
-                    for (const qId of questionIds) {
-                        const answerId = scormAnswers[qId];
-                        if (!answerId) continue;
-                        const question = scormBlock.questions.find(q => q.id === qId);
-                        const answerData = question?.answers.find(a => a.id === answerId);
-                        if (answerData?.value) {
-                            valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                        }
-                    }
-                    if (Object.keys(valueCounts).length === 0) return null;
-                    const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                    return scormBlock.results.find(r => r.value === dominantValue) || null;
-                };
-                const scormResult = calculateScormResult(block, answer);
-                newAnswers['__scorm_result'] = scormResult; // Save result for preview
-            }
-            persistAnswers(newAnswers); // Auto-save on change
-            return newAnswers;
-        });
+        setAnswers(prev => ({ ...prev, [questionId]: answer }));
     };
 
+    const persistAnswers = async (currentAnswers: Record<string, any>) => {
+        if (!followUpRef) return;
+        const answersToSave = Object.entries(currentAnswers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+        }));
+        const cleanedAnswers = cleanDataForFirestore(answersToSave);
+        await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers }, { merge: true });
+        toast({title: "Progression enregistrée"});
+    };
 
     const handleSave = async () => {
-        if (!followUpRef || !followUp) return;
+        if (!followUpRef) return;
         setIsSubmitting(true);
-        
+        const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+        }));
+        const cleanedAnswers = cleanDataForFirestore(answersToSave);
         try {
-            await persistAnswers(answers);
-            await setDocumentNonBlocking(followUpRef, { status: 'completed' }, { merge: true });
-            toast({ title: "Suivi enregistré et complété", description: "Vos réponses ont été sauvegardées." });
+            await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers, status: 'completed' }, { merge: true });
+            toast({ title: 'Suivi terminé', description: 'Le suivi a été marqué comme complété.' });
             router.push('/dashboard/suivi');
-        } catch (error) {
-            toast({ title: "Erreur", description: "Impossible de sauvegarder le suivi.", variant: "destructive" });
+        } catch (e) {
+            toast({ title: 'Erreur', description: 'Impossible de sauvegarder le suivi.', variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
@@ -409,7 +419,7 @@ export default function FollowUpPage() {
                                     <BlocQuestionModele
                                         savedAnalysis={blockAnswer}
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })}
+                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })}
                                         followUpClientId={followUp.clientId}
                                     />
                                 </CardContent>
@@ -566,45 +576,6 @@ export default function FollowUpPage() {
         </div>
     );
 }
-
-function AuraAnalysisResultBlock({ savedAnalysis }: { savedAnalysis: any }) {
-    if (!savedAnalysis) {
-        return <p className="text-muted-foreground">Analyse non effectuée.</p>;
-    }
-
-    const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => (
-        <div className="mb-4">
-            <h4 className="font-semibold text-primary">{title}</h4>
-            {(!data || !data.products || data.products.length === 0) && (!data.protocoles || data.protocoles.length === 0) ? (
-                <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
-            ) : (
-                <>
-                    {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
-                    {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
-                </>
-            )}
-        </div>
-    );
-
-    return (
-        <div className="space-y-4">
-            <div>
-                 <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                 {savedAnalysis.byPathology && savedAnalysis.byPathology.length > 0 ? savedAnalysis.byPathology.map((item: any, index: number) => (
-                    renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })
-                 )) : <p className="text-sm text-muted-foreground">Aucune.</p>}
-            </div>
-             <div className="pt-4 border-t">
-                <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
-                {renderSuggestions('', savedAnalysis.byHolisticProfile)}
-            </div>
-            <div className="pt-4 border-t">
-                <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
-                 {renderSuggestions('', savedAnalysis.perfectMatch)}
-            </div>
-        </div>
-    );
-}
     
 const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null, liveAnswers: Record<string, any> }) => {
     const { user } = useUser();
@@ -672,7 +643,28 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                     }
                     break;
                 case 'scorm':
-                    const scormResult = liveAnswers['__scorm_result'];
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                        if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                        const questionIds = scormBlock.questions.map(q => q.id);
+                        if (questionIds.some(qId => !scormAnswers[qId])) {
+                            return null;
+                        }
+                        const valueCounts: Record<string, number> = {};
+                        for (const qId of questionIds) {
+                            const answerId = scormAnswers[qId];
+                            if (!answerId) continue;
+                            const question = scormBlock.questions.find(q => q.id === qId);
+                            const answerData = question?.answers.find(a => a.id === answerId);
+                            if (answerData?.value) {
+                                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                            }
+                        }
+                        if (Object.keys(valueCounts).length === 0) return null;
+                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                        return scormBlock.results.find(r => r.value === dominantValue) || null;
+                    };
+
+                    const scormResult = calculateScormResult(block, answer);
                     if (scormResult?.text) {
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = scormResult.text;
@@ -780,11 +772,36 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
+            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                const questionIds = scormBlock.questions.map(q => q.id);
+                if (questionIds.some(qId => !scormAnswers[qId])) {
+                    return null;
+                }
+            
+                const valueCounts: Record<string, number> = {};
+                for (const qId of questionIds) {
+                    const answerId = scormAnswers[qId];
+                    if (!answerId) continue;
+                    const question = scormBlock.questions.find(q => q.id === qId);
+                    const answerData = question?.answers.find(a => a.id === answerId);
+                    if (answerData?.value) {
+                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                    }
+                }
+            
+                if (Object.keys(valueCounts).length === 0) return null;
+            
+                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                return scormBlock.results.find(r => r.value === dominantValue) || null;
+            };
+
+            const scormResult = calculateScormResult(block, answer);
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
-                         {answer?.__scorm_result ? (
-                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: answer.__scorm_result.text }} />
+                         {scormResult ? (
+                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
                         ) : 'Résultat non calculé.'}
                     </CardContent>
                 </Card>
@@ -842,7 +859,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-             return (
+            return (
                 <Card>
                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                     <CardContent>
