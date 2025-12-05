@@ -9,7 +9,7 @@ import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Search, Download } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Search, Download, Image as ImageIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,12 +22,11 @@ import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X, Mail, Phone, Image as ImageIcon } from 'lucide-react';
+import { X, Mail, Phone } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import Image from 'next/image';
 
 
 type FollowUp = {
@@ -417,30 +416,29 @@ export default function FollowUpPage() {
                             </Card>
                         );
                     }
-                    if (questionBlock.type === 'scorm') {
+                   if (questionBlock.type === 'scorm') {
                         const scormAnswers = blockAnswer || {};
 
                         const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                            if (!scormBlock.questions || scormBlock.questions.length === 0 || !currentAnswers) {
-                                return null;
-                            }
-                            
-                            const allAnswered = scormBlock.questions.every(q => currentAnswers[q.id]);
+                            const questionIds = scormBlock.questions.map(q => q.id);
+                            const allAnswered = questionIds.every(qId => currentAnswers[qId]);
                             if (!allAnswered) return null;
 
-                            const totalValue = scormBlock.questions.reduce((sum, question) => {
-                                const answerId = currentAnswers[question.id];
-                                if (!answerId) return sum;
-                                const answer = question.answers.find(a => a.id === answerId);
-                                const value = answer ? parseInt(answer.value, 10) : 0;
-                                return sum + (isNaN(value) ? 0 : value);
-                            }, 0);
-                        
-                            const bestResult = [...scormBlock.results] // Create a copy to avoid mutating original
-                                .filter(r => parseInt(r.value, 10) <= totalValue)
-                                .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
-                        
-                            return bestResult || null;
+                            const valueCounts: Record<string, number> = {};
+                            
+                            for (const qId of questionIds) {
+                                const answerId = currentAnswers[qId];
+                                const question = scormBlock.questions.find(q => q.id === qId);
+                                const answer = question?.answers.find(a => a.id === answerId);
+                                if (answer) {
+                                    valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
+                                }
+                            }
+
+                            const dominantValue = Object.entries(valueCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+                            if (!dominantValue) return null;
+                            
+                            return scormBlock.results.find(r => r.value === dominantValue) || null;
                         };
                     
                         const result = calculateScormResult(questionBlock, scormAnswers);
@@ -472,11 +470,7 @@ export default function FollowUpPage() {
                                     {result && (
                                         <div className="pt-6 mt-6 border-t">
                                             <h4 className="font-semibold text-lg mb-2">Résultat</h4>
-                                            {result ? (
-                                                <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded-md" dangerouslySetInnerHTML={{ __html: result.text }} />
-                                            ) : (
-                                                <p className="text-muted-foreground">Aucun résultat correspondant à votre score.</p>
-                                            )}
+                                            <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded-md" dangerouslySetInnerHTML={{ __html: result.text }} />
                                         </div>
                                     )}
                                 </CardContent>
@@ -566,5 +560,3 @@ export default function FollowUpPage() {
         </div>
     );
 }
-
-    
