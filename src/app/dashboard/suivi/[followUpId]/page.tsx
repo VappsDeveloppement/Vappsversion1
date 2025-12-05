@@ -280,10 +280,10 @@ export default function FollowUpPage() {
         await setDocumentNonBlocking(followUpRef, { answers: answersArray }, { merge: true });
     };
 
-    const handleAnswerChange = async (questionId: string, answer: any) => {
+    const handleAnswerChange = (questionId: string, answer: any) => {
         const newAnswers = { ...answers, [questionId]: answer };
         setAnswers(newAnswers);
-        await persistAnswers(newAnswers);
+        persistAnswers(newAnswers);
     };
 
     const handleSave = async () => {
@@ -372,7 +372,12 @@ export default function FollowUpPage() {
                                     <CardTitle>Analyse AURA</CardTitle>
                                 </CardHeader>
                                 <CardContent>
-                                    <BlocQuestionModele />
+                                    <BlocQuestionModele
+                                        savedAnalysis={blockAnswer}
+                                        onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
+                                        onSaveBlock={async () => await persistAnswers(answers)}
+                                        followUpClientId={followUp.clientId}
+                                    />
                                 </CardContent>
                             </Card>
                         )
@@ -415,6 +420,31 @@ export default function FollowUpPage() {
                         );
                     }
                    if (questionBlock.type === 'scorm') {
+                        const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                             if (!scormBlock.questions || !scormBlock.results) return null;
+                            const questionIds = scormBlock.questions.map(q => q.id);
+                            if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
+                                return null;
+                            }
+                        
+                            const valueCounts: Record<string, number> = {};
+                            for (const qId of questionIds) {
+                                const answerId = currentAnswers[qId];
+                                if (!answerId) continue;
+                                const question = scormBlock.questions.find(q => q.id === qId);
+                                const answerData = question?.answers.find(a => a.id === answerId);
+                                if (answerData?.value) {
+                                    valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                                }
+                            }
+                        
+                            if (Object.keys(valueCounts).length === 0) return null;
+                        
+                            const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                            return scormBlock.results.find(r => r.value === dominantValue) || null;
+                        };
+                        const scormResult = calculateScormResult(questionBlock, blockAnswer);
+
                         return (
                             <Card key={questionBlock.id}>
                                 <CardHeader>
@@ -594,31 +624,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                     }
                     break;
                 case 'scorm':
-                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                        if (!scormBlock.questions || !scormBlock.results) return null;
-                        
-                        const questionIds = scormBlock.questions.map(q => q.id);
-                        if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
-                            return null;
-                        }
-                    
-                        const valueCounts: Record<string, number> = {};
-                        for (const qId of questionIds) {
-                            const answerId = currentAnswers[qId];
-                            if (!answerId) continue;
-                            const question = scormBlock.questions.find(q => q.id === qId);
-                            const answerData = question?.answers.find(a => a.id === answerId);
-                            if (answerData?.value) {
-                                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                            }
-                        }
-                    
-                        if (Object.keys(valueCounts).length === 0) return null;
-                    
-                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                        return scormBlock.results.find(r => r.value === dominantValue) || null;
-                    };
-                    const scormResult = calculateScormResult(block, answer);
+                    const scormResult = answer?.__scorm_result;
                     if (scormResult?.text) {
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = scormResult.text;
@@ -726,33 +732,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                if (!scormBlock.questions || !scormBlock.results || !currentAnswers) return null;
-                
-                const questionIds = scormBlock.questions.map(q => q.id);
-                if (questionIds.some(qId => !currentAnswers[qId])) {
-                    return null;
-                }
-            
-                const valueCounts: Record<string, number> = {};
-                for (const qId of questionIds) {
-                    const answerId = currentAnswers[qId];
-                    if (!answerId) continue;
-                    const question = scormBlock.questions.find(q => q.id === qId);
-                    const answerData = question?.answers.find(a => a.id === answerId);
-                    if (answerData?.value) {
-                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                    }
-                }
-            
-                if (Object.keys(valueCounts).length === 0) return null;
-            
-                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                return scormBlock.results.find(r => r.value === dominantValue) || null;
-            };
-            
-            const scormResult = calculateScormResult(block, answer);
-            
+            const scormResult = answer?.__scorm_result;
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
@@ -830,8 +810,8 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                         <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
                     ) : (
                         <>
-                            {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
-                            {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
+                            {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map((p: any) => p.title).join(', ')}</p>}
+                            {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map((p: any) => p.name).join(', ')}</p>}
                         </>
                     )}
                 </div>
