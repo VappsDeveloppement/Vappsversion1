@@ -261,7 +261,9 @@ function AuraAnalysisResultBlock({ savedAnalysis }: { savedAnalysis: any }) {
             <div>
                  <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
                  {savedAnalysis.byPathology && savedAnalysis.byPathology.length > 0 ? savedAnalysis.byPathology.map((item: any, index: number) => (
-                    renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })
+                    <div key={index}>
+                        {renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })}
+                    </div>
                  )) : <p className="text-sm text-muted-foreground">Aucune.</p>}
             </div>
              <div className="pt-4 border-t">
@@ -920,5 +922,3 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
     }
 }
-
-    

@@ -23,8 +23,24 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { useToast } from '@/hooks/use-toast';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import type { Product, Protocole } from '@/app/dashboard/aura/page';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+
+// Define types locally to ensure component is self-contained
+type Product = {
+    id: string;
+    title: string;
+    pathologies?: string[];
+    holisticProfile?: string[];
+    contraindications?: string[];
+};
+
+type Protocole = {
+    id: string;
+    name: string;
+    pathologies?: string[];
+    holisticProfile?: string[];
+    contraindications?: string[];
+};
 
 
 type WellnessSheet = {
@@ -66,11 +82,9 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
     const [open, setOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     
-    // State for the new independent fields
     const [tempContraindications, setTempContraindications] = useState<string[]>([]);
     const [pathologiesToTreat, setPathologiesToTreat] = useState<string[]>([]);
 
-    // Analysis state
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [analysisResult, setAnalysisResult] = useState<any>(savedAnalysis);
 
@@ -79,7 +93,6 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
     }, [savedAnalysis]);
 
 
-    // Queries to fetch products and protocols
     const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
     const { data: allProducts, isLoading: areProductsLoading } = useCollection<Product>(productsQuery);
 
@@ -368,5 +381,3 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
         </div>
     );
 }
-
-    
