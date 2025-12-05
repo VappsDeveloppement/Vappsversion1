@@ -961,10 +961,12 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
             docJs.setFontSize(12);
             docJs.setFont('helvetica', 'normal');
 
+            const answer = answers[block.id]
+            
             switch (block.type) {
                 case 'scale':
                     if (block.questions.length > 1) {
-                         const body = block.questions.map(q => [q.text, answers[q.id] || 'N/A']);
+                         const body = block.questions.map(q => [q.text, answers[q.id] !== undefined ? answers[q.id] : 'N/A']);
                         autoTable(docJs, { head: [['Question', 'Score']], body, startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     } else if (block.questions.length === 1) {
@@ -980,22 +982,21 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     }
                     break;
                 case 'report':
-                    const reportAnswer = answers[block.id];
-                    if (reportAnswer?.text) {
-                        const reportLines = docJs.splitTextToSize(reportAnswer.text, 180);
+                    if (answer?.text) {
+                        const reportLines = docJs.splitTextToSize(answer.text, 180);
                         docJs.text(reportLines, 15, yPos);
                         yPos += reportLines.length * 7 + 5;
                     }
-                    if (reportAnswer?.partners?.length > 0) {
+                    if (answer?.partners?.length > 0) {
                         docJs.text("Partenaires associés:", 15, yPos);
                         yPos += 8;
-                        autoTable(docJs, { head: [['Nom', 'Spécialités']], body: reportAnswer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
+                        autoTable(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     }
                     break;
                 default:
-                    const answerText = answers[block.id] !== undefined 
-                        ? JSON.stringify(answers[block.id], null, 2)
+                    const answerText = answer !== undefined 
+                        ? JSON.stringify(answer, null, 2)
                         : "Non répondu";
                     const lines = docJs.splitTextToSize(answerText, 180);
                     docJs.text(lines, 15, yPos);
@@ -1072,8 +1073,60 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                         <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
                         {answer?.partners?.length > 0 && <>
                             <h4 className="font-semibold mb-2">Partenaires associés</h4>
-                            <ul>{answer.partners.map((p: any) => <li key={p.id}>{p.name}</li>)}</ul>
+                            <div className="space-y-2">
+                                {answer.partners.map((p: any) => (
+                                    <div key={p.id} className="text-sm p-2 border rounded-md">
+                                        <p className="font-bold">{p.name}</p>
+                                        <p className="text-muted-foreground">{p.email} - {p.phone}</p>
+                                        <p className="text-muted-foreground text-xs">Spécialités: {p.specialties?.join(', ')}</p>
+                                    </div>
+                                ))}
+                            </div>
                         </>}
+                    </CardContent>
+                </Card>
+            );
+        case 'scorm':
+            const scormResult = useMemo(() => {
+                if (!block.questions || block.questions.length === 0 || !answer) return null;
+                const totalValue = block.questions.reduce((sum, question) => {
+                    const answerId = answer[question.id];
+                    if (!answerId) return sum;
+                    const selectedAnswer = question.answers.find(a => a.id === answerId);
+                    return sum + (selectedAnswer ? parseInt(selectedAnswer.value, 10) : 0);
+                }, 0);
+
+                return block.results
+                    ?.filter(r => parseInt(r.value, 10) <= totalValue)
+                    .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
+            }, [block, answer]);
+
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent>
+                         {scormResult ? (
+                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
+                        ) : 'Résultat non calculé.'}
+                    </CardContent>
+                </Card>
+             );
+        case 'qcm':
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {(block.questions || []).map(q => {
+                             const selectedAnswerId = answer?.[q.id];
+                             const selectedAnswer = q.answers.find(a => a.id === selectedAnswerId);
+                             return (
+                                 <div key={q.id}>
+                                     <p className="font-semibold">{q.text}</p>
+                                     <p className="text-sm text-muted-foreground">Réponse: {selectedAnswer?.text || 'Non répondu'}</p>
+                                      {selectedAnswer?.resultText && (
+                                        <div className="mt-2 text-sm prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText}}/>
+                                      )}
+                                 </div>
+                             )
+                        })}
                     </CardContent>
                 </Card>
             );
@@ -1084,7 +1137,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                          {answer?.drawnCards?.length > 0 ? (
                             <div className="space-y-4">
                                 {answer.drawnCards.map((item: any, index: number) => (
-                                    <div key={index} className="flex gap-4">
+                                    <div key={index} className="flex gap-4 p-4 border rounded-lg bg-background">
                                         <div className="flex-shrink-0">
                                             {item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
                                         </div>
