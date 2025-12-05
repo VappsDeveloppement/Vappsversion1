@@ -34,6 +34,8 @@ import { useAgency } from "@/context/agency-provider";
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 
 
 const scaleSubQuestionSchema = z.object({
@@ -178,6 +180,8 @@ function FollowUpManager() {
     const { toast } = useToast();
     
     const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+    const [selectedSuivi, setSelectedSuivi] = useState<FollowUp | null>(null);
     
     const form = useForm<NewFollowUpFormData>({
         resolver: zodResolver(newFollowUpSchema)
@@ -230,95 +234,10 @@ function FollowUpManager() {
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/follow_ups`, followUpId));
     };
 
-    const exportToPdf = async (suivi: FollowUp) => {
-        if (!models) return;
-        const model = models.find(m => m.id === suivi.modelId);
-        if (!model) return;
-
-        const docJs = new jsPDF();
-        let yPos = 20;
-
-        docJs.setFontSize(22);
-        docJs.setFont('helvetica', 'bold');
-        docJs.text(`Suivi pour ${suivi.clientName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
-        yPos += 8;
-        docJs.setFontSize(14);
-        docJs.setFont('helvetica', 'normal');
-        docJs.setTextColor(100);
-        docJs.text(`Modèle: ${suivi.modelName}`, 105, yPos, { align: 'center' });
-        yPos += 15;
-
-        const answers = (suivi.answers || []).reduce((acc, current) => {
-            acc[current.questionId] = current.answer;
-            return acc;
-        }, {} as Record<string, any>);
-
-        for (const block of model.questions || []) {
-            if (yPos > 260) {
-                docJs.addPage();
-                yPos = 20;
-            }
-
-            docJs.setFontSize(16);
-            docJs.setFont('helvetica', 'bold');
-            docJs.setTextColor(40);
-            const title = (block as any).title || (block.type === 'free-text' ? (block as any).question : `Bloc ${block.type}`);
-            docJs.text(title, 15, yPos);
-            yPos += 10;
-            
-            docJs.setFontSize(12);
-            docJs.setFont('helvetica', 'normal');
-
-            switch (block.type) {
-                case 'scale':
-                    if (block.questions.length > 1) {
-                        const body = block.questions.map(q => [q.text, answers[q.id] || 'N/A']);
-                        autoTable(docJs, { head: [['Question', 'Score']], body: body, startY: yPos });
-                        yPos = (docJs as any).lastAutoTable.finalY + 10;
-                    } else if (block.questions.length === 1) {
-                        const q = block.questions[0];
-                        const value = answers[q.id] || 0;
-                        docJs.text(q.text, 15, yPos);
-                        yPos += 8;
-                        docJs.rect(15, yPos, 180, 8);
-                        docJs.setFillColor(136, 132, 216); // #8884d8
-                        docJs.rect(15, yPos, (180 * value) / 10, 8, 'F');
-                        docJs.text(`${value}/10`, 200, yPos + 6, { align: 'right' });
-                        yPos += 15;
-                    }
-                    break;
-                case 'report':
-                     const reportAnswer = answers[block.id];
-                     if (reportAnswer) {
-                        docJs.text("Compte rendu:", 15, yPos);
-                        yPos += 8;
-                        const reportLines = docJs.splitTextToSize(reportAnswer.text || '', 180);
-                        docJs.text(reportLines, 15, yPos);
-                        yPos += reportLines.length * 7 + 10;
-                        if (reportAnswer.partners && reportAnswer.partners.length > 0) {
-                            docJs.text("Partenaires associés:", 15, yPos);
-                            yPos += 8;
-                            const partnersBody = reportAnswer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']);
-                            autoTable(docJs, { head: [['Nom', 'Spécialités']], body: partnersBody, startY: yPos });
-                            yPos = (docJs as any).lastAutoTable.finalY + 10;
-                        }
-                     }
-                     break;
-                 // Other cases can be added here
-                default:
-                    const answerText = answers[block.id] !== undefined 
-                        ? JSON.stringify(answers[block.id], null, 2)
-                        : "Non répondu";
-                    docJs.text(answerText, 15, yPos, { maxWidth: 180 });
-                    yPos += 40; // Approximate height
-                    break;
-            }
-            yPos += 5;
-        }
-
-        docJs.save(`Suivi_${suivi.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
+    const handleOpenPdfModal = (suivi: FollowUp) => {
+        setSelectedSuivi(suivi);
+        setIsPdfModalOpen(true);
     };
-
 
     return (
         <Card>
@@ -441,16 +360,14 @@ function FollowUpManager() {
                                     <TableCell><Badge>{suivi.status}</Badge></TableCell>
                                     <TableCell className="text-right">
                                          <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button>
-                                            </DropdownMenuTrigger>
+                                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent>
                                                 <DropdownMenuItem asChild>
                                                     <Link href={`/dashboard/suivi/${suivi.id}`}>
                                                         <Eye className="mr-2 h-4 w-4" /> Ouvrir
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => exportToPdf(suivi)}>
+                                                 <DropdownMenuItem onClick={() => handleOpenPdfModal(suivi)}>
                                                     <Download className="mr-2 h-4 w-4" /> Exporter PDF
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
@@ -468,6 +385,14 @@ function FollowUpManager() {
                     </TableBody>
                 </Table>
             </CardContent>
+             {selectedSuivi && models && (
+                <PdfPreviewModal
+                    isOpen={isPdfModalOpen}
+                    onOpenChange={setIsPdfModalOpen}
+                    suivi={selectedSuivi}
+                    model={models.find(m => m.id === selectedSuivi.modelId) || null}
+                />
+            )}
         </Card>
     )
 }
@@ -996,5 +921,208 @@ export default function SuiviPage() {
     </div>
   );
 }
-
     
+    
+const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null }) => {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+    const { data: currentUserData } = useDoc(userDocRef);
+
+    const handleExportPdf = async () => {
+        if (!suivi || !model || !currentUserData) return;
+        const docJs = new jsPDF();
+        let yPos = 20;
+
+        docJs.setFontSize(22);
+        docJs.text(`Suivi pour ${suivi.clientName}`, 105, yPos, { align: 'center' });
+        yPos += 8;
+        docJs.setFontSize(14);
+        docJs.text(`Modèle: ${suivi.modelName}`, 105, yPos, { align: 'center' });
+        yPos += 15;
+
+        const answers = (suivi.answers || []).reduce((acc, current) => {
+            acc[current.questionId] = current.answer;
+            return acc;
+        }, {} as Record<string, any>);
+
+        for (const block of model.questions || []) {
+            if (yPos > 250) {
+                docJs.addPage();
+                yPos = 20;
+            }
+            docJs.setFontSize(16);
+            docJs.setFont('helvetica', 'bold');
+            const title = (block as any).title || (block.type === 'free-text' ? (block as any).question : `Bloc ${block.type}`);
+            docJs.text(title, 15, yPos);
+            yPos += 10;
+            docJs.setFontSize(12);
+            docJs.setFont('helvetica', 'normal');
+
+            switch (block.type) {
+                case 'scale':
+                    if (block.questions.length > 1) {
+                         const body = block.questions.map(q => [q.text, answers[q.id] || 'N/A']);
+                        autoTable(docJs, { head: [['Question', 'Score']], body, startY: yPos });
+                        yPos = (docJs as any).lastAutoTable.finalY + 10;
+                    } else if (block.questions.length === 1) {
+                        const q = block.questions[0];
+                        const value = answers[q.id] || 0;
+                        docJs.text(q.text, 15, yPos);
+                        yPos += 8;
+                        docJs.rect(15, yPos, 180, 8);
+                        docJs.setFillColor(136, 132, 216); // #8884d8
+                        docJs.rect(15, yPos, (180 * value) / 10, 8, 'F');
+                        docJs.text(`${value}/10`, 200, yPos + 6, { align: 'right' });
+                        yPos += 15;
+                    }
+                    break;
+                case 'report':
+                    const reportAnswer = answers[block.id];
+                    if (reportAnswer?.text) {
+                        const reportLines = docJs.splitTextToSize(reportAnswer.text, 180);
+                        docJs.text(reportLines, 15, yPos);
+                        yPos += reportLines.length * 7 + 5;
+                    }
+                    if (reportAnswer?.partners?.length > 0) {
+                        docJs.text("Partenaires associés:", 15, yPos);
+                        yPos += 8;
+                        autoTable(docJs, { head: [['Nom', 'Spécialités']], body: reportAnswer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
+                        yPos = (docJs as any).lastAutoTable.finalY + 10;
+                    }
+                    break;
+                default:
+                    const answerText = answers[block.id] !== undefined 
+                        ? JSON.stringify(answers[block.id], null, 2)
+                        : "Non répondu";
+                    docJs.text(answerText, 15, yPos, { maxWidth: 180 });
+                    yPos += 40;
+                    break;
+            }
+            yPos += 5;
+        }
+
+        docJs.save(`Suivi_${suivi.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
+    };
+
+    if (!model) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
+                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] pr-4">
+                    <div className="space-y-6">
+                        {model.questions?.map(block => {
+                            const answer = suivi.answers?.find(a => a.questionId === block.id)?.answer;
+                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} />;
+                        })}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button onClick={handleExportPdf}>
+                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+const ResultDisplayBlock = ({ block, answer }: { block: QuestionModel['questions'][number], answer: any }) => {
+    
+    switch (block.type) {
+        case 'scale':
+            return (
+                <Card>
+                    <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
+                    <CardContent>
+                        {block.questions.length > 1 ? (
+                             <ResponsiveContainer width="100%" height={300}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={block.questions.map(q => ({ subject: q.text, A: answer?.[q.id] || 0, fullMark: 10 }))}>
+                                    <PolarGrid />
+                                    <PolarAngleAxis dataKey="subject" />
+                                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                                    <Radar name={suivi.clientName} dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        ) : block.questions.map(q => (
+                             <div key={q.id}>
+                                <p>{q.text}: <strong>{answer?.[q.id] || 'N/A'}/10</strong></p>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            );
+        case 'free-text':
+            return (
+                <Card><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
+            );
+        case 'report':
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent>
+                        <h4 className="font-semibold mb-2">Compte rendu</h4>
+                        <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
+                        {answer?.partners?.length > 0 && <>
+                            <h4 className="font-semibold mb-2">Partenaires associés</h4>
+                            <ul>{answer.partners.map((p: any) => <li key={p.id}>{p.name}</li>)}</ul>
+                        </>}
+                    </CardContent>
+                </Card>
+            );
+        case 'prisme':
+            return (
+                <Card><CardHeader><CardTitle>Analyse Prisme</CardTitle></CardHeader>
+                    <CardContent>
+                         {answer?.drawnCards?.length > 0 ? (
+                            <div className="space-y-4">
+                                {answer.drawnCards.map((item: any, index: number) => (
+                                    <div key={index} className="flex gap-4">
+                                        <div className="flex-shrink-0">
+                                            {item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">{item.position.meaning}</p>
+                                            <h4 className="text-lg font-bold">{item.card.name}</h4>
+                                            <p className="text-sm">{item.card.description}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : 'Aucun tirage effectué.'}
+                    </CardContent>
+                </Card>
+            )
+        case 'vitae':
+            return (
+                <Card>
+                    <CardHeader><CardTitle>Analyse Vitae</CardTitle></CardHeader>
+                    <CardContent>
+                        <VitaeAnalysisBlock savedAnalysis={answer} onSaveAnalysis={() => {}} onSaveBlock={async () => {}} readOnly />
+                    </CardContent>
+                </Card>
+            )
+        case 'aura':
+             return (
+                <Card>
+                    <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
+                    <CardContent>
+                        {answer ? JSON.stringify(answer, null, 2) : 'Analyse non effectuée.'}
+                    </CardContent>
+                </Card>
+            )
+        default:
+            return (
+                <Card>
+                    <CardHeader><CardTitle>{(block as any).title || block.type}</CardTitle></CardHeader>
+                    <CardContent>
+                        <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(answer, null, 2) || 'Non répondu'}</pre>
+                    </CardContent>
+                </Card>
+            );
+    }
+}

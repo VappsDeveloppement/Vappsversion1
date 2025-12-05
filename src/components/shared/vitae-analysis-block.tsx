@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -34,9 +35,10 @@ interface VitaeAnalysisBlockProps {
     onSaveAnalysis: (result: any) => void;
     clientId?: string;
     onSaveBlock: () => Promise<void>;
+    readOnly?: boolean;
 }
 
-export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId, onSaveBlock }: VitaeAnalysisBlockProps) {
+export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId, onSaveBlock, readOnly = false }: VitaeAnalysisBlockProps) {
     const { user } = useUser();
     const firestore = useFirestore();
     const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
@@ -207,53 +209,59 @@ export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId, on
 
     return (
         <div className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                    <Label>Profil CV</Label>
-                    <Select onValueChange={setSelectedCvId} disabled={areCvProfilesLoading} value={selectedCvId || undefined}>
-                        <SelectTrigger><SelectValue placeholder="Sélectionner un profil..." /></SelectTrigger>
-                        <SelectContent>
-                            {cvProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>)}
-                        </SelectContent>
-                    </Select>
-                </div>
-                 <div className="space-y-2">
-                    <Label>Comparer avec</Label>
-                     <Tabs value={comparisonType} onValueChange={(val) => {setComparisonType(val as any); setSelectedComparisonId(null); setMatchResult(null);}}>
-                        <TabsList className="grid w-full grid-cols-2">
-                            <TabsTrigger value="offer">Offre d'emploi</TabsTrigger>
-                            <TabsTrigger value="fiche">Fiche Métier</TabsTrigger>
-                        </TabsList>
-                    </Tabs>
-                    {comparisonType === 'offer' ? (
-                         <Select onValueChange={setSelectedComparisonId} disabled={areJobOffersLoading}>
-                            <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
+            {!readOnly && (
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                        <Label>Profil CV</Label>
+                        <Select onValueChange={setSelectedCvId} disabled={areCvProfilesLoading || !!clientId} value={selectedCvId || undefined}>
+                            <SelectTrigger><SelectValue placeholder="Sélectionner un profil..." /></SelectTrigger>
                             <SelectContent>
-                                {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
+                                {cvProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>)}
                             </SelectContent>
                         </Select>
-                    ) : (
-                        <Select onValueChange={setSelectedComparisonId} disabled={areFichesMetiersLoading}>
-                            <SelectTrigger><SelectValue placeholder="Sélectionner une fiche..." /></SelectTrigger>
-                            <SelectContent>
-                                {fichesMetiers?.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    )}
+                    </div>
+                     <div className="space-y-2">
+                        <Label>Comparer avec</Label>
+                         <Tabs value={comparisonType} onValueChange={(val) => {setComparisonType(val as any); setSelectedComparisonId(null); setMatchResult(null);}}>
+                            <TabsList className="grid w-full grid-cols-2">
+                                <TabsTrigger value="offer">Offre d'emploi</TabsTrigger>
+                                <TabsTrigger value="fiche">Fiche Métier</TabsTrigger>
+                            </TabsList>
+                        </Tabs>
+                        {comparisonType === 'offer' ? (
+                             <Select onValueChange={setSelectedComparisonId} disabled={areJobOffersLoading}>
+                                <SelectTrigger><SelectValue placeholder="Sélectionner une offre..." /></SelectTrigger>
+                                <SelectContent>
+                                    {jobOffers?.map(o => <SelectItem key={o.id} value={o.id}>{o.title}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        ) : (
+                            <Select onValueChange={setSelectedComparisonId} disabled={areFichesMetiersLoading}>
+                                <SelectTrigger><SelectValue placeholder="Sélectionner une fiche..." /></SelectTrigger>
+                                <SelectContent>
+                                    {fichesMetiers?.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        )}
+                    </div>
                 </div>
-            </div>
-            <Button onClick={handleRunMatch} disabled={!selectedCvId || !selectedComparisonId || isLoading}>
-                {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FlaskConical className="mr-2 h-4 w-4" />}
-                Lancer l'analyse
-            </Button>
+            )}
+            {!readOnly && (
+                <Button onClick={handleRunMatch} disabled={!selectedCvId || !selectedComparisonId || isLoading}>
+                    {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <FlaskConical className="mr-2 h-4 w-4" />}
+                    Lancer l'analyse
+                </Button>
+            )}
 
             {matchResult && (
                     <div className="pt-6 border-t space-y-6">
                         <div className="flex justify-between items-center">
                             <h3 className="text-xl font-semibold">Résultat de l'analyse</h3>
-                            <Button variant="outline" size="sm" onClick={handleSaveAndPersist}>
-                                <Save className="mr-2 h-4 w-4" /> Enregistrer l'analyse dans le suivi
-                            </Button>
+                            {!readOnly && (
+                                <Button variant="outline" size="sm" onClick={handleSaveAndPersist}>
+                                    <Save className="mr-2 h-4 w-4" /> Enregistrer l'analyse dans le suivi
+                                </Button>
+                            )}
                         </div>
                         <div className="flex flex-col md:flex-row items-center gap-6">
                              <div className="relative h-24 w-24">
