@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download } from "lucide-react";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,6 +30,9 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
 import { useAgency } from "@/context/agency-provider";
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 
 
 const scaleSubQuestionSchema = z.object({
@@ -158,6 +161,7 @@ type FollowUp = {
     modelName: string;
     createdAt: string;
     status: 'pending' | 'completed';
+    answers?: { questionId: string; answer: any }[];
 };
 
 const newFollowUpSchema = z.object({
@@ -170,6 +174,8 @@ type NewFollowUpFormData = z.infer<typeof newFollowUpSchema>;
 function FollowUpManager() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const { toast } = useToast();
+    
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     
     const form = useForm<NewFollowUpFormData>({
@@ -221,6 +227,92 @@ function FollowUpManager() {
      const handleDeleteFollowUp = (followUpId: string) => {
         if (!user) return;
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/follow_ups`, followUpId));
+    };
+
+    const exportToPdf = async (suivi: FollowUp) => {
+        if (!models) return;
+        const model = models.find(m => m.id === suivi.modelId);
+        if (!model) return;
+
+        const docJs = new jsPDF();
+        let yPos = 20;
+
+        docJs.setFontSize(22);
+        docJs.setFont('helvetica', 'bold');
+        docJs.text(`Suivi pour ${suivi.clientName}`, 105, yPos, { align: 'center' });
+        yPos += 8;
+        docJs.setFontSize(14);
+        docJs.setFont('helvetica', 'normal');
+        docJs.setTextColor(100);
+        docJs.text(`Modèle: ${suivi.modelName}`, 105, yPos, { align: 'center' });
+        yPos += 15;
+
+        const answers = (suivi.answers || []).reduce((acc, current) => {
+            acc[current.questionId] = current.answer;
+            return acc;
+        }, {} as Record<string, any>);
+
+        for (const block of model.questions || []) {
+            if (yPos > 260) {
+                docJs.addPage();
+                yPos = 20;
+            }
+
+            docJs.setFontSize(16);
+            docJs.setFont('helvetica', 'bold');
+            docJs.setTextColor(40);
+            const title = (block as any).title || (block.type === 'free-text' ? (block as any).question : `Bloc ${block.type}`);
+            docJs.text(title, 15, yPos);
+            yPos += 10;
+            
+            docJs.setFontSize(12);
+            docJs.setFont('helvetica', 'normal');
+
+            switch (block.type) {
+                case 'scale':
+                    if (block.questions.length > 1) {
+                        const body = block.questions.map(q => [q.text, answers[q.id] || 'N/A']);
+                        autoTable(docJs, { head: [['Question', 'Score']], body: body, startY: yPos });
+                        yPos = (docJs as any).lastAutoTable.finalY + 10;
+                    } else if (block.questions.length === 1) {
+                        const q = block.questions[0];
+                        const value = answers[q.id] || 0;
+                        docJs.text(q.text, 15, yPos);
+                        yPos += 8;
+                        docJs.rect(15, yPos, 180, 8);
+                        docJs.setFillColor(136, 132, 216); // #8884d8
+                        docJs.rect(15, yPos, (180 * value) / 10, 8, 'F');
+                        docJs.text(`${value}/10`, 200, yPos + 6, { align: 'right' });
+                        yPos += 15;
+                    }
+                    break;
+                case 'report':
+                     const reportAnswer = answers[block.id];
+                     if (reportAnswer) {
+                        docJs.text("Compte rendu:", 15, yPos);
+                        yPos += 8;
+                        const reportLines = docJs.splitTextToSize(reportAnswer.text || '', 180);
+                        docJs.text(reportLines, 15, yPos);
+                        yPos += reportLines.length * 7 + 10;
+                        if (reportAnswer.partners && reportAnswer.partners.length > 0) {
+                            docJs.text("Partenaires associés:", 15, yPos);
+                            yPos += 8;
+                            const partnersBody = reportAnswer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']);
+                            autoTable(docJs, { head: [['Nom', 'Spécialités']], body: partnersBody, startY: yPos });
+                            yPos = (docJs as any).lastAutoTable.finalY + 10;
+                        }
+                     }
+                     break;
+                 // Other cases can be added here
+                default:
+                    docJs.text(JSON.stringify(answers[block.id], null, 2), 15, yPos, { maxWidth: 180 });
+                    yPos += 40; // Approximate height
+                    break;
+            }
+            yPos += 5;
+        }
+
+        docJs.save(`Suivi_${suivi.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
     };
 
 
@@ -354,7 +446,9 @@ function FollowUpManager() {
                                                         <Eye className="mr-2 h-4 w-4" /> Ouvrir
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem disabled>Exporter PDF</DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => exportToPdf(suivi)}>
+                                                    <Download className="mr-2 h-4 w-4" /> Exporter PDF
+                                                </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteFollowUp(suivi.id)}>Supprimer</DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -898,3 +992,5 @@ export default function SuiviPage() {
     </div>
   );
 }
+
+    

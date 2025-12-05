@@ -316,141 +316,6 @@ export default function FollowUpPage() {
         return result;
     };
     
-    const exportToPdf = () => {
-        const doc = new jsPDF();
-        let yPos = 20;
-
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Suivi pour ${followUp?.clientName}`, 105, yPos, { align: 'center' });
-        yPos += 8;
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100);
-        doc.text(`Modèle: ${followUp?.modelName}`, 105, yPos, { align: 'center' });
-        yPos += 15;
-
-        model?.questions?.forEach(block => {
-            if (yPos > 260) {
-                doc.addPage();
-                yPos = 20;
-            }
-
-            doc.setFontSize(16);
-            doc.setFont('helvetica', 'bold');
-            doc.setTextColor(40);
-            const title = block.title || (block.type === 'free-text' ? block.question : `Bloc ${block.type}`);
-            doc.text(title, 15, yPos);
-            yPos += 10;
-            
-            doc.setFontSize(12);
-            doc.setFont('helvetica', 'normal');
-
-            switch (block.type) {
-                case 'scale':
-                    if (block.questions.length > 1) {
-                        const chartData = block.questions.map(q => ({
-                            subject: q.text.substring(0, 25) + (q.text.length > 25 ? '...' : ''),
-                            value: answers[q.id] || 0,
-                            fullMark: 10,
-                        }));
-                        const chartElement = (
-                            <ResponsiveContainer width={500} height={300}>
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
-                                    <PolarGrid />
-                                    <PolarAngleAxis dataKey="subject" />
-                                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                                    <Radar name={followUp?.clientName} dataKey="value" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        );
-                        // This part is tricky. We need to render the chart to an image.
-                        // For now, we'll just list the data.
-                        const scaleBody = block.questions.map(q => [q.text, answers[q.id] || 'N/A']);
-                        autoTable(doc, { head: [['Question', 'Score']], body: scaleBody, startY: yPos });
-                        yPos = (doc as any).lastAutoTable.finalY + 10;
-                    } else if (block.questions.length === 1) {
-                        const q = block.questions[0];
-                        const value = answers[q.id] || 0;
-                        doc.text(q.text, 15, yPos);
-                        yPos += 8;
-                        doc.rect(15, yPos, 180, 8);
-                        doc.setFillColor(136, 132, 216); // #8884d8
-                        doc.rect(15, yPos, (180 * value) / 10, 8, 'F');
-                        doc.text(`${value}/10`, 200, yPos + 6, { align: 'right' });
-                        yPos += 15;
-                    }
-                    break;
-                
-                case 'scorm':
-                    const result = calculateScormResult(block);
-                    if (result?.text) {
-                        const dom = new DOMParser().parseFromString(result.text, 'text/html');
-                        doc.html(dom.body, {
-                            x: 15, y: yPos,
-                            width: 180, windowWidth: 600,
-                            callback: (doc) => { yPos = doc.internal.pageSize.height - 30; }
-                        });
-                        yPos += 15;
-                    } else {
-                         doc.text("Aucun résultat pour ce bloc.", 15, yPos);
-                         yPos += 10;
-                    }
-                    break;
-
-                case 'vitae':
-                case 'aura':
-                case 'prisme':
-                    const analysis = answers[block.id];
-                    if(analysis) {
-                       doc.text(JSON.stringify(analysis, null, 2), 15, yPos, { maxWidth: 180 });
-                       yPos += 40;
-                    }
-                    break;
-                case 'qcm':
-                    block.questions.forEach(q => {
-                        const answerId = answers[q.id];
-                        const answer = q.answers.find(a => a.id === answerId);
-                        if (answer?.resultText) {
-                            doc.setFontSize(11);
-                            doc.text(q.text, 15, yPos);
-                            yPos += 6;
-                            const dom = new DOMParser().parseFromString(answer.resultText, 'text/html');
-                            doc.html(dom.body, { x: 15, y: yPos, width: 180, windowWidth: 600, callback: (d) => { yPos = d.internal.pageSize.height - 30; } });
-                            yPos += 15;
-                        }
-                    });
-                    break;
-                case 'free-text':
-                    const answerText = answers[block.id] || 'Pas de réponse.';
-                    doc.text(answerText, 15, yPos, { maxWidth: 180 });
-                    yPos += (doc.splitTextToSize(answerText, 180).length * 7) + 10;
-                    break;
-                case 'report':
-                     const reportAnswer = answers[block.id];
-                     if (reportAnswer) {
-                        doc.text("Compte rendu:", 15, yPos);
-                        yPos += 8;
-                        const reportLines = doc.splitTextToSize(reportAnswer.text || '', 180);
-                        doc.text(reportLines, 15, yPos);
-                        yPos += reportLines.length * 7 + 10;
-                        if (reportAnswer.partners && reportAnswer.partners.length > 0) {
-                            doc.text("Partenaires associés:", 15, yPos);
-                            yPos += 8;
-                            const partnersBody = reportAnswer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']);
-                            autoTable(doc, { head: [['Nom', 'Spécialités']], body: partnersBody, startY: yPos });
-                            yPos = (doc as any).lastAutoTable.finalY + 10;
-                        }
-                     }
-                     break;
-            }
-            yPos += 5;
-        });
-
-        doc.save(`Suivi_${followUp?.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
-    };
-
-
     const isLoading = isFollowUpLoading || isModelLoading;
 
     if (isLoading) {
@@ -476,10 +341,6 @@ export default function FollowUpPage() {
                     <ArrowLeft className="h-4 w-4" />
                     Retour à la liste des suivis
                 </Link>
-                <Button onClick={exportToPdf} variant="secondary">
-                    <Download className="mr-2 h-4 w-4" />
-                    Exporter en PDF
-                </Button>
             </div>
 
 
@@ -686,3 +547,5 @@ export default function FollowUpPage() {
         </div>
     );
 }
+
+    
