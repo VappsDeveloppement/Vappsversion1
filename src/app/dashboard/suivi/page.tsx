@@ -10,7 +10,7 @@ import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDoc
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -36,6 +36,7 @@ import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
 import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download, Loader2, Mail, Phone, Save } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
 
 const scaleSubQuestionSchema = z.object({
@@ -935,10 +936,10 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
         let yPos = 20;
 
         docJs.setFontSize(22);
-        docJs.text(`Suivi pour ${suivi.clientName}`, 105, yPos, { align: 'center' });
+        docJs.text(`Suivi pour ${suivi.clientName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
         yPos += 8;
         docJs.setFontSize(14);
-        docJs.text(`Modèle: ${suivi.modelName}`, 105, yPos, { align: 'center' });
+        docJs.text(`Modèle: ${suivi.modelName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
         yPos += 15;
 
         const answers = (suivi.answers || []).reduce((acc, current) => {
