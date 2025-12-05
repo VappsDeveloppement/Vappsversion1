@@ -21,7 +21,8 @@ import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X } from 'lucide-react';
+import { X, Mail, Phone } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 
 type FollowUp = {
@@ -37,6 +38,8 @@ type FollowUp = {
 type Partner = {
     id: string;
     name: string;
+    email?: string;
+    phone?: string;
     specialties: string[];
     sectors: string[];
 };
@@ -71,8 +74,12 @@ const cleanDataForFirestore = (data: any): any => {
     if (data !== null && typeof data === 'object') {
         const newData: { [key: string]: any } = {};
         for (const key in data) {
-            if (data[key] !== undefined) {
-                newData[key] = cleanDataForFirestore(data[key]);
+            const value = data[key];
+            if (value !== undefined) {
+                const cleanedValue = cleanDataForFirestore(value);
+                if (cleanedValue !== undefined) {
+                    newData[key] = cleanedValue;
+                }
             }
         }
         return newData;
@@ -86,27 +93,37 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
     
     const [reportText, setReportText] = useState(initialAnswer?.text || '');
     const [selectedPartners, setSelectedPartners] = useState<any[]>(initialAnswer?.partners || []);
-    const [specialtySearch, setSpecialtySearch] = useState('');
-    const [sectorSearch, setSectorSearch] = useState('');
+    const [specialtyFilter, setSpecialtyFilter] = useState('all');
+    const [sectorFilter, setSectorFilter] = useState('all');
     
     const partnersQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, `users/${user.uid}/partners`));
     }, [user, firestore]);
     const { data: allPartners, isLoading } = useCollection<Partner>(partnersQuery);
+
+    const allSpecialties = useMemo(() => {
+        if (!allPartners) return [];
+        const specialties = new Set<string>();
+        allPartners.forEach(p => p.specialties?.forEach(s => specialties.add(s)));
+        return Array.from(specialties).sort();
+    }, [allPartners]);
+
+    const allSectors = useMemo(() => {
+        if (!allPartners) return [];
+        const sectors = new Set<string>();
+        allPartners.forEach(p => p.sectors?.forEach(s => sectors.add(s)));
+        return Array.from(sectors).sort();
+    }, [allPartners]);
     
     const filteredPartners = useMemo(() => {
         if (!allPartners) return [];
         return allPartners.filter(partner => {
-            const specialtyMatch = specialtySearch 
-                ? partner.specialties?.some(s => s.toLowerCase().includes(specialtySearch.toLowerCase())) 
-                : true;
-            const sectorMatch = sectorSearch 
-                ? partner.sectors?.some(s => s.toLowerCase().includes(sectorSearch.toLowerCase())) 
-                : true;
+            const specialtyMatch = specialtyFilter === 'all' || partner.specialties?.includes(specialtyFilter);
+            const sectorMatch = sectorFilter === 'all' || partner.sectors?.includes(sectorFilter);
             return specialtyMatch && sectorMatch;
         });
-    }, [allPartners, specialtySearch, sectorSearch]);
+    }, [allPartners, specialtyFilter, sectorFilter]);
 
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setReportText(e.target.value);
@@ -146,24 +163,35 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                  <div className="space-y-4">
                     <Label>Associer des partenaires</Label>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Input 
-                            placeholder="Rechercher par spécialité..."
-                            value={specialtySearch}
-                            onChange={(e) => setSpecialtySearch(e.target.value)}
-                        />
-                         <Input 
-                            placeholder="Rechercher par secteur..."
-                            value={sectorSearch}
-                            onChange={(e) => setSectorSearch(e.target.value)}
-                        />
+                        <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
+                            <SelectTrigger><SelectValue placeholder="Filtrer par spécialité" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Toutes les spécialités</SelectItem>
+                                {allSpecialties.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <Select value={sectorFilter} onValueChange={setSectorFilter}>
+                            <SelectTrigger><SelectValue placeholder="Filtrer par secteur" /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Tous les secteurs</SelectItem>
+                                {allSectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    {isLoading ? <Skeleton className="h-20 w-full" /> : (
-                        <Card className="max-h-48 overflow-y-auto">
-                            <CardContent className="p-2">
+                    {isLoading ? <Skeleton className="h-40 w-full" /> : (
+                        <Card className="max-h-60 overflow-y-auto">
+                            <CardContent className="p-2 space-y-2">
                                 {filteredPartners.length > 0 ? (
                                     filteredPartners.map(partner => (
                                         <div key={partner.id} className="flex justify-between items-center p-2 hover:bg-muted/50 rounded-md">
-                                            <span>{partner.name}</span>
+                                            <div>
+                                                <p className="font-semibold">{partner.name}</p>
+                                                <div className="text-xs text-muted-foreground space-y-1">
+                                                    {partner.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</p>}
+                                                    {partner.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</p>}
+                                                    {partner.specialties && <p><strong>Spéc:</strong> {partner.specialties.join(', ')}</p>}
+                                                </div>
+                                            </div>
                                             <Button size="sm" variant="outline" onClick={() => handlePartnerSelect(partner)}>Ajouter</Button>
                                         </div>
                                     ))
