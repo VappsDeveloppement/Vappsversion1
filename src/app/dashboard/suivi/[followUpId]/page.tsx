@@ -284,42 +284,39 @@ export default function FollowUpPage() {
         await setDocumentNonBlocking(followUpRef, { answers: answersArray }, { merge: true });
     };
     
-    const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-        if (!scormBlock.questions || !scormBlock.results) return null;
-
-        const questionIds = scormBlock.questions.map(q => q.id);
-        if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
-            return null; // Not all questions answered
-        }
-
-        const valueCounts: Record<string, number> = {};
-        for (const qId of questionIds) {
-            const answerId = currentAnswers[qId];
-            if (!answerId) continue;
-            const question = scormBlock.questions.find(q => q.id === qId);
-            const answerData = question?.answers.find(a => a.id === answerId);
-            if (answerData?.value) {
-                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-            }
-        }
-    
-        if (Object.keys(valueCounts).length === 0) return null;
-    
-        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-        return scormBlock.results.find(r => r.value === dominantValue) || null;
-    };
-    
     const handleAnswerChange = (questionId: string, answer: any) => {
-        const newAnswers = { ...answers, [questionId]: answer };
-        const questionBlock = model?.questions?.find(q => q.id === questionId);
+        setAnswers(prev => {
+            const newAnswers = { ...prev, [questionId]: answer };
 
-        if (questionBlock?.type === 'scorm') {
-            const result = calculateScormResult(questionBlock, answer);
-            newAnswers[questionId] = { ...answer, __scorm_result: result };
-        }
-        
-        setAnswers(newAnswers);
-        // We now persist on save button instead of every change
+            const questionBlock = model?.questions?.find(q => q.id === questionId);
+            if (questionBlock?.type === 'scorm') {
+                const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                    if (!scormBlock.questions || !scormBlock.results) return null;
+                    const questionIds = scormBlock.questions.map(q => q.id);
+                    if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
+                        return null;
+                    }
+                    const valueCounts: Record<string, number> = {};
+                    for (const qId of questionIds) {
+                        const answerId = currentAnswers[qId];
+                        if (!answerId) continue;
+                        const question = scormBlock.questions.find(q => q.id === qId);
+                        const answerData = question?.answers.find(a => a.id === answerId);
+                        if (answerData?.value) {
+                            valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                        }
+                    }
+                    if (Object.keys(valueCounts).length === 0) return null;
+                    const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                    return scormBlock.results.find(r => r.value === dominantValue) || null;
+                };
+                const result = calculateScormResult(questionBlock, answer);
+                newAnswers[questionId] = { ...answer, __scorm_result: result };
+            }
+            // Immediate save on change
+            persistAnswers(newAnswers);
+            return newAnswers;
+        });
     };
 
 
@@ -603,7 +600,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
             docJs.setFontSize(12);
             docJs.setFont('helvetica', 'normal');
 
-            const answer = liveAnswers[block.id]
+            const answer = liveAnswers[block.id];
             
             switch (block.type) {
                 case 'scale':
@@ -864,3 +861,5 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
     }
 };
+
+    
