@@ -1,15 +1,13 @@
-
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser, useCollection } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser, useCollection, addDocumentNonBlocking } from '@/firebase';
+import { doc, collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Search, Download, Image as ImageIcon } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Search, Download, Image as ImageIcon, CheckCircle, FileText, Route } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -30,7 +28,7 @@ import autoTable from 'jspdf-autotable';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
-
+// Types pour le suivi simple (formulaire)
 type FollowUp = {
     id: string;
     clientId: string;
@@ -41,29 +39,13 @@ type FollowUp = {
     answers?: { questionId: string; answer: any }[];
 };
 
-type Partner = {
-    id: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    specialties: string[];
-    sectors: string[];
-};
-
-type ScormAnswer = { id: string; text: string; value: string; };
-type ScormQuestion = { id: string; text: string; answers: ScormAnswer[]; };
-type ScormResult = { id: string; value: string; text: string; };
-
-type QcmAnswer = { id: string; text: string; resultText?: string; };
-type QcmQuestion = { id: string; text: string; answers: QcmAnswer[]; };
-
 type QuestionBlock = 
     | { id: string; type: 'scale'; title?: string, questions: { id: string; text: string }[] } 
     | { id: string; type: 'aura' }
     | { id: string; type: 'vitae' }
     | { id: string; type: 'prisme' }
-    | { id: string; type: 'scorm', title: string; questions: ScormQuestion[]; results: ScormResult[] }
-    | { id: string; type: 'qcm', title: string; questions: QcmQuestion[]; }
+    | { id: string; type: 'scorm', title: string; questions: any[]; results: any[] }
+    | { id: string; type: 'qcm', title: string; questions: any[]; }
     | { id: string; type: 'free-text', question: string; }
     | { id: string; type: 'report', title: string; };
 
@@ -73,6 +55,387 @@ type QuestionModel = {
     questions?: QuestionBlock[];
 };
 
+// Types pour le suivi de parcours
+type PathEnrollment = {
+    id: string;
+    userId: string;
+    clientName: string;
+    pathId: string;
+    pathName: string;
+    status: 'pending' | 'completed';
+};
+
+type LearningPath = {
+    id: string;
+    title: string;
+    steps: { modelId: string, modelName: string }[];
+};
+
+
+// Main Component
+export default function FollowUpPage() {
+    const params = useParams();
+    const { followUpId } = params; // This ID can be for a FollowUp OR a PathEnrollment
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    // Attempt to fetch as a simple FollowUp
+    const followUpRef = useMemoFirebase(() => {
+        if (!user || !followUpId) return null;
+        return doc(firestore, `users/${user.uid}/follow_ups`, followUpId as string);
+    }, [firestore, user, followUpId]);
+    const { data: followUp, isLoading: isFollowUpLoading } = useDoc<FollowUp>(followUpRef);
+
+    // Attempt to fetch as a PathEnrollment
+    const pathEnrollmentRef = useMemoFirebase(() => {
+        if (!user || !followUpId) return null;
+        return doc(firestore, `users/${user.uid}/path_enrollments`, followUpId as string);
+    }, [firestore, user, followUpId]);
+    const { data: pathEnrollment, isLoading: isPathEnrollmentLoading } = useDoc<PathEnrollment>(pathEnrollmentRef);
+
+    const modelRef = useMemoFirebase(() => {
+        if (!user || !followUp?.modelId) return null;
+        return doc(firestore, `users/${user.uid}/question_models`, followUp.modelId);
+    }, [firestore, user, followUp]);
+    const { data: model, isLoading: isModelLoading } = useDoc<QuestionModel>(modelRef);
+    
+    const learningPathRef = useMemoFirebase(() => {
+        if (!user || !pathEnrollment?.pathId) return null;
+        return doc(firestore, `users/${user.uid}/learning_paths`, pathEnrollment.pathId);
+    }, [firestore, user, pathEnrollment]);
+    const { data: learningPath, isLoading: isPathLoading } = useDoc<LearningPath>(learningPathRef);
+
+    const isLoading = isFollowUpLoading || isPathEnrollmentLoading;
+
+    if (isLoading) {
+        return <div className="p-8 space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-96 w-full" /></div>;
+    }
+
+    if (pathEnrollment && learningPath) {
+        // Render the learning path view
+        return <LearningPathFollowUpView pathEnrollment={pathEnrollment} learningPath={learningPath} />;
+    }
+
+    if (followUp && model) {
+        // Render the single form follow-up view
+        return <SingleFormFollowUpView followUp={followUp} model={model} />;
+    }
+    
+    // If neither is found after loading
+    return (
+        <div className="p-8 space-y-4">
+            <Link href="/dashboard/suivi" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-4 w-4" />
+                Retour à la liste des suivis
+            </Link>
+            <Card><CardContent className="p-8 text-center">Suivi ou modèle introuvable.</CardContent></Card>
+        </div>
+    );
+}
+
+// =====================================================================
+// COMPONENT FOR LEARNING PATH FOLLOW-UP
+// =====================================================================
+
+function LearningPathFollowUpView({ pathEnrollment, learningPath }: { pathEnrollment: PathEnrollment, learningPath: LearningPath }) {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const router = useRouter();
+
+    const followUpsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(
+            collection(firestore, `users/${user.uid}/follow_ups`),
+            where('clientId', '==', pathEnrollment.userId)
+        );
+    }, [user, firestore, pathEnrollment.userId]);
+    
+    const { data: clientFollowUps, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
+
+    const handleOpenOrCreateFollowUp = async (step: { modelId: string, modelName: string }) => {
+        if (!user || !clientFollowUps) return;
+
+        const existingFollowUp = clientFollowUps.find(f => f.modelId === step.modelId);
+        
+        if (existingFollowUp) {
+            router.push(`/dashboard/suivi/${existingFollowUp.id}`);
+        } else {
+            const newFollowUpData: Omit<FollowUp, 'id'> = {
+                counselorId: user.uid,
+                clientId: pathEnrollment.userId,
+                clientName: pathEnrollment.clientName,
+                modelId: step.modelId,
+                modelName: step.modelName,
+                createdAt: new Date().toISOString(),
+                status: 'pending',
+            };
+            const newDoc = await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUpData);
+            router.push(`/dashboard/suivi/${newDoc.id}`);
+        }
+    };
+
+
+    return (
+        <div className="space-y-6">
+             <Link href="/dashboard/suivi" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                <ArrowLeft className="h-4 w-4" />
+                Retour à la liste des suivis
+            </Link>
+             <div>
+                <h1 className="text-3xl font-bold font-headline">Parcours: {learningPath.title}</h1>
+                <p className="text-muted-foreground">Pour {pathEnrollment.clientName}</p>
+            </div>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Étapes du Parcours</CardTitle>
+                    <CardDescription>Voici les formulaires à compléter pour ce parcours.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {areFollowUpsLoading ? <Skeleton className="h-40 w-full" /> : (
+                        <div className="space-y-4">
+                            {learningPath.steps.map((step, index) => {
+                                const followUpForStep = clientFollowUps?.find(f => f.modelId === step.modelId);
+                                const isCompleted = followUpForStep?.status === 'completed';
+                                
+                                return (
+                                    <div key={step.modelId} className="flex items-center justify-between p-4 border rounded-lg">
+                                        <div className="flex items-center gap-4">
+                                            <div className={`flex items-center justify-center h-8 w-8 rounded-full ${isCompleted ? 'bg-green-500 text-white' : 'bg-muted'}`}>
+                                                {isCompleted ? <Check className="h-5 w-5" /> : <span className="font-bold">{index + 1}</span>}
+                                            </div>
+                                            <p className="font-medium">{step.modelName}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            {followUpForStep && (
+                                                <Button variant="secondary" size="sm" asChild>
+                                                    <Link href={`/dashboard/suivi/${followUpForStep.id}?mode=results`}>Voir les résultats</Link>
+                                                </Button>
+                                            )}
+                                            <Button size="sm" onClick={() => handleOpenOrCreateFollowUp(step)}>
+                                                {followUpForStep ? 'Continuer' : 'Démarrer'}
+                                            </Button>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+    );
+}
+
+// =====================================================================
+// COMPONENT FOR SINGLE FORM FOLLOW-UP
+// =====================================================================
+
+function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model: QuestionModel }) {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const router = useRouter();
+    const { toast } = useToast();
+    const [answers, setAnswers] = useState<Record<string, any>>({});
+    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+    
+    useEffect(() => {
+        if (followUp?.answers) {
+            const initialAnswers = followUp.answers.reduce((acc, current) => {
+                acc[current.questionId] = current.answer;
+                return acc;
+            }, {} as Record<string, any>);
+            setAnswers(initialAnswers);
+        }
+    }, [followUp]);
+
+    const handleAnswerChange = (questionId: string, answer: any) => {
+        setAnswers(prev => ({ ...prev, [questionId]: answer }));
+    };
+
+    const persistAnswers = async (currentAnswers: Record<string, any>) => {
+        if (!user) return;
+        const followUpRef = doc(firestore, `users/${user.uid}/follow_ups`, followUp.id);
+        const answersToSave = Object.entries(currentAnswers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+        }));
+        const cleanedAnswers = cleanDataForFirestore(answersToSave);
+        await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers }, { merge: true });
+        toast({title: "Progression enregistrée"});
+    };
+
+    const handleSave = async () => {
+        if (!user) return;
+        const followUpRef = doc(firestore, `users/${user.uid}/follow_ups`, followUp.id);
+        setIsSubmitting(true);
+        const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            answer,
+        }));
+        const cleanedAnswers = cleanDataForFirestore(answersToSave);
+        try {
+            await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers, status: 'completed' }, { merge: true });
+            toast({ title: 'Suivi terminé', description: 'Le suivi a été marqué comme complété.' });
+            router.push('/dashboard/suivi');
+        } catch (e) {
+            toast({ title: 'Erreur', description: 'Impossible de sauvegarder le suivi.', variant: 'destructive' });
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    return (
+        <div className="space-y-6">
+            <div className="flex justify-between items-center">
+                <Link href="/dashboard/suivi" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4" />
+                    Retour à la liste des suivis
+                </Link>
+                 <Button onClick={() => setIsPdfModalOpen(true)} variant="outline">Aperçu des résultats</Button>
+            </div>
+
+
+            <div>
+                <h1 className="text-3xl font-bold font-headline">Suivi: {followUp.modelName}</h1>
+                <p className="text-muted-foreground">Pour {followUp.clientName}</p>
+            </div>
+            
+            <div className="space-y-8">
+                {model.questions?.map(questionBlock => {
+                    const blockAnswer = answers[questionBlock.id];
+                    
+                    switch (questionBlock.type) {
+                        case 'scale':
+                            return (
+                                <Card key={questionBlock.id}>
+                                    <CardHeader><CardTitle>{questionBlock.title || "Questions sur une échelle"}</CardTitle></CardHeader>
+                                    <CardContent className="space-y-6">
+                                        {questionBlock.questions.map(question => (
+                                            <div key={question.id} className="space-y-3">
+                                                <Label>{question.text}</Label>
+                                                <div className="flex items-center gap-4">
+                                                    <Slider min={1} max={10} step={1} value={[(blockAnswer?.[question.id] || 5)]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value[0]})}/>
+                                                    <div className="font-bold text-lg w-10 text-center">{blockAnswer?.[question.id] || '5'}</div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            );
+                        case 'aura':
+                            return (
+                                <Card key={questionBlock.id}>
+                                    <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <BlocQuestionModele savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })} followUpClientId={followUp.clientId}/>
+                                    </CardContent>
+                                </Card>
+                            );
+                        case 'vitae':
+                            return (
+                                <Card key={questionBlock.id}>
+                                    <CardHeader><CardTitle>Analyse de Parcours Professionnel (Vitae)</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <VitaeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} clientId={followUp.clientId}/>
+                                    </CardContent>
+                                </Card>
+                            );
+                        case 'prisme':
+                            return (
+                                <Card key={questionBlock.id}>
+                                    <CardHeader><CardTitle>Tirage Prisme</CardTitle></CardHeader>
+                                    <CardContent>
+                                        <PrismeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}/>
+                                    </CardContent>
+                                </Card>
+                            );
+                        case 'scorm':
+                            return (
+                                <Card key={questionBlock.id}>
+                                    <CardHeader><CardTitle>{questionBlock.title}</CardTitle><CardDescription>Répondez aux questions suivantes.</CardDescription></CardHeader>
+                                    <CardContent className="space-y-8">
+                                        {(questionBlock.questions || []).map(question => (
+                                            <div key={question.id}>
+                                                <Label className="font-semibold">{question.text}</Label>
+                                                <RadioGroup value={blockAnswer?.[question.id]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})} className="mt-2 space-y-2">
+                                                    {question.answers.map(answer => (
+                                                        <div key={answer.id} className="flex items-center space-x-2">
+                                                            <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
+                                                            <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
+                                                        </div>
+                                                    ))}
+                                                </RadioGroup>
+                                            </div>
+                                        ))}
+                                    </CardContent>
+                                </Card>
+                            );
+                        case 'qcm':
+                            const qcmAnswers = blockAnswer || {};
+                            return (
+                                <Card key={questionBlock.id}>
+                                    <CardHeader><CardTitle>{questionBlock.title}</CardTitle></CardHeader>
+                                    <CardContent className="space-y-8">
+                                        {(questionBlock.questions || []).map(question => {
+                                            const selectedAnswerId = qcmAnswers[question.id];
+                                            const selectedAnswer = question.answers.find(a => a.id === selectedAnswerId);
+                                            return (
+                                                <div key={question.id}>
+                                                    <Label className="font-semibold">{question.text}</Label>
+                                                    <RadioGroup value={selectedAnswerId} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})} className="mt-2 space-y-2">
+                                                        {question.answers.map(answer => (
+                                                            <div key={answer.id} className="flex items-center space-x-2">
+                                                                <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
+                                                                <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
+                                                            </div>
+                                                        ))}
+                                                    </RadioGroup>
+                                                    {selectedAnswer && selectedAnswer.resultText && (
+                                                        <div className="mt-4 p-4 bg-muted rounded-md border">
+                                                            <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText }} />
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                    </CardContent>
+                                </Card>
+                            )
+                        case 'free-text':
+                            return (
+                                <Card key={questionBlock.id}>
+                                    <CardHeader><CardTitle>{questionBlock.question}</CardTitle></CardHeader>
+                                    <CardContent><Textarea value={blockAnswer || ''} onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)} rows={8} placeholder="Votre réponse ici..."/></CardContent>
+                                </Card>
+                            );
+                        case 'report':
+                            return (<ReportBlock key={questionBlock.id} questionBlock={questionBlock} initialAnswer={blockAnswer} onAnswerChange={(value: any) => handleAnswerChange(questionBlock.id, value)} onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}/>);
+                        default: return null;
+                    }
+                })}
+            </div>
+
+            <div className="flex justify-end">
+                <Button onClick={handleSave} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Enregistrer et Terminer le Suivi
+                </Button>
+            </div>
+            
+            <PdfPreviewModal
+                isOpen={isPdfModalOpen}
+                onOpenChange={setIsPdfModalOpen}
+                suivi={followUp}
+                model={model}
+                liveAnswers={answers}
+            />
+
+        </div>
+    );
+}
+    
+// Helper functions and sub-components for SingleFormFollowUpView
 const cleanDataForFirestore = (data: any): any => {
     if (Array.isArray(data)) {
         return data.map(item => cleanDataForFirestore(item));
@@ -237,308 +600,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
         </Card>
     );
 }
-    
-export default function FollowUpPage() {
-    const params = useParams();
-    const { followUpId } = params;
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const router = useRouter();
-    const { toast } = useToast();
-    const [answers, setAnswers] = useState<Record<string, any>>({});
-    const [isSubmitting, setIsSubmitting] = useState(false);
-    const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
-    
-    const followUpRef = useMemoFirebase(() => {
-        if (!user || !followUpId) return null;
-        return doc(firestore, `users/${user.uid}/follow_ups`, followUpId as string);
-    }, [firestore, user, followUpId]);
-    
-    const { data: followUp, isLoading: isFollowUpLoading } = useDoc<FollowUp>(followUpRef);
 
-    const modelRef = useMemoFirebase(() => {
-        if (!user || !followUp) return null;
-        return doc(firestore, `users/${user.uid}/question_models`, followUp.modelId);
-    }, [firestore, user, followUp]);
-    
-    const { data: model, isLoading: isModelLoading } = useDoc<QuestionModel>(modelRef);
-    
-    useEffect(() => {
-        if (followUp?.answers) {
-            const initialAnswers = followUp.answers.reduce((acc, current) => {
-                acc[current.questionId] = current.answer;
-                return acc;
-            }, {} as Record<string, any>);
-            setAnswers(initialAnswers);
-        }
-    }, [followUp]);
-
-    const handleAnswerChange = (questionId: string, answer: any) => {
-        setAnswers(prev => ({ ...prev, [questionId]: answer }));
-    };
-
-    const persistAnswers = async (currentAnswers: Record<string, any>) => {
-        if (!followUpRef) return;
-        const answersToSave = Object.entries(currentAnswers).map(([questionId, answer]) => ({
-            questionId,
-            answer,
-        }));
-        const cleanedAnswers = cleanDataForFirestore(answersToSave);
-        await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers }, { merge: true });
-        toast({title: "Progression enregistrée"});
-    };
-
-    const handleSave = async () => {
-        if (!followUpRef) return;
-        setIsSubmitting(true);
-        const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
-            questionId,
-            answer,
-        }));
-        const cleanedAnswers = cleanDataForFirestore(answersToSave);
-        try {
-            await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers, status: 'completed' }, { merge: true });
-            toast({ title: 'Suivi terminé', description: 'Le suivi a été marqué comme complété.' });
-            router.push('/dashboard/suivi');
-        } catch (e) {
-            toast({ title: 'Erreur', description: 'Impossible de sauvegarder le suivi.', variant: 'destructive' });
-        } finally {
-            setIsSubmitting(false);
-        }
-    };
-    
-    const isLoading = isFollowUpLoading || isModelLoading;
-
-    if (isLoading) {
-        return <div className="p-8 space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-96 w-full" /></div>
-    }
-
-    if (!followUp || !model) {
-        return (
-             <div className="p-8 space-y-4">
-                <Link href="/dashboard/suivi" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                    <ArrowLeft className="h-4 w-4" />
-                    Retour à la liste des suivis
-                </Link>
-                <Card><CardContent className="p-8 text-center">Suivi ou modèle introuvable.</CardContent></Card>
-            </div>
-        )
-    }
-
-    return (
-        <div className="space-y-6">
-            <div className="flex justify-between items-center">
-                <Link href="/dashboard/suivi" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                    <ArrowLeft className="h-4 w-4" />
-                    Retour à la liste des suivis
-                </Link>
-                 <Button onClick={() => setIsPdfModalOpen(true)} variant="outline">Aperçu des résultats</Button>
-            </div>
-
-
-            <div>
-                <h1 className="text-3xl font-bold font-headline">Suivi: {followUp.modelName}</h1>
-                <p className="text-muted-foreground">Pour {followUp.clientName}</p>
-            </div>
-            
-            <div className="space-y-8">
-                {model.questions?.map(questionBlock => {
-                    const blockAnswer = answers[questionBlock.id];
-                    
-                    if (questionBlock.type === 'scale') {
-                        return (
-                             <Card key={questionBlock.id}>
-                                <CardHeader>
-                                    <CardTitle>{questionBlock.title || "Questions sur une échelle"}</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    {questionBlock.questions.map(question => (
-                                         <div key={question.id} className="space-y-3">
-                                            <Label>{question.text}</Label>
-                                            <div className="flex items-center gap-4">
-                                                <Slider
-                                                    min={1}
-                                                    max={10}
-                                                    step={1}
-                                                    value={[(blockAnswer?.[question.id] || 5)]}
-                                                    onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value[0]})}
-                                                />
-                                                <div className="font-bold text-lg w-10 text-center">{blockAnswer?.[question.id] || '5'}</div>
-                                            </div>
-                                         </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        )
-                    }
-                    if (questionBlock.type === 'aura') {
-                        return (
-                            <Card key={questionBlock.id}>
-                                <CardHeader>
-                                    <CardTitle>Analyse AURA</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <BlocQuestionModele
-                                        savedAnalysis={blockAnswer}
-                                        onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })}
-                                        followUpClientId={followUp.clientId}
-                                    />
-                                </CardContent>
-                            </Card>
-                        )
-                    }
-                    if (questionBlock.type === 'vitae') {
-                         return (
-                            <Card key={questionBlock.id}>
-                                <CardHeader>
-                                    <CardTitle>Analyse de Parcours Professionnel (Vitae)</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <VitaeAnalysisBlock 
-                                        savedAnalysis={blockAnswer} 
-                                        onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
-                                        clientId={followUp.clientId}
-                                    />
-                                </CardContent>
-                            </Card>
-                        )
-                    }
-                     if (questionBlock.type === 'prisme') {
-                        return (
-                            <Card key={questionBlock.id}>
-                                <CardHeader>
-                                    <CardTitle>Tirage Prisme</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <PrismeAnalysisBlock 
-                                        savedAnalysis={blockAnswer} 
-                                        onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
-                                    />
-                                </CardContent>
-                            </Card>
-                        );
-                    }
-                   if (questionBlock.type === 'scorm') {
-                       return (
-                            <Card key={questionBlock.id}>
-                                <CardHeader>
-                                    <CardTitle>{questionBlock.title}</CardTitle>
-                                    <CardDescription>Répondez aux questions suivantes.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-8">
-                                    {(questionBlock.questions || []).map(question => (
-                                        <div key={question.id}>
-                                            <Label className="font-semibold">{question.text}</Label>
-                                            <RadioGroup
-                                                value={blockAnswer?.[question.id]}
-                                                onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})}
-                                                className="mt-2 space-y-2"
-                                            >
-                                                {question.answers.map(answer => (
-                                                    <div key={answer.id} className="flex items-center space-x-2">
-                                                        <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
-                                                        <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
-                                                    </div>
-                                                ))}
-                                            </RadioGroup>
-                                        </div>
-                                    ))}
-                                </CardContent>
-                            </Card>
-                        );
-                    }
-                     if (questionBlock.type === 'qcm') {
-                         const qcmAnswers = blockAnswer || {};
-                        return (
-                            <Card key={questionBlock.id}>
-                                <CardHeader>
-                                    <CardTitle>{questionBlock.title}</CardTitle>
-                                </CardHeader>
-                                <CardContent className="space-y-8">
-                                    {(questionBlock.questions || []).map(question => {
-                                        const selectedAnswerId = qcmAnswers[question.id];
-                                        const selectedAnswer = question.answers.find(a => a.id === selectedAnswerId);
-                                        return (
-                                            <div key={question.id}>
-                                                <Label className="font-semibold">{question.text}</Label>
-                                                <RadioGroup
-                                                    value={selectedAnswerId}
-                                                     onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})}
-                                                    className="mt-2 space-y-2"
-                                                >
-                                                    {question.answers.map(answer => (
-                                                        <div key={answer.id} className="flex items-center space-x-2">
-                                                            <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
-                                                            <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
-                                                        </div>
-                                                    ))}
-                                                </RadioGroup>
-                                                {selectedAnswer && selectedAnswer.resultText && (
-                                                    <div className="mt-4 p-4 bg-muted rounded-md border">
-                                                        <div className="prose prose-sm dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText }} />
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )
-                                    })}
-                                </CardContent>
-                            </Card>
-                        )
-                    }
-                     if (questionBlock.type === 'free-text') {
-                        return (
-                             <Card key={questionBlock.id}>
-                                <CardHeader>
-                                    <CardTitle>{questionBlock.question}</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                     <Textarea
-                                        value={blockAnswer || ''}
-                                        onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)}
-                                        rows={8}
-                                        placeholder="Votre réponse ici..."
-                                    />
-                                </CardContent>
-                            </Card>
-                        );
-                    }
-                    if (questionBlock.type === 'report') {
-                        return (
-                            <ReportBlock
-                                key={questionBlock.id}
-                                questionBlock={questionBlock}
-                                initialAnswer={blockAnswer}
-                                onAnswerChange={(value: any) => handleAnswerChange(questionBlock.id, value)}
-                                onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
-                            />
-                        );
-                    }
-                    return null;
-                })}
-            </div>
-
-            <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Enregistrer et Terminer le Suivi
-                </Button>
-            </div>
-            
-            <PdfPreviewModal
-                isOpen={isPdfModalOpen}
-                onOpenChange={setIsPdfModalOpen}
-                suivi={followUp}
-                model={model}
-                liveAnswers={answers}
-            />
-
-        </div>
-    );
-}
-    
 const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null, liveAnswers: Record<string, any> }) => {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -605,7 +667,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                     }
                     break;
                 case 'scorm':
-                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
                         if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                         const questionIds = scormBlock.questions.map(q => q.id);
                         if (questionIds.some(qId => !scormAnswers[qId])) {
@@ -734,7 +796,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
                  if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                 const questionIds = scormBlock.questions.map(q => q.id);
                 if (questionIds.some(qId => !scormAnswers[qId])) {
@@ -794,7 +856,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent>
                          {answer?.drawnCards?.length > 0 ? (
                             <div className="space-y-4">
-                                {answer.drawnCards.map((item: any, index: number) => (
+                                {answer.drawnCards.map((item: any, index: React.Key) => (
                                     <div key={index} className="flex gap-4 p-4 border rounded-lg bg-background">
                                         <div className="flex-shrink-0">
                                             {item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
@@ -821,17 +883,17 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => {
-                if (!data || (!data.products?.length && !data.protocoles?.length)) {
+            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: string) => {
+                 if (!data || (!data.products?.length && !data.protocoles?.length)) {
                     return (
-                        <div className="mb-4">
+                        <div key={key} className="mb-4">
                             <h4 className="font-semibold text-primary">{title}</h4>
                             <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
                         </div>
                     );
                 }
                 return (
-                    <div className="mb-4">
+                    <div key={key} className="mb-4">
                         <h4 className="font-semibold text-primary">{title}</h4>
                         {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map((p: any) => p.title).join(', ')}</p>}
                         {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map((p: any) => p.name).join(', ')}</p>}
@@ -854,17 +916,15 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => 
-                                <div key={index}>{renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })}</div>
-                             ) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
-                            {renderSuggestions('', answer.byHolisticProfile)}
+                            {renderSuggestions('', answer.byHolisticProfile, 'holistic')}
                         </div>
                         <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
-                             {renderSuggestions('', answer.perfectMatch)}
+                             {renderSuggestions('', answer.perfectMatch, 'perfect')}
                         </div>
                     </CardContent>
                 </Card>
