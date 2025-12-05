@@ -1213,17 +1213,17 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => {
+            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, index: number) => {
                 if (!data || (!data.products?.length && !data.protocoles?.length)) {
                     return (
-                        <div className="mb-4">
+                        <div key={index} className="mb-4">
                             <h4 className="font-semibold text-primary">{title}</h4>
                             <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
                         </div>
                     );
                 }
                 return (
-                    <div className="mb-4">
+                    <div key={index} className="mb-4">
                         <h4 className="font-semibold text-primary">{title}</h4>
                         {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
                         {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
@@ -1246,15 +1246,15 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, index)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
-                            {renderSuggestions('', answer.byHolisticProfile)}
+                            {renderSuggestions('', answer.byHolisticProfile, 0)}
                         </div>
                         <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
-                             {renderSuggestions('', answer.perfectMatch)}
+                             {renderSuggestions('', answer.perfectMatch, 0)}
                         </div>
                     </CardContent>
                 </Card>
