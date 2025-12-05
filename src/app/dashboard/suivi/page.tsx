@@ -3,7 +3,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, File, User, Send } from "lucide-react";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -105,6 +105,19 @@ const qcmBlockSchema = z.object({
     questions: z.array(qcmQuestionSchema).optional(),
 });
 
+const freeTextBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal('free-text'),
+  question: z.string().min(1, "La question est requise."),
+});
+
+const reportBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal('report'),
+  title: z.string().min(1, "Le titre est requis."),
+});
+
+
 const questionSchema = z.discriminatedUnion("type", [
   scaleQuestionSchema,
   auraBlockSchema,
@@ -112,6 +125,8 @@ const questionSchema = z.discriminatedUnion("type", [
   qcmBlockSchema,
   vitaeAnalysisBlockSchema,
   prismeBlockSchema,
+  freeTextBlockSchema,
+  reportBlockSchema,
 ]);
 
 const questionModelSchema = z.object({
@@ -511,28 +526,40 @@ function FormTemplateManager() {
                                               if (field.type === 'qcm') {
                                                   return <QcmBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
                                               }
+                                              if (field.type === 'free-text') {
+                                                  return <FreeTextBlockEditor key={field.id} index={index} form={form} remove={remove} />;
+                                              }
+                                              if (field.type === 'report') {
+                                                  return <ReportBlockEditor key={field.id} index={index} form={form} remove={remove} />;
+                                              }
                                               return null;
                                           })}
                                           <div className="flex flex-wrap gap-2">
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', title: '', questions: [{id: `sq-${Date.now()}`, text: ''}] })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "Échelle"
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "Échelle"
                                               </Button>
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Analyse AURA"
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> "Analyse AURA"
                                               </Button>
                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'vitae' })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Analyse Vitae"
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> "Analyse Vitae"
                                               </Button>
                                                {showPrisme && (
                                                 <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'prisme' })}>
-                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Bloc Prisme"
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> "Bloc Prisme"
                                                 </Button>
                                                )}
                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM', questions: [], results: [] })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "SCORM"
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "SCORM"
                                               </Button>
                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'qcm', title: 'Nouveau QCM', questions: [] })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "QCM"
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "QCM"
+                                              </Button>
+                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'free-text', question: '' })}>
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "Texte libre"
+                                              </Button>
+                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'report', title: 'Compte rendu' })}>
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "Compte rendu"
                                               </Button>
                                           </div>
                                       </div>
@@ -611,6 +638,42 @@ function ScaleBlockEditor({ index, form, update, remove }: EditorProps) {
            </div>
         </Card>
     )
+}
+
+function FreeTextBlockEditor({ index, form, remove }: Omit<EditorProps, 'update'>) {
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><FileText className="h-4 w-4"/>Bloc Texte Libre</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <FormField
+                control={form.control}
+                name={`questions.${index}.question`}
+                render={({ field }) => (
+                    <FormItem><FormLabel>Texte de la question</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                )}
+            />
+        </Card>
+    );
+}
+
+function ReportBlockEditor({ index, form, remove }: Omit<EditorProps, 'update'>) {
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><FileSignature className="h-4 w-4"/>Bloc Compte Rendu</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <FormField
+                control={form.control}
+                name={`questions.${index}.title`}
+                render={({ field }) => (
+                    <FormItem><FormLabel>Titre du bloc</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                )}
+            />
+        </Card>
+    );
 }
 
 function AuraBlockEditor({ remove }: { remove: () => void }) {
@@ -719,7 +782,7 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeResult(rIndex)}><Trash2 className="h-4 w-4"/></Button>
                             </div>
                             <div className="grid grid-cols-1 gap-4">
-                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.value`} render={({field}) => (<FormItem><FormLabel>Valeur du résultat</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.value`} render={({field}) => (<FormItem><FormLabel>Valeur du résultat (seuil)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name={`questions.${index}.results.${rIndex}.text`} render={({field}) => (<FormItem><FormLabel>Texte du résultat</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
                             </div>
                         </div>

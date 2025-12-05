@@ -18,12 +18,36 @@
                         { "$ref": "#/entities/ScaleQuestionBlock" },
                         { "$ref": "#/entities/AuraBlock" },
                         { "$ref": "#/entities/ScormBlock" },
-                        { "$ref": "#/entities/QcmBlock" }
+                        { "$ref": "#/entities/QcmBlock" },
+                        { "$ref": "#/entities/VitaeAnalysisBlock" },
+                        { "$ref": "#/entities/PrismeBlock" },
+                        { "$ref": "#/entities/FreeTextBlock" },
+                        { "$ref": "#/entities/ReportBlock" }
                     ]
                 }
             }
         },
         "required": ["counselorId", "name"]
+    },
+    "FreeTextBlock": {
+        "title": "Free Text Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "free-text" },
+            "question": { "type": "string" }
+        },
+        "required": ["id", "type", "question"]
+    },
+    "ReportBlock": {
+        "title": "Report Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "report" },
+            "title": { "type": "string" }
+        },
+        "required": ["id", "type", "title"]
     },
     "ScaleQuestionBlock": {
         "title": "Scale Question Block",
@@ -52,6 +76,24 @@
         "properties": {
             "id": { "type": "string" },
             "type": { "type": "string", "const": "aura" }
+        },
+        "required": ["id", "type"]
+    },
+     "PrismeBlock": {
+        "title": "Prisme Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "prisme" }
+        },
+        "required": ["id", "type"]
+    },
+    "VitaeAnalysisBlock": {
+        "title": "Vitae Analysis Block",
+        "type": "object",
+        "properties": {
+            "id": { "type": "string" },
+            "type": { "type": "string", "const": "vitae" }
         },
         "required": ["id", "type"]
     },
@@ -2035,5 +2077,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-
-    

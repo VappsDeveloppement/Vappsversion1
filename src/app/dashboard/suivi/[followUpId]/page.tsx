@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
 import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
+import { Textarea } from '@/components/ui/textarea';
 
 
 type FollowUp = {
@@ -43,7 +44,9 @@ type QuestionBlock =
     | { id: string; type: 'vitae' }
     | { id: string; type: 'prisme' }
     | { id: string; type: 'scorm', title: string; questions: ScormQuestion[]; results: ScormResult[] }
-    | { id: string; type: 'qcm', title: string; questions: QcmQuestion[]; };
+    | { id: string; type: 'qcm', title: string; questions: QcmQuestion[]; }
+    | { id: string; type: 'free-text', question: string; }
+    | { id: string; type: 'report', title: string; };
 
 type QuestionModel = {
     id: string;
@@ -51,7 +54,6 @@ type QuestionModel = {
     questions?: QuestionBlock[];
 };
 
-// This function will recursively remove any keys with `undefined` values.
 const cleanDataForFirestore = (data: any): any => {
     if (Array.isArray(data)) {
         return data.map(item => cleanDataForFirestore(item));
@@ -68,6 +70,70 @@ const cleanDataForFirestore = (data: any): any => {
     return data;
 };
 
+function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock }: any) {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [reportText, setReportText] = useState(initialAnswer?.text || '');
+    const [selectedPartners, setSelectedPartners] = useState<any[]>(initialAnswer?.partners || []);
+    
+    const partnersQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/partners`));
+    }, [user, firestore]);
+    const { data: partners, isLoading } = useCollection(partnersQuery);
+
+    const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setReportText(e.target.value);
+        onAnswerChange({ text: e.target.value, partners: selectedPartners });
+    };
+    
+    const handlePartnerSelect = (partner: any) => {
+        const isSelected = selectedPartners.some(p => p.id === partner.id);
+        const newSelection = isSelected 
+            ? selectedPartners.filter(p => p.id !== partner.id)
+            : [...selectedPartners, partner];
+        setSelectedPartners(newSelection);
+        onAnswerChange({ text: reportText, partners: newSelection });
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>{questionBlock.title}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <div className="space-y-2">
+                    <Label>Compte Rendu</Label>
+                    <Textarea
+                        value={reportText}
+                        onChange={handleTextChange}
+                        rows={10}
+                        placeholder="Rédigez votre compte rendu ici..."
+                    />
+                </div>
+                 <div className="space-y-2">
+                    <Label>Associer des partenaires</Label>
+                     {isLoading ? <Skeleton className="h-10 w-full" /> : (
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                            {(partners || []).map(partner => (
+                                <Button
+                                    key={partner.id}
+                                    variant={selectedPartners.some(p => p.id === partner.id) ? "default" : "outline"}
+                                    onClick={() => handlePartnerSelect(partner)}
+                                >
+                                    {partner.name}
+                                </Button>
+                            ))}
+                        </div>
+                     )}
+                </div>
+                 <div className="flex justify-end">
+                    <Button onClick={onSaveBlock}><Save className="mr-2 h-4 w-4" /> Enregistrer le compte rendu</Button>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function FollowUpPage() {
     const params = useParams();
@@ -339,6 +405,38 @@ export default function FollowUpPage() {
                             </Card>
                         )
                     }
+                     if (questionBlock.type === 'free-text') {
+                        return (
+                             <Card key={questionBlock.id}>
+                                <CardHeader>
+                                    <CardTitle>{questionBlock.question}</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                     <Textarea
+                                        value={answers[questionBlock.id] || ''}
+                                        onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)}
+                                        rows={8}
+                                        placeholder="Votre réponse ici..."
+                                    />
+                                </CardContent>
+                            </Card>
+                        );
+                    }
+                    if (questionBlock.type === 'report') {
+                        return (
+                            <ReportBlock
+                                key={questionBlock.id}
+                                questionBlock={questionBlock}
+                                initialAnswer={answers[questionBlock.id]}
+                                onAnswerChange={(value: any) => handleAnswerChange(questionBlock.id, value)}
+                                onSaveBlock={async () => {
+                                    const newAnswers = { ...answers, [questionBlock.id]: answers[questionBlock.id] };
+                                    await persistAnswers(newAnswers);
+                                    toast({ title: "Compte rendu enregistré" });
+                                }}
+                            />
+                        );
+                    }
                     return null;
                 })}
             </div>
@@ -353,5 +451,3 @@ export default function FollowUpPage() {
         </div>
     );
 }
-
-    
