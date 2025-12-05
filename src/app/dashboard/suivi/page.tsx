@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -167,6 +168,19 @@ type FollowUp = {
     createdAt: string;
     status: 'pending' | 'completed';
     answers?: { questionId: string; answer: any }[];
+    type?: 'form';
+};
+
+type PathEnrollment = {
+    id: string;
+    counselorId: string;
+    userId: string;
+    clientName: string;
+    pathId: string;
+    pathName: string;
+    enrolledAt: string;
+    status: 'pending' | 'completed';
+    type?: 'path';
 };
 
 const newFollowUpSchema = z.object({
@@ -221,8 +235,19 @@ function FollowUpManager() {
         if (!user) return null;
         return query(collection(firestore, `users/${user.uid}/follow_ups`));
     }, [user, firestore]);
-    const { data: followUps, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
+    const { data: followUpsData, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
 
+    const pathEnrollmentsQuery = useMemoFirebase(() => {
+      if (!user) return null;
+      return query(collection(firestore, `users/${user.uid}/path_enrollments`));
+    }, [user, firestore]);
+    const { data: pathEnrollmentsData, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(pathEnrollmentsQuery);
+
+    const combinedFollowUps = useMemo(() => {
+        const forms = (followUpsData || []).map(f => ({ ...f, type: 'form' as const, pathName: f.modelName, enrolledAt: f.createdAt, userId: f.clientId }));
+        const paths = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' as const, modelId: p.pathId, modelName: p.pathName, createdAt: p.enrolledAt }));
+        return [...forms, ...paths].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }, [followUpsData, pathEnrollmentsData]);
 
     const onSubmit = (data: NewFollowUpFormData) => {
         if (!user) return;
@@ -243,15 +268,32 @@ function FollowUpManager() {
                 status: 'pending',
             };
             addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUp);
+            toast({title: "Suivi de formulaire créé"});
+        } else if (data.assignationType === 'path' && data.pathId) {
+            const path = learningPaths?.find(p => p.id === data.pathId);
+            if(!path) return;
+            const newEnrollment: Omit<PathEnrollment, 'id'> = {
+                counselorId: user.uid,
+                userId: client.id,
+                clientName: `${client.firstName} ${client.lastName}`,
+                pathId: path.id,
+                pathName: path.title,
+                enrolledAt: new Date().toISOString(),
+                status: 'pending',
+            };
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/path_enrollments`), newEnrollment);
+            toast({title: "Suivi de parcours créé"});
         }
         
         setIsSheetOpen(false);
         form.reset();
     };
     
-     const handleDeleteFollowUp = (followUpId: string) => {
+     const handleDeleteFollowUp = (item: FollowUp | PathEnrollment) => {
         if (!user) return;
-        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/follow_ups`, followUpId));
+        const collectionName = item.type === 'path' ? 'path_enrollments' : 'follow_ups';
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/${collectionName}`, item.id));
+        toast({ title: 'Suivi supprimé' });
     };
 
     const handleOpenPdfModal = (suivi: FollowUp) => {
@@ -260,6 +302,7 @@ function FollowUpManager() {
     };
     
     const assignationType = form.watch('assignationType');
+    const isLoading = areFollowUpsLoading || areEnrollmentsLoading;
 
     return (
         <Card>
@@ -422,42 +465,46 @@ function FollowUpManager() {
                     <TableHeader>
                         <TableRow>
                             <TableHead>Client</TableHead>
-                            <TableHead>Modèle</TableHead>
+                            <TableHead>Type</TableHead>
+                            <TableHead>Nom du modèle/parcours</TableHead>
                             <TableHead>Date</TableHead>
                             <TableHead>Statut</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                         {areFollowUpsLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
-                         : followUps && followUps.length > 0 ? (
-                            followUps.map(suivi => (
-                                <TableRow key={suivi.id}>
-                                    <TableCell>{suivi.clientName}</TableCell>
-                                    <TableCell>{suivi.modelName}</TableCell>
-                                    <TableCell>{new Date(suivi.createdAt).toLocaleDateString()}</TableCell>
-                                    <TableCell><Badge>{suivi.status}</Badge></TableCell>
+                         {isLoading ? <TableRow><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                         : combinedFollowUps && combinedFollowUps.length > 0 ? (
+                            combinedFollowUps.map(item => (
+                                <TableRow key={item.id}>
+                                    <TableCell>{item.clientName}</TableCell>
+                                    <TableCell><Badge variant={item.type === 'path' ? 'default': 'secondary'}>{item.type === 'path' ? 'Parcours' : 'Formulaire'}</Badge></TableCell>
+                                    <TableCell>{item.modelName || item.pathName}</TableCell>
+                                    <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell><Badge variant={item.status === 'completed' ? 'default' : 'secondary'}>{item.status}</Badge></TableCell>
                                     <TableCell className="text-right">
                                          <DropdownMenu>
                                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                                             <DropdownMenuContent>
                                                 <DropdownMenuItem asChild>
-                                                    <Link href={`/dashboard/suivi/${suivi.id}`}>
+                                                    <Link href={`/dashboard/suivi/${item.id}`}>
                                                         <Eye className="mr-2 h-4 w-4" /> Ouvrir
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                 <DropdownMenuItem onClick={() => handleOpenPdfModal(suivi)}>
-                                                    <Download className="mr-2 h-4 w-4" /> Exporter PDF
-                                                </DropdownMenuItem>
+                                                {item.type === 'form' && (
+                                                     <DropdownMenuItem onClick={() => handleOpenPdfModal(item as FollowUp)}>
+                                                        <Download className="mr-2 h-4 w-4" /> Exporter PDF
+                                                    </DropdownMenuItem>
+                                                )}
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteFollowUp(suivi.id)}>Supprimer</DropdownMenuItem>
+                                                <DropdownMenuItem className="text-destructive" onClick={() => handleDeleteFollowUp(item)}>Supprimer</DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </TableCell>
                                 </TableRow>
                             ))
                          ) : (
-                            <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun suivi en cours.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={6} className="h-24 text-center">Aucun suivi en cours.</TableCell></TableRow>
                          )}
                     </TableBody>
                 </Table>
@@ -1482,8 +1529,8 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 return (
                     <div key={key} className="mb-4">
                         <h4 className="font-semibold text-primary">{title}</h4>
-                        {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
-                        {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
+                        {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map((p: any) => p.title).join(', ')}</p>}
+                        {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map((p: any) => p.name).join(', ')}</p>}
                     </div>
                 );
              };
@@ -1503,7 +1550,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: React.Key | null | undefined) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
