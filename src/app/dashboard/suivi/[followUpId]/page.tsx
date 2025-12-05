@@ -431,7 +431,7 @@ export default function FollowUpPage() {
                                 const answerId = currentAnswers[qId];
                                 const question = scormBlock.questions.find(q => q.id === qId);
                                 const answer = question?.answers.find(a => a.id === answerId);
-                                if (answer) {
+                                if (answer?.value) {
                                     valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
                                 }
                             }
@@ -635,23 +635,23 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     break;
                 case 'scorm':
                     const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                        if (!scormBlock.questions || !scormBlock.results || !currentAnswers) return null;
+                        if (!scormBlock.questions || !scormBlock.results) return null;
                         const questionIds = scormBlock.questions.map(q => q.id);
                         const allAnswered = questionIds.every(qId => currentAnswers[qId]);
                         if (!allAnswered) return null;
-
+                
                         const valueCounts: Record<string, number> = {};
                         for (const qId of questionIds) {
                             const answerId = currentAnswers[qId];
                             const question = scormBlock.questions.find(q => q.id === qId);
-                            const selectedAnswer = question?.answers.find(a => a.id === answerId);
-                            if (selectedAnswer) {
-                                valueCounts[selectedAnswer.value] = (valueCounts[selectedAnswer.value] || 0) + 1;
+                            const answer = question?.answers.find(a => a.id === answerId);
+                            if (answer?.value) {
+                                valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
                             }
                         }
-
+                
                         if (Object.keys(valueCounts).length === 0) return null;
-
+                
                         const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
                         return scormBlock.results.find(r => r.value === dominantValue) || null;
                     };
@@ -763,24 +763,24 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+             const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
                 if (!scormBlock.questions || !scormBlock.results || !currentAnswers) return null;
                 const questionIds = scormBlock.questions.map(q => q.id);
                 const allAnswered = questionIds.every(qId => currentAnswers[qId]);
                 if (!allAnswered) return null;
-
+        
                 const valueCounts: Record<string, number> = {};
                 for (const qId of questionIds) {
                     const answerId = currentAnswers[qId];
                     const question = scormBlock.questions.find(q => q.id === qId);
-                    const selectedAnswer = question?.answers.find(a => a.id === answerId);
-                    if (selectedAnswer) {
-                        valueCounts[selectedAnswer.value] = (valueCounts[selectedAnswer.value] || 0) + 1;
+                    const answer = question?.answers.find(a => a.id === answerId);
+                    if (answer?.value) {
+                        valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
                     }
                 }
-
+        
                 if (Object.keys(valueCounts).length === 0) return null;
-
+        
                 const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
                 return scormBlock.results.find(r => r.value === dominantValue) || null;
             };
