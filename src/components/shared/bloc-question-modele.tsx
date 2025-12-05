@@ -49,10 +49,14 @@ const blocQuestionSchema = z.object({
 
 type BlocQuestionFormData = z.infer<typeof blocQuestionSchema>;
 
-const LOCAL_STORAGE_KEY_SHEET = 'lastSelectedWellnessSheetId';
-const LOCAL_STORAGE_KEY_ANALYSIS = 'lastAuraAnalysisResult';
+interface BlocQuestionModeleProps {
+    savedAnalysis: any | null;
+    onSaveAnalysis: (result: any) => void;
+    followUpClientId: string;
+    onSaveBlock: () => Promise<void>;
+}
 
-export function BlocQuestionModele() {
+export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClientId, onSaveBlock }: BlocQuestionModeleProps) {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -66,7 +70,12 @@ export function BlocQuestionModele() {
 
     // Analysis state
     const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [analysisResult, setAnalysisResult] = useState<any>(null);
+    const [analysisResult, setAnalysisResult] = useState<any>(savedAnalysis);
+
+    useEffect(() => {
+        setAnalysisResult(savedAnalysis);
+    }, [savedAnalysis]);
+
 
     // Queries to fetch products and protocols
     const productsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'products'), where('counselorId', '==', user.uid)) : null, [user, firestore]);
@@ -77,8 +86,12 @@ export function BlocQuestionModele() {
 
     const wellnessSheetsQuery = useMemoFirebase(() => {
         if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/wellness_sheets`));
-    }, [user, firestore]);
+        const baseQuery = query(collection(firestore, `users/${user.uid}/wellness_sheets`));
+        if (followUpClientId) {
+             return query(baseQuery, where('clientId', '==', followUpClientId));
+        }
+        return baseQuery;
+    }, [user, firestore, followUpClientId]);
 
     const { data: sheets, isLoading } = useCollection<WellnessSheet>(wellnessSheetsQuery);
     
@@ -95,24 +108,12 @@ export function BlocQuestionModele() {
         },
     });
 
-     useEffect(() => {
-        const savedAnalysis = localStorage.getItem(LOCAL_STORAGE_KEY_ANALYSIS);
-        if (savedAnalysis) {
-            setAnalysisResult(JSON.parse(savedAnalysis));
-        }
-    }, []);
-
     useEffect(() => {
-        if (sheets && sheets.length > 0) {
-            const lastSelectedId = localStorage.getItem(LOCAL_STORAGE_KEY_SHEET);
-            if (lastSelectedId) {
-                const sheet = sheets.find(s => s.id === lastSelectedId);
-                if (sheet) {
-                    setSelectedSheet(sheet);
-                }
-            }
+        if (sheets && sheets.length > 0 && !selectedSheet) {
+           handleSelectSheet(sheets[0]);
         }
-    }, [sheets]);
+    }, [sheets, selectedSheet]);
+
 
     useEffect(() => {
         if (selectedSheet) {
@@ -140,7 +141,6 @@ export function BlocQuestionModele() {
 
     const handleSelectSheet = (sheet: WellnessSheet) => {
         setSelectedSheet(sheet);
-        localStorage.setItem(LOCAL_STORAGE_KEY_SHEET, sheet.id);
         setOpen(false);
     }
 
@@ -242,247 +242,128 @@ export function BlocQuestionModele() {
                 perfectMatch: perfectMatch(),
             };
             setAnalysisResult(result);
-            localStorage.setItem(LOCAL_STORAGE_KEY_ANALYSIS, JSON.stringify(result));
+            onSaveAnalysis(result); // This line saves the result to the parent form state
             setIsAnalyzing(false);
         }, 500);
     };
 
-    const handleSaveAnalysis = () => {
-        if (analysisResult) {
-            localStorage.setItem(LOCAL_STORAGE_KEY_ANALYSIS, JSON.stringify(analysisResult));
-            toast({ title: "Analyse sauvegardée", description: "Les résultats actuels ont été mémorisés localement." });
-        }
-    };
-    
-    const handleExportPdf = () => {
-        if (!selectedSheet || !analysisResult) return;
-
-        const doc = new jsPDF();
-        let y = 20;
-
-        // Header
-        doc.setFontSize(22);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`Analyse Bien-être pour ${selectedSheet.clientName}`, doc.internal.pageSize.getWidth() / 2, y, { align: 'center' });
-        y += 15;
-
-        // Client Info
-        doc.setFontSize(16);
-        doc.setFont('helvetica', 'bold');
-        doc.text('Informations du Client', 15, y);
-        y += 8;
-
-        const formData = form.getValues();
-        const clientInfo = [
-            ['Date de naissance', formData.dob ? new Date(formData.dob).toLocaleDateString('fr-FR') : 'N/A'],
-            ['Genre', formData.gender || 'N/A'],
-            ['IMC', formData.bmi?.toString() || 'N/A'],
-            ['Habitudes alimentaires', formData.foodHabits?.join(', ') || 'Aucune'],
-            ['Allergies', formData.allergies?.join(', ') || 'Aucune'],
-            ['Antécédents / Contre-indications', formData.contraindications?.join(', ') || 'Aucun'],
-            ['Contre-indications temporaires', tempContraindications.join(', ') || 'Aucune'],
-            ['Profil Holistique', formData.holisticProfile?.join(', ') || 'Aucun'],
-            ['Pathologies / Emotions à traiter', pathologiesToTreat.join(', ') || 'Aucune'],
-        ];
-
-        autoTable(doc, {
-            startY: y,
-            head: [['Critère', 'Information']],
-            body: clientInfo,
-            theme: 'striped',
-            headStyles: { fillColor: [41, 128, 185] },
-        });
-
-        y = (doc as any).lastAutoTable.finalY + 15;
-
-        // Analysis Results
-        doc.addPage();
-        y = 20;
-        doc.setFontSize(18);
-        doc.text('Résultats de l\'Analyse', 15, y);
-        y += 10;
-        
-        const addResultSection = (title: string, data: { products: any[], protocoles: any[] }) => {
-            if (y > 250) { doc.addPage(); y = 20; }
-            doc.setFontSize(14);
-            doc.setFont('helvetica', 'bold');
-            doc.text(title, 15, y);
-            y += 8;
-            
-            const body = [];
-            if (data.products.length > 0) {
-                 body.push(['Produits', data.products.map(p => p.title).join('\n')]);
-            }
-            if (data.protocoles.length > 0) {
-                 body.push(['Protocoles', data.protocoles.map(p => p.name).join('\n')]);
-            }
-             if (body.length === 0) {
-                body.push(['Aucune suggestion trouvée', '']);
-            }
-
-            autoTable(doc, { startY: y, head: [['Type', 'Suggestions']], body, theme: 'grid' });
-            y = (doc as any).lastAutoTable.finalY + 10;
-        }
-
-        if (analysisResult.byPathology.length > 0) {
-             doc.setFontSize(16);
-            doc.text("Correspondance par Pathologie", 15, y);
-            y += 8;
-            analysisResult.byPathology.forEach((item: any) => {
-                addResultSection(item.pathology, { products: item.products, protocoles: item.protocoles });
-            });
-        }
-        
-        addResultSection("Adapté au Profil Holistique", analysisResult.byHolisticProfile);
-        addResultSection("Cohérence Parfaite", analysisResult.perfectMatch);
-
-        doc.save(`Analyse_${selectedSheet.clientName.replace(' ', '_')}.pdf`);
-    };
-
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>Analyse AURA</CardTitle>
-                <CardDescription>
-                    Recherchez une fiche bien-être existante pour pré-remplir les informations.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                        <div className="space-y-2">
-                            <Label>Fiche Bien-être du Client</Label>
-                            {isLoading ? <Skeleton className="h-10 w-full" /> : (
-                                <Popover open={open} onOpenChange={setOpen}>
-                                    <PopoverTrigger asChild>
-                                        <Button variant="outline" role="combobox" className="w-full justify-between">
-                                            {selectedSheet ? selectedSheet.clientName : "Sélectionner une fiche..."}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Rechercher un client..." />
-                                            <CommandList>
-                                                <CommandEmpty>Aucune fiche trouvée.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {sheets?.map((sheet) => (
-                                                        <CommandItem
-                                                            key={sheet.id}
-                                                            value={sheet.clientName}
-                                                            onSelect={() => handleSelectSheet(sheet)}
-                                                        >
-                                                            <Check className={cn("mr-2 h-4 w-4", selectedSheet?.id === sheet.id ? "opacity-100" : "opacity-0")}/>
-                                                            {sheet.clientName}
-                                                        </CommandItem>
-                                                    ))}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
-                            )}
-                        </div>
-
-                        <FormField control={form.control} name="dob" render={({ field }) => (
-                             <FormItem><FormLabel>Date de naissance</FormLabel><FormControl><Input type="date" {...field} value={field.value || ''} /></FormControl></FormItem>
-                        )}/>
-
-                        <FormField control={form.control} name="gender" render={({ field }) => (
-                            <FormItem><FormLabel>Genre</FormLabel>
-                                <FormControl>
-                                <RadioGroup onValueChange={field.onChange} value={field.value} className="flex gap-4 pt-2">
-                                    <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="female" /></FormControl><FormLabel>Femme</FormLabel></FormItem>
-                                    <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="male" /></FormControl><FormLabel>Homme</FormLabel></FormItem>
-                                    <FormItem className="flex items-center space-x-2"><FormControl><RadioGroupItem value="other" /></FormControl><FormLabel>Autre</FormLabel></FormItem>
-                                </RadioGroup>
-                                </FormControl>
-                            </FormItem>
-                        )}/>
-
-                         <FormField control={form.control} name="bmi" render={({ field }) => (
-                             <FormItem><FormLabel>Dernier IMC</FormLabel><FormControl><Input type="number" placeholder="Ex: 22.5" {...field} value={field.value ?? ''} onChange={e => field.onChange(parseFloat(e.target.value))} /></FormControl></FormItem>
-                         )}/>
-                         
-                         <FormField control={form.control} name="foodHabits" render={({ field }) => (<FormItem><FormLabel>Habitudes Alimentaires</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Végétarien, sans gluten..." /></FormControl></FormItem>)}/>
-                         <FormField control={form.control} name="contraindications" render={({ field }) => (<FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Hypertension, diabète..." /></FormControl></FormItem>)}/>
-                         <FormField control={form.control} name="allergies" render={({ field }) => (<FormItem><FormLabel>Allergies</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Arachides, lactose..." /></FormControl></FormItem>)}/>
-                         <FormField control={form.control} name="holisticProfile" render={({ field }) => (<FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Stressé, anxieux..." /></FormControl></FormItem>)}/>
-                         <div className="flex justify-end pt-4">
-                            <Button type="submit" disabled={!selectedSheet || isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Enregistrer
+        <div className="space-y-6">
+            <div className="space-y-2">
+                <Label>Fiche Bien-être du Client</Label>
+                {isLoading ? <Skeleton className="h-10 w-full" /> : (
+                    <Popover open={open} onOpenChange={setOpen}>
+                        <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-full justify-between">
+                                {selectedSheet ? selectedSheet.clientName : "Sélectionner une fiche..."}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
-                         </div>
-                    </form>
-                </Form>
-                
-                <div className="mt-8 pt-6 border-t space-y-6">
-                    <div className="space-y-2">
-                        <Label>Contre-indication temporaire</Label>
-                        <TagInput 
-                            value={tempContraindications} 
-                            onChange={setTempContraindications} 
-                            placeholder="Ajouter une contre-indication..."
-                        />
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Pathologie ou Emotion à traiter</Label>
-                         <TagInput 
-                            value={pathologiesToTreat} 
-                            onChange={setPathologiesToTreat} 
-                            placeholder="Ajouter une pathologie/émotion..."
-                        />
-                    </div>
-                </div>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                            <Command>
+                                <CommandInput placeholder="Rechercher un client..." />
+                                <CommandList>
+                                    <CommandEmpty>Aucune fiche trouvée.</CommandEmpty>
+                                    <CommandGroup>
+                                        {sheets?.map((sheet) => (
+                                            <CommandItem
+                                                key={sheet.id}
+                                                value={sheet.clientName}
+                                                onSelect={() => handleSelectSheet(sheet)}
+                                            >
+                                                <Check className={cn("mr-2 h-4 w-4", selectedSheet?.id === sheet.id ? "opacity-100" : "opacity-0")}/>
+                                                {sheet.clientName}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                </CommandList>
+                            </Command>
+                        </PopoverContent>
+                    </Popover>
+                )}
+            </div>
 
-                <div className="mt-8 pt-6 border-t flex flex-col items-center gap-4">
-                    <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing}>
-                        {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                        Analyser
-                    </Button>
-                    {isAnalyzing && <p className="text-sm text-muted-foreground">Analyse en cours...</p>}
+            <Accordion type="single" collapsible>
+                <AccordionItem value="details">
+                    <AccordionTrigger>Voir/Modifier les détails de la fiche</AccordionTrigger>
+                    <AccordionContent>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 pt-4">
+                                <FormField control={form.control} name="contraindications" render={({ field }) => (<FormItem><FormLabel>Antécédents / Contre-indications</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Hypertension, diabète..." /></FormControl></FormItem>)}/>
+                                <FormField control={form.control} name="holisticProfile" render={({ field }) => (<FormItem><FormLabel>Profil Holistique</FormLabel><FormControl><TagInput {...field} value={field.value || []} placeholder="Stressé, anxieux..." /></FormControl></FormItem>)}/>
+                                 <div className="flex justify-end">
+                                    <Button type="submit" disabled={!selectedSheet || isSubmitting}>
+                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Enregistrer les modifications
+                                    </Button>
+                                 </div>
+                            </form>
+                        </Form>
+                    </AccordionContent>
+                </AccordionItem>
+            </Accordion>
+            
+            <div className="mt-4 pt-4 border-t space-y-4">
+                <div className="space-y-2">
+                    <Label>Contre-indication temporaire (pour cette séance)</Label>
+                    <TagInput 
+                        value={tempContraindications} 
+                        onChange={setTempContraindications} 
+                        placeholder="Ajouter une contre-indication..."
+                    />
                 </div>
-                
-                 {analysisResult && (
-                    <div className="mt-8 pt-6 border-t space-y-8">
-                        <div className="flex justify-between items-center">
-                            <h3 className="text-xl font-bold">Résultats de l'Analyse</h3>
-                             <div className="flex gap-2">
-                                <Button variant="outline" onClick={handleSaveAnalysis}>
-                                    <Save className="mr-2 h-4 w-4" /> Enregistrer l'analyse
-                                </Button>
-                                <Button variant="secondary" onClick={handleExportPdf}>
-                                    <Download className="mr-2 h-4 w-4" /> Exporter en PDF
-                                </Button>
+                <div className="space-y-2">
+                    <Label>Pathologie ou Emotion à traiter (pour cette séance)</Label>
+                     <TagInput 
+                        value={pathologiesToTreat} 
+                        onChange={setPathologiesToTreat} 
+                        placeholder="Ajouter une pathologie/émotion..."
+                    />
+                </div>
+            </div>
+
+            <div className="mt-6 flex flex-col items-center gap-4">
+                <Button type="button" onClick={handleAnalyze} disabled={isAnalyzing}>
+                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                    Analyser
+                </Button>
+                {isAnalyzing && <p className="text-sm text-muted-foreground">Analyse en cours...</p>}
+            </div>
+            
+             {analysisResult && (
+                <div className="mt-6 pt-6 border-t space-y-6">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-bold">Résultats de l'Analyse</h3>
+                         <Button variant="outline" size="sm" onClick={onSaveBlock}>
+                            <Save className="mr-2 h-4 w-4" /> Enregistrer l'analyse dans le suivi
+                        </Button>
+                    </div>
+                    <section>
+                        <h4 className="font-semibold text-lg mb-4">Correspondance par Pathologie</h4>
+                         {analysisResult.byPathology.length > 0 ? analysisResult.byPathology.map((item: any, index: number) => (
+                            <div key={index} className="mb-4 p-4 border rounded-md">
+                                <p className="font-medium text-primary">{item.pathology}</p>
+                                <p className="text-sm">Produits: {item.products.length > 0 ? item.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
+                                <p className="text-sm">Protocoles: {item.protocoles.length > 0 ? item.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
                             </div>
-                        </div>
-                        <section>
-                            <h4 className="font-semibold text-lg mb-4">Correspondance par Pathologie</h4>
-                             {analysisResult.byPathology.length > 0 ? analysisResult.byPathology.map((item: any) => (
-                                <div key={item.pathology} className="mb-4 p-4 border rounded-md">
-                                    <p className="font-medium text-primary">{item.pathology}</p>
-                                    <p className="text-sm">Produits: {item.products.length > 0 ? item.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
-                                    <p className="text-sm">Protocoles: {item.protocoles.length > 0 ? item.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
-                                </div>
-                            )) : <p className="text-sm text-muted-foreground">Aucune correspondance trouvée.</p>}
-                        </section>
+                        )) : <p className="text-sm text-muted-foreground">Aucune correspondance trouvée.</p>}
+                    </section>
 
-                        <section>
-                            <h4 className="font-semibold text-lg mb-2">Adapté au Profil Holistique</h4>
-                            <p className="text-sm">Produits: {analysisResult.byHolisticProfile.products.length > 0 ? analysisResult.byHolisticProfile.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
-                            <p className="text-sm">Protocoles: {analysisResult.byHolisticProfile.protocoles.length > 0 ? analysisResult.byHolisticProfile.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
-                        </section>
+                    <section>
+                        <h4 className="font-semibold text-lg mb-2">Adapté au Profil Holistique</h4>
+                        <p className="text-sm">Produits: {analysisResult.byHolisticProfile.products.length > 0 ? analysisResult.byHolisticProfile.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
+                        <p className="text-sm">Protocoles: {analysisResult.byHolisticProfile.protocoles.length > 0 ? analysisResult.byHolisticProfile.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
+                    </section>
 
-                        <section>
-                            <h4 className="font-semibold text-lg mb-2">Cohérence Parfaite</h4>
-                             <p className="text-sm">Produits: {analysisResult.perfectMatch.products.length > 0 ? analysisResult.perfectMatch.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
-                            <p className="text-sm">Protocoles: {analysisResult.perfectMatch.protocoles.length > 0 ? analysisResult.perfectMatch.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
-                        </section>
-                    </div>
-                 )}
+                    <section>
+                        <h4 className="font-semibold text-lg mb-2">Cohérence Parfaite</h4>
+                         <p className="text-sm">Produits: {analysisResult.perfectMatch.products.length > 0 ? analysisResult.perfectMatch.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
+                        <p className="text-sm">Protocoles: {analysisResult.perfectMatch.protocoles.length > 0 ? analysisResult.perfectMatch.protocoles.map((p: any) => p.name).join(', ') : 'Aucun'}</p>
+                    </section>
+                </div>
+             )}
 
-            </CardContent>
-        </Card>
+        </div>
     );
 }
+
