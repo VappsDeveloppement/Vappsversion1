@@ -37,6 +37,7 @@ import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
 import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download, Loader2, Mail, Phone, Save } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Image from 'next/image';
 
 
 const scaleSubQuestionSchema = z.object({
@@ -996,8 +997,9 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     const answerText = answers[block.id] !== undefined 
                         ? JSON.stringify(answers[block.id], null, 2)
                         : "Non répondu";
-                    docJs.text(answerText || "Non répondu", 15, yPos, { maxWidth: 180 });
-                    yPos += 40; // Approximate height
+                    const lines = docJs.splitTextToSize(answerText, 180);
+                    docJs.text(lines, 15, yPos);
+                    yPos += lines.length * 7 + 5;
                     break;
             }
             yPos += 5;
