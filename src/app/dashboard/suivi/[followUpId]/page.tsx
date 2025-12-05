@@ -415,33 +415,6 @@ export default function FollowUpPage() {
                         );
                     }
                    if (questionBlock.type === 'scorm') {
-                        const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                            if (!scormBlock.questions || !scormBlock.results) return null;
-                            
-                            const questionIds = scormBlock.questions.map(q => q.id);
-                            if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
-                                return null; // Not all questions answered
-                            }
-                        
-                            const valueCounts: Record<string, number> = {};
-                            for (const qId of questionIds) {
-                                const answerId = currentAnswers[qId];
-                                if (!answerId) continue;
-                                const question = scormBlock.questions.find(q => q.id === qId);
-                                const answer = question?.answers.find(a => a.id === answerId);
-                                if (answer?.value) {
-                                    valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
-                                }
-                            }
-                        
-                            if (Object.keys(valueCounts).length === 0) return null;
-                        
-                            const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                            return scormBlock.results.find(r => r.value === dominantValue) || null;
-                        };
-                        
-                        const result = calculateScormResult(questionBlock, blockAnswer);
-
                         return (
                             <Card key={questionBlock.id}>
                                 <CardHeader>
@@ -466,12 +439,6 @@ export default function FollowUpPage() {
                                             </RadioGroup>
                                         </div>
                                     ))}
-                                    {result && (
-                                        <div className="pt-6 mt-6 border-t">
-                                            <h4 className="font-semibold text-lg mb-2">Résultat</h4>
-                                            <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded-md" dangerouslySetInnerHTML={{ __html: result.text }} />
-                                        </div>
-                                    )}
                                 </CardContent>
                             </Card>
                         );
@@ -627,7 +594,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                     }
                     break;
                 case 'scorm':
-                    const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
                         if (!scormBlock.questions || !scormBlock.results) return null;
                         
                         const questionIds = scormBlock.questions.map(q => q.id);
@@ -759,16 +726,17 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const calculateScormResult = (scormBlock: typeof block, scormAnswers: any): ScormResult | null => {
-                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                if (!scormBlock.questions || !scormBlock.results || !currentAnswers) return null;
+                
                 const questionIds = scormBlock.questions.map(q => q.id);
-                if (questionIds.some(qId => !scormAnswers[qId])) {
+                if (questionIds.some(qId => !currentAnswers[qId])) {
                     return null;
                 }
             
                 const valueCounts: Record<string, number> = {};
                 for (const qId of questionIds) {
-                    const answerId = scormAnswers[qId];
+                    const answerId = currentAnswers[qId];
                     if (!answerId) continue;
                     const question = scormBlock.questions.find(q => q.id === qId);
                     const answerData = question?.answers.find(a => a.id === answerId);
@@ -782,7 +750,9 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
                 return scormBlock.results.find(r => r.value === dominantValue) || null;
             };
+            
             const scormResult = calculateScormResult(block, answer);
+            
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
