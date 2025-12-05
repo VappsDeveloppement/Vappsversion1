@@ -1,5 +1,3 @@
-
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -34,10 +32,11 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download, Loader2, Mail, Phone, Save } from 'lucide-react';
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download, Loader2, Mail, Phone, Save, GripVertical } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import Image from 'next/image';
+import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 
 
 const scaleSubQuestionSchema = z.object({
@@ -170,9 +169,19 @@ type FollowUp = {
 };
 
 const newFollowUpSchema = z.object({
+    assignationType: z.enum(['form', 'path']).default('form'),
     clientId: z.string().min(1, "Veuillez sélectionner un client."),
-    modelId: z.string().min(1, "Veuillez sélectionner un modèle."),
+    modelId: z.string().optional(),
+    pathId: z.string().optional(),
+}).refine(data => {
+    if (data.assignationType === 'form') return !!data.modelId;
+    if (data.assignationType === 'path') return !!data.pathId;
+    return false;
+}, {
+    message: "Veuillez sélectionner un formulaire ou un parcours.",
+    path: ['modelId'], 
 });
+
 
 type NewFollowUpFormData = z.infer<typeof newFollowUpSchema>;
 
@@ -201,6 +210,12 @@ function FollowUpManager() {
     }, [user, firestore]);
     const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
     
+    const learningPathsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/learning_paths`));
+    }, [user, firestore]);
+    const { data: learningPaths, isLoading: arePathsLoading } = useCollection<LearningPath>(learningPathsQuery);
+
     const followUpsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, `users/${user.uid}/follow_ups`));
@@ -212,21 +227,23 @@ function FollowUpManager() {
         if (!user) return;
         
         const client = clients?.find(c => c.id === data.clientId);
-        const model = models?.find(m => m.id === data.modelId);
+        if (!client) return;
 
-        if (!client || !model) return;
-
-        const newFollowUp: Omit<FollowUp, 'id'> = {
-            counselorId: user.uid,
-            clientId: client.id,
-            clientName: `${client.firstName} ${client.lastName}`,
-            modelId: model.id,
-            modelName: model.name,
-            createdAt: new Date().toISOString(),
-            status: 'pending',
-        };
+        if (data.assignationType === 'form' && data.modelId) {
+            const model = models?.find(m => m.id === data.modelId);
+            if (!model) return;
+            const newFollowUp: Omit<FollowUp, 'id'> = {
+                counselorId: user.uid,
+                clientId: client.id,
+                clientName: `${client.firstName} ${client.lastName}`,
+                modelId: model.id,
+                modelName: model.name,
+                createdAt: new Date().toISOString(),
+                status: 'pending',
+            };
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUp);
+        }
         
-        addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUp);
         setIsSheetOpen(false);
         form.reset();
     };
@@ -240,6 +257,8 @@ function FollowUpManager() {
         setSelectedSuivi(suivi);
         setIsPdfModalOpen(true);
     };
+    
+    const assignationType = form.watch('assignationType');
 
     return (
         <Card>
@@ -258,7 +277,7 @@ function FollowUpManager() {
                         <SheetContent>
                              <SheetHeader>
                                 <SheetTitle>Lancer un nouveau suivi</SheetTitle>
-                                <SheetDescription>Sélectionnez un client et un modèle de formulaire.</SheetDescription>
+                                <SheetDescription>Sélectionnez un client et un modèle de formulaire ou un parcours.</SheetDescription>
                             </SheetHeader>
                             <Form {...form}>
                                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 pt-6">
@@ -301,38 +320,95 @@ function FollowUpManager() {
                                     />
                                     <FormField
                                         control={form.control}
-                                        name="modelId"
+                                        name="assignationType"
                                         render={({ field }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Modèle de formulaire</FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl>
-                                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
-                                                            {field.value ? models?.find(m => m.id === field.value)?.name : "Sélectionner un modèle"}
-                                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                                        </Button>
-                                                    </FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                                     <Command>
-                                                        <CommandInput placeholder="Rechercher un modèle..." />
-                                                        <CommandEmpty>Aucun modèle trouvé.</CommandEmpty>
-                                                        <CommandList>
-                                                            {models?.map((model) => (
-                                                                <CommandItem value={model.name} key={model.id} onSelect={() => { form.setValue("modelId", model.id) }}>
-                                                                    <Check className={cn("mr-2 h-4 w-4", model.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                                    {model.name}
-                                                                </CommandItem>
-                                                            ))}
-                                                        </CommandList>
-                                                    </Command>
-                                                </PopoverContent>
-                                            </Popover>
-                                            <FormMessage />
-                                        </FormItem>
+                                            <FormItem>
+                                                <FormLabel>Type d'assignation</FormLabel>
+                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder="Choisir un type" /></SelectTrigger></FormControl>
+                                                    <SelectContent>
+                                                        <SelectItem value="form">Formulaire simple</SelectItem>
+                                                        <SelectItem value="path">Parcours complet</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </FormItem>
                                         )}
                                     />
+
+                                    {assignationType === 'form' && (
+                                         <FormField
+                                            control={form.control}
+                                            name="modelId"
+                                            render={({ field }) => (
+                                            <FormItem className="flex flex-col">
+                                                <FormLabel>Modèle de formulaire</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
+                                                                {field.value ? models?.find(m => m.id === field.value)?.name : "Sélectionner un modèle"}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                        <Command>
+                                                            <CommandInput placeholder="Rechercher un modèle..." />
+                                                            <CommandEmpty>Aucun modèle trouvé.</CommandEmpty>
+                                                            <CommandList>
+                                                                {models?.map((model) => (
+                                                                    <CommandItem value={model.name} key={model.id} onSelect={() => { form.setValue("modelId", model.id) }}>
+                                                                        <Check className={cn("mr-2 h-4 w-4", model.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                        {model.name}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <FormMessage />
+                                            </FormItem>
+                                            )}
+                                        />
+                                    )}
+
+                                     {assignationType === 'path' && (
+                                         <FormField
+                                            control={form.control}
+                                            name="pathId"
+                                            render={({ field }) => (
+                                            <FormItem className="flex flex-col">
+                                                <FormLabel>Parcours</FormLabel>
+                                                <Popover>
+                                                    <PopoverTrigger asChild>
+                                                        <FormControl>
+                                                            <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
+                                                                {field.value ? learningPaths?.find(p => p.id === field.value)?.title : "Sélectionner un parcours"}
+                                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                            </Button>
+                                                        </FormControl>
+                                                    </PopoverTrigger>
+                                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                        <Command>
+                                                            <CommandInput placeholder="Rechercher un parcours..." />
+                                                            <CommandEmpty>Aucun parcours trouvé.</CommandEmpty>
+                                                            <CommandList>
+                                                                {learningPaths?.map((path) => (
+                                                                    <CommandItem value={path.title} key={path.id} onSelect={() => { form.setValue("pathId", path.id) }}>
+                                                                        <Check className={cn("mr-2 h-4 w-4", path.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                        {path.title}
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandList>
+                                                        </Command>
+                                                    </PopoverContent>
+                                                </Popover>
+                                                <FormMessage />
+                                            </FormItem>
+                                            )}
+                                        />
+                                    )}
+
                                     <Button type="submit" className="w-full">Démarrer le suivi</Button>
                                 </form>
                             </Form>
@@ -873,6 +949,197 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
     );
 }
 
+const learningPathSchema = z.object({
+  title: z.string().min(1, 'Le titre est requis.'),
+  description: z.string().optional(),
+  steps: z.array(z.object({
+    modelId: z.string(),
+    modelName: z.string(),
+  })).min(1, "Un parcours doit contenir au moins un formulaire."),
+});
+
+type LearningPathFormData = z.infer<typeof learningPathSchema>;
+type LearningPath = {
+    id: string;
+    counselorId: string;
+} & LearningPathFormData;
+
+
+function LearningPathManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingPath, setEditingPath] = useState<LearningPath | null>(null);
+
+    const pathsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/learning_paths`));
+    }, [user, firestore]);
+    const { data: paths, isLoading } = useCollection<LearningPath>(pathsQuery);
+    
+    const modelsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/question_models`));
+    }, [user, firestore]);
+    const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
+
+    const form = useForm<LearningPathFormData>({
+        resolver: zodResolver(learningPathSchema),
+    });
+
+    const { fields, append, remove, move } = useFieldArray({
+        control: form.control,
+        name: "steps"
+    });
+    
+     useEffect(() => {
+        if (isSheetOpen) {
+            if (editingPath) {
+                form.reset(editingPath);
+            } else {
+                form.reset({ title: '', description: '', steps: [] });
+            }
+        }
+    }, [isSheetOpen, editingPath, form]);
+
+    const onDragEnd: OnDragEndResponder = (result) => {
+        if (!result.destination) return;
+        move(result.source.index, result.destination.index);
+    };
+
+    const onModelSelect = (model: QuestionModel) => {
+        // Prevent adding duplicates
+        if (fields.some(field => field.modelId === model.id)) {
+            toast({
+                title: "Modèle déjà présent",
+                description: "Ce modèle de formulaire est déjà dans le parcours.",
+                variant: "destructive"
+            });
+            return;
+        }
+        append({ modelId: model.id, modelName: model.name });
+    };
+
+    const onSubmit = (data: LearningPathFormData) => {
+        if (!user) return;
+        const pathData = { counselorId: user.uid, ...data };
+        if (editingPath) {
+            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/learning_paths`, editingPath.id), pathData, { merge: true });
+            toast({ title: "Parcours mis à jour" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/learning_paths`), pathData);
+            toast({ title: "Parcours créé" });
+        }
+        setIsSheetOpen(false);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Gestion des Parcours</CardTitle>
+                        <CardDescription>Combinez plusieurs formulaires pour créer un parcours de suivi complet.</CardDescription>
+                    </div>
+                    <Button onClick={() => { setEditingPath(null); setIsSheetOpen(true); }}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Nouveau Parcours
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader>
+                        <TableRow>
+                            <TableHead>Titre du Parcours</TableHead>
+                            <TableHead>Nombre d'étapes</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                        : paths && paths.length > 0 ? (
+                            paths.map(path => (
+                                <TableRow key={path.id}>
+                                    <TableCell>{path.title}</TableCell>
+                                    <TableCell>{path.steps.length}</TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => { setEditingPath(path); setIsSheetOpen(true); }}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/learning_paths`, path.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucun parcours créé.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-4xl w-full flex flex-col">
+                        <SheetHeader>
+                            <SheetTitle>{editingPath ? 'Modifier le' : 'Nouveau'} Parcours</SheetTitle>
+                        </SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
+                                <div className="space-y-6 py-4 pr-2 flex-1">
+                                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <Label>Étapes du parcours</Label>
+                                            <p className="text-xs text-muted-foreground">Faites glisser pour réorganiser.</p>
+                                            <div className="mt-2 border rounded-lg p-2 min-h-48">
+                                                <DragDropContext onDragEnd={onDragEnd}>
+                                                    <Droppable droppableId="steps">
+                                                        {(provided) => (
+                                                            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                                                                {fields.map((step, index) => (
+                                                                    <Draggable key={step.id} draggableId={step.id} index={index}>
+                                                                        {(provided) => (
+                                                                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 rounded-md bg-background border">
+                                                                                <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                                                                <span className="flex-1 text-sm">{step.modelName}</span>
+                                                                                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive/70" /></Button>
+                                                                            </div>
+                                                                        )}
+                                                                    </Draggable>
+                                                                ))}
+                                                                {provided.placeholder}
+                                                            </div>
+                                                        )}
+                                                    </Droppable>
+                                                </DragDropContext>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <Label>Modèles de formulaires disponibles</Label>
+                                            <ScrollArea className="h-96 mt-2 border rounded-lg">
+                                                <div className="p-2 space-y-2">
+                                                    {areModelsLoading ? <Skeleton className="h-20 w-full" /> : models?.map(model => (
+                                                        <div key={model.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                                            <span className="text-sm">{model.name}</span>
+                                                            <Button type="button" size="sm" variant="outline" onClick={() => onModelSelect(model)}>Ajouter</Button>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </ScrollArea>
+                                        </div>
+                                    </div>
+                                </div>
+                                <SheetFooter className="pt-6 border-t">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+
+            </CardContent>
+        </Card>
+    );
+}
+
+
 export default function SuiviPage() {
   return (
     <div className="space-y-8">
@@ -903,19 +1170,7 @@ export default function SuiviPage() {
           <FormTemplateManager />
         </TabsContent>
         <TabsContent value="parcours">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Parcours</CardTitle>
-                    <CardDescription>
-                        Cette section est en cours de développement.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="text-center py-12 text-muted-foreground">
-                        <p>Le module de création de parcours sera bientôt disponible ici.</p>
-                    </div>
-                </CardContent>
-            </Card>
+            <LearningPathManager />
         </TabsContent>
       </Tabs>
     </div>
@@ -1186,7 +1441,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent>
                          {answer?.drawnCards?.length > 0 ? (
                             <div className="space-y-4">
-                                {answer.drawnCards.map((item: any, index: number) => (
+                                {answer.drawnCards.map((item: any, index: React.Key) => (
                                     <div key={index} className="flex gap-4 p-4 border rounded-lg bg-background">
                                         <div className="flex-shrink-0">
                                             {item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
@@ -1213,17 +1468,17 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, index: number) => {
+            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => {
                 if (!data || (!data.products?.length && !data.protocoles?.length)) {
                     return (
-                        <div key={index} className="mb-4">
+                        <div className="mb-4">
                             <h4 className="font-semibold text-primary">{title}</h4>
                             <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
                         </div>
                     );
                 }
                 return (
-                    <div key={index} className="mb-4">
+                    <div className="mb-4">
                         <h4 className="font-semibold text-primary">{title}</h4>
                         {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
                         {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
@@ -1246,15 +1501,15 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, index)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: React.Key | null | undefined) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
-                            {renderSuggestions('', answer.byHolisticProfile, 0)}
+                            {renderSuggestions('', answer.byHolisticProfile)}
                         </div>
                         <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
-                             {renderSuggestions('', answer.perfectMatch, 0)}
+                             {renderSuggestions('', answer.perfectMatch)}
                         </div>
                     </CardContent>
                 </Card>
