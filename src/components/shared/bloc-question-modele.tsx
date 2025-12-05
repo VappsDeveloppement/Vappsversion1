@@ -25,6 +25,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 
+
 // Define types locally to ensure component is self-contained
 type Product = {
     id: string;
@@ -40,7 +41,7 @@ type Protocole = {
     pathologies?: string[];
     holisticProfile?: string[];
     contraindications?: string[];
-};
+}
 
 
 type WellnessSheet = {

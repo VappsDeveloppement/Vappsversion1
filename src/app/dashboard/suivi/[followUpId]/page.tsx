@@ -277,7 +277,7 @@ function AuraAnalysisResultBlock({ savedAnalysis }: { savedAnalysis: any }) {
         </div>
     );
 }
-
+    
 export default function FollowUpPage() {
     const params = useParams();
     const { followUpId } = params;
