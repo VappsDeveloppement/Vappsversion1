@@ -441,8 +441,14 @@ export default function FollowUpPage() {
                             const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
                             return scormBlock.results.find(r => r.value === dominantValue) || null;
                         };
+
+                        const handleScormChange = (questionId: string, answerId: string) => {
+                            const newScormAnswers = { ...scormAnswers, [questionId]: answerId };
+                            const result = calculateScormResult(questionBlock, newScormAnswers);
+                            handleAnswerChange(questionBlock.id, { ...newScormAnswers, __scorm_result: result });
+                        };
                     
-                        const result = calculateScormResult(questionBlock, scormAnswers);
+                        const result = blockAnswer?.__scorm_result;
                     
                         return (
                             <Card key={questionBlock.id}>
@@ -456,7 +462,7 @@ export default function FollowUpPage() {
                                             <Label className="font-semibold">{question.text}</Label>
                                             <RadioGroup
                                                 value={scormAnswers[question.id]}
-                                                onValueChange={(value) => handleAnswerChange(questionBlock.id, { ...scormAnswers, [question.id]: value })}
+                                                onValueChange={(value) => handleScormChange(question.id, value)}
                                                 className="mt-2 space-y-2"
                                             >
                                                 {question.answers.map(answer => (
@@ -634,28 +640,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     }
                     break;
                 case 'scorm':
-                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                        if (!scormBlock.questions || !scormBlock.results) return null;
-                        const questionIds = scormBlock.questions.map(q => q.id);
-                        const allAnswered = questionIds.every(qId => currentAnswers[qId]);
-                        if (!allAnswered) return null;
-                
-                        const valueCounts: Record<string, number> = {};
-                        for (const qId of questionIds) {
-                            const answerId = currentAnswers[qId];
-                            const question = scormBlock.questions.find(q => q.id === qId);
-                            const answer = question?.answers.find(a => a.id === answerId);
-                            if (answer?.value) {
-                                valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
-                            }
-                        }
-                
-                        if (Object.keys(valueCounts).length === 0) return null;
-                
-                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                        return scormBlock.results.find(r => r.value === dominantValue) || null;
-                    };
-                    const scormResult = calculateScormResult(block, answer);
+                    const scormResult = answer?.__scorm_result;
                     if (scormResult?.text) {
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = scormResult.text;
@@ -763,37 +748,16 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-             const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                if (!scormBlock.questions || !scormBlock.results || !currentAnswers) return null;
-                const questionIds = scormBlock.questions.map(q => q.id);
-                const allAnswered = questionIds.every(qId => currentAnswers[qId]);
-                if (!allAnswered) return null;
-        
-                const valueCounts: Record<string, number> = {};
-                for (const qId of questionIds) {
-                    const answerId = currentAnswers[qId];
-                    const question = scormBlock.questions.find(q => q.id === qId);
-                    const answer = question?.answers.find(a => a.id === answerId);
-                    if (answer?.value) {
-                        valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
-                    }
-                }
-        
-                if (Object.keys(valueCounts).length === 0) return null;
-        
-                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                return scormBlock.results.find(r => r.value === dominantValue) || null;
-            };
-            const scormResult = calculateScormResult(block, answer);
-             return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
-                    <CardContent>
-                         {scormResult ? (
-                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
-                        ) : 'Résultat non calculé.'}
-                    </CardContent>
-                </Card>
-             );
+            const scormResult = answer?.__scorm_result;
+            return (
+               <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                   <CardContent>
+                        {scormResult ? (
+                           <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
+                       ) : 'Résultat non calculé.'}
+                   </CardContent>
+               </Card>
+            );
         case 'qcm':
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
