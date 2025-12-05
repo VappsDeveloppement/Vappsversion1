@@ -995,9 +995,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     }
                     break;
                 default:
-                    const answerText = answer !== undefined 
-                        ? JSON.stringify(answer, null, 2)
-                        : "Non répondu";
+                    const answerText = answer !== undefined ? JSON.stringify(answer, null, 2) : "Non répondu";
                     const lines = docJs.splitTextToSize(answerText, 180);
                     docJs.text(lines, 15, yPos);
                     yPos += lines.length * 7 + 5;
@@ -1040,13 +1038,14 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
     
     switch (block.type) {
         case 'scale':
+            const scaleAnswers = answer || {};
             return (
                 <Card>
                     <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
                     <CardContent>
                         {block.questions.length > 1 ? (
                              <ResponsiveContainer width="100%" height={300}>
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={block.questions.map(q => ({ subject: q.text, A: answer?.[q.id] || 0, fullMark: 10 }))}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={block.questions.map(q => ({ subject: q.text, A: scaleAnswers[q.id] || 0, fullMark: 10 }))}>
                                     <PolarGrid />
                                     <PolarAngleAxis dataKey="subject" />
                                     <PolarRadiusAxis angle={30} domain={[0, 10]} />
@@ -1055,7 +1054,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                             </ResponsiveContainer>
                         ) : block.questions.map(q => (
                              <div key={q.id}>
-                                <p>{q.text}: <strong>{answer?.[q.id] || 'N/A'}/10</strong></p>
+                                <p>{q.text}: <strong>{scaleAnswers[q.id] || 'N/A'}/10</strong></p>
                             </div>
                         ))}
                     </CardContent>
@@ -1087,20 +1086,20 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const scormResult = useMemo(() => {
-                if (!block.questions || block.questions.length === 0 || !answer) return null;
-                const totalValue = block.questions.reduce((sum, question) => {
-                    const answerId = answer[question.id];
+            const calculateScormResult = (scormBlock: typeof block, scormAnswers: any) => {
+                 if (!scormBlock.questions || scormBlock.questions.length === 0 || !scormAnswers) return null;
+                const totalValue = scormBlock.questions.reduce((sum, question) => {
+                    const answerId = scormAnswers[question.id];
                     if (!answerId) return sum;
                     const selectedAnswer = question.answers.find(a => a.id === answerId);
                     return sum + (selectedAnswer ? parseInt(selectedAnswer.value, 10) : 0);
                 }, 0);
 
-                return block.results
+                return scormBlock.results
                     ?.filter(r => parseInt(r.value, 10) <= totalValue)
                     .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
-            }, [block, answer]);
-
+            };
+            const scormResult = calculateScormResult(block, answer);
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
@@ -1122,7 +1121,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                                      <p className="font-semibold">{q.text}</p>
                                      <p className="text-sm text-muted-foreground">Réponse: {selectedAnswer?.text || 'Non répondu'}</p>
                                       {selectedAnswer?.resultText && (
-                                        <div className="mt-2 text-sm prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText}}/>
+                                        <div className="mt-2 text-sm prose dark:prose-invert max-w-none border-l-2 pl-4" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText}}/>
                                       )}
                                  </div>
                              )
@@ -1152,7 +1151,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                         ) : 'Aucun tirage effectué.'}
                     </CardContent>
                 </Card>
-            )
+            );
         case 'vitae':
             return (
                 <Card>
@@ -1161,16 +1160,18 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                         <VitaeAnalysisBlock savedAnalysis={answer} onSaveAnalysis={() => {}} onSaveBlock={async () => {}} readOnly />
                     </CardContent>
                 </Card>
-            )
+            );
         case 'aura':
              return (
                 <Card>
                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                     <CardContent>
-                        {answer ? JSON.stringify(answer, null, 2) : 'Analyse non effectuée.'}
+                         {answer ? (
+                            <pre className="text-xs whitespace-pre-wrap bg-muted p-4 rounded-md">{JSON.stringify(answer, null, 2)}</pre>
+                        ) : 'Analyse non effectuée.'}
                     </CardContent>
                 </Card>
-            )
+            );
         default:
             return (
                 <Card>
