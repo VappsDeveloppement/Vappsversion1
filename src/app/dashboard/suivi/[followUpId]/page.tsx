@@ -8,7 +8,7 @@ import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +19,9 @@ import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
 import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { X } from 'lucide-react';
 
 
 type FollowUp = {
@@ -29,6 +32,13 @@ type FollowUp = {
     modelName: string;
     status: 'pending' | 'completed';
     answers?: { questionId: string; answer: any }[];
+};
+
+type Partner = {
+    id: string;
+    name: string;
+    specialties: string[];
+    sectors: string[];
 };
 
 type ScormAnswer = { id: string; text: string; value: string; };
@@ -73,25 +83,47 @@ const cleanDataForFirestore = (data: any): any => {
 function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
+    
     const [reportText, setReportText] = useState(initialAnswer?.text || '');
     const [selectedPartners, setSelectedPartners] = useState<any[]>(initialAnswer?.partners || []);
+    const [specialtySearch, setSpecialtySearch] = useState('');
+    const [sectorSearch, setSectorSearch] = useState('');
     
     const partnersQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, `users/${user.uid}/partners`));
     }, [user, firestore]);
-    const { data: partners, isLoading } = useCollection(partnersQuery);
+    const { data: allPartners, isLoading } = useCollection<Partner>(partnersQuery);
+    
+    const filteredPartners = useMemo(() => {
+        if (!allPartners) return [];
+        return allPartners.filter(partner => {
+            const specialtyMatch = specialtySearch 
+                ? partner.specialties?.some(s => s.toLowerCase().includes(specialtySearch.toLowerCase())) 
+                : true;
+            const sectorMatch = sectorSearch 
+                ? partner.sectors?.some(s => s.toLowerCase().includes(sectorSearch.toLowerCase())) 
+                : true;
+            return specialtyMatch && sectorMatch;
+        });
+    }, [allPartners, specialtySearch, sectorSearch]);
 
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
         setReportText(e.target.value);
         onAnswerChange({ text: e.target.value, partners: selectedPartners });
     };
     
-    const handlePartnerSelect = (partner: any) => {
+    const handlePartnerSelect = (partner: Partner) => {
         const isSelected = selectedPartners.some(p => p.id === partner.id);
-        const newSelection = isSelected 
-            ? selectedPartners.filter(p => p.id !== partner.id)
-            : [...selectedPartners, partner];
+        if (isSelected) return; // Prevent duplicates
+
+        const newSelection = [...selectedPartners, partner];
+        setSelectedPartners(newSelection);
+        onAnswerChange({ text: reportText, partners: newSelection });
+    };
+
+    const removePartner = (partnerId: string) => {
+        const newSelection = selectedPartners.filter(p => p.id !== partnerId);
         setSelectedPartners(newSelection);
         onAnswerChange({ text: reportText, partners: newSelection });
     };
@@ -111,21 +143,52 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                         placeholder="Rédigez votre compte rendu ici..."
                     />
                 </div>
-                 <div className="space-y-2">
+                 <div className="space-y-4">
                     <Label>Associer des partenaires</Label>
-                     {isLoading ? <Skeleton className="h-10 w-full" /> : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                            {(partners || []).map(partner => (
-                                <Button
-                                    key={partner.id}
-                                    variant={selectedPartners.some(p => p.id === partner.id) ? "default" : "outline"}
-                                    onClick={() => handlePartnerSelect(partner)}
-                                >
-                                    {partner.name}
-                                </Button>
-                            ))}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Input 
+                            placeholder="Rechercher par spécialité..."
+                            value={specialtySearch}
+                            onChange={(e) => setSpecialtySearch(e.target.value)}
+                        />
+                         <Input 
+                            placeholder="Rechercher par secteur..."
+                            value={sectorSearch}
+                            onChange={(e) => setSectorSearch(e.target.value)}
+                        />
+                    </div>
+                    {isLoading ? <Skeleton className="h-20 w-full" /> : (
+                        <Card className="max-h-48 overflow-y-auto">
+                            <CardContent className="p-2">
+                                {filteredPartners.length > 0 ? (
+                                    filteredPartners.map(partner => (
+                                        <div key={partner.id} className="flex justify-between items-center p-2 hover:bg-muted/50 rounded-md">
+                                            <span>{partner.name}</span>
+                                            <Button size="sm" variant="outline" onClick={() => handlePartnerSelect(partner)}>Ajouter</Button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p className="text-center text-sm text-muted-foreground p-4">Aucun partenaire ne correspond à la recherche.</p>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    {selectedPartners.length > 0 && (
+                        <div>
+                            <h4 className="text-sm font-medium mb-2">Partenaires attachés :</h4>
+                            <div className="flex flex-wrap gap-2">
+                                {selectedPartners.map(partner => (
+                                    <Badge key={partner.id} variant="secondary">
+                                        {partner.name}
+                                        <button onClick={() => removePartner(partner.id)} className="ml-2 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2">
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </Badge>
+                                ))}
+                            </div>
                         </div>
-                     )}
+                    )}
                 </div>
                  <div className="flex justify-end">
                     <Button onClick={onSaveBlock}><Save className="mr-2 h-4 w-4" /> Enregistrer le compte rendu</Button>
