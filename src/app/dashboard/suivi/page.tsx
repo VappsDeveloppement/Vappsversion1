@@ -965,13 +965,14 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
             
             switch (block.type) {
                 case 'scale':
+                    if (!answer) break;
                     if (block.questions.length > 1) {
-                         const body = block.questions.map(q => [q.text, answers[q.id] !== undefined ? answers[q.id] : 'N/A']);
+                         const body = block.questions.map(q => [q.text, answer[q.id] !== undefined ? answer[q.id] : 'N/A']);
                         autoTable(docJs, { head: [['Question', 'Score']], body, startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     } else if (block.questions.length === 1) {
                         const q = block.questions[0];
-                        const value = answers[q.id] || 0;
+                        const value = answer[q.id] || 0;
                         docJs.text(q.text, 15, yPos);
                         yPos += 8;
                         docJs.rect(15, yPos, 180, 8);
@@ -1162,13 +1163,46 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-             return (
+             if (!answer) {
+                return (
+                    <Card>
+                        <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
+                        <CardContent><p className="text-muted-foreground">Analyse non effectuée.</p></CardContent>
+                    </Card>
+                );
+            }
+             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => (
+                <div className="mb-4">
+                    <h4 className="font-semibold text-primary">{title}</h4>
+                    {data.products.length === 0 && data.protocoles.length === 0 ? (
+                        <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
+                    ) : (
+                        <>
+                            {data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
+                            {data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
+                        </>
+                    )}
+                </div>
+            );
+
+            return (
                 <Card>
                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
-                    <CardContent>
-                         {answer ? (
-                            <pre className="text-xs whitespace-pre-wrap bg-muted p-4 rounded-md">{JSON.stringify(answer, null, 2)}</pre>
-                        ) : 'Analyse non effectuée.'}
+                    <CardContent className="space-y-4">
+                        <div>
+                             <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any) => (
+                                renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })
+                             )) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                        </div>
+                         <div className="pt-4 border-t">
+                            <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
+                            {renderSuggestions('', answer.byHolisticProfile)}
+                        </div>
+                        <div className="pt-4 border-t">
+                            <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
+                             {renderSuggestions('', answer.perfectMatch)}
+                        </div>
                     </CardContent>
                 </Card>
             );
