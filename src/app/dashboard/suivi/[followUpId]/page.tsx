@@ -415,16 +415,15 @@ export default function FollowUpPage() {
                         );
                     }
                    if (questionBlock.type === 'scorm') {
-                        const scormAnswers = blockAnswer || {};
-                    
                         const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
                             if (!scormBlock.questions || !scormBlock.results) return null;
-                    
+                            
                             const questionIds = scormBlock.questions.map(q => q.id);
-                            const allAnswered = questionIds.every(qId => currentAnswers[qId]);
-                            if (!allAnswered) return null;
-                    
-                           const valueCounts: Record<string, number> = {};
+                            if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
+                                return null; // Not all questions answered
+                            }
+                        
+                            const valueCounts: Record<string, number> = {};
                             for (const qId of questionIds) {
                                 const answerId = currentAnswers[qId];
                                 if (!answerId) continue;
@@ -434,21 +433,15 @@ export default function FollowUpPage() {
                                     valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
                                 }
                             }
-                    
+                        
                             if (Object.keys(valueCounts).length === 0) return null;
-                    
+                        
                             const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
                             return scormBlock.results.find(r => r.value === dominantValue) || null;
                         };
+                        
+                        const result = calculateScormResult(questionBlock, blockAnswer);
 
-                        const handleScormChange = (questionId: string, answerId: string) => {
-                            const newScormAnswers = { ...scormAnswers, [questionId]: answerId };
-                            const result = calculateScormResult(questionBlock, newScormAnswers);
-                            handleAnswerChange(questionBlock.id, { ...newScormAnswers, __scorm_result: result });
-                        };
-                    
-                        const result = blockAnswer?.__scorm_result;
-                    
                         return (
                             <Card key={questionBlock.id}>
                                 <CardHeader>
@@ -460,8 +453,8 @@ export default function FollowUpPage() {
                                         <div key={question.id}>
                                             <Label className="font-semibold">{question.text}</Label>
                                             <RadioGroup
-                                                value={scormAnswers[question.id]}
-                                                onValueChange={(value) => handleScormChange(question.id, value)}
+                                                value={blockAnswer?.[question.id]}
+                                                onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})}
                                                 className="mt-2 space-y-2"
                                             >
                                                 {question.answers.map(answer => (
@@ -568,7 +561,7 @@ export default function FollowUpPage() {
 }
     
     
-const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null }) => {
+const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null, liveAnswers: Record<string, any> }) => {
     const { user } = useUser();
     const firestore = useFirestore();
     const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
@@ -586,11 +579,6 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
         docJs.text(`Modèle: ${suivi.modelName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
         yPos += 15;
 
-        const answers = (suivi.answers || []).reduce((acc, current) => {
-            acc[current.questionId] = current.answer;
-            return acc;
-        }, {} as Record<string, any>);
-
         for (const block of model.questions || []) {
             if (yPos > 250) {
                 docJs.addPage();
@@ -604,7 +592,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
             docJs.setFontSize(12);
             docJs.setFont('helvetica', 'normal');
 
-            const answer = answers[block.id]
+            const answer = liveAnswers[block.id]
             
             switch (block.type) {
                 case 'scale':
@@ -639,7 +627,31 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     }
                     break;
                 case 'scorm':
-                    const scormResult = answer?.__scorm_result;
+                    const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                        if (!scormBlock.questions || !scormBlock.results) return null;
+                        
+                        const questionIds = scormBlock.questions.map(q => q.id);
+                        if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
+                            return null;
+                        }
+                    
+                        const valueCounts: Record<string, number> = {};
+                        for (const qId of questionIds) {
+                            const answerId = currentAnswers[qId];
+                            if (!answerId) continue;
+                            const question = scormBlock.questions.find(q => q.id === qId);
+                            const answerData = question?.answers.find(a => a.id === answerId);
+                            if (answerData?.value) {
+                                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                            }
+                        }
+                    
+                        if (Object.keys(valueCounts).length === 0) return null;
+                    
+                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                        return scormBlock.results.find(r => r.value === dominantValue) || null;
+                    };
+                    const scormResult = calculateScormResult(block, answer);
                     if (scormResult?.text) {
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = scormResult.text;
@@ -677,7 +689,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                 <ScrollArea className="h-[60vh] pr-4">
                     <div className="space-y-6">
                         {model.questions?.map(block => {
-                            const answer = suivi.answers?.find(a => a.questionId === block.id)?.answer;
+                            const answer = liveAnswers[block.id];
                             return <ResultDisplayBlock key={block.id} block={block} answer={answer} suivi={suivi} />;
                         })}
                     </div>
@@ -747,7 +759,30 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const scormResult = answer?.__scorm_result;
+            const calculateScormResult = (scormBlock: typeof block, scormAnswers: any): ScormResult | null => {
+                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                const questionIds = scormBlock.questions.map(q => q.id);
+                if (questionIds.some(qId => !scormAnswers[qId])) {
+                    return null;
+                }
+            
+                const valueCounts: Record<string, number> = {};
+                for (const qId of questionIds) {
+                    const answerId = scormAnswers[qId];
+                    if (!answerId) continue;
+                    const question = scormBlock.questions.find(q => q.id === qId);
+                    const answerData = question?.answers.find(a => a.id === answerId);
+                    if (answerData?.value) {
+                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                    }
+                }
+            
+                if (Object.keys(valueCounts).length === 0) return null;
+            
+                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                return scormBlock.results.find(r => r.value === dominantValue) || null;
+            };
+            const scormResult = calculateScormResult(block, answer);
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>

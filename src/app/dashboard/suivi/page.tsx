@@ -380,9 +380,7 @@ function FollowUpManager() {
                                 </TableRow>
                             ))
                          ) : (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">Aucun suivi en cours.</TableCell>
-                            </TableRow>
+                            <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun suivi en cours.</TableCell></TableRow>
                          )}
                     </TableBody>
                 </Table>
@@ -995,6 +993,45 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     }
                     break;
+                case 'scorm':
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                        if (!scormBlock.questions || !scormBlock.results) return null;
+                        
+                        const questionIds = scormBlock.questions.map(q => q.id);
+                        if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
+                            return null;
+                        }
+                    
+                        const valueCounts: Record<string, number> = {};
+                        for (const qId of questionIds) {
+                            const answerId = currentAnswers[qId];
+                            if (!answerId) continue;
+                            const question = scormBlock.questions.find(q => q.id === qId);
+                            const answerData = question?.answers.find(a => a.id === answerId);
+                            if (answerData?.value) {
+                                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                            }
+                        }
+                    
+                        if (Object.keys(valueCounts).length === 0) return null;
+                    
+                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                        return scormBlock.results.find(r => r.value === dominantValue) || null;
+                    };
+
+                    const scormResult = calculateScormResult(block, answer);
+                    if (scormResult?.text) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = scormResult.text;
+                        const textContent = tempDiv.textContent || tempDiv.innerText || "";
+                        const lines = docJs.splitTextToSize(textContent, 180);
+                        docJs.text(lines, 15, yPos);
+                        yPos += lines.length * 7 + 5;
+                    } else {
+                        docJs.text("Résultat non calculé.", 15, yPos);
+                        yPos += 12;
+                    }
+                    break;
                 default:
                     const answerText = answer !== undefined ? JSON.stringify(answer, null, 2) : "Non répondu";
                     const lines = docJs.splitTextToSize(answerText, 180);
@@ -1090,19 +1127,30 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const calculateScormResult = (scormBlock: typeof block, scormAnswers: any) => {
-                 if (!scormBlock.questions || scormBlock.questions.length === 0 || !scormAnswers) return null;
-                const totalValue = scormBlock.questions.reduce((sum, question) => {
-                    const answerId = scormAnswers[question.id];
-                    if (!answerId) return sum;
-                    const selectedAnswer = question.answers.find(a => a.id === answerId);
-                    return sum + (selectedAnswer ? parseInt(selectedAnswer.value, 10) : 0);
-                }, 0);
-
-                return scormBlock.results
-                    ?.filter(r => parseInt(r.value, 10) <= totalValue)
-                    .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
+            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                const questionIds = scormBlock.questions.map(q => q.id);
+                if (questionIds.some(qId => !scormAnswers[qId])) {
+                    return null;
+                }
+            
+                const valueCounts: Record<string, number> = {};
+                for (const qId of questionIds) {
+                    const answerId = scormAnswers[qId];
+                    if (!answerId) continue;
+                    const question = scormBlock.questions.find(q => q.id === qId);
+                    const answerData = question?.answers.find(a => a.id === answerId);
+                    if (answerData?.value) {
+                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                    }
+                }
+            
+                if (Object.keys(valueCounts).length === 0) return null;
+            
+                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                return scormBlock.results.find(r => r.value === dominantValue) || null;
             };
+
             const scormResult = calculateScormResult(block, answer);
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
