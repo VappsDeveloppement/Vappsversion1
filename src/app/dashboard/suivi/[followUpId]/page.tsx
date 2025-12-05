@@ -27,6 +27,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 type FollowUp = {
@@ -283,29 +285,26 @@ export default function FollowUpPage() {
     };
 
     const handleAnswerChange = (questionId: string, answer: any) => {
-        setAnswers(prevAnswers => {
-            const newAnswers = { ...prevAnswers, [questionId]: answer };
-            
-            // If the block is a SCORM block, calculate and store the result immediately
-            const questionBlock = model?.questions?.find(q => q.id === questionId);
-            if (questionBlock?.type === 'scorm') {
-                const result = calculateScormResult(questionBlock, answer);
-                newAnswers[questionId] = { ...answer, __scorm_result: result };
-            }
-            
-            persistAnswers(newAnswers);
-            return newAnswers;
-        });
+        const newAnswers = { ...answers, [questionId]: answer };
+        const questionBlock = model?.questions?.find(q => q.id === questionId);
+
+        if (questionBlock?.type === 'scorm') {
+            const result = calculateScormResult(questionBlock, answer);
+            newAnswers[questionId] = { ...answer, __scorm_result: result };
+        }
+        
+        setAnswers(newAnswers);
+        persistAnswers(newAnswers);
     };
     
     const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
         if (!scormBlock.questions || !scormBlock.results) return null;
-        
+
         const questionIds = scormBlock.questions.map(q => q.id);
         if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
             return null; // Not all questions answered
         }
-    
+
         const valueCounts: Record<string, number> = {};
         for (const qId of questionIds) {
             const answerId = currentAnswers[qId];
@@ -450,17 +449,13 @@ export default function FollowUpPage() {
                                     <PrismeAnalysisBlock 
                                         savedAnalysis={blockAnswer} 
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={async () => {
-                                            await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] });
-                                        }}
+                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
                                     />
                                 </CardContent>
                             </Card>
                         );
                     }
                    if (questionBlock.type === 'scorm') {
-                        const scormResult = calculateScormResult(questionBlock, blockAnswer);
-
                         return (
                             <Card key={questionBlock.id}>
                                 <CardHeader>
@@ -551,10 +546,7 @@ export default function FollowUpPage() {
                                 questionBlock={questionBlock}
                                 initialAnswer={blockAnswer}
                                 onAnswerChange={(value: any) => handleAnswerChange(questionBlock.id, value)}
-                                onSaveBlock={async () => {
-                                    await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] });
-                                    toast({ title: "Compte rendu enregistré" });
-                                }}
+                                onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
                             />
                         );
                     }
@@ -760,7 +752,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
-                         {scormResult ? (
+                         {scormResult?.text ? (
                             <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
                         ) : 'Résultat non calculé.'}
                     </CardContent>
