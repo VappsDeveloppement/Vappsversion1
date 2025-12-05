@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building, Percent, CheckCircle, XCircle, Save, BookOpen } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, documentId } from 'firebase/firestore';
 import { useFirestore, useStorage } from '@/firebase/provider';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -762,8 +762,12 @@ function JobOfferManager() {
         const offerData = {
           counselorId: user.uid,
           ...data,
+          contractType: data.contractType || [],
+          workingHours: data.workingHours || [],
+          environment: data.environment || [],
+          location: data.location || [],
+          salary: data.salary || [],
           infoMatching: {
-            ...data.infoMatching,
             trainingLevels: data.infoMatching?.trainingLevels || [],
             trainingRncps: data.infoMatching?.trainingRncps || [],
             trainingTitles: data.infoMatching?.trainingTitles || [],
@@ -773,7 +777,8 @@ function JobOfferManager() {
             softSkills: data.infoMatching?.softSkills || [],
           },
           additionalInfo: {
-            ...data.additionalInfo,
+            companyCoordinates: data.additionalInfo?.companyCoordinates || '',
+            internalNotes: data.additionalInfo?.internalNotes || '',
           }
         };
 
@@ -1025,7 +1030,8 @@ function TestManager() {
 
         let suggestedTrainingsData: Training[] = [];
         if (suggestedTrainingIds.length > 0) {
-            const trainingsQuery = query(collection(firestore, 'trainings'), where(doc(firestore, 'trainings').id, 'in', suggestedTrainingIds));
+            const trainingsCollection = collection(firestore, 'trainings');
+            const trainingsQuery = query(trainingsCollection, where(documentId(), 'in', suggestedTrainingIds));
             const trainingsSnapshot = await getDocs(trainingsQuery);
             suggestedTrainingsData = trainingsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Training));
         }
@@ -1133,7 +1139,7 @@ function TestManager() {
                                 <h4 className="font-semibold text-lg mb-4">Formations suggérées</h4>
                                 <div className="space-y-2">
                                     {matchResult.suggestedTrainings.map(training => (
-                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id}>
+                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id} passHref>
                                             <a className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
                                                 <p className="font-semibold">{training.title}</p>
                                                 <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
@@ -1191,5 +1197,7 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    
 
     
