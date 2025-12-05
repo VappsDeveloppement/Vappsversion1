@@ -418,13 +418,14 @@ export default function FollowUpPage() {
                     }
                    if (questionBlock.type === 'scorm') {
                         const scormAnswers = blockAnswer || {};
-
+                    
                         const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
                             if (!scormBlock.questions || !scormBlock.results) return null;
+                    
                             const questionIds = scormBlock.questions.map(q => q.id);
                             const allAnswered = questionIds.every(qId => currentAnswers[qId]);
                             if (!allAnswered) return null;
-
+                    
                             const valueCounts: Record<string, number> = {};
                             for (const qId of questionIds) {
                                 const answerId = currentAnswers[qId];
@@ -434,10 +435,10 @@ export default function FollowUpPage() {
                                     valueCounts[answer.value] = (valueCounts[answer.value] || 0) + 1;
                                 }
                             }
-
-                            const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b, '');
-                            if (!dominantValue) return null;
-
+                    
+                            if (Object.keys(valueCounts).length === 0) return null;
+                    
+                            const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
                             return scormBlock.results.find(r => r.value === dominantValue) || null;
                         };
                     
@@ -649,9 +650,9 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                             }
                         }
 
-                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b, '');
-                        if (!dominantValue) return null;
+                        if (Object.keys(valueCounts).length === 0) return null;
 
+                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
                         return scormBlock.results.find(r => r.value === dominantValue) || null;
                     };
                     const scormResult = calculateScormResult(block, answer);
