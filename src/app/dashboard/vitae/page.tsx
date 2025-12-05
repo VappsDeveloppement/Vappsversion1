@@ -1,10 +1,11 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building, Percent, CheckCircle, XCircle, Save } from "lucide-react";
+import { FileText, Briefcase, FlaskConical, Search, Inbox, PlusCircle, Trash2, Edit, X, Download, MoreHorizontal, Upload, ChevronsUpDown, Check, BookCopy, Eye, User, FileSymlink, Users, Link as LinkIcon, Building, Percent, CheckCircle, XCircle, Save, BookOpen } from "lucide-react";
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore, useStorage } from '@/firebase/provider';
@@ -264,6 +265,7 @@ const ficheMetierSchema = z.object({
       competence: z.string().min(1, 'La compétence est requise.'),
       activities: z.array(z.string()).optional(),
   })).optional(),
+  associatedTrainings: z.array(z.string()).optional(),
 });
 
 type FicheMetierFormData = z.infer<typeof ficheMetierSchema>;
@@ -282,10 +284,13 @@ function FichesMetiersManager() {
 
     const fichesQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/fiches_metiers`)) : null, [user, firestore]);
     const { data: fiches, isLoading } = useCollection<FicheMetier>(fichesQuery);
+
+    const trainingsQuery = useMemoFirebase(() => user ? query(collection(firestore, 'trainings'), where('authorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: trainings, isLoading: areTrainingsLoading } = useCollection<Training>(trainingsQuery);
     
     const form = useForm<FicheMetierFormData>({
         resolver: zodResolver(ficheMetierSchema),
-        defaultValues: { name: '', entryLevel: [], associatedRncp: [], associatedTraining: [], associatedRomeCode: [], associatedJobs: [], expectedSoftSkills: [], competences: [] }
+        defaultValues: { name: '', entryLevel: [], associatedRncp: [], associatedTraining: [], associatedRomeCode: [], associatedJobs: [], expectedSoftSkills: [], competences: [], associatedTrainings: [] }
     });
 
     const { fields, append, remove } = useFieldArray({
@@ -322,7 +327,7 @@ function FichesMetiersManager() {
             if (editingFiche) {
                 form.reset(editingFiche);
             } else {
-                 form.reset({ name: '', entryLevel: [], associatedRncp: [], associatedTraining: [], associatedRomeCode: [], associatedJobs: [], expectedSoftSkills: [], competences: [] });
+                 form.reset({ name: '', entryLevel: [], associatedRncp: [], associatedTraining: [], associatedRomeCode: [], associatedJobs: [], expectedSoftSkills: [], competences: [], associatedTrainings: [] });
             }
         }
     }, [isSheetOpen, editingFiche, form]);
@@ -375,6 +380,51 @@ function FichesMetiersManager() {
                                         <FormField control={form.control} name="entryLevel" render={({ field }) => (<FormItem><FormLabel>Niveau d'accès</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un niveau..." /></FormControl><FormMessage /></FormItem>)}/>
                                         <FormField control={form.control} name="associatedRncp" render={({ field }) => (<FormItem><FormLabel>RNCP associés</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un code RNCP..." /></FormControl><FormMessage /></FormItem>)}/>
                                         <FormField control={form.control} name="associatedTraining" render={({ field }) => (<FormItem><FormLabel>Intitulé de formation associé</FormLabel><FormControl><TagInput {...field} placeholder="Ajouter un intitulé..." /></FormControl><FormMessage /></FormItem>)}/>
+                                        <FormField
+                                            control={form.control}
+                                            name="associatedTrainings"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Formations du catalogue associées</FormLabel>
+                                                    <Popover>
+                                                        <PopoverTrigger asChild>
+                                                            <FormControl>
+                                                                <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                                                                    {field.value && field.value.length > 0 ? `${field.value.length} formation(s) sélectionnée(s)` : "Sélectionner des formations..."}
+                                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                                </Button>
+                                                            </FormControl>
+                                                        </PopoverTrigger>
+                                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                                            <Command>
+                                                                <CommandInput placeholder="Rechercher..." />
+                                                                <CommandList>
+                                                                    <CommandEmpty>Aucune formation trouvée.</CommandEmpty>
+                                                                    <CommandGroup>
+                                                                        {trainings?.map((training) => (
+                                                                            <CommandItem
+                                                                                key={training.id}
+                                                                                onSelect={() => {
+                                                                                    const selected = field.value || [];
+                                                                                    const newSelection = selected.includes(training.id)
+                                                                                        ? selected.filter((id) => id !== training.id)
+                                                                                        : [...selected, training.id];
+                                                                                    field.onChange(newSelection);
+                                                                                }}
+                                                                            >
+                                                                                <Check className={cn("mr-2 h-4 w-4", (field.value || []).includes(training.id) ? "opacity-100" : "opacity-0")} />
+                                                                                {training.title}
+                                                                            </CommandItem>
+                                                                        ))}
+                                                                    </CommandGroup>
+                                                                </CommandList>
+                                                            </Command>
+                                                        </PopoverContent>
+                                                    </Popover>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                 </section>
                                  <section>
@@ -712,6 +762,19 @@ function JobOfferManager() {
         const offerData = {
           counselorId: user.uid,
           ...data,
+          infoMatching: {
+            ...data.infoMatching,
+            trainingLevels: data.infoMatching?.trainingLevels || [],
+            trainingRncps: data.infoMatching?.trainingRncps || [],
+            trainingTitles: data.infoMatching?.trainingTitles || [],
+            jobRomeCodes: data.infoMatching?.jobRomeCodes || [],
+            jobTitles: data.infoMatching?.jobTitles || [],
+            competences: data.infoMatching?.competences || [],
+            softSkills: data.infoMatching?.softSkills || [],
+          },
+          additionalInfo: {
+            ...data.additionalInfo,
+          }
         };
 
         if (editingOffer) {
@@ -841,7 +904,7 @@ function TestManager() {
     const [selectedCvId, setSelectedCvId] = useState<string | null>(null);
     const [selectedComparisonId, setSelectedComparisonId] = useState<string | null>(null);
     const [comparisonType, setComparisonType] = useState<'offer' | 'fiche'>('offer');
-    const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[]; } | null>(null);
+    const [matchResult, setMatchResult] = useState<{ score: number; matching: string[]; missing: string[]; suggestedTrainings: Training[] } | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const { toast } = useToast();
 
@@ -861,7 +924,7 @@ function TestManager() {
     const fichesMetiersQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/fiches_metiers`)) : null, [user, firestore]);
     const { data: fichesMetiers, isLoading: areFichesMetiersLoading } = useCollection<FicheMetier>(fichesMetiersQuery);
 
-    const handleRunMatch = () => {
+    const handleRunMatch = async () => {
         if (!selectedCvId || !selectedComparisonId || !cvProfiles) return;
         setIsLoading(true);
 
@@ -872,6 +935,8 @@ function TestManager() {
         }
 
         let offer: any = null;
+        let suggestedTrainingIds: string[] = [];
+
         if (comparisonType === 'offer') {
             offer = jobOffers?.find(o => o.id === selectedComparisonId);
         } else {
@@ -889,6 +954,7 @@ function TestManager() {
                     contractType: [],
                     location: []
                 };
+                suggestedTrainingIds = fiche.associatedTrainings || [];
             }
         }
         
@@ -931,7 +997,6 @@ function TestManager() {
         checkMatch(cvRncpCodes, offerRncpCodes, "Certifications RNCP correspondantes", "Certifications RNCP requises");
         checkMatch(cvFormationTitles, offerFormationTitles, "Intitulés de formation correspondants", "Formations spécifiques manquantes");
 
-
         const cvSoftSkills = new Set(cv.softSkills || []);
         const offerSoftSkills = new Set(offer.infoMatching?.softSkills || []);
         checkMatch(cvSoftSkills, offerSoftSkills, "Soft skills communs", "Soft skills manquants");
@@ -958,8 +1023,15 @@ function TestManager() {
             checkMatch(new Set(cv.mobility?.map(m => m.toLowerCase())), new Set(offer.location?.map((l: string) => l.toLowerCase())), "Localisation compatible", "Mobilité requise");
         }
 
+        let suggestedTrainingsData: Training[] = [];
+        if (suggestedTrainingIds.length > 0) {
+            const trainingsQuery = query(collection(firestore, 'trainings'), where(doc(firestore, 'trainings').id, 'in', suggestedTrainingIds));
+            const trainingsSnapshot = await getDocs(trainingsQuery);
+            suggestedTrainingsData = trainingsSnapshot.docs.map(d => ({ id: d.id, ...d.data() } as Training));
+        }
+
         const finalScore = totalChecks > 0 ? (score / totalChecks) * 100 : 0;
-        const result = { score: Math.round(finalScore), matching: matchingDetails, missing: missingDetails };
+        const result = { score: Math.round(finalScore), matching: matchingDetails, missing: missingDetails, suggestedTrainings: suggestedTrainingsData };
         setMatchResult(result);
         localStorage.setItem('lastVitaeAnalysisResult', JSON.stringify(result));
         setIsLoading(false);
@@ -1056,6 +1128,21 @@ function TestManager() {
                                 </div>
                             </div>
                         </div>
+                        {matchResult.suggestedTrainings && matchResult.suggestedTrainings.length > 0 && (
+                            <div className="pt-6 border-t">
+                                <h4 className="font-semibold text-lg mb-4">Formations suggérées</h4>
+                                <div className="space-y-2">
+                                    {matchResult.suggestedTrainings.map(training => (
+                                        <Link href={`/dashboard/e-learning/path/${training.id}`} key={training.id}>
+                                            <a className="block p-3 border rounded-md hover:bg-muted/50 transition-colors">
+                                                <p className="font-semibold">{training.title}</p>
+                                                <p className="text-sm text-muted-foreground line-clamp-2">{training.description}</p>
+                                            </a>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
             </CardContent>
@@ -1085,7 +1172,7 @@ export default function VitaePage() {
                         <Briefcase className="mr-2 h-4 w-4" /> OFFRE D'EMPLOI
                     </TabsTrigger>
                      <TabsTrigger value="bloc-question-vitae">
-                        <FlaskConical className="mr-2 h-4 w-4" /> BLOC QUESTION VITAE
+                        <FlaskConical className="mr-2 h-4 w-4" /> ANALYSE DE PARCOURS PROFESSIONNEL
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="fiches-metiers">
@@ -1104,3 +1191,5 @@ export default function VitaePage() {
         </div>
     );
 }
+
+    

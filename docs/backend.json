@@ -173,26 +173,41 @@
         "properties": {
             "id": { "type": "string" },
             "counselorId": { "type": "string" },
+            "title": { "type": "string" },
             "reference": { "type": "string" },
-            "title": { "type": "array", "items": { "type": "string" } },
             "description": { "type": "string" },
             "contractType": { "type": "array", "items": { "type": "string" } },
             "workingHours": { "type": "array", "items": { "type": "string" } },
+            "environment": { "type": "array", "items": { "type": "string" } },
             "location": { "type": "array", "items": { "type": "string" } },
             "salary": { "type": "array", "items": { "type": "string" } },
-            "softSkills": { "type": "array", "items": { "type": "string" } },
             "infoMatching": {
                 "type": "object",
                 "properties": {
-                    "rncpCodes": { "type": "array", "items": { "type": "string" } },
-                    "rncpLevels": { "type": "array", "items": { "type": "string" } },
-                    "rncpTitles": { "type": "array", "items": { "type": "string" } },
-                    "rncpSkills": { "type": "array", "items": { "type": "string" } },
-                    "rncpActivities": { "type": "array", "items": { "type": "string" } },
-                    "romeCodes": { "type": "array", "items": { "type": "string" } },
-                    "romeTitles": { "type": "array", "items": { "type": "string" } },
-                    "romeSkills": { "type": "array", "items": { "type": "string" } },
-                    "romeActivities": { "type": "array", "items": { "type": "string" } }
+                    "trainingLevels": { "type": "array", "items": { "type": "string" } },
+                    "trainingRncps": { "type": "array", "items": { "type": "string" } },
+                    "trainingTitles": { "type": "array", "items": { "type": "string" } },
+                    "jobRomeCodes": { "type": "array", "items": { "type": "string" } },
+                    "jobTitles": { "type": "array", "items": { "type": "string" } },
+                    "competences": { 
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "id": { "type": "string" },
+                                "name": { "type": "string" },
+                                "activities": { "type": "array", "items": { "type": "string" } }
+                            }
+                        }
+                    },
+                    "softSkills": { "type": "array", "items": { "type": "string" } }
+                }
+            },
+            "additionalInfo": {
+                "type": "object",
+                "properties": {
+                    "companyCoordinates": { "type": "string" },
+                    "internalNotes": { "type": "string" }
                 }
             }
         },
@@ -206,15 +221,23 @@
         "id": { "type": "string" },
         "counselorId": { "type": "string" },
         "name": { "type": "string" },
-        "rncpCodes": { "type": "array", "items": { "type": "string" } },
-        "rncpLevel": { "type": "array", "items": { "type": "string" } },
-        "rncpTitle": { "type": "array", "items": { "type": "string" } },
-        "romeCodes": { "type": "array", "items": { "type": "string" } },
-        "romeTitles": { "type": "array", "items": { "type": "string" } },
+        "entryLevel": { "type": "array", "items": { "type": "string" } },
+        "associatedRncp": { "type": "array", "items": { "type": "string" } },
+        "associatedTraining": { "type": "array", "items": { "type": "string" } },
+        "associatedRomeCode": { "type": "array", "items": { "type": "string" } },
         "associatedJobs": { "type": "array", "items": { "type": "string" } },
-        "softSkills": { "type": "array", "items": { "type": "string" } },
-        "competences": { "type": "array", "items": { "type": "string" } },
-        "activites": { "type": "array", "items": { "type": "string" } },
+        "expectedSoftSkills": { "type": "array", "items": { "type": "string" } },
+        "competences": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "competence": { "type": "string" },
+              "activities": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
         "associatedTrainings": {
           "type": "array",
           "items": { "type": "string" },
@@ -222,6 +245,55 @@
         }
       },
       "required": ["name", "counselorId"]
+    },
+    "CvProfile": {
+      "title": "CV Profile",
+      "type": "object",
+      "description": "Represents a candidate's CV profile created by a counselor.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "currentJobs": { "type": "array", "items": { "type": "string" }, "description": "Métiers actuels du candidat." },
+        "searchedJobs": { "type": "array", "items": { "type": "string" }, "description": "Métiers recherchés ou projet professionnel." },
+        "contractTypes": { "type": "array", "items": { "type": "string" }, "description": "Types de contrat souhaités." },
+        "workDurations": { "type": "array", "items": { "type": "string" }, "description": "Durée de travail souhaitée (temps plein, partiel)." },
+        "workEnvironments": { "type": "array", "items": { "type": "string" }, "description": "Environnement de travail souhaité (bureau, télétravail)." },
+        "salary": { "type": "array", "items": { "type": "string" }, "description": "Fourchette de salaire souhaitée." },
+        "mobility": { "type": "array", "items": { "type": "string" }, "description": "Mobilité et lieux de travail souhaités." },
+        "formations": {
+          "type": "array",
+          "description": "Liste des formations suivies par le candidat.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "level": { "type": "array", "items": { "type": "string" } },
+              "rncpCode": { "type": "array", "items": { "type": "string" } },
+              "title": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "experiences": {
+          "type": "array",
+          "description": "Liste des expériences professionnelles du candidat.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "string" },
+              "romeCode": { "type": "array", "items": { "type": "string" } },
+              "title": { "type": "array", "items": { "type": "string" } },
+              "startDate": { "type": "string", "format": "date" },
+              "endDate": { "type": "string", "format": "date" },
+              "skills": { "type": "array", "items": { "type": "string" } },
+              "activities": { "type": "array", "items": { "type": "string" } }
+            }
+          }
+        },
+        "softSkills": { "type": "array", "items": { "type": "string" }, "description": "Compétences comportementales du candidat." }
+      },
+      "required": ["counselorId", "clientId", "clientName"]
     },
     "User": {
       "$schema": "http://json-schema.org/draft-07/schema#",
@@ -1669,6 +1741,14 @@
           "description": "Stores wellness sheets created by a counselor for their clients."
         }
       },
+      {
+        "path": "/users/{userId}/cv_profiles/{profileId}",
+        "definition": {
+            "entityName": "CvProfile",
+            "schema": { "$ref": "#/entities/CvProfile" },
+            "description": "Stores CV profiles created by a counselor for their clients."
+        }
+      },
        {
         "path": "/users/{userId}/fiches_metiers/{ficheId}",
         "definition": {
@@ -1955,3 +2035,5 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
+
+    
