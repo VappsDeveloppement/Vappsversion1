@@ -289,25 +289,10 @@ export default function FollowUpPage() {
         if (!followUpRef || !followUp) return;
         setIsSubmitting(true);
         
-        const answersArray = Object.entries(answers).map(([questionId, answer]) => {
-            const block = model?.questions?.find(q => q.id === questionId);
-            if (block?.type === 'scorm' && typeof answer === 'object' && answer !== null) {
-                return {
-                    questionId,
-                    answer: cleanDataForFirestore(answer),
-                };
-            }
-             if (block?.type === 'qcm' && typeof answer === 'object' && answer !== null) {
-                return {
-                    questionId,
-                    answer: cleanDataForFirestore(answer),
-                };
-            }
-            return {
-                questionId,
-                answer,
-            };
-        });
+        const answersArray = Object.entries(answers).map(([questionId, answer]) => ({
+            questionId,
+            answer: cleanDataForFirestore(answer),
+        }));
 
         try {
             await setDocumentNonBlocking(followUpRef, { answers: answersArray, status: 'completed' }, { merge: true });
@@ -432,15 +417,17 @@ export default function FollowUpPage() {
                             </Card>
                         );
                     }
-                     if (questionBlock.type === 'scorm') {
+                    if (questionBlock.type === 'scorm') {
                         const scormAnswers = blockAnswer || {};
                         const questionCount = questionBlock.questions?.length || 0;
                         const answeredCount = Object.keys(scormAnswers).length;
                         const allAnswered = questionCount > 0 && answeredCount === questionCount;
-
-                        const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>) => {
-                            if (!scormBlock.questions || scormBlock.questions.length === 0 || !currentAnswers) return null;
-
+                    
+                        const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                            if (!scormBlock.questions || scormBlock.questions.length === 0 || !currentAnswers || Object.keys(currentAnswers).length < scormBlock.questions.length) {
+                                return null;
+                            }
+                    
                             const totalValue = scormBlock.questions.reduce((sum, question) => {
                                 const answerId = currentAnswers[question.id];
                                 if (!answerId) return sum;
@@ -448,14 +435,17 @@ export default function FollowUpPage() {
                                 const value = answer ? parseInt(answer.value, 10) : 0;
                                 return sum + (isNaN(value) ? 0 : value);
                             }, 0);
-
-                            return scormBlock.results
+                    
+                            // Find the best matching result for the calculated score
+                            const bestResult = scormBlock.results
                                 .filter(r => parseInt(r.value, 10) <= totalValue)
                                 .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
+                    
+                            return bestResult || null;
                         };
-                        
-                        const result = allAnswered ? calculateScormResult(questionBlock, scormAnswers) : null;
-
+                    
+                        const result = calculateScormResult(questionBlock, scormAnswers);
+                    
                         return (
                             <Card key={questionBlock.id}>
                                 <CardHeader>
@@ -468,7 +458,7 @@ export default function FollowUpPage() {
                                             <Label className="font-semibold">{question.text}</Label>
                                             <RadioGroup
                                                 value={scormAnswers[question.id]}
-                                                onValueChange={(value) => handleAnswerChange(questionBlock.id, {...scormAnswers, [question.id]: value})}
+                                                onValueChange={(value) => handleAnswerChange(questionBlock.id, { ...scormAnswers, [question.id]: value })}
                                                 className="mt-2 space-y-2"
                                             >
                                                 {question.answers.map(answer => (
@@ -480,15 +470,19 @@ export default function FollowUpPage() {
                                             </RadioGroup>
                                         </div>
                                     ))}
-                                    {result && (
+                                    {allAnswered && (
                                         <div className="pt-6 mt-6 border-t">
                                             <h4 className="font-semibold text-lg mb-2">Résultat</h4>
-                                            <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded-md" dangerouslySetInnerHTML={{ __html: result.text }} />
+                                            {result ? (
+                                                <div className="prose dark:prose-invert max-w-none p-4 bg-muted rounded-md" dangerouslySetInnerHTML={{ __html: result.text }} />
+                                            ) : (
+                                                <p className="text-muted-foreground">Aucun résultat correspondant à votre score.</p>
+                                            )}
                                         </div>
                                     )}
                                 </CardContent>
                             </Card>
-                        )
+                        );
                     }
                      if (questionBlock.type === 'qcm') {
                          const qcmAnswers = blockAnswer || {};
@@ -643,81 +637,6 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                         yPos += 8;
                         autoTable(docJs, { head: [['Nom', 'Spécialités', 'Contact']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '', `${p.email || ''}\n${p.phone || ''}`]), startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
-                    }
-                    break;
-                case 'qcm':
-                    docJs.setFontSize(10);
-                    (block.questions || []).forEach(q => {
-                        const selectedAnswerId = answer?.[q.id];
-                        const selectedAnswer = q.answers.find(a => a.id === selectedAnswerId);
-                        docJs.setFont('helvetica', 'bold');
-                        docJs.text(q.text, 15, yPos);
-                        yPos += 5;
-                        docJs.setFont('helvetica', 'normal');
-                        docJs.text(`Réponse: ${selectedAnswer?.text || 'Non répondu'}`, 20, yPos);
-                        yPos += 5;
-                        if (selectedAnswer?.resultText) {
-                            const tempDiv = document.createElement('div');
-                            tempDiv.innerHTML = selectedAnswer.resultText;
-                            const textContent = tempDiv.textContent || '';
-                            const resultLines = docJs.splitTextToSize(`Résultat: ${textContent}`, 170);
-                            docJs.text(resultLines, 20, yPos);
-                            yPos += resultLines.length * 5 + 5;
-                        }
-                    });
-                    docJs.setFontSize(12);
-                    break;
-                case 'scorm':
-                    const calculateScormResult = (scormBlock: typeof block, scormAnswers: any) => {
-                        if (!scormBlock.questions || scormBlock.questions.length === 0 || !scormAnswers) return null;
-                        const totalValue = scormBlock.questions.reduce((sum, question) => {
-                            const answerId = scormAnswers[question.id];
-                            if (!answerId) return sum;
-                            const selectedAnswer = question.answers.find(a => a.id === answerId);
-                            const value = selectedAnswer ? parseInt(selectedAnswer.value, 10) : 0;
-                            return sum + (isNaN(value) ? 0 : value);
-                        }, 0);
-
-                        return scormBlock.results
-                            ?.filter(r => parseInt(r.value, 10) <= totalValue)
-                            .sort((a, b) => parseInt(b.value, 10) - parseInt(a.value, 10))[0];
-                    };
-                    const scormResult = calculateScormResult(block, answer);
-                    if (scormResult) {
-                         const tempDiv = document.createElement('div');
-                         tempDiv.innerHTML = scormResult.text;
-                         const textContent = tempDiv.textContent || '';
-                         const resultLines = docJs.splitTextToSize(textContent, 180);
-                         docJs.text(resultLines, 15, yPos);
-                         yPos += resultLines.length * 7 + 5;
-                    } else {
-                        docJs.text("Résultat non calculé.", 15, yPos);
-                        yPos += 7;
-                    }
-                    break;
-                case 'prisme':
-                    if (answer?.drawnCards?.length > 0) {
-                        const body = answer.drawnCards.map((item: any) => [
-                            `${item.position.positionNumber}. ${item.position.meaning}`,
-                            item.card.name,
-                            item.card.description || ''
-                        ]);
-                        autoTable(docJs, { head: [['Position', 'Carte', 'Description']], body, startY: yPos });
-                        yPos = (docJs as any).lastAutoTable.finalY + 10;
-                    } else {
-                        docJs.text('Aucun tirage Prisme effectué.', 15, yPos);
-                        yPos += 10;
-                    }
-                    break;
-                case 'vitae':
-                case 'aura':
-                    if (answer) {
-                        const lines = docJs.splitTextToSize(JSON.stringify(answer, null, 2), 180);
-                        docJs.text(lines, 15, yPos);
-                        yPos += lines.length * 5 + 5;
-                    } else {
-                        docJs.text('Analyse non effectuée.', 15, yPos);
-                        yPos += 10;
                     }
                     break;
                 default:
@@ -947,5 +866,3 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
     }
 }
-
-    
