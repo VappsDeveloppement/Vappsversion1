@@ -4,8 +4,8 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser, useCollection } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -17,6 +17,7 @@ import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
 
 
 type FollowUp = {
@@ -39,6 +40,7 @@ type QcmQuestion = { id: string; text: string; answers: QcmAnswer[]; };
 type QuestionBlock = 
     | { id: string; type: 'scale'; title?: string, questions: { id: string; text: string }[] } 
     | { id: string; type: 'aura' }
+    | { id: string; type: 'vitae' }
     | { id: string; type: 'scorm', title: string; questions: ScormQuestion[]; results: ScormResult[] }
     | { id: string; type: 'qcm', title: string; questions: QcmQuestion[]; };
 
@@ -188,6 +190,22 @@ export default function FollowUpPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <BlocQuestionModele />
+                                </CardContent>
+                            </Card>
+                        )
+                    }
+                    if (questionBlock.type === 'vitae') {
+                         return (
+                            <Card key={questionBlock.id}>
+                                <CardHeader>
+                                    <CardTitle>Analyse de Parcours Professionnel (Vitae)</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <VitaeAnalysisBlock 
+                                        savedAnalysis={answers[questionBlock.id]} 
+                                        onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
+                                        clientId={followUp.clientId}
+                                    />
                                 </CardContent>
                             </Card>
                         )

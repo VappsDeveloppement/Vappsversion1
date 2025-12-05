@@ -4,7 +4,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot } from "lucide-react";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,6 +48,12 @@ const auraBlockSchema = z.object({
   id: z.string(),
   type: z.literal('aura'),
 });
+
+const vitaeAnalysisBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal('vitae'),
+});
+
 
 const scormAnswerSchema = z.object({
   id: z.string(),
@@ -99,6 +105,7 @@ const questionSchema = z.discriminatedUnion("type", [
   auraBlockSchema,
   scormBlockSchema,
   qcmBlockSchema,
+  vitaeAnalysisBlockSchema,
 ]);
 
 const questionModelSchema = z.object({
@@ -473,6 +480,9 @@ function FormTemplateManager() {
                                               if (field.type === 'aura') {
                                                   return <AuraBlockEditor key={field.id} remove={() => remove(index)} />;
                                               }
+                                              if (field.type === 'vitae') {
+                                                  return <VitaeBlockEditor key={field.id} remove={() => remove(index)} />;
+                                              }
                                               if (field.type === 'scorm') {
                                                   return <ScormBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
                                               }
@@ -487,6 +497,9 @@ function FormTemplateManager() {
                                               </Button>
                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Analyse AURA"
+                                              </Button>
+                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'vitae' })}>
+                                                  <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Analyse Vitae"
                                               </Button>
                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM', questions: [], results: [] })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "SCORM"
@@ -582,6 +595,20 @@ function AuraBlockEditor({ remove }: { remove: () => void }) {
             </div>
             <div className="text-center text-muted-foreground p-4 rounded-md mt-4">
                 Le bloc d'analyse AURA sera inséré ici lors du suivi.
+            </div>
+        </Card>
+    );
+}
+
+function VitaeBlockEditor({ remove }: { remove: () => void }) {
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Bot className="h-4 w-4"/>Analyse Vitae</div>
+                <Button type="button" variant="ghost" size="icon" onClick={remove}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className="text-center text-muted-foreground p-4 rounded-md mt-4">
+                Le bloc d'analyse Vitae sera inséré ici lors du suivi.
             </div>
         </Card>
     );
