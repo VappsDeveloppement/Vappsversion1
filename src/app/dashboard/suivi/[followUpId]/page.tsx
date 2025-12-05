@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -13,11 +12,11 @@ import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
+import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 
 
 type FollowUp = {
@@ -49,6 +48,24 @@ type QuestionModel = {
     name: string;
     questions?: QuestionBlock[];
 };
+
+// This function will recursively remove any keys with `undefined` values.
+const cleanDataForFirestore = (data: any): any => {
+    if (Array.isArray(data)) {
+        return data.map(item => cleanDataForFirestore(item));
+    }
+    if (data !== null && typeof data === 'object') {
+        const newData: { [key: string]: any } = {};
+        for (const key in data) {
+            if (data[key] !== undefined) {
+                newData[key] = cleanDataForFirestore(data[key]);
+            }
+        }
+        return newData;
+    }
+    return data;
+};
+
 
 export default function FollowUpPage() {
     const params = useParams();
@@ -88,7 +105,10 @@ export default function FollowUpPage() {
     
     const persistAnswers = async (updatedAnswers: Record<string, any>) => {
         if (!followUpRef) return;
-         const answersArray = Object.entries(updatedAnswers).map(([questionId, answer]) => ({
+        
+        const cleanedAnswers = cleanDataForFirestore(updatedAnswers);
+        
+        const answersArray = Object.entries(cleanedAnswers).map(([questionId, answer]) => ({
             questionId,
             answer
         }));
@@ -99,7 +119,9 @@ export default function FollowUpPage() {
         if (!followUpRef || !followUp) return;
         setIsSubmitting(true);
         
-        const answersArray = Object.entries(answers).map(([questionId, answer]) => ({
+        const cleanedAnswers = cleanDataForFirestore(answers);
+        
+        const answersArray = Object.entries(cleanedAnswers).map(([questionId, answer]) => ({
             questionId,
             answer
         }));
