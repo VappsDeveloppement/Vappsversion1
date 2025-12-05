@@ -994,17 +994,16 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     }
                     break;
                 case 'scorm':
-                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                        if (!scormBlock.questions || !scormBlock.results) return null;
-                        
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                         if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                         const questionIds = scormBlock.questions.map(q => q.id);
-                        if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
+                        if (questionIds.some(qId => !scormAnswers[qId])) {
                             return null;
                         }
                     
                         const valueCounts: Record<string, number> = {};
                         for (const qId of questionIds) {
-                            const answerId = currentAnswers[qId];
+                            const answerId = scormAnswers[qId];
                             if (!answerId) continue;
                             const question = scormBlock.questions.find(q => q.id === qId);
                             const answerData = question?.answers.find(a => a.id === answerId);
@@ -1214,7 +1213,25 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-             if (!answer) {
+             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => {
+                if (!data || (!data.products?.length && !data.protocoles?.length)) {
+                    return (
+                        <div className="mb-4">
+                            <h4 className="font-semibold text-primary">{title}</h4>
+                            <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
+                        </div>
+                    );
+                }
+                return (
+                    <div className="mb-4">
+                        <h4 className="font-semibold text-primary">{title}</h4>
+                        {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
+                        {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
+                    </div>
+                );
+             };
+
+            if (!answer) {
                 return (
                     <Card>
                         <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
@@ -1222,19 +1239,6 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     </Card>
                 );
             }
-             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => (
-                <div className="mb-4">
-                    <h4 className="font-semibold text-primary">{title}</h4>
-                    {(!data.products || data.products.length === 0) && (!data.protocoles || data.protocoles.length === 0) ? (
-                        <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
-                    ) : (
-                        <>
-                            {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
-                            {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
-                        </>
-                    )}
-                </div>
-            );
 
             return (
                 <Card>
@@ -1242,9 +1246,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => (
-                                renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })
-                             )) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
