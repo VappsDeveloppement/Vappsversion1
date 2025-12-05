@@ -290,10 +290,7 @@ export default function FollowUpPage() {
         
         const answersArray = Object.entries(answers).map(([questionId, answer]) => {
             const block = model?.questions?.find(q => q.id === questionId);
-            // Ensure complex objects like from 'aura' or 'vitae' are saved correctly
-            const cleanedAnswer = (block?.type === 'aura' || block?.type === 'vitae' || block?.type === 'report') 
-                                    ? cleanDataForFirestore(answer) 
-                                    : answer;
+            const cleanedAnswer = cleanDataForFirestore(answer);
             return {
                 questionId,
                 answer: cleanedAnswer,
@@ -561,3 +558,5 @@ export default function FollowUpPage() {
         </div>
     );
 }
+
+    
