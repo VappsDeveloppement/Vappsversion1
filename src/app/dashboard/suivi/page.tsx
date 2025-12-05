@@ -1,20 +1,25 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from '@/components/ui/button';
+import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
+import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Label } from "@/components/ui/label";
 import { BlocQuestionModele } from "@/components/shared/bloc-question-modele";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -23,7 +28,6 @@ import { cn } from "@/lib/utils";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useAgency } from '@/context/agency-provider';
 import jsPDF from 'jspdf';
@@ -32,12 +36,9 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download, Loader2, Mail, Phone, Save, GripVertical } from 'lucide-react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import Image from 'next/image';
+import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
-
 
 const scaleSubQuestionSchema = z.object({
   id: z.string(),
@@ -665,7 +666,7 @@ function FormTemplateManager() {
                                   </div>
                               </div>
                           </ScrollArea>
-                          <SheetFooter className="pt-6 border-t mt-auto">
+                          <SheetFooter className="pt-4 border-t mt-auto">
                               <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                               <Button type="submit">Sauvegarder</Button>
                           </SheetFooter>
@@ -1009,7 +1010,6 @@ function LearningPathManager() {
     };
 
     const onModelSelect = (model: QuestionModel) => {
-        // Prevent adding duplicates
         if (fields.some(field => field.modelId === model.id)) {
             toast({
                 title: "Modèle déjà présent",
@@ -1080,52 +1080,54 @@ function LearningPathManager() {
                         </SheetHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                                <div className="space-y-6 py-4 pr-2 flex-1">
-                                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div>
-                                            <Label>Étapes du parcours</Label>
-                                            <p className="text-xs text-muted-foreground">Faites glisser pour réorganiser.</p>
-                                            <div className="mt-2 border rounded-lg p-2 min-h-48">
-                                                <DragDropContext onDragEnd={onDragEnd}>
-                                                    <Droppable droppableId="steps">
-                                                        {(provided) => (
-                                                            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                                                                {fields.map((step, index) => (
-                                                                    <Draggable key={step.id} draggableId={step.id} index={index}>
-                                                                        {(provided) => (
-                                                                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 rounded-md bg-background border">
-                                                                                <GripVertical className="h-5 w-5 text-muted-foreground" />
-                                                                                <span className="flex-1 text-sm">{step.modelName}</span>
-                                                                                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive/70" /></Button>
-                                                                            </div>
-                                                                        )}
-                                                                    </Draggable>
-                                                                ))}
-                                                                {provided.placeholder}
+                                <ScrollArea className="flex-1 pr-6 -mr-6">
+                                    <div className="space-y-6 py-4">
+                                        <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div>
+                                                <Label>Étapes du parcours</Label>
+                                                <p className="text-xs text-muted-foreground">Faites glisser pour réorganiser.</p>
+                                                <div className="mt-2 border rounded-lg p-2 min-h-48">
+                                                    <DragDropContext onDragEnd={onDragEnd}>
+                                                        <Droppable droppableId="steps">
+                                                            {(provided) => (
+                                                                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                                                                    {fields.map((step, index) => (
+                                                                        <Draggable key={step.id} draggableId={step.id} index={index}>
+                                                                            {(provided) => (
+                                                                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 rounded-md bg-background border">
+                                                                                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                                                                    <span className="flex-1 text-sm">{step.modelName}</span>
+                                                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive/70" /></Button>
+                                                                                </div>
+                                                                            )}
+                                                                        </Draggable>
+                                                                    ))}
+                                                                    {provided.placeholder}
+                                                                </div>
+                                                            )}
+                                                        </Droppable>
+                                                    </DragDropContext>
+                                                </div>
+                                            </div>
+                                            <div>
+                                                <Label>Modèles de formulaires disponibles</Label>
+                                                <ScrollArea className="h-96 mt-2 border rounded-lg">
+                                                    <div className="p-2 space-y-2">
+                                                        {areModelsLoading ? <Skeleton className="h-20 w-full" /> : models?.map(model => (
+                                                            <div key={model.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
+                                                                <span className="text-sm">{model.name}</span>
+                                                                <Button type="button" size="sm" variant="outline" onClick={() => onModelSelect(model)}>Ajouter</Button>
                                                             </div>
-                                                        )}
-                                                    </Droppable>
-                                                </DragDropContext>
+                                                        ))}
+                                                    </div>
+                                                </ScrollArea>
                                             </div>
                                         </div>
-                                        <div>
-                                            <Label>Modèles de formulaires disponibles</Label>
-                                            <ScrollArea className="h-96 mt-2 border rounded-lg">
-                                                <div className="p-2 space-y-2">
-                                                    {areModelsLoading ? <Skeleton className="h-20 w-full" /> : models?.map(model => (
-                                                        <div key={model.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
-                                                            <span className="text-sm">{model.name}</span>
-                                                            <Button type="button" size="sm" variant="outline" onClick={() => onModelSelect(model)}>Ajouter</Button>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </ScrollArea>
-                                        </div>
                                     </div>
-                                </div>
-                                <SheetFooter className="pt-6 border-t">
+                                </ScrollArea>
+                                <SheetFooter className="pt-4 border-t mt-auto">
                                     <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                                     <Button type="submit">Sauvegarder</Button>
                                 </SheetFooter>
@@ -1468,17 +1470,17 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => {
+            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: string) => {
                 if (!data || (!data.products?.length && !data.protocoles?.length)) {
                     return (
-                        <div className="mb-4">
+                        <div key={key} className="mb-4">
                             <h4 className="font-semibold text-primary">{title}</h4>
                             <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
                         </div>
                     );
                 }
                 return (
-                    <div className="mb-4">
+                    <div key={key} className="mb-4">
                         <h4 className="font-semibold text-primary">{title}</h4>
                         {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
                         {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
@@ -1501,15 +1503,15 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: React.Key | null | undefined) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: React.Key | null | undefined) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
-                            {renderSuggestions('', answer.byHolisticProfile)}
+                            {renderSuggestions('', answer.byHolisticProfile, 'holistic')}
                         </div>
                         <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
-                             {renderSuggestions('', answer.perfectMatch)}
+                             {renderSuggestions('', answer.perfectMatch, 'perfect')}
                         </div>
                     </CardContent>
                 </Card>
