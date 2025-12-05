@@ -419,7 +419,7 @@ export default function FollowUpPage() {
                                     <BlocQuestionModele
                                         savedAnalysis={blockAnswer}
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })}
+                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })}
                                         followUpClientId={followUp.clientId}
                                     />
                                 </CardContent>
@@ -773,7 +773,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
         case 'scorm':
             const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
-                if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                 const questionIds = scormBlock.questions.map(q => q.id);
                 if (questionIds.some(qId => !scormAnswers[qId])) {
                     return null;
@@ -863,7 +863,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 <Card>
                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                     <CardContent>
-                        <AuraAnalysisResultBlock savedAnalysis={answer} />
+                       <AuraAnalysisResultBlock savedAnalysis={answer} />
                     </CardContent>
                 </Card>
             );
