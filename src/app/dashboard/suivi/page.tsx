@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -35,7 +36,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
-import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save } from 'lucide-react';
+import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 
@@ -166,6 +167,17 @@ type FollowUp = {
     createdAt: string;
     status: 'pending' | 'completed';
     answers?: { questionId: string; answer: any }[];
+    pathEnrollmentId?: string;
+};
+
+type LearningPath = {
+    id: string;
+    title: string;
+    description?: string;
+    steps: {
+        modelId: string,
+        modelName: string,
+    }[];
 };
 
 type PathEnrollment = {
@@ -206,6 +218,7 @@ function FollowUpManager() {
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
     const [selectedSuivi, setSelectedSuivi] = useState<FollowUp | null>(null);
+    const [searchTerm, setSearchTerm] = useState('');
     
     const form = useForm<NewFollowUpFormData>({
         resolver: zodResolver(newFollowUpSchema)
@@ -244,8 +257,22 @@ function FollowUpManager() {
     const combinedFollowUps = useMemo(() => {
         const forms: CombinedFollowUp[] = (followUpsData || []).map(f => ({ ...f, type: 'form' }));
         const paths: CombinedFollowUp[] = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' }));
-        return [...forms, ...paths].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-    }, [followUpsData, pathEnrollmentsData]);
+        
+        let allFollowUps = [...forms, ...paths];
+
+        if (searchTerm) {
+            const lowercasedTerm = searchTerm.toLowerCase();
+            allFollowUps = allFollowUps.filter(item => {
+                const nameMatch = item.clientName.toLowerCase().includes(lowercasedTerm);
+                const modelMatch = item.type === 'form' 
+                    ? item.modelName.toLowerCase().includes(lowercasedTerm) 
+                    : item.pathName.toLowerCase().includes(lowercasedTerm);
+                return nameMatch || modelMatch;
+            });
+        }
+        
+        return allFollowUps.sort((a,b) => new Date(b.createdAt || (b as PathEnrollment).enrolledAt).getTime() - new Date(a.createdAt || (a as PathEnrollment).enrolledAt).getTime());
+    }, [followUpsData, pathEnrollmentsData, searchTerm]);
 
     const onSubmit = (data: NewFollowUpFormData) => {
         if (!user) return;
@@ -372,7 +399,6 @@ function FollowUpManager() {
                                                         <SelectItem value="form">Formulaire simple</SelectItem>
                                                         <SelectItem value="path">Parcours complet</SelectItem>
                                                     </SelectContent>
-                                                </Select>
                                             </FormItem>
                                         )}
                                     />
@@ -457,6 +483,15 @@ function FollowUpManager() {
                         </SheetContent>
                     </Sheet>
                 </div>
+                 <div className="relative pt-4">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 text-muted-foreground -translate-y-1/2" />
+                    <Input
+                        placeholder="Rechercher par client ou nom..."
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        className="pl-9"
+                    />
+                </div>
             </CardHeader>
             <CardContent>
                 <Table>
@@ -477,8 +512,8 @@ function FollowUpManager() {
                                 <TableRow key={item.id}>
                                     <TableCell>{item.clientName}</TableCell>
                                     <TableCell><Badge variant={item.type === 'path' ? 'default': 'secondary'}>{item.type === 'path' ? 'Parcours' : 'Formulaire'}</Badge></TableCell>
-                                    <TableCell>{item.modelName || item.pathName}</TableCell>
-                                    <TableCell>{new Date(item.createdAt).toLocaleDateString()}</TableCell>
+                                    <TableCell>{(item as FollowUp).modelName || (item as PathEnrollment).pathName}</TableCell>
+                                    <TableCell>{new Date(item.createdAt || (item as PathEnrollment).enrolledAt).toLocaleDateString()}</TableCell>
                                     <TableCell><Badge variant={item.status === 'completed' ? 'default' : 'secondary'}>{item.status}</Badge></TableCell>
                                     <TableCell className="text-right">
                                          <DropdownMenu>
@@ -516,7 +551,7 @@ function FollowUpManager() {
                 />
             )}
         </Card>
-    )
+    );
 }
 
 function FormTemplateManager() {
@@ -995,20 +1030,27 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
     );
 }
 
+type LearningPath = {
+    id: string;
+    counselorId: string;
+    title: string;
+    description?: string;
+    steps: {
+        modelId: string,
+        modelName: string,
+    }[];
+};
+
 const learningPathSchema = z.object({
   title: z.string().min(1, 'Le titre est requis.'),
   description: z.string().optional(),
   steps: z.array(z.object({
     modelId: z.string(),
     modelName: z.string(),
-  })).min(1, "Un parcours doit contenir au moins un formulaire."),
+  })).min(1, "Un parcours doit avoir au moins une étape."),
 });
 
 type LearningPathFormData = z.infer<typeof learningPathSchema>;
-type LearningPath = {
-    id: string;
-    counselorId: string;
-} & LearningPathFormData;
 
 
 function LearningPathManager() {
@@ -1468,7 +1510,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         {(block.questions || []).map(q => {
                              const selectedAnswerId = answer?.[q.id];
-                             const selectedAnswer = q.answers.find(a => a.id === selectedAnswerId);
+                             const selectedAnswer = q.answers.find((a:any) => a.id === selectedAnswerId);
                              return (
                                  <div key={q.id}>
                                      <p className="font-semibold">{q.text}</p>
@@ -1515,14 +1557,9 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: any) => {
-                if (!data || (!data.products?.length && !data.protocoles?.length)) {
-                    return (
-                        <div key={key} className="mb-4">
-                            <h4 className="font-semibold text-primary">{title}</h4>
-                            <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
-                        </div>
-                    );
+             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: string) => {
+                 if (!data || (!data.products?.length && !data.protocoles?.length)) {
+                    return null;
                 }
                 return (
                     <div key={key} className="mb-4">
@@ -1548,7 +1585,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, `pathology-${item.pathology}-${index}`)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, item.pathology)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
                          <div className="pt-4 border-t">
                             <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
@@ -1572,4 +1609,5 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
     }
-}
+};
+
