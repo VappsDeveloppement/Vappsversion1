@@ -287,33 +287,6 @@ export default function FollowUpPage() {
     const handleAnswerChange = (questionId: string, answer: any) => {
         setAnswers(prev => {
             const newAnswers = { ...prev, [questionId]: answer };
-
-            const questionBlock = model?.questions?.find(q => q.id === questionId);
-            if (questionBlock?.type === 'scorm') {
-                const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                    if (!scormBlock.questions || !scormBlock.results) return null;
-                    const questionIds = scormBlock.questions.map(q => q.id);
-                    if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
-                        return null;
-                    }
-                    const valueCounts: Record<string, number> = {};
-                    for (const qId of questionIds) {
-                        const answerId = currentAnswers[qId];
-                        if (!answerId) continue;
-                        const question = scormBlock.questions.find(q => q.id === qId);
-                        const answerData = question?.answers.find(a => a.id === answerId);
-                        if (answerData?.value) {
-                            valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                        }
-                    }
-                    if (Object.keys(valueCounts).length === 0) return null;
-                    const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                    return scormBlock.results.find(r => r.value === dominantValue) || null;
-                };
-                const result = calculateScormResult(questionBlock, answer);
-                newAnswers[questionId] = { ...answer, __scorm_result: result };
-            }
-            // Immediate save on change
             persistAnswers(newAnswers);
             return newAnswers;
         });
@@ -410,7 +383,7 @@ export default function FollowUpPage() {
                                     <BlocQuestionModele
                                         savedAnalysis={blockAnswer}
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
+                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
                                         followUpClientId={followUp.clientId}
                                     />
                                 </CardContent>
@@ -427,7 +400,7 @@ export default function FollowUpPage() {
                                     <VitaeAnalysisBlock 
                                         savedAnalysis={blockAnswer} 
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
+                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
                                         clientId={followUp.clientId}
                                     />
                                 </CardContent>
@@ -444,7 +417,7 @@ export default function FollowUpPage() {
                                     <PrismeAnalysisBlock 
                                         savedAnalysis={blockAnswer} 
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
+                                        onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
                                     />
                                 </CardContent>
                             </Card>
@@ -635,7 +608,27 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { 
                     }
                     break;
                 case 'scorm':
-                    const scormResult = answer?.__scorm_result;
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                        if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                        const questionIds = scormBlock.questions.map(q => q.id);
+                        if (questionIds.some(qId => !scormAnswers[qId])) {
+                            return null;
+                        }
+                        const valueCounts: Record<string, number> = {};
+                        for (const qId of questionIds) {
+                            const answerId = scormAnswers[qId];
+                            if (!answerId) continue;
+                            const question = scormBlock.questions.find(q => q.id === qId);
+                            const answerData = question?.answers.find(a => a.id === answerId);
+                            if (answerData?.value) {
+                                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                            }
+                        }
+                        if (Object.keys(valueCounts).length === 0) return null;
+                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                        return scormBlock.results.find(r => r.value === dominantValue) || null;
+                    };
+                    const scormResult = calculateScormResult(block, answer);
                     if (scormResult?.text) {
                         const tempDiv = document.createElement('div');
                         tempDiv.innerHTML = scormResult.text;
@@ -743,11 +736,35 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'scorm':
-            const scormResult = answer?.__scorm_result;
+             const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): ScormResult | null => {
+                if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                const questionIds = scormBlock.questions.map(q => q.id);
+                if (questionIds.some(qId => !scormAnswers[qId])) {
+                    return null;
+                }
+            
+                const valueCounts: Record<string, number> = {};
+                for (const qId of questionIds) {
+                    const answerId = scormAnswers[qId];
+                    if (!answerId) continue;
+                    const question = scormBlock.questions.find(q => q.id === qId);
+                    const answerData = question?.answers.find(a => a.id === answerId);
+                    if (answerData?.value) {
+                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                    }
+                }
+            
+                if (Object.keys(valueCounts).length === 0) return null;
+            
+                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                return scormBlock.results.find(r => r.value === dominantValue) || null;
+            };
+
+            const scormResult = calculateScormResult(block, answer);
              return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
-                         {scormResult?.text ? (
+                         {scormResult ? (
                             <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
                         ) : 'Résultat non calculé.'}
                     </CardContent>
@@ -861,5 +878,3 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
     }
 };
-
-    
