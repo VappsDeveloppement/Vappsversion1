@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -239,7 +240,7 @@ function FollowUpManager() {
 
         docJs.setFontSize(22);
         docJs.setFont('helvetica', 'bold');
-        docJs.text(`Suivi pour ${suivi.clientName}`, 105, yPos, { align: 'center' });
+        docJs.text(`Suivi pour ${suivi.clientName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
         yPos += 8;
         docJs.setFontSize(14);
         docJs.setFont('helvetica', 'normal');
@@ -305,7 +306,10 @@ function FollowUpManager() {
                      break;
                  // Other cases can be added here
                 default:
-                    docJs.text(JSON.stringify(answers[block.id], null, 2), 15, yPos, { maxWidth: 180 });
+                    const answerText = answers[block.id] !== undefined 
+                        ? JSON.stringify(answers[block.id], null, 2)
+                        : "Non répondu";
+                    docJs.text(answerText, 15, yPos, { maxWidth: 180 });
                     yPos += 40; // Approximate height
                     break;
             }
