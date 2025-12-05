@@ -21,7 +21,7 @@ import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { X, Mail, Phone } from 'lucide-react';
+import { X, Mail, Phone, Image as ImageIcon } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip } from 'recharts';
 import jsPDF from 'jspdf';
@@ -288,12 +288,17 @@ export default function FollowUpPage() {
         if (!followUpRef || !followUp) return;
         setIsSubmitting(true);
         
-        const cleanedAnswers = cleanDataForFirestore(answers);
-        
-        const answersArray = Object.entries(cleanedAnswers).map(([questionId, answer]) => ({
-            questionId,
-            answer
-        }));
+        const answersArray = Object.entries(answers).map(([questionId, answer]) => {
+            const block = model?.questions?.find(q => q.id === questionId);
+            // Ensure complex objects like from 'aura' or 'vitae' are saved correctly
+            const cleanedAnswer = (block?.type === 'aura' || block?.type === 'vitae' || block?.type === 'report') 
+                                    ? cleanDataForFirestore(answer) 
+                                    : answer;
+            return {
+                questionId,
+                answer: cleanedAnswer,
+            };
+        });
 
         try {
             await setDocumentNonBlocking(followUpRef, { answers: answersArray, status: 'completed' }, { merge: true });
@@ -307,10 +312,11 @@ export default function FollowUpPage() {
     };
 
     const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>) => {
+        const scormAnswers = answers[scormBlock.id] || {};
         if (!scormBlock.questions || scormBlock.questions.length === 0) return null;
 
         const totalValue = scormBlock.questions.reduce((sum, question) => {
-            const answerId = answers[question.id];
+            const answerId = scormAnswers[question.id];
             if (!answerId) return sum;
             const answer = question.answers.find(a => a.id === answerId);
             return sum + (answer ? parseInt(answer.value, 10) : 0);
@@ -358,6 +364,8 @@ export default function FollowUpPage() {
             
             <div className="space-y-8">
                 {model.questions?.map(questionBlock => {
+                    const blockAnswer = answers[questionBlock.id];
+                    
                     if (questionBlock.type === 'scale') {
                         return (
                              <Card key={questionBlock.id}>
@@ -373,10 +381,10 @@ export default function FollowUpPage() {
                                                     min={1}
                                                     max={10}
                                                     step={1}
-                                                    value={[answers[question.id] || 5]}
-                                                    onValueChange={(value) => handleAnswerChange(question.id, value[0])}
+                                                    value={[(blockAnswer?.[question.id] || 5)]}
+                                                    onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value[0]})}
                                                 />
-                                                <div className="font-bold text-lg w-10 text-center">{answers[question.id] || '5'}</div>
+                                                <div className="font-bold text-lg w-10 text-center">{blockAnswer?.[question.id] || '5'}</div>
                                             </div>
                                          </div>
                                     ))}
@@ -404,11 +412,10 @@ export default function FollowUpPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <VitaeAnalysisBlock 
-                                        savedAnalysis={answers[questionBlock.id]} 
+                                        savedAnalysis={blockAnswer} 
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
                                         onSaveBlock={async () => {
-                                            const newAnswers = { ...answers, [questionBlock.id]: answers[questionBlock.id] };
-                                            await persistAnswers(newAnswers);
+                                            await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] });
                                         }}
                                         clientId={followUp.clientId}
                                     />
@@ -424,11 +431,10 @@ export default function FollowUpPage() {
                                 </CardHeader>
                                 <CardContent>
                                     <PrismeAnalysisBlock 
-                                        savedAnalysis={answers[questionBlock.id]} 
+                                        savedAnalysis={blockAnswer} 
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
                                         onSaveBlock={async () => {
-                                            const newAnswers = { ...answers, [questionBlock.id]: answers[questionBlock.id] };
-                                            await persistAnswers(newAnswers);
+                                            await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] });
                                         }}
                                     />
                                 </CardContent>
@@ -436,6 +442,7 @@ export default function FollowUpPage() {
                         );
                     }
                      if (questionBlock.type === 'scorm') {
+                        const scormAnswers = blockAnswer || {};
                         const result = calculateScormResult(questionBlock);
                         return (
                             <Card key={questionBlock.id}>
@@ -448,8 +455,8 @@ export default function FollowUpPage() {
                                         <div key={question.id}>
                                             <Label className="font-semibold">{question.text}</Label>
                                             <RadioGroup
-                                                value={answers[question.id]}
-                                                onValueChange={(value) => handleAnswerChange(question.id, value)}
+                                                value={scormAnswers[question.id]}
+                                                onValueChange={(value) => handleAnswerChange(questionBlock.id, {...scormAnswers, [question.id]: value})}
                                                 className="mt-2 space-y-2"
                                             >
                                                 {question.answers.map(answer => (
@@ -472,6 +479,7 @@ export default function FollowUpPage() {
                         )
                     }
                      if (questionBlock.type === 'qcm') {
+                         const qcmAnswers = blockAnswer || {};
                         return (
                             <Card key={questionBlock.id}>
                                 <CardHeader>
@@ -479,14 +487,14 @@ export default function FollowUpPage() {
                                 </CardHeader>
                                 <CardContent className="space-y-8">
                                     {(questionBlock.questions || []).map(question => {
-                                        const selectedAnswerId = answers[question.id];
+                                        const selectedAnswerId = qcmAnswers[question.id];
                                         const selectedAnswer = question.answers.find(a => a.id === selectedAnswerId);
                                         return (
                                             <div key={question.id}>
                                                 <Label className="font-semibold">{question.text}</Label>
                                                 <RadioGroup
                                                     value={selectedAnswerId}
-                                                    onValueChange={(value) => handleAnswerChange(question.id, value)}
+                                                     onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})}
                                                     className="mt-2 space-y-2"
                                                 >
                                                     {question.answers.map(answer => (
@@ -516,7 +524,7 @@ export default function FollowUpPage() {
                                 </CardHeader>
                                 <CardContent>
                                      <Textarea
-                                        value={answers[questionBlock.id] || ''}
+                                        value={blockAnswer || ''}
                                         onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)}
                                         rows={8}
                                         placeholder="Votre réponse ici..."
@@ -530,11 +538,10 @@ export default function FollowUpPage() {
                             <ReportBlock
                                 key={questionBlock.id}
                                 questionBlock={questionBlock}
-                                initialAnswer={answers[questionBlock.id]}
+                                initialAnswer={blockAnswer}
                                 onAnswerChange={(value: any) => handleAnswerChange(questionBlock.id, value)}
                                 onSaveBlock={async () => {
-                                    const newAnswers = { ...answers, [questionBlock.id]: answers[questionBlock.id] };
-                                    await persistAnswers(newAnswers);
+                                    await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] });
                                     toast({ title: "Compte rendu enregistré" });
                                 }}
                             />
@@ -554,4 +561,3 @@ export default function FollowUpPage() {
         </div>
     );
 }
-
