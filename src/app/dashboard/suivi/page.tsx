@@ -1075,10 +1075,13 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                             <h4 className="font-semibold mb-2">Partenaires associés</h4>
                             <div className="space-y-2">
                                 {answer.partners.map((p: any) => (
-                                    <div key={p.id} className="text-sm p-2 border rounded-md">
+                                    <div key={p.id} className="text-sm p-3 border rounded-lg bg-muted">
                                         <p className="font-bold">{p.name}</p>
-                                        <p className="text-muted-foreground">{p.email} - {p.phone}</p>
-                                        <p className="text-muted-foreground text-xs">Spécialités: {p.specialties?.join(', ')}</p>
+                                        <div className="text-muted-foreground text-xs mt-1 space-y-0.5">
+                                            {p.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{p.email}</p>}
+                                            {p.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{p.phone}</p>}
+                                            {p.specialties && p.specialties.length > 0 && <p><strong>Spéc:</strong> {p.specialties.join(', ')}</p>}
+                                        </div>
                                     </div>
                                 ))}
                             </div>
@@ -1174,12 +1177,12 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
              const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => (
                 <div className="mb-4">
                     <h4 className="font-semibold text-primary">{title}</h4>
-                    {data.products.length === 0 && data.protocoles.length === 0 ? (
+                    {(!data.products || data.products.length === 0) && (!data.protocoles || data.protocoles.length === 0) ? (
                         <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
                     ) : (
                         <>
-                            {data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
-                            {data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
+                            {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
+                            {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
                         </>
                     )}
                 </div>
@@ -1191,7 +1194,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent className="space-y-4">
                         <div>
                              <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any) => (
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => (
                                 renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })
                              )) : <p className="text-sm text-muted-foreground">Aucune.</p>}
                         </div>
@@ -1207,11 +1210,12 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         default:
+             const unknownAnswerText = answer ? JSON.stringify(answer, null, 2) : "Non répondu";
             return (
                 <Card>
                     <CardHeader><CardTitle>{(block as any).title || block.type}</CardTitle></CardHeader>
                     <CardContent>
-                        <pre className="text-xs whitespace-pre-wrap">{answer ? JSON.stringify(answer, null, 2) : 'Non répondu'}</pre>
+                        <pre className="text-xs whitespace-pre-wrap bg-muted p-2 rounded-md">{unknownAnswerText}</pre>
                     </CardContent>
                 </Card>
             );
