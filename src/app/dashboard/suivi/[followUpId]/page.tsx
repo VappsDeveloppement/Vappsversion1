@@ -420,12 +420,12 @@ export default function FollowUpPage() {
                         const scormAnswers = blockAnswer || {};
 
                         const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                            if (!scormBlock.questions || !scormBlock.results) return null;
                             const questionIds = scormBlock.questions.map(q => q.id);
                             const allAnswered = questionIds.every(qId => currentAnswers[qId]);
                             if (!allAnswered) return null;
 
                             const valueCounts: Record<string, number> = {};
-                            
                             for (const qId of questionIds) {
                                 const answerId = currentAnswers[qId];
                                 const question = scormBlock.questions.find(q => q.id === qId);
@@ -435,9 +435,9 @@ export default function FollowUpPage() {
                                 }
                             }
 
-                            const dominantValue = Object.entries(valueCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
+                            const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b, '');
                             if (!dominantValue) return null;
-                            
+
                             return scormBlock.results.find(r => r.value === dominantValue) || null;
                         };
                     
@@ -559,4 +559,345 @@ export default function FollowUpPage() {
 
         </div>
     );
+}
+    
+    
+const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null }) => {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+    const { data: currentUserData } = useDoc(userDocRef);
+
+    const handleExportPdf = async () => {
+        if (!suivi || !model || !currentUserData) return;
+        const docJs = new jsPDF();
+        let yPos = 20;
+
+        docJs.setFontSize(22);
+        docJs.text(`Suivi pour ${suivi.clientName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
+        yPos += 8;
+        docJs.setFontSize(14);
+        docJs.text(`Modèle: ${suivi.modelName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
+        yPos += 15;
+
+        const answers = (suivi.answers || []).reduce((acc, current) => {
+            acc[current.questionId] = current.answer;
+            return acc;
+        }, {} as Record<string, any>);
+
+        for (const block of model.questions || []) {
+            if (yPos > 250) {
+                docJs.addPage();
+                yPos = 20;
+            }
+            docJs.setFontSize(16);
+            docJs.setFont('helvetica', 'bold');
+            const title = (block as any).title || (block.type === 'free-text' ? (block as any).question : `Bloc ${block.type}`);
+            docJs.text(title, 15, yPos);
+            yPos += 10;
+            docJs.setFontSize(12);
+            docJs.setFont('helvetica', 'normal');
+
+            const answer = answers[block.id]
+            
+            switch (block.type) {
+                case 'scale':
+                    if (!answer) break;
+                    if (block.questions.length > 1) {
+                         const body = block.questions.map(q => [q.text, answer[q.id] !== undefined ? answer[q.id] : 'N/A']);
+                        autoTable(docJs, { head: [['Question', 'Score']], body, startY: yPos });
+                        yPos = (docJs as any).lastAutoTable.finalY + 10;
+                    } else if (block.questions.length === 1) {
+                        const q = block.questions[0];
+                        const value = answer[q.id] || 0;
+                        docJs.text(q.text, 15, yPos);
+                        yPos += 8;
+                        docJs.rect(15, yPos, 180, 8);
+                        docJs.setFillColor(136, 132, 216); // #8884d8
+                        docJs.rect(15, yPos, (180 * value) / 10, 8, 'F');
+                        docJs.text(`${value}/10`, 200, yPos + 6, { align: 'right' });
+                        yPos += 15;
+                    }
+                    break;
+                case 'report':
+                    if (answer?.text) {
+                        const reportLines = docJs.splitTextToSize(answer.text, 180);
+                        docJs.text(reportLines, 15, yPos);
+                        yPos += reportLines.length * 7 + 5;
+                    }
+                    if (answer?.partners?.length > 0) {
+                        docJs.text("Partenaires associés:", 15, yPos);
+                        yPos += 8;
+                        autoTable(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
+                        yPos = (docJs as any).lastAutoTable.finalY + 10;
+                    }
+                    break;
+                case 'scorm':
+                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                        if (!scormBlock.questions || !scormBlock.results || !currentAnswers) return null;
+                        const questionIds = scormBlock.questions.map(q => q.id);
+                        const allAnswered = questionIds.every(qId => currentAnswers[qId]);
+                        if (!allAnswered) return null;
+
+                        const valueCounts: Record<string, number> = {};
+                        for (const qId of questionIds) {
+                            const answerId = currentAnswers[qId];
+                            const question = scormBlock.questions.find(q => q.id === qId);
+                            const selectedAnswer = question?.answers.find(a => a.id === answerId);
+                            if (selectedAnswer) {
+                                valueCounts[selectedAnswer.value] = (valueCounts[selectedAnswer.value] || 0) + 1;
+                            }
+                        }
+
+                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b, '');
+                        if (!dominantValue) return null;
+
+                        return scormBlock.results.find(r => r.value === dominantValue) || null;
+                    };
+                    const scormResult = calculateScormResult(block, answer);
+                    if (scormResult?.text) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = scormResult.text;
+                        const textContent = tempDiv.textContent || tempDiv.innerText || "";
+                        const lines = docJs.splitTextToSize(textContent, 180);
+                        docJs.text(lines, 15, yPos);
+                        yPos += lines.length * 7 + 5;
+                    } else {
+                        docJs.text("Résultat non calculé.", 15, yPos);
+                        yPos += 12;
+                    }
+                    break;
+                default:
+                    const answerText = answer !== undefined ? JSON.stringify(answer, null, 2) : "Non répondu";
+                    const lines = docJs.splitTextToSize(answerText, 180);
+                    docJs.text(lines, 15, yPos);
+                    yPos += lines.length * 7 + 5;
+                    break;
+            }
+            yPos += 5;
+        }
+
+        docJs.save(`Suivi_${suivi.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
+    };
+
+    if (!model) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
+                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] pr-4">
+                    <div className="space-y-6">
+                        {model.questions?.map(block => {
+                            const answer = suivi.answers?.find(a => a.questionId === block.id)?.answer;
+                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} suivi={suivi} />;
+                        })}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button onClick={handleExportPdf}>
+                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['questions'][number], answer: any, suivi: FollowUp }) => {
+    
+    switch (block.type) {
+        case 'scale':
+            const scaleAnswers = answer || {};
+            return (
+                <Card>
+                    <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
+                    <CardContent>
+                        {block.questions.length > 1 ? (
+                             <ResponsiveContainer width="100%" height={300}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={block.questions.map(q => ({ subject: q.text, A: scaleAnswers[q.id] || 0, fullMark: 10 }))}>
+                                    <PolarGrid />
+                                    <PolarAngleAxis dataKey="subject" />
+                                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                                    <Radar name={suivi.clientName} dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        ) : block.questions.map(q => (
+                             <div key={q.id}>
+                                <p>{q.text}: <strong>{scaleAnswers[q.id] || 'N/A'}/10</strong></p>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            );
+        case 'free-text':
+            return (
+                <Card><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
+            );
+        case 'report':
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent>
+                        <h4 className="font-semibold mb-2">Compte rendu</h4>
+                        <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
+                        {answer?.partners?.length > 0 && <>
+                            <h4 className="font-semibold mb-2">Partenaires associés</h4>
+                            <div className="space-y-2">
+                                {answer.partners.map((p: any) => (
+                                    <div key={p.id} className="text-sm p-3 border rounded-lg bg-muted">
+                                        <p className="font-bold">{p.name}</p>
+                                        <div className="text-muted-foreground text-xs mt-1 space-y-0.5">
+                                            {p.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{p.email}</p>}
+                                            {p.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{p.phone}</p>}
+                                            {p.specialties && p.specialties.length > 0 && <p><strong>Spéc:</strong> {p.specialties.join(', ')}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>}
+                    </CardContent>
+                </Card>
+            );
+        case 'scorm':
+            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+                if (!scormBlock.questions || !scormBlock.results || !currentAnswers) return null;
+                const questionIds = scormBlock.questions.map(q => q.id);
+                const allAnswered = questionIds.every(qId => currentAnswers[qId]);
+                if (!allAnswered) return null;
+
+                const valueCounts: Record<string, number> = {};
+                for (const qId of questionIds) {
+                    const answerId = currentAnswers[qId];
+                    const question = scormBlock.questions.find(q => q.id === qId);
+                    const selectedAnswer = question?.answers.find(a => a.id === answerId);
+                    if (selectedAnswer) {
+                        valueCounts[selectedAnswer.value] = (valueCounts[selectedAnswer.value] || 0) + 1;
+                    }
+                }
+
+                if (Object.keys(valueCounts).length === 0) return null;
+
+                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                return scormBlock.results.find(r => r.value === dominantValue) || null;
+            };
+            const scormResult = calculateScormResult(block, answer);
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent>
+                         {scormResult ? (
+                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
+                        ) : 'Résultat non calculé.'}
+                    </CardContent>
+                </Card>
+             );
+        case 'qcm':
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {(block.questions || []).map(q => {
+                             const selectedAnswerId = answer?.[q.id];
+                             const selectedAnswer = q.answers.find(a => a.id === selectedAnswerId);
+                             return (
+                                 <div key={q.id}>
+                                     <p className="font-semibold">{q.text}</p>
+                                     <p className="text-sm text-muted-foreground">Réponse: {selectedAnswer?.text || 'Non répondu'}</p>
+                                      {selectedAnswer?.resultText && (
+                                        <div className="mt-2 text-sm prose dark:prose-invert max-w-none border-l-2 pl-4" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText}}/>
+                                      )}
+                                 </div>
+                             )
+                        })}
+                    </CardContent>
+                </Card>
+            );
+        case 'prisme':
+            return (
+                <Card><CardHeader><CardTitle>Analyse Prisme</CardTitle></CardHeader>
+                    <CardContent>
+                         {answer?.drawnCards?.length > 0 ? (
+                            <div className="space-y-4">
+                                {answer.drawnCards.map((item: any, index: number) => (
+                                    <div key={index} className="flex gap-4 p-4 border rounded-lg bg-background">
+                                        <div className="flex-shrink-0">
+                                            {item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
+                                        </div>
+                                        <div>
+                                            <p className="text-sm text-muted-foreground">{item.position.meaning}</p>
+                                            <h4 className="text-lg font-bold">{item.card.name}</h4>
+                                            <p className="text-sm">{item.card.description}</p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : 'Aucun tirage effectué.'}
+                    </CardContent>
+                </Card>
+            );
+        case 'vitae':
+            return (
+                <Card>
+                    <CardHeader><CardTitle>Analyse Vitae</CardTitle></CardHeader>
+                    <CardContent>
+                        <VitaeAnalysisBlock savedAnalysis={answer} onSaveAnalysis={() => {}} onSaveBlock={async () => {}} readOnly />
+                    </CardContent>
+                </Card>
+            );
+        case 'aura':
+             if (!answer) {
+                return (
+                    <Card>
+                        <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
+                        <CardContent><p className="text-muted-foreground">Analyse non effectuée.</p></CardContent>
+                    </Card>
+                );
+            }
+             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }) => (
+                <div className="mb-4">
+                    <h4 className="font-semibold text-primary">{title}</h4>
+                    {(!data.products || data.products.length === 0) && (!data.protocoles || data.protocoles.length === 0) ? (
+                        <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
+                    ) : (
+                        <>
+                            {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
+                            {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
+                        </>
+                    )}
+                </div>
+            );
+
+            return (
+                <Card>
+                    <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div>
+                             <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
+                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any, index: number) => (
+                                renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles })
+                             )) : <p className="text-sm text-muted-foreground">Aucune.</p>}
+                        </div>
+                         <div className="pt-4 border-t">
+                            <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
+                            {renderSuggestions('', answer.byHolisticProfile)}
+                        </div>
+                        <div className="pt-4 border-t">
+                            <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
+                             {renderSuggestions('', answer.perfectMatch)}
+                        </div>
+                    </CardContent>
+                </Card>
+            );
+        default:
+             const unknownAnswerText = answer ? JSON.stringify(answer, null, 2) : "Non répondu";
+            return (
+                <Card>
+                    <CardHeader><CardTitle>{(block as any).title || block.type}</CardTitle></CardHeader>
+                    <CardContent>
+                        <pre className="text-xs whitespace-pre-wrap bg-muted p-2 rounded-md">{unknownAnswerText}</pre>
+                    </CardContent>
+                </Card>
+            );
+    }
 }
