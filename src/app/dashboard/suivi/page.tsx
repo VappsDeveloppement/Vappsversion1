@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -9,7 +10,7 @@ import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDoc
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -32,9 +33,8 @@ import autoTable from 'jspdf-autotable';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
-import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download } from 'lucide-react';
-import { Loader2 } from 'lucide-react';
+import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download, Loader2, Mail, Phone, Save } from 'lucide-react';
 
 
 const scaleSubQuestionSchema = z.object({
@@ -994,7 +994,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     const answerText = answers[block.id] !== undefined 
                         ? JSON.stringify(answers[block.id], null, 2)
                         : "Non répondu";
-                    docJs.text(answerText || 'Non répondu', 15, yPos, { maxWidth: 180 });
+                    docJs.text(answerText, 15, yPos, { maxWidth: 180 });
                     yPos += 40; // Approximate height
                     break;
             }
@@ -1119,7 +1119,7 @@ const ResultDisplayBlock = ({ block, answer }: { block: QuestionModel['questions
                 <Card>
                     <CardHeader><CardTitle>{(block as any).title || block.type}</CardTitle></CardHeader>
                     <CardContent>
-                        <pre className="text-xs whitespace-pre-wrap">{JSON.stringify(answer, null, 2) || 'Non répondu'}</pre>
+                        <pre className="text-xs whitespace-pre-wrap">{answer ? JSON.stringify(answer, null, 2) : 'Non répondu'}</pre>
                     </CardContent>
                 </Card>
             );
