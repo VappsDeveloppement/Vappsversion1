@@ -245,6 +245,7 @@ export default function FollowUpPage() {
     const { toast } = useToast();
     const [answers, setAnswers] = useState<Record<string, any>>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
     const followUpRef = useMemoFirebase(() => {
         if (!user || !followUpId) return null;
@@ -267,7 +268,7 @@ export default function FollowUpPage() {
             setAnswers(initialAnswers);
         }
     }, [followUp]);
-
+    
     const persistAnswers = async (updatedAnswers: Record<string, any>) => {
         if (!followUpRef) return;
         
@@ -277,14 +278,51 @@ export default function FollowUpPage() {
             questionId,
             answer
         }));
+
         await setDocumentNonBlocking(followUpRef, { answers: answersArray }, { merge: true });
     };
 
     const handleAnswerChange = (questionId: string, answer: any) => {
-        const newAnswers = { ...answers, [questionId]: answer };
-        setAnswers(newAnswers);
-        persistAnswers(newAnswers);
+        setAnswers(prevAnswers => {
+            const newAnswers = { ...prevAnswers, [questionId]: answer };
+            
+            // If the block is a SCORM block, calculate and store the result immediately
+            const questionBlock = model?.questions?.find(q => q.id === questionId);
+            if (questionBlock?.type === 'scorm') {
+                const result = calculateScormResult(questionBlock, answer);
+                newAnswers[questionId] = { ...answer, __scorm_result: result };
+            }
+            
+            persistAnswers(newAnswers);
+            return newAnswers;
+        });
     };
+    
+    const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
+        if (!scormBlock.questions || !scormBlock.results) return null;
+        
+        const questionIds = scormBlock.questions.map(q => q.id);
+        if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
+            return null; // Not all questions answered
+        }
+    
+        const valueCounts: Record<string, number> = {};
+        for (const qId of questionIds) {
+            const answerId = currentAnswers[qId];
+            if (!answerId) continue;
+            const question = scormBlock.questions.find(q => q.id === qId);
+            const answerData = question?.answers.find(a => a.id === answerId);
+            if (answerData?.value) {
+                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+            }
+        }
+    
+        if (Object.keys(valueCounts).length === 0) return null;
+    
+        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+        return scormBlock.results.find(r => r.value === dominantValue) || null;
+    };
+
 
     const handleSave = async () => {
         if (!followUpRef || !followUp) return;
@@ -327,6 +365,7 @@ export default function FollowUpPage() {
                     <ArrowLeft className="h-4 w-4" />
                     Retour à la liste des suivis
                 </Link>
+                 <Button onClick={() => setIsPdfModalOpen(true)} variant="outline">Aperçu des résultats</Button>
             </div>
 
 
@@ -367,7 +406,7 @@ export default function FollowUpPage() {
                     }
                     if (questionBlock.type === 'aura') {
                         return (
-                             <Card key={questionBlock.id}>
+                            <Card key={questionBlock.id}>
                                 <CardHeader>
                                     <CardTitle>Analyse AURA</CardTitle>
                                 </CardHeader>
@@ -375,7 +414,7 @@ export default function FollowUpPage() {
                                     <BlocQuestionModele
                                         savedAnalysis={blockAnswer}
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={async () => await persistAnswers(answers)}
+                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
                                         followUpClientId={followUp.clientId}
                                     />
                                 </CardContent>
@@ -420,29 +459,6 @@ export default function FollowUpPage() {
                         );
                     }
                    if (questionBlock.type === 'scorm') {
-                        const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
-                             if (!scormBlock.questions || !scormBlock.results) return null;
-                            const questionIds = scormBlock.questions.map(q => q.id);
-                            if (questionIds.some(qId => !currentAnswers || !currentAnswers[qId])) {
-                                return null;
-                            }
-                        
-                            const valueCounts: Record<string, number> = {};
-                            for (const qId of questionIds) {
-                                const answerId = currentAnswers[qId];
-                                if (!answerId) continue;
-                                const question = scormBlock.questions.find(q => q.id === qId);
-                                const answerData = question?.answers.find(a => a.id === answerId);
-                                if (answerData?.value) {
-                                    valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                                }
-                            }
-                        
-                            if (Object.keys(valueCounts).length === 0) return null;
-                        
-                            const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                            return scormBlock.results.find(r => r.value === dominantValue) || null;
-                        };
                         const scormResult = calculateScormResult(questionBlock, blockAnswer);
 
                         return (
@@ -552,6 +568,14 @@ export default function FollowUpPage() {
                     Enregistrer et Terminer le Suivi
                 </Button>
             </div>
+            
+            <PdfPreviewModal
+                isOpen={isPdfModalOpen}
+                onOpenChange={setIsPdfModalOpen}
+                suivi={followUp}
+                model={model}
+                liveAnswers={answers}
+            />
 
         </div>
     );
@@ -810,8 +834,8 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                         <p className="text-sm text-muted-foreground">Aucune suggestion.</p>
                     ) : (
                         <>
-                            {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map((p: any) => p.title).join(', ')}</p>}
-                            {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map((p: any) => p.name).join(', ')}</p>}
+                            {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map(p => p.title).join(', ')}</p>}
+                            {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map(p => p.name).join(', ')}</p>}
                         </>
                     )}
                 </div>
