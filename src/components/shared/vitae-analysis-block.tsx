@@ -20,6 +20,7 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // These types must be self-contained or imported from a shared location.
 // For now, let's redefine them here to make the component standalone.
@@ -322,4 +323,3 @@ export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId }: 
         </div>
     );
 }
-
