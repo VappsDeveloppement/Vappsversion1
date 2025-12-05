@@ -191,8 +191,8 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
             ...(formData.allergies || []),
             ...tempContraindications
         ]);
-
-        const filterItems = (items: (Product | Protocole)[]) => {
+    
+        const filterItemsByContraindications = (items: (Product | Protocole)[]) => {
             return items.filter(item => {
                 const itemContraindications = new Set(item.contraindications || []);
                 for (const contra of allContraindications) {
@@ -203,34 +203,45 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
                 return true;
             });
         };
-
-        const availableProducts = filterItems(allProducts || []);
-        const availableProtocols = filterItems(allProtocols || []);
-
+    
+        const availableProducts = filterItemsByContraindications(allProducts || []);
+        const availableProtocols = filterItemsByContraindications(allProtocols || []);
+    
         const byPathology = pathologiesToTreat.map(pathology => {
             const products = availableProducts.filter(p => p.pathologies?.includes(pathology));
             const protocoles = availableProtocols.filter(p => p.pathologies?.includes(pathology));
             return { pathology, products, protocoles };
         });
-
+    
         const byHolisticProfile = () => {
             const profileTags = new Set(formData.holisticProfile || []);
+            const pathologyTags = new Set(pathologiesToTreat);
             if (profileTags.size === 0) return { products: [], protocoles: [] };
-            
-            const products = availableProducts.filter(p => 
+    
+            // First filter by selected pathologies
+            const productsFilteredByPathology = availableProducts.filter(p => 
+                pathologyTags.size === 0 || p.pathologies?.some(pathology => pathologyTags.has(pathology))
+            );
+            const protocolsFilteredByPathology = availableProtocols.filter(p => 
+                pathologyTags.size === 0 || p.pathologies?.some(pathology => pathologyTags.has(pathology))
+            );
+    
+            // Then filter by holistic profile
+            const products = productsFilteredByPathology.filter(p => 
                 p.holisticProfile?.some(tag => profileTags.has(tag))
             );
-            const protocoles = availableProtocols.filter(p => 
+            const protocoles = protocolsFilteredByPathology.filter(p => 
                 p.holisticProfile?.some(tag => profileTags.has(tag))
             );
+    
             return { products, protocoles };
         };
-
+    
         const perfectMatch = () => {
              const profileTags = new Set(formData.holisticProfile || []);
              const pathologyTags = new Set(pathologiesToTreat);
              if (pathologyTags.size === 0) return { products: [], protocoles: []};
-
+    
              const products = availableProducts.filter(p => {
                 const productPathologies = new Set(p.pathologies || []);
                 const productHolistic = new Set(p.holisticProfile || []);
@@ -238,7 +249,7 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
                 const matchesAnyHolistic = profileTags.size > 0 ? [...profileTags].some(tag => productHolistic.has(tag)) : true;
                 return matchesAllPathologies && matchesAnyHolistic;
              });
-
+    
               const protocoles = availableProtocols.filter(p => {
                 const protocolPathologies = new Set(p.pathologies || []);
                 const protocolHolistic = new Set(p.holisticProfile || []);
@@ -246,10 +257,10 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
                 const matchesAnyHolistic = profileTags.size > 0 ? [...profileTags].some(tag => protocolHolistic.has(tag)) : true;
                 return matchesAllPathologies && matchesAnyHolistic;
              });
-
+    
              return { products, protocoles };
         };
-
+    
         setTimeout(() => {
             const result = {
                 byPathology: byPathology,
@@ -355,7 +366,7 @@ export function BlocQuestionModele({ savedAnalysis, onSaveAnalysis, followUpClie
                     </div>
                     <section>
                         <h4 className="font-semibold text-lg mb-4">Correspondance par Pathologie</h4>
-                         {analysisResult.byPathology.length > 0 ? analysisResult.byPathology.map((item: any, index: number) => (
+                         {analysisResult.byPathology.length > 0 ? analysisResult.byPathology.map((item: any, index: React.Key | null | undefined) => (
                             <div key={index} className="mb-4 p-4 border rounded-md">
                                 <p className="font-medium text-primary">{item.pathology}</p>
                                 <p className="text-sm">Produits: {item.products.length > 0 ? item.products.map((p: any) => p.title).join(', ') : 'Aucun'}</p>
