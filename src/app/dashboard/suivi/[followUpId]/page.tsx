@@ -283,19 +283,6 @@ export default function FollowUpPage() {
 
         await setDocumentNonBlocking(followUpRef, { answers: answersArray }, { merge: true });
     };
-
-    const handleAnswerChange = (questionId: string, answer: any) => {
-        const newAnswers = { ...answers, [questionId]: answer };
-        const questionBlock = model?.questions?.find(q => q.id === questionId);
-
-        if (questionBlock?.type === 'scorm') {
-            const result = calculateScormResult(questionBlock, answer);
-            newAnswers[questionId] = { ...answer, __scorm_result: result };
-        }
-        
-        setAnswers(newAnswers);
-        persistAnswers(newAnswers);
-    };
     
     const calculateScormResult = (scormBlock: Extract<QuestionBlock, { type: 'scorm' }>, currentAnswers: Record<string, string>): ScormResult | null => {
         if (!scormBlock.questions || !scormBlock.results) return null;
@@ -320,6 +307,19 @@ export default function FollowUpPage() {
     
         const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
         return scormBlock.results.find(r => r.value === dominantValue) || null;
+    };
+    
+    const handleAnswerChange = (questionId: string, answer: any) => {
+        const newAnswers = { ...answers, [questionId]: answer };
+        const questionBlock = model?.questions?.find(q => q.id === questionId);
+
+        if (questionBlock?.type === 'scorm') {
+            const result = calculateScormResult(questionBlock, answer);
+            newAnswers[questionId] = { ...answer, __scorm_result: result };
+        }
+        
+        setAnswers(newAnswers);
+        // We now persist on save button instead of every change
     };
 
 
@@ -430,9 +430,7 @@ export default function FollowUpPage() {
                                     <VitaeAnalysisBlock 
                                         savedAnalysis={blockAnswer} 
                                         onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
-                                        onSaveBlock={async () => {
-                                            await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] });
-                                        }}
+                                        onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}
                                         clientId={followUp.clientId}
                                     />
                                 </CardContent>
@@ -865,4 +863,4 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
     }
-}
+};
