@@ -17,6 +17,7 @@ import { Slider } from '@/components/ui/slider';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
 import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
+import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 
 
 type FollowUp = {
@@ -40,6 +41,7 @@ type QuestionBlock =
     | { id: string; type: 'scale'; title?: string, questions: { id: string; text: string }[] } 
     | { id: string; type: 'aura' }
     | { id: string; type: 'vitae' }
+    | { id: string; type: 'prisme' }
     | { id: string; type: 'scorm', title: string; questions: ScormQuestion[]; results: ScormResult[] }
     | { id: string; type: 'qcm', title: string; questions: QcmQuestion[]; };
 
@@ -245,6 +247,25 @@ export default function FollowUpPage() {
                             </Card>
                         )
                     }
+                     if (questionBlock.type === 'prisme') {
+                        return (
+                            <Card key={questionBlock.id}>
+                                <CardHeader>
+                                    <CardTitle>Tirage Prisme</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <PrismeAnalysisBlock 
+                                        savedAnalysis={answers[questionBlock.id]} 
+                                        onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)}
+                                        onSaveBlock={async () => {
+                                            const newAnswers = { ...answers, [questionBlock.id]: answers[questionBlock.id] };
+                                            await persistAnswers(newAnswers);
+                                        }}
+                                    />
+                                </CardContent>
+                            </Card>
+                        );
+                    }
                      if (questionBlock.type === 'scorm') {
                         const result = calculateScormResult(questionBlock);
                         return (
@@ -332,3 +353,5 @@ export default function FollowUpPage() {
         </div>
     );
 }
+
+    

@@ -1,10 +1,9 @@
 
-
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot } from "lucide-react";
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid } from "lucide-react";
 import React, { useState, useEffect, useCallback } from 'react';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -47,6 +46,11 @@ const scaleQuestionSchema = z.object({
 const auraBlockSchema = z.object({
   id: z.string(),
   type: z.literal('aura'),
+});
+
+const prismeBlockSchema = z.object({
+  id: z.string(),
+  type: z.literal('prisme'),
 });
 
 const vitaeAnalysisBlockSchema = z.object({
@@ -106,6 +110,7 @@ const questionSchema = z.discriminatedUnion("type", [
   scormBlockSchema,
   qcmBlockSchema,
   vitaeAnalysisBlockSchema,
+  prismeBlockSchema,
 ]);
 
 const questionModelSchema = z.object({
@@ -357,6 +362,19 @@ function FormTemplateManager() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  
+  const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+  const { data: userData } = useDoc(userDocRef);
+  const { personalization } = useAgency();
+  
+  const userPlan = useMemo(() => {
+    if (!userData?.planId || !personalization?.whiteLabelSection?.plans) {
+      return null;
+    }
+    return personalization.whiteLabelSection.plans.find(p => p.id === userData.planId);
+  }, [userData, personalization]);
+  
+  const showPrisme = userPlan?.hasPrismeAccess || (userData as any)?.role === 'superadmin';
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<QuestionModel | null>(null);
@@ -483,6 +501,9 @@ function FormTemplateManager() {
                                               if (field.type === 'vitae') {
                                                   return <VitaeBlockEditor key={field.id} remove={() => remove(index)} />;
                                               }
+                                               if (field.type === 'prisme') {
+                                                  return <PrismeBlockEditor key={field.id} remove={() => remove(index)} />;
+                                              }
                                               if (field.type === 'scorm') {
                                                   return <ScormBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
                                               }
@@ -501,6 +522,11 @@ function FormTemplateManager() {
                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'vitae' })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Analyse Vitae"
                                               </Button>
+                                               {showPrisme && (
+                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'prisme' })}>
+                                                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter "Bloc Prisme"
+                                                </Button>
+                                               )}
                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM', questions: [], results: [] })}>
                                                   <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc "SCORM"
                                               </Button>
@@ -613,6 +639,21 @@ function VitaeBlockEditor({ remove }: { remove: () => void }) {
         </Card>
     );
 }
+
+function PrismeBlockEditor({ remove }: { remove: () => void }) {
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Pyramid className="h-4 w-4"/>Bloc Prisme</div>
+                <Button type="button" variant="ghost" size="icon" onClick={remove}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className="text-center text-muted-foreground p-4 rounded-md mt-4">
+                Le bloc de tirage Prisme sera inséré ici lors du suivi.
+            </div>
+        </Card>
+    );
+}
+
 
 function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Control<any>, qIndex: number, questionIndex: number}) {
     const { fields, append, remove } = useFieldArray({
@@ -793,3 +834,5 @@ export default function SuiviPage() {
     </div>
   );
 }
+
+    
