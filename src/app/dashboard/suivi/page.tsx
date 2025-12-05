@@ -1,10 +1,6 @@
 
-
 'use client';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download } from "lucide-react";
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -13,7 +9,7 @@ import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDoc
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '../ui/form';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from '@/components/ui/sheet';
@@ -29,13 +25,16 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
-import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { useAgency } from "@/context/agency-provider";
+import { RichTextEditor } from '@/components/ui/rich-text-editor';
+import { useAgency } from '@/context/agency-provider';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
+import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
+import { FileText, ClipboardList, Route, PlusCircle, Scale, Trash2, Edit, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Download } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 
 const scaleSubQuestionSchema = z.object({
@@ -995,8 +994,8 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     const answerText = answers[block.id] !== undefined 
                         ? JSON.stringify(answers[block.id], null, 2)
                         : "Non répondu";
-                    docJs.text(answerText, 15, yPos, { maxWidth: 180 });
-                    yPos += 40;
+                    docJs.text(answerText || 'Non répondu', 15, yPos, { maxWidth: 180 });
+                    yPos += 40; // Approximate height
                     break;
             }
             yPos += 5;
