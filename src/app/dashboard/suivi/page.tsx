@@ -37,7 +37,7 @@ import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Responsi
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
-import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search } from 'lucide-react';
+import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 
@@ -834,7 +834,7 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                                     <Upload className="h-4 w-4 mr-2" /> Uploader une image
                                 </Button>
                                 <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
-                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <img src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" className="h-16 w-auto mt-2 rounded-md" />}
+                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
                             </div>
                             <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
@@ -900,7 +900,7 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
                                     <Upload className="h-4 w-4 mr-2" /> Uploader une image
                                 </Button>
                                 <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
-                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <img src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" className="h-16 w-auto mt-2 rounded-md" />}
+                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
                             </div>
                             <QcmAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
@@ -912,7 +912,67 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
     );
 }
 
-// ... other manager components (QcmAnswersEditor, ScormAnswersEditor, etc.) are assumed to be defined above this point.
+function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `questions.${questionIndex}.questions.${qIndex}.answers`,
+  });
+
+  return (
+    <div className="mt-4 pl-4 border-l">
+      <h5 className="text-xs font-semibold mb-2">Réponses</h5>
+      {fields.map((answer, aIndex) => (
+        <div key={answer.id} className="flex gap-2 items-end mb-2">
+          <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormLabel className="text-xs">Texte</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.value`} render={({ field }) => (<FormItem className="w-24"><FormLabel className="text-xs">Valeur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <Button type="button" variant="ghost" size="icon" onClick={() => remove(aIndex)}><X className="h-4 w-4" /></Button>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `scorm-a-${Date.now()}`, text: '', value: '' })}>+ Réponse</Button>
+    </div>
+  );
+}
+
+function QcmAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
+  const { fields, append, remove } = useFieldArray({
+    control,
+    name: `questions.${questionIndex}.questions.${qIndex}.answers`,
+  });
+  return (
+    <div className="mt-4 pl-4 border-l">
+      <h5 className="text-xs font-semibold mb-2">Réponses</h5>
+      {fields.map((answer, aIndex) => (
+        <div key={answer.id} className="flex flex-col gap-2 items-start mb-4 border-b pb-4">
+            <div className="flex justify-between w-full items-center">
+                <Label className="text-xs">Réponse {aIndex + 1}</Label>
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(aIndex)}><X className="h-4 w-4" /></Button>
+            </div>
+            <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({ field }) => (<FormItem className="w-full"><FormLabel className="text-xs">Texte de la réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.resultText`} render={({ field }) => (<FormItem className="w-full"><FormLabel className="text-xs">Texte de résultat (si cette réponse est choisie)</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `qcm-a-${Date.now()}`, text: '', resultText: '' })}>+ Réponse</Button>
+    </div>
+  );
+}
+
+function LearningPathManager() {
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle>Parcours d'apprentissage</CardTitle>
+                <CardDescription>
+                    Créez et gérez des séquences de formation pour vos clients.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-muted-foreground text-center">
+                    La fonctionnalité de gestion des parcours sera bientôt disponible.
+                </p>
+            </CardContent>
+        </Card>
+    );
+}
 
 function BlocQuestionMenu({ onAddBlock, showPrisme, showVitae, showAura }: { onAddBlock: (type: string) => void, showPrisme: boolean, showVitae: boolean, showAura: boolean }) {
   const blockTypes = [
@@ -943,6 +1003,142 @@ function BlocQuestionMenu({ onAddBlock, showPrisme, showVitae, showAura }: { onA
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+function FreeTextBlockEditor({ index, form, remove }: EditorProps) {
+  return (
+    <Card className="p-4 bg-muted/50">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+          <FileText className="h-4 w-4" />
+          Bloc Texte Libre
+        </div>
+        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+      <FormField
+        control={form.control}
+        name={`questions.${index}.question`}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Question ouverte</FormLabel>
+            <FormControl>
+              <Textarea {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </Card>
+  );
+}
+
+function ReportBlockEditor({ index, form, remove }: EditorProps) {
+  return (
+    <Card className="p-4 bg-muted/50">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+          <FileSignature className="h-4 w-4" />
+          Bloc Compte Rendu
+        </div>
+        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+      <FormField
+        control={form.control}
+        name={`questions.${index}.title`}
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Titre du compte rendu</FormLabel>
+            <FormControl>
+              <Input {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+    </Card>
+  );
+}
+
+
+function ScaleBlockEditor({ index, form, remove }: EditorProps) {
+    const { fields, append, remove: removeQuestion } = useFieldArray({
+        control: form.control,
+        name: `questions.${index}.questions`
+    });
+
+  return (
+    <Card className="p-4 bg-muted/50">
+      <div className="flex justify-between items-center mb-4">
+        <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground">
+          <Scale className="h-4 w-4" />
+          Bloc Échelle
+        </div>
+        <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+       <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => ( <FormItem className="mb-4"><FormLabel>Titre du bloc (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl></FormItem> )}/>
+      {fields.map((field, qIndex) => (
+        <div key={field.id} className="flex gap-2 items-end mb-2">
+          <FormField
+            control={form.control}
+            name={`questions.${index}.questions.${qIndex}.text`}
+            render={({ field }) => (
+              <FormItem className="flex-1">
+                <FormLabel className="text-xs">Question {qIndex + 1}</FormLabel>
+                <FormControl>
+                  <Input {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+          <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `sq-${Date.now()}`, text: '' })}>
+        + Ajouter une question
+      </Button>
+    </Card>
+  );
+}
+
+function AuraBlockEditor({ remove, index }: { remove: (index: number) => void, index: number }) {
+    return (
+        <Card className="p-4 bg-blue-100/50 border-blue-200">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm font-semibold text-blue-800"><BrainCog className="h-4 w-4"/>Bloc Analyse AURA</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+        </Card>
+    );
+}
+
+function VitaeBlockEditor({ remove, index }: { remove: (index: number) => void, index: number }) {
+    return (
+        <Card className="p-4 bg-green-100/50 border-green-200">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm font-semibold text-green-800"><Bot className="h-4 w-4"/>Bloc Analyse Vitae</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+        </Card>
+    );
+}
+function PrismeBlockEditor({ remove, index }: { remove: (index: number) => void, index: number }) {
+    return (
+        <Card className="p-4 bg-purple-100/50 border-purple-200">
+            <div className="flex justify-between items-center">
+                <div className="flex items-center gap-2 text-sm font-semibold text-purple-800"><Pyramid className="h-4 w-4"/>Bloc Tirage Prisme</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+        </Card>
+    );
 }
 
 export default function SuiviPage() {
@@ -1066,7 +1262,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                             const answerId = scormAnswers[qId];
                             if (!answerId) continue;
                             const question = scormBlock.questions.find(q => q.id === qId);
-                            const answerData = question?.answers.find(a => a.id === answerId);
+                            const answerData = question?.answers.find((a:any) => a.id === answerId);
                             if (answerData?.value) {
                                 valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
                             }
@@ -1079,139 +1275,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     };
 
                     const scormResult = calculateScormResult(block, answer);
-                    if (scormResult?.text) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = scormResult.text;
-                        const textContent = tempDiv.textContent || tempDiv.innerText || "";
-                        const lines = docJs.splitTextToSize(textContent, 180);
-                        docJs.text(lines, 15, yPos);
-                        yPos += lines.length * 7 + 5;
-                    } else {
-                        docJs.text("Résultat non calculé.", 15, yPos);
-                        yPos += 12;
-                    }
-                    break;
-                default:
-                    const answerText = answer !== undefined ? JSON.stringify(answer, null, 2) : "Non répondu";
-                    const lines = docJs.splitTextToSize(answerText, 180);
-                    docJs.text(lines, 15, yPos);
-                    yPos += lines.length * 7 + 5;
-                    break;
-            }
-            yPos += 5;
-        }
-
-        docJs.save(`Suivi_${suivi.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
-    };
-
-    if (!model) return null;
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
-                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="h-[60vh] pr-4">
-                    <div className="space-y-6">
-                        {model.questions?.map(block => {
-                            const answer = suivi.answers?.find(a => a.questionId === block.id)?.answer;
-                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} suivi={suivi} />;
-                        })}
-                    </div>
-                </ScrollArea>
-                <DialogFooter>
-                    <Button onClick={handleExportPdf}>
-                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['questions'][number], answer: any, suivi: FollowUp }) => {
-    
-    switch (block.type) {
-        case 'scale':
-            const scaleAnswers = answer || {};
-            return (
-                <Card>
-                    <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
-                    <CardContent>
-                        {block.questions.length > 1 ? (
-                             <ResponsiveContainer width="100%" height={300}>
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={block.questions.map(q => ({ subject: q.text, A: scaleAnswers[q.id] || 0, fullMark: 10 }))}>
-                                    <PolarGrid />
-                                    <PolarAngleAxis dataKey="subject" />
-                                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                                    <Radar name={suivi.clientName} dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        ) : block.questions.map(q => (
-                             <div key={q.id}>
-                                <p>{q.text}: <strong>{scaleAnswers[q.id] || 'N/A'}/10</strong></p>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            );
-        case 'free-text':
-            return (
-                <Card><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
-            );
-        case 'report':
-             return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
-                    <CardContent>
-                        <h4 className="font-semibold mb-2">Compte rendu</h4>
-                        <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
-                        {answer?.partners?.length > 0 && <>
-                            <h4 className="font-semibold mb-2">Partenaires associés</h4>
-                            <div className="space-y-2">
-                                {answer.partners.map((p: any) => (
-                                    <div key={p.id} className="text-sm p-3 border rounded-lg bg-muted">
-                                        <p className="font-bold">{p.name}</p>
-                                        <div className="text-muted-foreground text-xs mt-1 space-y-0.5">
-                                            {p.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{p.email}</p>}
-                                            {p.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{p.phone}</p>}
-                                            {p.specialties && p.specialties.length > 0 && <p><strong>Spéc:</strong> {p.specialties.join(', ')}</p>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </>}
-                    </CardContent>
-                </Card>
-            );
-        case 'scorm':
-            const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
-                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
-                const questionIds = scormBlock.questions.map(q => q.id);
-                if (questionIds.some(qId => !scormAnswers[qId])) {
-                    return null;
-                }
-            
-                const valueCounts: Record<string, number> = {};
-                for (const qId of questionIds) {
-                    const answerId = scormAnswers[qId];
-                    if (!answerId) continue;
-                    const question = scormBlock.questions.find(q => q.id === qId);
-                    const answerData = question?.answers.find((a:any) => a.id === answerId);
-                    if (answerData?.value) {
-                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                    }
-                }
-            
-                if (Object.keys(valueCounts).length === 0) return null;
-            
-                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                return scormBlock.results.find(r => r.value === dominantValue) || null;
-            };
-
-            const scormResult = calculateScormResult(block, answer);
-             return (
+                     return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
                          {scormResult ? (
@@ -1327,3 +1391,29 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
     }
 };
 
+    if (!model) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
+                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] pr-4">
+                    <div className="space-y-6">
+                        {model.questions?.map(block => {
+                            const answer = (suivi.answers || []).find(a => a.questionId === block.id)?.answer;
+                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} suivi={suivi} />;
+                        })}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button onClick={handleExportPdf}>
+                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
