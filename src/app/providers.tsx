@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import * as React from 'react';
 import { AgencyProvider } from "@/context/agency-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseProvider } from '@/firebase/provider';
