@@ -127,9 +127,8 @@ function AppointmentForm({
 
     const checkOverlap = (start: Date, end: Date) => {
         for (const app of existingAppointments) {
-            // Skip the appointment being edited
             if (editingAppointment && app.id === editingAppointment.id) continue;
-
+            
             if (!app.start || !app.end) continue;
 
             const existingStart = parseISO(app.start);
@@ -411,8 +410,8 @@ export default function AppointmentsPage() {
                 <div className="flex items-center gap-2">
                      <Button variant="outline" size="sm" onClick={handleToday}>Aujourd'hui</Button>
                     <div className="flex items-center rounded-md md:items-stretch">
-                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-r-none" onClick={handlePreviousWeek}><ChevronLeft className="h-4 w-4" /></Button>
-                        <Button variant="outline" size="icon" className="h-9 w-9 rounded-l-none" onClick={handleNextWeek}><ChevronRight className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" className="h-9 w-9 rounded-r-none" onClick={handlePreviousWeek}><ChevronLeft className="h-4 w-4" /></Button>
+                        <Button variant="outline" size="sm" className="h-9 w-9 rounded-l-none" onClick={handleNextWeek}><ChevronRight className="h-4 w-4" /></Button>
                     </div>
                      <Button onClick={() => handleAddAppointmentClick(new Date())}>
                         <PlusCircle className="mr-2 h-4 w-4" />
@@ -484,9 +483,10 @@ const Meeting = ({ appointment, onEdit, onDelete }: { appointment: Appointment, 
     const start = parseISO(appointment.start);
     const end = parseISO(appointment.end);
     
+    // The grid starts at 4:30 AM. Each 30-minute slot is 3.5rem high.
     const startHour = 4.5;
-    const totalMinutes = (start.getHours() + start.getMinutes() / 60) - startHour;
-    const top = totalMinutes * (3.5 * 2); // 3.5rem per 30min slot
+    const totalMinutesFromStart = (start.getHours() + start.getMinutes() / 60) - startHour;
+    const top = (totalMinutesFromStart / 0.5) * 3.5; // Divide by 0.5 because each slot is 30 mins
 
     const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
     const height = (durationMinutes / 30) * 3.5;
@@ -513,3 +513,5 @@ const Meeting = ({ appointment, onEdit, onDelete }: { appointment: Appointment, 
         </li>
     );
 };
+
+    
