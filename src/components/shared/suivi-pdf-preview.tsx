@@ -1,7 +1,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -46,7 +46,7 @@ export const ResultDisplayBlock = ({ block, answer, suivi }: { block: any, answe
                     <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
                     <CardContent>
                         {block.questions.length > 1 ? (
-                             <div data-html2canvas-ignore="true" id={`chart-${block.id}`}>
+                             <div data-html2canvas-ignore="true">
                                 <ResponsiveContainer width="100%" height={300}>
                                     <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
                                         <PolarGrid />
@@ -234,6 +234,36 @@ export const ResultDisplayBlock = ({ block, answer, suivi }: { block: any, answe
     }
 };
 
+const OffscreenChartRenderer = ({ blocks, answers, suivi }: { blocks: any[], answers: Record<string, any>, suivi: FollowUp }) => {
+    return (
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+            {blocks
+                .filter(block => block.type === 'scale' && block.questions.length > 1)
+                .map(block => {
+                    const scaleAnswers = answers[block.id] || {};
+                    const chartData = block.questions.map((q: any) => ({
+                        subject: q.text,
+                        A: scaleAnswers[q.id] || 0,
+                        fullMark: 10,
+                    }));
+                    return (
+                        <div key={`chart-offscreen-${block.id}`} id={`chart-${block.id}`} style={{ width: '600px', height: '400px', backgroundColor: 'white', padding: '20px' }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={chartData}>
+                                    <PolarGrid />
+                                    <PolarAngleAxis dataKey="subject" />
+                                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                                    <Radar name={suivi.clientName} dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        </div>
+                    );
+                })
+            }
+        </div>
+    );
+};
+
 export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswers }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null, liveAnswers: Record<string, any> }) => {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -272,13 +302,7 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                     const chartElement = document.getElementById(`chart-${block.id}`);
                     if (block.questions.length > 1 && chartElement) {
                         try {
-                            const canvas = await html2canvas(chartElement, { 
-                                backgroundColor: null,
-                                useCORS: true,
-                                // This tells html2canvas to look for the element in the main document body,
-                                // which can help find elements inside portals like dialogs.
-                                container: document.body, 
-                            });
+                            const canvas = await html2canvas(chartElement, { useCORS: true });
                             const imgData = canvas.toDataURL('image/png');
                             if(docJs.internal.pageSize.height - yPos < 90) { // Check space
                                 docJs.addPage();
@@ -288,7 +312,6 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                             yPos += 90;
                         } catch(e) {
                             console.error("Failed to render chart to canvas, printing text fallback.", e);
-                            // Fallback to text if canvas fails
                             block.questions.forEach((q: any) => {
                                 const value = answer?.[q.id] || 0;
                                 const text = `${q.text}: ${value}/10`;
@@ -375,26 +398,29 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
     if (!model) return null;
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
-                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="h-[60vh] pr-4">
-                    <div className="space-y-6" id="pdf-content">
-                        {model.questions?.map(block => {
-                            const answer = liveAnswers[block.id];
-                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} suivi={suivi} />;
-                        })}
-                    </div>
-                </ScrollArea>
-                <DialogFooter>
-                    <Button onClick={handleExportPdf}>
-                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
+        <>
+            <OffscreenChartRenderer blocks={model.questions || []} answers={liveAnswers} suivi={suivi} />
+            <Dialog open={isOpen} onOpenChange={onOpenChange}>
+                <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+                    <DialogHeader>
+                        <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
+                        <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[60vh] pr-4">
+                        <div className="space-y-6" id="pdf-content">
+                            {model.questions?.map(block => {
+                                const answer = liveAnswers[block.id];
+                                return <ResultDisplayBlock key={block.id} block={block} answer={answer} suivi={suivi} />;
+                            })}
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter>
+                        <Button onClick={handleExportPdf}>
+                            <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
     );
 };
