@@ -9,7 +9,7 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon, Copy, Power, PowerOff } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -41,6 +41,7 @@ import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check,
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 import Image from 'next/image';
+import { PdfPreviewModal } from '@/components/shared/suivi-pdf-preview';
 
 const scaleSubQuestionSchema = z.object({
   id: z.string(),
@@ -194,6 +195,25 @@ type PathEnrollment = {
     enrolledAt: string;
     status: 'pending' | 'completed';
 };
+
+type PublicForm = {
+    id: string;
+    counselorId: string;
+    name: string;
+    description: string;
+    modelId: string;
+    modelName: string;
+    isEnabled: boolean;
+    questions?: any[];
+};
+
+const publicFormSchema = z.object({
+    name: z.string().min(1, 'Le nom du formulaire est requis.'),
+    description: z.string().optional(),
+    modelId: z.string().min(1, 'Veuillez sélectionner un modèle de questions.'),
+});
+type PublicFormFormData = z.infer<typeof publicFormSchema>;
+
 
 type CombinedFollowUp = (FollowUp & { type: 'form' }) | (PathEnrollment & { type: 'path' });
 
@@ -1288,7 +1308,7 @@ export default function SuiviPage() {
       </div>
 
       <Tabs defaultValue="suivi" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-auto">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
           <TabsTrigger value="suivi">
             <ClipboardList className="mr-2 h-4 w-4" /> Suivi
           </TabsTrigger>
@@ -1297,6 +1317,9 @@ export default function SuiviPage() {
           </TabsTrigger>
            <TabsTrigger value="parcours">
             <Route className="mr-2 h-4 w-4" /> Parcours
+          </TabsTrigger>
+          <TabsTrigger value="public-forms">
+            <Send className="mr-2 h-4 w-4" /> Formulaires Publics
           </TabsTrigger>
         </TabsList>
 
@@ -1309,356 +1332,172 @@ export default function SuiviPage() {
         <TabsContent value="parcours">
             <LearningPathManager />
         </TabsContent>
+         <TabsContent value="public-forms">
+            <PublicFormManager />
+        </TabsContent>
       </Tabs>
     </div>
   );
 }
-    
-    
-const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boolean, onOpenChange: (open: boolean) => void, suivi: FollowUp, model: QuestionModel | null }) => {
+
+function PublicFormManager() {
     const { user } = useUser();
     const firestore = useFirestore();
-    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-    const { data: currentUserData } = useDoc(userDocRef);
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingForm, setEditingForm] = useState<PublicForm | null>(null);
 
-    const handleExportPdf = async () => {
-        if (!suivi || !model || !currentUserData) return;
-        const docJs = new jsPDF();
-        let yPos = 20;
+    const publicFormsQuery = useMemoFirebase(() => user ? query(collection(firestore, `public_forms`), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: publicForms, isLoading } = useCollection<PublicForm>(publicFormsQuery);
+    
+    const modelsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/question_models`)) : null, [user, firestore]);
+    const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
 
-        docJs.setFontSize(22);
-        docJs.text(`Suivi pour ${suivi.clientName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
-        yPos += 8;
-        docJs.setFontSize(14);
-        docJs.text(`Modèle: ${suivi.modelName}`, docJs.internal.pageSize.getWidth() / 2, yPos, { align: 'center' });
-        yPos += 15;
+    const form = useForm<PublicFormFormData>({
+        resolver: zodResolver(publicFormSchema),
+    });
 
-        const answers = (suivi.answers || []).reduce((acc, current) => {
-            acc[current.questionId] = current.answer;
-            return acc;
-        }, {} as Record<string, any>);
-
-        for (const block of model.questions || []) {
-            if (yPos > 250) {
-                docJs.addPage();
-                yPos = 20;
-            }
-            docJs.setFontSize(16);
-            docJs.setFont('helvetica', 'bold');
-            const title = (block as any).title || (block.type === 'free-text' ? (block as any).question : `Bloc ${block.type}`);
-            docJs.text(title, 15, yPos);
-            yPos += 10;
-            docJs.setFontSize(12);
-            docJs.setFont('helvetica', 'normal');
-
-            const answer = answers[block.id];
-            
-            switch (block.type) {
-                case 'scale':
-                    if (!answer) break;
-                    if (block.questions.length > 1) {
-                         const body = block.questions.map(q => [q.text, answer[q.id] !== undefined ? answer[q.id] : 'N/A']);
-                        (autoTable as any)(docJs, { head: [['Question', 'Score']], body, startY: yPos });
-                        yPos = (docJs as any).lastAutoTable.finalY + 10;
-                    } else if (block.questions.length === 1) {
-                        const q = block.questions[0];
-                        const value = answer[q.id] || 0;
-                        docJs.text(q.text, 15, yPos);
-                        yPos += 8;
-                        docJs.rect(15, yPos, 180, 8);
-                        docJs.setFillColor(136, 132, 216); // #8884d8
-                        docJs.rect(15, yPos, (180 * value) / 10, 8, 'F');
-                        docJs.text(`${value}/10`, 200, yPos + 6, { align: 'right' });
-                        yPos += 15;
-                    }
-                    break;
-                case 'report':
-                    if (answer?.text) {
-                        const reportLines = docJs.splitTextToSize(answer.text, 180);
-                        docJs.text(reportLines, 15, yPos);
-                        yPos += reportLines.length * 7 + 5;
-                    }
-                    if (answer?.partners?.length > 0) {
-                        docJs.text("Partenaires associés:", 15, yPos);
-                        yPos += 8;
-                        (autoTable as any)(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
-                        yPos = (docJs as any).lastAutoTable.finalY + 10;
-                    }
-                    break;
-                case 'scorm':
-                    const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
-                         if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
-                        const questionIds = scormBlock.questions.map(q => q.id);
-                        if (questionIds.some(qId => !scormAnswers[qId])) {
-                            return null;
-                        }
-                    
-                        const valueCounts: Record<string, number> = {};
-                        for (const qId of questionIds) {
-                            const answerId = scormAnswers[qId];
-                            if (!answerId) continue;
-                            const question = scormBlock.questions.find(q => q.id === qId);
-                            const answerData = question?.answers.find((a:any) => a.id === answerId);
-                            if (answerData?.value) {
-                                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                            }
-                        }
-                    
-                        if (Object.keys(valueCounts).length === 0) return null;
-                    
-                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                        return scormBlock.results.find(r => r.value === dominantValue) || null;
-                    };
-
-                    const scormResult = calculateScormResult(block, answer);
-                     if (scormResult?.text) {
-                        const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = scormResult.text;
-                        const textContent = tempDiv.textContent || tempDiv.innerText || "";
-                        const lines = docJs.splitTextToSize(textContent, 180);
-                        docJs.text(lines, 15, yPos);
-                        yPos += lines.length * 7 + 5;
-                    } else {
-                        docJs.text("Résultat non calculé.", 15, yPos);
-                        yPos += 12;
-                    }
-                    break;
-                default:
-                    const answerText = answer !== undefined ? JSON.stringify(answer, null, 2) : "Non répondu";
-                    const lines = docJs.splitTextToSize(answerText, 180);
-                    docJs.text(lines, 15, yPos);
-                    yPos += lines.length * 7 + 5;
-                    break;
-            }
-            yPos += 5;
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingForm || { name: '', description: '', modelId: '' });
         }
+    }, [isSheetOpen, editingForm, form]);
 
-        docJs.save(`Suivi_${suivi.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
+    const handleNew = () => {
+        setEditingForm(null);
+        setIsSheetOpen(true);
     };
 
-    if (!model) return null;
+    const handleEdit = (form: PublicForm) => {
+        setEditingForm(form);
+        setIsSheetOpen(true);
+    };
+    
+    const handleDelete = (formId: string) => {
+        deleteDocumentNonBlocking(doc(firestore, 'public_forms', formId));
+        toast({ title: "Formulaire supprimé" });
+    };
+    
+    const toggleEnabled = (form: PublicForm) => {
+        const formRef = doc(firestore, 'public_forms', form.id);
+        setDocumentNonBlocking(formRef, { isEnabled: !form.isEnabled }, { merge: true });
+        toast({ title: `Formulaire ${form.isEnabled ? 'désactivé' : 'activé'}`});
+    };
+
+    const copyLink = (formId: string) => {
+        const url = `${window.location.origin}/form/${formId}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: "Lien copié dans le presse-papiers" });
+    }
+
+    const onSubmit = (data: PublicFormFormData) => {
+        if (!user || !models) return;
+        const selectedModel = models.find(m => m.id === data.modelId);
+        if (!selectedModel) return;
+
+        const formData = { 
+            counselorId: user.uid,
+            name: data.name,
+            description: data.description,
+            modelId: data.modelId,
+            modelName: selectedModel.name,
+            questions: selectedModel.questions || [], // Embed questions
+            isEnabled: editingForm ? editingForm.isEnabled : true,
+            createdAt: editingForm ? editingForm.createdAt : new Date().toISOString(),
+        };
+
+        if (editingForm) {
+            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), formData, { merge: true });
+            toast({ title: "Formulaire mis à jour" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, 'public_forms'), formData);
+            toast({ title: "Formulaire public créé" });
+        }
+        setIsSheetOpen(false);
+    };
 
     return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
-                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="h-[60vh] pr-4">
-                    <div className="space-y-6">
-                        {model.questions?.map(block => {
-                            const answer = (suivi.answers || []).find(a => a.questionId === block.id)?.answer;
-                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} />;
-                        })}
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Formulaires Publics</CardTitle>
+                        <CardDescription>
+                            Créez des formulaires pour les partager publiquement (via un lien ou sur votre mini-site).
+                        </CardDescription>
                     </div>
-                </ScrollArea>
-                <DialogFooter>
-                    <Button onClick={handleExportPdf}>
-                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-};
-
-
-const ResultDisplayBlock = ({ block, answer }: { block: QuestionModel['questions'][number], answer: any }) => {
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouveau Formulaire Public</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Nom</TableHead><TableHead>Modèle utilisé</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                        : publicForms && publicForms.length > 0 ? (
+                            publicForms.map(form => (
+                                <TableRow key={form.id}>
+                                    <TableCell>{form.name}</TableCell>
+                                    <TableCell>{form.modelName}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={form.isEnabled ? 'default' : 'secondary'}>
+                                            {form.isEnabled ? 'Actif' : 'Inactif'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => copyLink(form.id)}><Copy className="h-4 w-4"/></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => toggleEnabled(form)}>{form.isEnabled ? <PowerOff className="h-4 w-4"/> : <Power className="h-4 w-4"/>}</Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(form)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(form.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucun formulaire public créé.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-lg">
+                        <SheetHeader>
+                            <SheetTitle>{editingForm ? 'Modifier le' : 'Nouveau'} formulaire public</SheetTitle>
+                        </SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du formulaire</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField
+                                    control={form.control}
+                                    name="modelId"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Modèle de questions à utiliser</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger disabled={areModelsLoading}><SelectValue placeholder="Sélectionner un modèle..." /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>{models?.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    )
+}
     
-    switch (block.type) {
-        case 'scale':
-            const scaleAnswers = answer || {};
-            return (
-                <Card>
-                    <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
-                    <CardContent>
-                        {block.questions.length > 1 ? (
-                             <ResponsiveContainer width="100%" height={300}>
-                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={block.questions.map(q => ({ subject: q.text, A: scaleAnswers[q.id] || 0, fullMark: 10 }))}>
-                                    <PolarGrid />
-                                    <PolarAngleAxis dataKey="subject" />
-                                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
-                                    <Radar name={""} dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
-                                </RadarChart>
-                            </ResponsiveContainer>
-                        ) : block.questions.map(q => (
-                             <div key={q.id}>
-                                <p>{q.text}: <strong>{scaleAnswers[q.id] || 'N/A'}/10</strong></p>
-                            </div>
-                        ))}
-                    </CardContent>
-                </Card>
-            );
-        case 'free-text':
-            return (
-                <Card><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
-            );
-        case 'report':
-             return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
-                    <CardContent>
-                        <h4 className="font-semibold mb-2">Compte rendu</h4>
-                        <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
-                        {answer?.partners?.length > 0 && <>
-                            <h4 className="font-semibold mb-2">Partenaires associés</h4>
-                            <div className="space-y-2">
-                                {answer.partners.map((p: any) => (
-                                    <div key={p.id} className="text-sm p-3 border rounded-lg bg-muted">
-                                        <p className="font-bold">{p.name}</p>
-                                        <div className="text-muted-foreground text-xs mt-1 space-y-0.5">
-                                            {p.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{p.email}</p>}
-                                            {p.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{p.phone}</p>}
-                                            {p.specialties && p.specialties.length > 0 && <p><strong>Spéc:</strong> {p.specialties.join(', ')}</p>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </>}
-                    </CardContent>
-                </Card>
-            );
-        case 'scorm':
-             const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
-                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
-                const questionIds = scormBlock.questions.map(q => q.id);
-                if (questionIds.some(qId => !scormAnswers[qId])) {
-                    return null;
-                }
-            
-                const valueCounts: Record<string, number> = {};
-                for (const qId of questionIds) {
-                    const answerId = scormAnswers[qId];
-                    if (!answerId) continue;
-                    const question = scormBlock.questions.find(q => q.id === qId);
-                    const answerData = question?.answers.find((a:any) => a.id === answerId);
-                    if (answerData?.value) {
-                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
-                    }
-                }
-            
-                if (Object.keys(valueCounts).length === 0) return null;
-            
-                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                return scormBlock.results.find(r => r.value === dominantValue) || null;
-            };
-
-            const scormResult = calculateScormResult(block, answer);
-             return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
-                    <CardContent>
-                         {scormResult ? (
-                            <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: scormResult.text }} />
-                        ) : 'Résultat non calculé.'}
-                    </CardContent>
-                </Card>
-             );
-        case 'qcm':
-             return (
-                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        {(block.questions || []).map(q => {
-                             const selectedAnswerId = answer?.[q.id];
-                             const selectedAnswer = q.answers.find((a:any) => a.id === selectedAnswerId);
-                             return (
-                                 <div key={q.id}>
-                                     <p className="font-semibold">{q.text}</p>
-                                     <p className="text-sm text-muted-foreground">Réponse: {selectedAnswer?.text || 'Non répondu'}</p>
-                                      {selectedAnswer?.resultText && (
-                                        <div className="mt-2 text-sm prose dark:prose-invert max-w-none border-l-2 pl-4" dangerouslySetInnerHTML={{ __html: selectedAnswer.resultText}}/>
-                                      )}
-                                 </div>
-                             )
-                        })}
-                    </CardContent>
-                </Card>
-            );
-        case 'prisme':
-            return (
-                <Card><CardHeader><CardTitle>Analyse Prisme</CardTitle></CardHeader>
-                    <CardContent>
-                         {answer?.drawnCards?.length > 0 ? (
-                            <div className="space-y-4">
-                                {answer.drawnCards.map((item: any, index: React.Key | null | undefined) => (
-                                    <div key={index} className="flex gap-4 p-4 border rounded-lg bg-background">
-                                        <div className="flex-shrink-0">
-                                            {item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-muted-foreground">{item.position.meaning}</p>
-                                            <h4 className="text-lg font-bold">{item.card.name}</h4>
-                                            <p className="text-sm">{item.card.description}</p>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        ) : 'Aucun tirage effectué.'}
-                    </CardContent>
-                </Card>
-            );
-        case 'vitae':
-            return (
-                <Card>
-                    <CardHeader><CardTitle>Analyse Vitae</CardTitle></CardHeader>
-                    <CardContent>
-                        <VitaeAnalysisBlock savedAnalysis={answer} onSaveAnalysis={() => {}} onSaveBlock={async () => {}} readOnly />
-                    </CardContent>
-                </Card>
-            );
-        case 'aura':
-            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: any) => {
-                 if (!data || (!data.products?.length && !data.protocoles?.length)) {
-                    return null;
-                }
-                return (
-                    <div key={key} className="mb-4">
-                        <h4 className="font-semibold text-primary">{title}</h4>
-                        {data.products && data.products.length > 0 && <p className="text-sm"><b>Produits:</b> {data.products.map((p: any) => p.title).join(', ')}</p>}
-                        {data.protocoles && data.protocoles.length > 0 && <p className="text-sm"><b>Protocoles:</b> {data.protocoles.map((p: any) => p.name).join(', ')}</p>}
-                    </div>
-                );
-             };
-
-            if (!answer) {
-                return (
-                    <Card>
-                        <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
-                        <CardContent><p className="text-muted-foreground">Analyse non effectuée.</p></CardContent>
-                    </Card>
-                );
-            }
-
-            return (
-                <Card>
-                    <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div>
-                             <h3 className="font-bold text-lg mb-2">Correspondance par Pathologie</h3>
-                             {answer.byPathology && answer.byPathology.length > 0 ? answer.byPathology.map((item: any) => renderSuggestions(item.pathology, { products: item.products, protocoles: item.protocoles }, item.pathology)) : <p className="text-sm text-muted-foreground">Aucune.</p>}
-                        </div>
-                         <div className="pt-4 border-t">
-                            <h3 className="font-bold text-lg mb-2">Adapté au Profil Holistique</h3>
-                            {renderSuggestions('', answer.byHolisticProfile, 'holistic')}
-                        </div>
-                        <div className="pt-4 border-t">
-                            <h3 className="font-bold text-lg mb-2">Cohérence Parfaite</h3>
-                             {renderSuggestions('', answer.perfectMatch, 'perfect')}
-                        </div>
-                    </CardContent>
-                </Card>
-            );
-        default:
-             const unknownAnswerText = answer ? JSON.stringify(answer, null, 2) : "Non répondu";
-            return (
-                <Card>
-                    <CardHeader><CardTitle>{(block as any).title || block.type}</CardTitle></CardHeader>
-                    <CardContent>
-                        <pre className="text-xs whitespace-pre-wrap bg-muted p-2 rounded-md">{unknownAnswerText}</pre>
-                    </CardContent>
-                </Card>
-            );
-    }
-};
-
-
-
+    
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });

@@ -1,6 +1,46 @@
 
 {
   "entities": {
+    "PublicForm": {
+        "title": "Public Form",
+        "type": "object",
+        "description": "A public-facing form based on a Question Model.",
+        "properties": {
+            "id": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "name": { "type": "string" },
+            "description": { "type": "string" },
+            "modelId": { "type": "string" },
+            "modelName": { "type": "string" },
+            "questions": { "type": "array", "items": { "type": "object" } },
+            "isEnabled": { "type": "boolean" },
+            "createdAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["counselorId", "name", "modelId"]
+    },
+     "PublicFormSubmission": {
+        "title": "Public Form Submission",
+        "type": "object",
+        "description": "A submission for a public form.",
+        "properties": {
+            "id": { "type": "string" },
+            "formId": { "type": "string" },
+            "counselorId": { "type": "string" },
+            "respondent": {
+                "type": "object",
+                "properties": {
+                    "firstName": { "type": "string" },
+                    "lastName": { "type": "string" },
+                    "email": { "type": "string", "format": "email" },
+                    "phone": { "type": "string" }
+                },
+                "required": ["firstName", "lastName", "email"]
+            },
+            "answers": { "type": "array", "items": { "type": "object" } },
+            "submittedAt": { "type": "string", "format": "date-time" }
+        },
+        "required": ["formId", "counselorId", "respondent", "submittedAt"]
+    },
     "QuestionModel": {
         "title": "Question Model",
         "type": "object",
@@ -193,6 +233,7 @@
             "clientName": { "type": "string" },
             "modelId": { "type": "string" },
             "modelName": { "type": "string" },
+            "pathEnrollmentId": { "type": "string", "description": "Link to the learning path this follow-up is part of." },
             "status": { "type": "string", "enum": ["pending", "completed"] },
             "createdAt": { "type": "string", "format": "date-time" },
             "answers": {
@@ -1577,22 +1618,21 @@
       "description": "A structured sequence of trainings and quizzes.",
       "properties": {
         "id": { "type": "string" },
+        "counselorId": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
-        "authorId": { "type": "string" },
         "steps": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
-              "type": { "type": "string", "enum": ["training", "quiz"] },
-              "itemId": { "type": "string", "description": "ID of the Training or Quiz." },
-              "order": { "type": "number" }
+              "modelId": { "type": "string" },
+              "modelName": { "type": "string" }
             }
           }
         }
       },
-      "required": ["id", "title", "authorId", "steps"]
+      "required": ["counselorId", "title", "steps"]
     },
     "PathEnrollment": {
       "title": "Path Enrollment",
@@ -1602,7 +1642,10 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "pathId": { "type": "string" },
+        "pathName": { "type": "string" },
+        "counselorId": { "type": "string" },
         "enrolledAt": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "enum": ["pending", "completed"] },
         "progress": {
           "type": "object",
           "description": "Key-value pair where key is step itemId and value is completion status.",
@@ -1759,6 +1802,22 @@
           "description": "Stores client follow-up sessions created by a counselor."
         }
       },
+       {
+        "path": "/users/{userId}/path_enrollments/{enrollmentId}",
+        "definition": {
+          "entityName": "PathEnrollment",
+          "schema": { "$ref": "#/entities/PathEnrollment" },
+          "description": "Stores client enrollments in learning paths created by a counselor."
+        }
+      },
+      {
+        "path": "/users/{userId}/learning_paths/{pathId}",
+        "definition": {
+          "entityName": "LearningPath",
+          "schema": { "$ref": "#/entities/LearningPath" },
+          "description": "Stores learning paths created by a counselor."
+        }
+      },
       {
         "path": "/users/{userId}/job_offers/{offerId}",
         "definition": {
@@ -1805,6 +1864,22 @@
           "entityName": "QuestionModel",
           "schema": { "$ref": "#/entities/QuestionModel" },
           "description": "Stores question templates created by a counselor."
+        }
+      },
+      {
+        "path": "/public_forms/{formId}",
+        "definition": {
+            "entityName": "PublicForm",
+            "schema": { "$ref": "#/entities/PublicForm" },
+            "description": "Publicly accessible forms for lead generation or surveys."
+        }
+      },
+      {
+        "path": "/public_forms/{formId}/submissions/{submissionId}",
+        "definition": {
+            "entityName": "PublicFormSubmission",
+            "schema": { "$ref": "#/entities/PublicFormSubmission" },
+            "description": "Submissions for a specific public form."
         }
       },
       {
