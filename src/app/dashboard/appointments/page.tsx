@@ -55,6 +55,16 @@ const hours = Array.from({ length: 13 }, (_, i) => `${(i + 8).toString().padStar
 const startHour = 8;
 const hourHeightInRem = 5;
 
+// Helper to format ISO date string to a local datetime-local input format
+const toLocalISOString = (date: Date) => {
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const day = date.getDate().toString().padStart(2, '0');
+    const hours = date.getHours().toString().padStart(2, '0');
+    const minutes = date.getMinutes().toString().padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+};
+
 export default function AppointmentsPage() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -85,10 +95,12 @@ export default function AppointmentsPage() {
     useEffect(() => {
         if (isSheetOpen) {
             if (editingAppointment) {
+                 const localStart = toLocalISOString(new Date(editingAppointment.start));
+                 const localEnd = toLocalISOString(new Date(editingAppointment.end));
                 form.reset({
                     title: editingAppointment.title,
-                    start: editingAppointment.start.slice(0, 16),
-                    end: editingAppointment.end.slice(0, 16),
+                    start: localStart,
+                    end: localEnd,
                     details: editingAppointment.details || '',
                 });
                 setSelectedClient({ id: editingAppointment.clientId, name: editingAppointment.clientName });
