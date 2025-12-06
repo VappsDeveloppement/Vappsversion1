@@ -94,9 +94,11 @@ export const ResultDisplayBlock = ({ block, answer, suivi }: { block: any, answe
             );
         case 'scorm':
             const calculateScormResult = (scormBlock: any, scormAnswers: any): any | null => {
-                if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
                 const questionIds = scormBlock.questions.map((q: any) => q.id);
-                if (questionIds.some((qId: string) => !scormAnswers[qId])) return null;
+                if (questionIds.some((qId: string) => !scormAnswers[qId])) {
+                    return null;
+                }
             
                 const valueCounts: Record<string, number> = {};
                 for (const qId of questionIds) {
@@ -267,24 +269,32 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
             
             switch (block.type) {
                 case 'scale':
-                     if (block.questions.length > 1) {
-                        const chartElement = document.getElementById(`chart-${block.id}`);
-                        if(chartElement) {
-                             const canvas = await html2canvas(chartElement, { backgroundColor: null });
-                             const imgData = canvas.toDataURL('image/png');
-                             docJs.addImage(imgData, 'PNG', 15, yPos, 180, 80);
-                             yPos += 90;
+                    const chartElement = document.getElementById(`chart-${block.id}`);
+                    if (block.questions.length > 1 && chartElement) {
+                        try {
+                            const canvas = await html2canvas(chartElement, { backgroundColor: null });
+                            const imgData = canvas.toDataURL('image/png');
+                            if(docJs.internal.pageSize.height - yPos < 90) { // Check space
+                                docJs.addPage();
+                                yPos = 20;
+                            }
+                            docJs.addImage(imgData, 'PNG', 15, yPos, 180, 80);
+                            yPos += 90;
+                        } catch(e) {
+                            console.error("Failed to render chart to canvas, printing text fallback.", e);
+                            // Fallback to text if canvas fails
+                            block.questions.forEach((q: any) => {
+                                const value = answer?.[q.id] || 0;
+                                docJs.text(`${q.text}: ${value}/10`, 15, yPos);
+                                yPos += 8;
+                            });
                         }
-                    } else if (block.questions.length === 1) {
-                        const q = block.questions[0];
-                        const value = answer[q.id] || 0;
-                        docJs.text(q.text, 15, yPos);
-                        yPos += 8;
-                        docJs.rect(15, yPos, 180, 8);
-                        docJs.setFillColor(136, 132, 216); // #8884d8
-                        docJs.rect(15, yPos, (180 * value) / 10, 8, 'F');
-                        docJs.text(`${value}/10`, 200, yPos + 6, { align: 'right' });
-                        yPos += 15;
+                    } else {
+                        block.questions.forEach((q: any) => {
+                             const value = answer?.[q.id] || 0;
+                            docJs.text(`${q.text}: ${value}/10`, 15, yPos);
+                            yPos += 8;
+                        });
                     }
                     break;
                 case 'report':
