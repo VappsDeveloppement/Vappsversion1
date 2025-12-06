@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -11,7 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2, Search, Mail, MessageSquare, TrendingUp, Users, FileText, Receipt, Calendar as CalendarIcon, Download, FileArchive } from 'lucide-react';
+import { CheckCircle, MoreHorizontal, PhoneForwarded, Trash2, UserPlus, Loader2, Search, Mail, MessageSquare, TrendingUp, Users, FileText, Receipt, Calendar as CalendarIcon, Download, FileArchive, Eye } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
@@ -26,7 +25,14 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import type { Quote } from '@/components/shared/quote-management';
 import type { Invoice } from '@/components/shared/invoice-management';
-import type { Client } from '@/app/dashboard/clients/page';
+
+// Redefine Client type locally to avoid dependency issues
+type Client = {
+    id: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+};
 
 
 type FollowUpRequest = {
@@ -53,12 +59,34 @@ type TrainingRequest = {
     createdAt: string;
 };
 
-const statusVariant: Record<FollowUpRequest['status'] | TrainingRequest['status'], 'default' | 'secondary' | 'destructive'> = {
+// Types for Public Form Submissions
+type PublicFormSubmission = {
+    id: string;
+    formId: string;
+    counselorId: string;
+    respondent: {
+        firstName: string;
+        lastName: string;
+        email: string;
+        phone?: string;
+    };
+    answers: { questionId: string; answer: any }[];
+    submittedAt: string;
+    status: 'new' | 'processed';
+};
+
+type PublicForm = {
+    id: string;
+    name: string;
+    questions?: any[];
+};
+
+const statusVariant: Record<PublicFormSubmission['status'], 'default' | 'secondary' | 'destructive'> = {
   new: 'destructive',
   processed: 'secondary',
 };
 
-const statusText: Record<FollowUpRequest['status'] | TrainingRequest['status'], string> = {
+const statusText: Record<PublicFormSubmission['status'], string> = {
   new: 'Nouveau',
   processed: 'Traité',
 };
@@ -236,7 +264,7 @@ function FollowUpRequestsSection() {
     const followUpRequestsQuery = useMemoFirebase(() => {
         if (!user || !userData) return null;
         
-        let q = query(collection(firestore, 'live_follow_up_requests'));
+        let q = collection(firestore, 'live_follow_up_requests');
 
         if (isSuperAdmin && agency?.id) {
              q = query(q, where('counselorId', '==', agency.id));
@@ -377,7 +405,7 @@ function FollowUpRequestsSection() {
                 <TableCell>{request.phone || '-'}</TableCell>
                 <TableCell>{new Date(request.liveDate).toLocaleDateString('fr-FR')}</TableCell>
                 <TableCell>
-                    <Badge variant={statusVariant[request.status]}>
+                    <Badge variant={statusText[request.status] === 'Nouveau' ? 'destructive' : 'secondary'}>
                         {statusText[request.status]}
                     </Badge>
                 </TableCell>
@@ -659,6 +687,145 @@ function TrainingRequestsSection() {
     );
 }
 
+function PublicFormSubmissionsManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
+
+    const submissionsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'public_form_submissions'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: submissions, isLoading } = useCollection<PublicFormSubmission>(submissionsQuery);
+
+    const publicFormsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'public_forms'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: publicForms, isLoading: areFormsLoading } = useCollection<PublicForm>(publicFormsQuery);
+
+    const formsMap = useMemo(() => {
+        if (!publicForms) return new Map();
+        return new Map(publicForms.map(form => [form.id, form]));
+    }, [publicForms]);
+
+    const handleMarkAsProcessed = (submissionId: string) => {
+        const subRef = doc(firestore, 'public_form_submissions', submissionId);
+        setDocumentNonBlocking(subRef, { status: 'processed' }, { merge: true });
+        toast({ title: 'Soumission marquée comme traitée' });
+    };
+
+    const handleDeleteSubmission = (submissionId: string) => {
+        deleteDocumentNonBlocking(doc(firestore, 'public_form_submissions', submissionId));
+        toast({ title: 'Soumission supprimée' });
+    };
+
+    const getQuestionText = (formId: string, questionId: string) => {
+        const form = formsMap.get(formId);
+        if (!form) return questionId;
+        const block = form.questions?.find((q: any) => q.id === questionId);
+        if(!block) return questionId;
+
+        // Find the specific question if it's a nested type
+        if (block.type === 'scale' || block.type === 'qcm' || block.type === 'scorm') {
+            const subQuestionId = Object.keys(liveAnswers[questionId] || {})[0];
+            const subQuestion = block.questions?.find((sq: any) => sq.id === subQuestionId);
+            return subQuestion?.text || questionId;
+        }
+
+        return block.question || block.title || questionId;
+    }
+    
+    return (
+        <>
+            <Card>
+                <CardHeader>
+                    <CardTitle>Formulaires CTA</CardTitle>
+                    <CardDescription>Consultez les réponses soumises via vos formulaires publics.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Formulaire</TableHead>
+                                <TableHead>Répondant</TableHead>
+                                <TableHead>Date</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading || areFormsLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
+                            : submissions && submissions.length > 0 ? (
+                                submissions.map(sub => (
+                                    <TableRow key={sub.id}>
+                                        <TableCell>{formsMap.get(sub.formId)?.name || 'Formulaire inconnu'}</TableCell>
+                                        <TableCell>{sub.respondent.firstName} {sub.respondent.lastName}</TableCell>
+                                        <TableCell>{new Date(sub.submittedAt).toLocaleDateString()}</TableCell>
+                                        <TableCell><Badge variant={statusVariant[sub.status]}>{statusText[sub.status]}</Badge></TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="ghost" size="icon" onClick={() => setViewingSubmission(sub)}><Eye className="h-4 w-4"/></Button>
+                                            <Button variant="ghost" size="icon" onClick={() => handleDeleteSubmission(sub.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucune soumission.</TableCell></TableRow>}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+
+            <Dialog open={!!viewingSubmission} onOpenChange={() => setViewingSubmission(null)}>
+                <DialogContent className="sm:max-w-xl">
+                    <DialogHeader>
+                        <DialogTitle>Réponses de {viewingSubmission?.respondent.firstName}</DialogTitle>
+                        <DialogDescription>
+                            Pour le formulaire: {viewingSubmission && formsMap.get(viewingSubmission.formId)?.name}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="max-h-[60vh] pr-4">
+                        <div className="space-y-4 py-4">
+                           {viewingSubmission?.answers.map((ans: any, index: number) => {
+                                const question = formsMap.get(viewingSubmission.formId)?.questions?.find((q:any) => q.id === ans.questionId);
+                                if (!question) return <p key={index}>Question inconnue</p>;
+
+                                let answerDisplay = JSON.stringify(ans.answer);
+                                if (question.type === 'scale') {
+                                    answerDisplay = Object.entries(ans.answer).map(([qId, val]) => {
+                                        const subQ = question.questions.find((sq: any) => sq.id === qId);
+                                        return `${subQ?.text || qId}: ${val}/10`;
+                                    }).join('; ');
+                                } else if (question.type === 'qcm' || question.type === 'scorm') {
+                                     answerDisplay = Object.entries(ans.answer).map(([qId, ansId]) => {
+                                        const subQ = question.questions.find((sq: any) => sq.id === qId);
+                                        const selectedAns = subQ?.answers.find((a: any) => a.id === ansId);
+                                        return `${subQ.text}: ${selectedAns?.text || 'N/A'}`;
+                                     }).join('; ');
+                                }
+
+                                return (
+                                    <div key={index} className="text-sm">
+                                        <p className="font-semibold">{question.title || question.question}</p>
+                                        <p className="text-muted-foreground pl-4">{answerDisplay}</p>
+                                    </div>
+                                )
+                           })}
+                        </div>
+                    </ScrollArea>
+                    <DialogFooter>
+                        {viewingSubmission?.status === 'new' && (
+                            <Button onClick={() => handleMarkAsProcessed(viewingSubmission.id)}>
+                                Marquer comme traité
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </>
+    );
+}
+
 export default function DashboardPage() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -678,6 +845,7 @@ export default function DashboardPage() {
             <DashboardStats />
             <FollowUpRequestsSection />
             <TrainingRequestsSection />
+            <PublicFormSubmissionsManager />
 
             <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
                 <p className="text-muted-foreground">D'autres statistiques et informations seront bientôt disponibles ici.</p>
