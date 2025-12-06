@@ -60,8 +60,8 @@ const appointmentSchema = z.object({
 
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
 
-const hours = Array.from({ length: 13 }, (_, i) => `${(i + 8).toString().padStart(2, '0')}:00`);
-const startHour = 8;
+const hours = Array.from({ length: 20 }, (_, i) => `${(i + 4).toString().padStart(2, '0')}:00`);
+const startHour = 4;
 const hourHeightInRem = 5;
 
 // Helper to format ISO date string to a local datetime-local input format
@@ -261,7 +261,7 @@ export default function AppointmentsPage() {
                                          {editingAppointment && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <Button type="button" variant="destructive" onClick={() => setAppointmentToDelete(editingAppointment)}>
+                                                    <Button type="button" variant="destructive">
                                                         <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                                     </Button>
                                                 </AlertDialogTrigger>
@@ -271,13 +271,13 @@ export default function AppointmentsPage() {
                                                         <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
-                                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                        <AlertDialogCancel onClick={() => setAppointmentToDelete(null)}>Annuler</AlertDialogCancel>
                                                         <AlertDialogAction onClick={handleDeleteAppointment}>Confirmer</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
                                         )}
-                                        <div className='flex gap-2'>
+                                        <div className='flex gap-2 ml-auto'>
                                             <Button type="button" variant="outline" onClick={() => setIsSheetOpen(false)}>Annuler</Button>
                                             <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
@@ -442,5 +442,3 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
-
-    
