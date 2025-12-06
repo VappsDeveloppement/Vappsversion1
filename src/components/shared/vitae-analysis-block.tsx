@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
@@ -55,6 +54,8 @@ export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId, on
     const cvProfilesQuery = useMemoFirebase(() => {
         if (!user) return null;
         const baseQuery = collection(firestore, `users/${user.uid}/cv_profiles`);
+        // If a client is specified (from a suivi page), filter by that client.
+        // Otherwise, fetch all CV profiles for the counselor.
         if (clientId) {
             return query(baseQuery, where('clientId', '==', clientId));
         }
@@ -213,7 +214,7 @@ export function VitaeAnalysisBlock({ savedAnalysis, onSaveAnalysis, clientId, on
                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
                         <Label>Profil CV</Label>
-                        <Select onValueChange={setSelectedCvId} disabled={areCvProfilesLoading || !!clientId} value={selectedCvId || undefined}>
+                        <Select onValueChange={setSelectedCvId} disabled={areCvProfilesLoading} value={selectedCvId || undefined}>
                             <SelectTrigger><SelectValue placeholder="Sélectionner un profil..." /></SelectTrigger>
                             <SelectContent>
                                 {cvProfiles?.map(p => <SelectItem key={p.id} value={p.id}>{p.clientName}</SelectItem>)}
