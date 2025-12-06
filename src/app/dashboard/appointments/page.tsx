@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
@@ -12,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, doc, where, writeBatch } from 'firebase/firestore';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -83,12 +82,9 @@ const hourHeightInRem = 5;
 
 // Helper to format ISO date string to a local datetime-local input format
 const toLocalISOString = (date: Date) => {
-    const year = date.getFullYear();
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const day = date.getDate().toString().padStart(2, '0');
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+    const tzOffset = date.getTimezoneOffset() * 60000;
+    const localISOTime = new Date(date.getTime() - tzOffset).toISOString().slice(0, 16);
+    return localISOTime;
 };
 
 export default function AppointmentsPage() {
@@ -179,7 +175,7 @@ export default function AppointmentsPage() {
             if (editingAppointment && 'title' in slot && slot.id === editingAppointment.id) {
                 return false;
             }
-            if (!slot.start || !slot.end) {
+             if (!slot.start || !slot.end) {
                 return false;
             }
             const existingStart = parseISO(slot.start);
@@ -283,6 +279,11 @@ export default function AppointmentsPage() {
     const handlePreviousWeek = () => setCurrentDate(subWeeks(currentDate, 1));
     const handleNextWeek = () => setCurrentDate(addWeeks(currentDate, 1));
     const handleToday = () => setCurrentDate(new Date());
+    
+    function handleEditAppointment(appointment: Appointment) {
+        setEditingAppointment(appointment);
+        setIsAppointmentSheetOpen(true);
+    }
 
     return (
         <div className="flex flex-col h-full">
@@ -368,7 +369,7 @@ export default function AppointmentsPage() {
                                         )}
                                         <div className='flex gap-2 ml-auto'>
                                             <Button type="button" variant="outline" onClick={() => setIsAppointmentSheetOpen(false)}>Annuler</Button>
-                                            <Button type="submit" disabled={isSubmitting}>
+                                            <Button type="submit" disabled={isSubmitting} onClick={() => editingAppointment && setAppointmentToDelete(editingAppointment)}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                                 Sauvegarder
                                             </Button>
@@ -496,11 +497,6 @@ export default function AppointmentsPage() {
             </div>
         </div>
     );
-
-    function handleEditAppointment(appointment: Appointment) {
-        setEditingAppointment(appointment);
-        setIsAppointmentSheetOpen(true);
-    }
 }
 
 function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { clients: Client[], onClientSelect: (client: {id: string, name: string}) => void, isLoading: boolean, defaultValue?: {id: string, name: string} }) {
