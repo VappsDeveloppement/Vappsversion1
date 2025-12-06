@@ -13,7 +13,7 @@ import { ChevronLeft, ChevronRight, PlusCircle, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, useDoc } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -22,12 +22,8 @@ import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, Command
 import { Check, ChevronsUpDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
-import { sendConfirmationEmail } from '@/app/actions/appointment';
-import { useAgency } from '@/context/agency-provider';
-import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
-
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 type Appointment = {
     id: string;
@@ -53,23 +49,17 @@ const appointmentSchema = z.object({
   startTime: z.string().regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Format d'heure invalide (HH:mm)."),
   duration: z.coerce.number().min(15, "La durée doit être d'au moins 15 minutes."),
   details: z.string().optional(),
-  sendConfirmation: z.boolean().default(false),
 });
 
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
 
 
-// Generate hours from 8 AM to 8 PM
 const hours = Array.from({ length: 13 }, (_, i) => `${(i + 8).toString().padStart(2, '0')}:00`);
-const startHour = 8;
 
 export default function AppointmentsPage() {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { personalization } = useAgency();
-    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
-    const { data: userData } = useDoc(userDocRef);
 
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isFormOpen, setIsFormOpen] = useState(false);
@@ -114,7 +104,6 @@ export default function AppointmentsPage() {
                 startTime: format(startDate, 'HH:mm'),
                 duration: (parseISO(appointment.end).getTime() - startDate.getTime()) / 60000,
                 details: appointment.details,
-                sendConfirmation: false,
             });
         } else {
             form.reset({
@@ -124,7 +113,6 @@ export default function AppointmentsPage() {
                 startTime: time || '09:00',
                 duration: 60,
                 details: '',
-                sendConfirmation: false,
             });
         }
         setIsFormOpen(true);
@@ -170,9 +158,7 @@ export default function AppointmentsPage() {
             return;
         }
         
-        const counselorData = userData as any;
-
-        const appointmentData: any = {
+        const appointmentData = {
             title: data.title,
             start: start.toISOString(),
             end: end.toISOString(),
@@ -182,32 +168,12 @@ export default function AppointmentsPage() {
             counselorId: user.uid
         };
 
-        if (data.sendConfirmation) {
-            appointmentData.clientEmail = client.email;
-        }
-
         try {
             const appointmentRef = editingAppointment
                 ? doc(firestore, `users/${user.uid}/appointments`, editingAppointment.id)
                 : doc(collection(firestore, `users/${user.uid}/appointments`));
 
             await setDocumentNonBlocking(appointmentRef, appointmentData, { merge: true });
-
-            if (data.sendConfirmation) {
-                const emailSettings = (counselorData?.emailSettings && counselorData.emailSettings.fromEmail) ? counselorData.emailSettings : personalization?.emailSettings;
-                
-                if (!emailSettings?.fromEmail) {
-                    toast({ title: "Avertissement", description: "Les paramètres d'envoi d'e-mail ne sont pas configurés. Le rendez-vous est sauvegardé mais l'e-mail n'a pas été envoyé.", variant: "destructive"});
-                } else {
-                     const sendResult = await sendConfirmationEmail({
-                        appointment: appointmentData,
-                        emailSettings,
-                    });
-                     if (!sendResult.success) {
-                        toast({ title: "Erreur d'envoi", description: sendResult.error, variant: "destructive"});
-                    }
-                }
-            }
             
             toast({ title: editingAppointment ? "Rendez-vous mis à jour" : "Rendez-vous créé" });
             setIsFormOpen(false);
@@ -268,17 +234,21 @@ export default function AppointmentsPage() {
                                     ))}
                                 </div>
                                  {appointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
+                                    if (!app.start || !app.end) return null;
                                     const start = parseISO(app.start);
                                     const end = parseISO(app.end);
-                                    const top = ((getHours(start) - startHour) * 60 + getMinutes(start)) / (13 * 60) * 100;
-                                    const height = (end.getTime() - start.getTime()) / (1000 * 60) / (13 * 60) * 100;
+                                    const startHour = 8;
+                                    
+                                    const topOffset = ((start.getHours() - startHour) * 60 + start.getMinutes()) / 60 * 20; // 20rem per hour
+                                    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+                                    const height = durationMinutes / 60 * 20; // 20rem per hour
 
                                     return (
                                         <div
                                             key={app.id}
                                             onClick={() => handleOpenForm(app)}
                                             className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer"
-                                            style={{ top: `${top}%`, height: `${height}%`}}
+                                            style={{ top: `calc(${topOffset}rem + 4rem)`, height: `${height}rem`}}
                                         >
                                             <p className="font-bold text-xs truncate">{app.title}</p>
                                             <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
@@ -327,7 +297,6 @@ export default function AppointmentsPage() {
                                     </div>
                                     <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (en minutes)</FormLabel><FormControl><Input type="number" step="15" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     <FormField control={form.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     <FormField control={form.control} name="sendConfirmation" render={({ field }) => (<FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Envoyer un e-mail de confirmation au client</FormLabel></div></FormItem>)}/>
                                 </div>
                            </ScrollArea>
                             <DialogFooter className="pt-4 border-t">
