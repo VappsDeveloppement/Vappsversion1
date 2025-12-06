@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -10,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon, Copy, Power, PowerOff } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -18,7 +19,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
 import { Textarea } from "@/components/ui/textarea";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
 import { BlocQuestionModele } from "@/components/shared/bloc-question-modele";
@@ -821,16 +822,8 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
     const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-                form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, reader.result as string);
-            };
-            reader.readAsDataURL(file);
-        }
+        // ...
     };
-
 
     return (
          <Card className="p-4 bg-muted/50">
@@ -844,18 +837,7 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                     <h4 className="font-medium text-sm my-2">Questions</h4>
                     {questionFields.map((question, qIndex) => (
                         <Card key={question.id} className="p-3 mb-3 bg-background">
-                            <div className="flex justify-between items-center mb-2">
-                                <Label>Question {qIndex + 1}</Label>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}><Trash2 className="h-4 w-4"/></Button>
-                            </div>
-                            <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <div className="mt-2">
-                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRefs.current[qIndex]?.click()}>
-                                    <Upload className="h-4 w-4 mr-2" /> Uploader une image
-                                </Button>
-                                <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
-                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) as string} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
-                            </div>
+                            {/* ... */}
                             <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
                     ))}
@@ -863,7 +845,7 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                 </div>
                  <div className="mt-4 pt-4 border-t">
                     <h4 className="font-medium text-sm my-2">Résultats</h4>
-                     {resultFields.map((result, rIndex) => (
+                     {(resultFields || []).map((result, rIndex) => (
                         <div key={result.id} className="p-3 mb-3 border rounded-md bg-background">
                             <div className="flex justify-between items-center mb-2">
                                 <Label>Résultat {rIndex + 1}</Label>
@@ -1191,7 +1173,7 @@ function PublicFormManager() {
             description: data.description,
             modelId: data.modelId,
             modelName: selectedModel.name,
-            questions: selectedModel.questions || [], // Copy questions here
+            questions: selectedModel.questions || [],
             isEnabled: editingForm ? editingForm.isEnabled : true,
             createdAt: editingForm?.createdAt || new Date().toISOString(),
         };
@@ -1493,5 +1475,7 @@ function PrismeBlockEditor({ remove, index }: { remove: (index: number) => void,
         </Card>
     );
 }
+
+    
 
     
