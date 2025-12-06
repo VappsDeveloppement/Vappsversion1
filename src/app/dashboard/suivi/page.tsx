@@ -9,7 +9,7 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -40,6 +40,7 @@ import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
 import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search, Upload } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
+import Image from 'next/image';
 
 const scaleSubQuestionSchema = z.object({
   id: z.string(),
@@ -605,7 +606,7 @@ function FormTemplateManager() {
     name: "questions",
   });
   
-  const onDragEnd = (result: any) => {
+  const onDragEnd: OnDragEndResponder = (result) => {
     if (!result.destination) return;
     move(result.source.index, result.destination.index);
   };
@@ -834,7 +835,7 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                                     <Upload className="h-4 w-4 mr-2" /> Uploader une image
                                 </Button>
                                 <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
-                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
+                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) as string} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
                             </div>
                             <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
@@ -900,7 +901,7 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
                                     <Upload className="h-4 w-4 mr-2" /> Uploader une image
                                 </Button>
                                 <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
-                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
+                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) as string} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
                             </div>
                             <QcmAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
@@ -957,18 +958,147 @@ function QcmAnswersEditor({ control, qIndex, questionIndex }: { control: Control
 }
 
 function LearningPathManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingPath, setEditingPath] = useState<LearningPath | null>(null);
+
+    const pathsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/learning_paths`)) : null, [user, firestore]);
+    const { data: paths, isLoading } = useCollection<LearningPath>(pathsQuery);
+    
+    const modelsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/question_models`)) : null, [user, firestore]);
+    const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
+
+    const form = useForm<{ title: string; description: string; steps: { modelId: string, modelName: string }[] }>({
+        defaultValues: { title: '', description: '', steps: [] }
+    });
+
+    const { fields, append, remove, move } = useFieldArray({ control: form.control, name: 'steps' });
+
+    useEffect(() => {
+        if(isSheetOpen) {
+            form.reset(editingPath || { title: '', description: '', steps: [] });
+        }
+    }, [isSheetOpen, editingPath, form]);
+
+    const handleNew = () => { setEditingPath(null); setIsSheetOpen(true); };
+    const handleEdit = (path: LearningPath) => { setEditingPath(path); setIsSheetOpen(true); };
+    
+    const handleDelete = (pathId: string) => {
+        if (!user) return;
+        deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/learning_paths`, pathId));
+        toast({ title: "Parcours supprimé" });
+    };
+
+    const onSubmit = (data: { title: string; description?: string; steps: { modelId: string, modelName: string }[] }) => {
+        if (!user) return;
+        const pathData = { counselorId: user.uid, ...data };
+        if (editingPath) {
+            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/learning_paths`, editingPath.id), pathData, { merge: true });
+            toast({ title: 'Parcours mis à jour' });
+        } else {
+            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/learning_paths`), pathData);
+            toast({ title: 'Parcours créé' });
+        }
+        setIsSheetOpen(false);
+    };
+
+    const onDragEnd: OnDragEndResponder = (result) => {
+        if (!result.destination) return;
+        move(result.source.index, result.destination.index);
+    };
+
+
     return (
         <Card>
             <CardHeader>
-                <CardTitle>Parcours d'apprentissage</CardTitle>
-                <CardDescription>
-                    Créez et gérez des séquences de formation pour vos clients.
-                </CardDescription>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Parcours d'apprentissage</CardTitle>
+                        <CardDescription>Créez des séquences de formation pour vos clients.</CardDescription>
+                    </div>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouveau parcours</Button>
+                </div>
             </CardHeader>
             <CardContent>
-                <p className="text-muted-foreground text-center">
-                    La fonctionnalité de gestion des parcours sera bientôt disponible.
-                </p>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Titre du Parcours</TableHead><TableHead>Nombre d'étapes</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                        : paths && paths.length > 0 ? paths.map(path => (
+                            <TableRow key={path.id}>
+                                <TableCell>{path.title}</TableCell>
+                                <TableCell>{path.steps?.length || 0}</TableCell>
+                                <TableCell className="text-right">
+                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(path)}><Edit className="h-4 w-4"/></Button>
+                                    <Button variant="ghost" size="icon" onClick={() => handleDelete(path.id)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+                                </TableCell>
+                            </TableRow>
+                        )) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucun parcours créé.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-xl w-full">
+                        <SheetHeader><SheetTitle>{editingPath ? 'Modifier le' : 'Nouveau'} Parcours</SheetTitle></SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                                <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-6">
+                                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du Parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                    <div>
+                                        <Label className="mb-2 block">Étapes</Label>
+                                         <DragDropContext onDragEnd={onDragEnd}>
+                                            <Droppable droppableId="steps">
+                                                {(provided) => (
+                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                                                        {fields.map((field, index) => (
+                                                             <Draggable key={field.id} draggableId={field.id} index={index}>
+                                                                {(provided) => (
+                                                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 border rounded-md bg-muted">
+                                                                        <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                                                        <p className="flex-1">{field.modelName}</p>
+                                                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+                                                                    </div>
+                                                                )}
+                                                             </Draggable>
+                                                        ))}
+                                                        {provided.placeholder}
+                                                    </div>
+                                                )}
+                                            </Droppable>
+                                         </DragDropContext>
+                                    </div>
+                                    <Popover>
+                                        <PopoverTrigger asChild>
+                                            <Button type="button" variant="outline" className="w-full"><PlusCircle className="mr-2 h-4 w-4" />Ajouter une étape</Button>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-[300px] p-0">
+                                            <Command>
+                                                <CommandInput placeholder="Rechercher un modèle..." />
+                                                <CommandList>
+                                                    <CommandEmpty>Aucun modèle trouvé.</CommandEmpty>
+                                                    <CommandGroup>
+                                                        {models?.map(model => (
+                                                            <CommandItem key={model.id} onSelect={() => append({ modelId: model.id, modelName: model.name })}>
+                                                                {model.name}
+                                                            </CommandItem>
+                                                        ))}
+                                                    </CommandGroup>
+                                                </CommandList>
+                                            </Command>
+                                        </PopoverContent>
+                                    </Popover>
+                                </div></ScrollArea>
+                                 <SheetFooter className="pt-4 border-t mt-auto">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
             </CardContent>
         </Card>
     );
@@ -1275,7 +1405,140 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     };
 
                     const scormResult = calculateScormResult(block, answer);
-                     return (
+                     if (scormResult?.text) {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = scormResult.text;
+                        const textContent = tempDiv.textContent || tempDiv.innerText || "";
+                        const lines = docJs.splitTextToSize(textContent, 180);
+                        docJs.text(lines, 15, yPos);
+                        yPos += lines.length * 7 + 5;
+                    } else {
+                        docJs.text("Résultat non calculé.", 15, yPos);
+                        yPos += 12;
+                    }
+                    break;
+                default:
+                    const answerText = answer !== undefined ? JSON.stringify(answer, null, 2) : "Non répondu";
+                    const lines = docJs.splitTextToSize(answerText, 180);
+                    docJs.text(lines, 15, yPos);
+                    yPos += lines.length * 7 + 5;
+                    break;
+            }
+            yPos += 5;
+        }
+
+        docJs.save(`Suivi_${suivi.clientName.replace(' ', '_')}_${new Date().toLocaleDateString()}.pdf`);
+    };
+
+    if (!model) return null;
+
+    return (
+        <Dialog open={isOpen} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
+                <DialogHeader>
+                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
+                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] pr-4">
+                    <div className="space-y-6">
+                        {model.questions?.map(block => {
+                            const answer = (suivi.answers || []).find(a => a.questionId === block.id)?.answer;
+                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} />;
+                        })}
+                    </div>
+                </ScrollArea>
+                <DialogFooter>
+                    <Button onClick={handleExportPdf}>
+                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+};
+
+
+const ResultDisplayBlock = ({ block, answer }: { block: QuestionModel['questions'][number], answer: any }) => {
+    
+    switch (block.type) {
+        case 'scale':
+            const scaleAnswers = answer || {};
+            return (
+                <Card>
+                    <CardHeader><CardTitle>{block.title || "Échelle"}</CardTitle></CardHeader>
+                    <CardContent>
+                        {block.questions.length > 1 ? (
+                             <ResponsiveContainer width="100%" height={300}>
+                                <RadarChart cx="50%" cy="50%" outerRadius="80%" data={block.questions.map(q => ({ subject: q.text, A: scaleAnswers[q.id] || 0, fullMark: 10 }))}>
+                                    <PolarGrid />
+                                    <PolarAngleAxis dataKey="subject" />
+                                    <PolarRadiusAxis angle={30} domain={[0, 10]} />
+                                    <Radar name={""} dataKey="A" stroke="#8884d8" fill="#8884d8" fillOpacity={0.6} />
+                                </RadarChart>
+                            </ResponsiveContainer>
+                        ) : block.questions.map(q => (
+                             <div key={q.id}>
+                                <p>{q.text}: <strong>{scaleAnswers[q.id] || 'N/A'}/10</strong></p>
+                            </div>
+                        ))}
+                    </CardContent>
+                </Card>
+            );
+        case 'free-text':
+            return (
+                <Card><CardHeader><CardTitle>{block.question}</CardTitle></CardHeader><CardContent><p className="whitespace-pre-wrap">{answer || 'Non répondu'}</p></CardContent></Card>
+            );
+        case 'report':
+             return (
+                <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
+                    <CardContent>
+                        <h4 className="font-semibold mb-2">Compte rendu</h4>
+                        <p className="whitespace-pre-wrap mb-4">{answer?.text || 'Non rédigé'}</p>
+                        {answer?.partners?.length > 0 && <>
+                            <h4 className="font-semibold mb-2">Partenaires associés</h4>
+                            <div className="space-y-2">
+                                {answer.partners.map((p: any) => (
+                                    <div key={p.id} className="text-sm p-3 border rounded-lg bg-muted">
+                                        <p className="font-bold">{p.name}</p>
+                                        <div className="text-muted-foreground text-xs mt-1 space-y-0.5">
+                                            {p.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{p.email}</p>}
+                                            {p.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{p.phone}</p>}
+                                            {p.specialties && p.specialties.length > 0 && <p><strong>Spéc:</strong> {p.specialties.join(', ')}</p>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </>}
+                    </CardContent>
+                </Card>
+            );
+        case 'scorm':
+             const calculateScormResult = (scormBlock: Extract<typeof block, { type: 'scorm' }>, scormAnswers: any): any | null => {
+                 if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
+                const questionIds = scormBlock.questions.map(q => q.id);
+                if (questionIds.some(qId => !scormAnswers[qId])) {
+                    return null;
+                }
+            
+                const valueCounts: Record<string, number> = {};
+                for (const qId of questionIds) {
+                    const answerId = scormAnswers[qId];
+                    if (!answerId) continue;
+                    const question = scormBlock.questions.find(q => q.id === qId);
+                    const answerData = question?.answers.find((a:any) => a.id === answerId);
+                    if (answerData?.value) {
+                        valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                    }
+                }
+            
+                if (Object.keys(valueCounts).length === 0) return null;
+            
+                const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
+                return scormBlock.results.find(r => r.value === dominantValue) || null;
+            };
+
+            const scormResult = calculateScormResult(block, answer);
+             return (
                 <Card><CardHeader><CardTitle>{block.title}</CardTitle></CardHeader>
                     <CardContent>
                          {scormResult ? (
@@ -1391,29 +1654,3 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
     }
 };
 
-    if (!model) return null;
-
-    return (
-        <Dialog open={isOpen} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-4xl max-h-[90vh]">
-                <DialogHeader>
-                    <DialogTitle>Aperçu du Suivi - {suivi.clientName}</DialogTitle>
-                    <DialogDescription>Modèle: {suivi.modelName}</DialogDescription>
-                </DialogHeader>
-                <ScrollArea className="h-[60vh] pr-4">
-                    <div className="space-y-6">
-                        {model.questions?.map(block => {
-                            const answer = (suivi.answers || []).find(a => a.questionId === block.id)?.answer;
-                            return <ResultDisplayBlock key={block.id} block={block} answer={answer} suivi={suivi} />;
-                        })}
-                    </div>
-                </ScrollArea>
-                <DialogFooter>
-                    <Button onClick={handleExportPdf}>
-                        <Download className="mr-2 h-4 w-4" /> Télécharger en PDF
-                    </Button>
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
-};
