@@ -234,7 +234,7 @@ export const ResultDisplayBlock = ({ block, answer, suivi }: { block: any, answe
 
 const OffscreenChartRenderer = ({ blocks, answers, suivi }: { blocks: any[], answers: Record<string, any>, suivi: FollowUp }) => {
     return (
-        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
+        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '600px' }}>
             {blocks
                 .filter(block => block.type === 'scale' && block.questions.length > 1)
                 .map(block => {
@@ -270,6 +270,8 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
 
     const handleExportPdf = async () => {
         if (!suivi || !model || !currentUserData) return;
+        
+        // Dynamically import jspdf and autotable to avoid server-side issues
         const { default: jsPDF } = await import('jspdf');
         const { default: autoTable } = await import('jspdf-autotable');
         const docJs = new jsPDF();
@@ -302,7 +304,7 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                     const chartElement = document.getElementById(`chart-${block.id}`);
                     if (block.questions.length > 1 && chartElement) {
                         try {
-                            const canvas = await html2canvas(chartElement, { useCORS: true, container: document.body });
+                            const canvas = await html2canvas(chartElement, { useCORS: true, logging: false, container: document.body });
                             const imgData = canvas.toDataURL('image/png');
                             if(docJs.internal.pageSize.height - yPos < 90) { // Check space
                                 docJs.addPage();
@@ -311,8 +313,7 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                             docJs.addImage(imgData, 'PNG', 15, yPos, 180, 80);
                             yPos += 90;
                         } catch(e) {
-                            console.error("Failed to render chart to canvas, printing text fallback.", e);
-                            // Fallback to text if canvas fails
+                             console.error("Failed to render chart to canvas, printing text fallback.", e);
                             block.questions.forEach((q: any) => {
                                 const value = answer?.[q.id] || 0;
                                 const text = `${q.text}: ${value}/10`;
