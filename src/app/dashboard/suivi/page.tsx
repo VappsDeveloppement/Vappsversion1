@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -31,7 +30,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useAgency } from '@/context/agency-provider';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -1183,21 +1182,27 @@ function PublicFormManager() {
         const selectedModel = models.find(m => m.id === data.modelId);
         if (!selectedModel) return;
 
-        const formData = { 
-            counselorId: user.uid,
-            name: data.name,
-            description: data.description,
-            modelId: data.modelId,
-            modelName: selectedModel.name,
-            questions: selectedModel.questions || [], // Copy questions here
-            isEnabled: editingForm ? editingForm.isEnabled : true,
-            createdAt: editingForm ? editingForm.createdAt : new Date().toISOString(),
-        };
-
         if (editingForm) {
-            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), formData, { merge: true });
+            const updatedData = {
+                name: data.name,
+                description: data.description,
+                modelId: data.modelId,
+                modelName: selectedModel.name,
+                questions: selectedModel.questions || [],
+            };
+            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), updatedData, { merge: true });
             toast({ title: "Formulaire mis à jour" });
         } else {
+            const formData = { 
+                counselorId: user.uid,
+                name: data.name,
+                description: data.description,
+                modelId: data.modelId,
+                modelName: selectedModel.name,
+                questions: selectedModel.questions || [],
+                isEnabled: true,
+                createdAt: new Date().toISOString(),
+            };
             addDocumentNonBlocking(collection(firestore, 'public_forms'), formData);
             toast({ title: "Formulaire public créé" });
         }
@@ -1491,3 +1496,5 @@ function PrismeBlockEditor({ remove, index }: { remove: (index: number) => void,
         </Card>
     );
 }
+
+    
