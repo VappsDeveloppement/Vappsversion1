@@ -37,7 +37,7 @@ import { useFirestore } from '@/firebase/provider';
 import { cn } from '@/lib/utils';
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
@@ -45,11 +45,12 @@ import { Check, ChevronsUpDown } from 'lucide-react';
 import { sendConfirmationEmails } from '@/app/actions/appointment';
 import { useAgency } from '@/context/agency-provider';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 
 const appointmentSchema = z.object({
     title: z.string().min(1, "Le titre est requis."),
-    date: z.string(),
+    date: z.string().min(1, 'La date est requise.'),
     time: z.string().min(1, "L'heure est requise."),
     duration: z.coerce.number().min(1, "La durée doit être d'au moins 1 minute."),
     clientId: z.string().optional(),
@@ -158,20 +159,23 @@ function AppointmentForm({
             {editingAppointment ? 'Modifiez les détails' : `Ajouter pour le ${format(selectedDate, 'PPP', { locale: fr })}`}.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto pr-6 -mr-6">
+        <ScrollArea className="flex-1 pr-4 -mr-4">
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 pr-2">
                     <FormField control={form.control} name="title" render={({ field }) => (
                         <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <div className="grid grid-cols-2 gap-4">
+                        <FormField control={form.control} name="date" render={({ field }) => (
+                            <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
                         <FormField control={form.control} name="time" render={({ field }) => (
                             <FormItem><FormLabel>Heure (HH:mm)</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
-                        <FormField control={form.control} name="duration" render={({ field }) => (
+                    </div>
+                     <FormField control={form.control} name="duration" render={({ field }) => (
                             <FormItem><FormLabel>Durée (minutes)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
-                    </div>
                      <FormField
                         control={form.control}
                         name="clientId"
@@ -230,13 +234,13 @@ function AppointmentForm({
                             </FormItem>
                         )}
                         />
-                     <DialogFooter className="sticky bottom-0 bg-background pt-4 z-10">
-                        <Button type="button" variant="ghost" onClick={onCancel}>Annuler</Button>
-                        <Button type="submit">Enregistrer</Button>
-                    </DialogFooter>
                 </form>
             </Form>
-        </div>
+        </ScrollArea>
+        <DialogFooter className="pt-4 border-t">
+            <Button type="button" variant="ghost" onClick={onCancel}>Annuler</Button>
+            <Button type="button" onClick={form.handleSubmit(handleSave)}>Enregistrer</Button>
+        </DialogFooter>
       </DialogContent>
     );
 }
