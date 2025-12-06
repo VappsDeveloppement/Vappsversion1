@@ -32,7 +32,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, setDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { cn } from '@/lib/utils';
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -129,6 +129,9 @@ function AppointmentForm({
         for (const app of existingAppointments) {
             // Skip the appointment being edited
             if (editingAppointment && app.id === editingAppointment.id) continue;
+
+            // Ensure app.start and app.end are defined before parsing
+            if (!app.start || !app.end) continue;
 
             const existingStart = parseISO(app.start);
             const existingEnd = parseISO(app.end);
@@ -501,3 +504,5 @@ const Meeting = ({ appointment, onEdit, onDelete }: { appointment: Appointment, 
         </li>
     );
 };
+
+    
