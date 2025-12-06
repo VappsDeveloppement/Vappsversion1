@@ -108,13 +108,39 @@ export default function AppointmentsPage() {
              toast({ title: 'Erreur', description: 'Veuillez sélectionner un client.', variant: 'destructive'});
             return;
         }
+        
+        const newStart = new Date(data.start);
+        const newEnd = new Date(data.end);
+
+        if (newEnd <= newStart) {
+            toast({ title: 'Erreur', description: 'La date de fin doit être après la date de début.', variant: 'destructive'});
+            return;
+        }
+
+        // Check for overlapping appointments
+        const overlap = appointments?.some(app => {
+            // If we are editing, don't compare the appointment with itself
+            if (editingAppointment && app.id === editingAppointment.id) {
+                return false;
+            }
+            const existingStart = parseISO(app.start);
+            const existingEnd = parseISO(app.end);
+            // Overlap condition: (StartA < EndB) and (StartB < EndA)
+            return newStart < existingEnd && existingStart < newEnd;
+        });
+
+        if (overlap) {
+            toast({ title: 'Conflit de rendez-vous', description: 'Ce créneau horaire est déjà occupé.', variant: 'destructive'});
+            return;
+        }
+
 
         setIsSubmitting(true);
 
         const appointmentData = {
             ...data,
-            start: new Date(data.start).toISOString(),
-            end: new Date(data.end).toISOString(),
+            start: newStart.toISOString(),
+            end: newEnd.toISOString(),
             clientId: clientInfo.id,
             clientName: clientInfo.name,
             details: data.details || '',
@@ -324,5 +350,3 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
-
-    
