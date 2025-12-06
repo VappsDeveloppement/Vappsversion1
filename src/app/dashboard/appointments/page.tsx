@@ -220,11 +220,17 @@ export default function AppointmentsPage() {
         const grouped: { [key: string]: Appointment[] } = {};
         if (!appointments) return grouped;
         appointments.forEach(app => {
-            const dateKey = format(parseISO(app.start), 'yyyy-MM-dd');
-            if (!grouped[dateKey]) {
-                grouped[dateKey] = [];
+            if (app.start) {
+                try {
+                    const dateKey = format(parseISO(app.start), 'yyyy-MM-dd');
+                    if (!grouped[dateKey]) {
+                        grouped[dateKey] = [];
+                    }
+                    grouped[dateKey].push(app);
+                } catch(e) {
+                    console.error("Invalid date format for appointment:", app.id, app.start);
+                }
             }
-            grouped[dateKey].push(app);
         });
         Object.values(grouped).forEach(dayApps => dayApps.sort((a, b) => parseISO(a.start).getTime() - parseISO(b.start).getTime()));
         return grouped;
@@ -293,20 +299,30 @@ export default function AppointmentsPage() {
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/appointments`, appointmentId));
         toast({ title: 'Rendez-vous supprimé' });
     };
-
+    
     const colStartClasses = [
-        '',
         'col-start-2',
         'col-start-3',
         'col-start-4',
         'col-start-5',
         'col-start-6',
         'col-start-7',
-    ]
+        'col-start-8',
+    ];
+
+    // Generate time slots from 4:30 to 23:00
+    const timeSlots = [];
+    for (let i = 4; i <= 22; i++) {
+        timeSlots.push(`${i}:30`);
+        if (i < 22) {
+            timeSlots.push(`${i + 1}:00`);
+        }
+    }
+
 
     return (
         <div className="flex h-[calc(100vh-8rem)] flex-col">
-            <header className="flex flex-none items-center justify-between border-b border-border px-6 py-4">
+             <header className="flex flex-none items-center justify-between border-b border-border px-6 py-4">
                 <div>
                      <h1 className="text-base font-semibold leading-6 text-foreground capitalize">
                         {format(firstDayCurrentWeek, 'MMMM yyyy', { locale: fr })}
@@ -324,13 +340,13 @@ export default function AppointmentsPage() {
                 </div>
             </header>
             <div className="isolate flex flex-auto flex-col overflow-auto bg-background">
-                <div style={{ width: '165%' }} className="flex max-w-full flex-none flex-col sm:max-w-none md:max-w-full">
-                    <div className="sticky top-0 z-30 flex-none bg-background shadow ring-1 ring-black ring-opacity-5 sm:pr-8">
-                        <div className="grid grid-cols-[auto,1fr,1fr,1fr,1fr,1fr,1fr,1fr] -mr-px">
-                            <div className="col-start-1 col-end-2 row-start-1 row-end-2 border-r border-border"></div>
-                            {days.map(day => (
-                                <div key={day.toString()} className="flex items-center justify-center py-3">
-                                    <span className={cn(isToday(day) && 'text-primary')}>{format(day, 'EEE', {locale: fr})}</span>
+                <div className="flex max-w-full flex-none flex-col sm:max-w-none md:max-w-full">
+                     <div className="sticky top-0 z-30 flex-none bg-background shadow ring-1 ring-black ring-opacity-5">
+                        <div className="grid grid-cols-[auto,1fr,1fr,1fr,1fr,1fr,1fr,1fr]">
+                            <div className="col-start-1 row-start-1 border-r border-border bg-background w-14" />
+                            {days.map((day) => (
+                                <div key={day.toString()} className="flex items-center justify-center py-3 border-b border-border">
+                                    <span className={cn('text-sm', isToday(day) && 'text-primary')}>{format(day, 'EEE', {locale: fr})}</span>
                                     <span className={cn('ml-1.5 flex h-8 w-8 items-center justify-center rounded-full text-base font-semibold', isToday(day) && 'bg-primary text-primary-foreground')}>{format(day, 'd')}</span>
                                 </div>
                             ))}
@@ -339,26 +355,25 @@ export default function AppointmentsPage() {
                     <div className="flex flex-auto">
                         <div className="sticky left-0 z-10 w-14 flex-none bg-background ring-1 ring-border" />
                         <div className="grid flex-auto grid-cols-1 grid-rows-1">
+                            {/* Horizontal lines and time markers */}
                             <div
                                 className="col-start-1 col-end-2 row-start-1 grid divide-y divide-border"
-                                style={{ gridTemplateRows: 'repeat(38, minmax(3.5rem, 1fr))' }}
+                                style={{ gridTemplateRows: 'repeat(38, minmax(3rem, 1fr))' }}
                             >
                                 <div className="row-end-1 h-7"></div>
-                                {[...Array(19)].map((_, i) => (
-                                    <React.Fragment key={i}>
-                                        <div>
-                                            <div className="sticky left-0 z-20 -ml-14 -mt-2.5 w-14 pr-2 text-right text-xs leading-5 text-muted-foreground">
-                                                {i + 4}:30
-                                            </div>
+                                {timeSlots.map((time, index) => (
+                                    <div key={time}>
+                                        <div className="sticky left-0 z-20 -ml-14 -mt-2.5 w-14 pr-2 text-right text-xs leading-5 text-muted-foreground">
+                                            {time}
                                         </div>
-                                        <div />
-                                    </React.Fragment>
+                                    </div>
                                 ))}
                             </div>
 
+                            {/* Vertical lines for days */}
                             <div className="col-start-1 col-end-2 row-start-1 grid grid-cols-7 grid-rows-1 divide-x divide-border">
                                 {days.map((day, dayIdx) => (
-                                     <div key={day.toISOString()} className={cn(colStartClasses[dayIdx], "row-start-1 h-full relative")}>
+                                     <div key={day.toISOString()} className="row-start-1 h-full relative">
                                         {(appointmentsByDay[format(day, 'yyyy-MM-dd')] || []).map(app => (
                                             <Meeting key={app.id} appointment={app} onDelete={handleDeleteAppointment} />
                                         ))}
@@ -385,24 +400,30 @@ export default function AppointmentsPage() {
 const Meeting = ({ appointment, onDelete }: { appointment: Appointment, onDelete: (id: string) => void }) => {
     const start = parseISO(appointment.start);
     const end = parseISO(appointment.end);
-  
-    // Start time is 4:00 AM, so 4 * 60 = 240 minutes offset
-    const top = (start.getHours() * 60 + start.getMinutes() - 240) / 5 * 1.75 / 2;
-    const height = (end.getTime() - start.getTime()) / (1000 * 60) / 5 * 1.75 / 2;
+    
+    const startHour = 4.5; // Calendar starts at 4:30
+    const totalMinutes = (start.getHours() + start.getMinutes() / 60) - startHour;
+    const top = totalMinutes * (3 * 2); // Each hour is 6rem (3rem per 30min slot * 2)
+
+    const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
+    const height = (durationMinutes / 30) * 3; // 3rem per 30 minutes
 
     return (
-      <li
-        className="relative mt-px flex"
-        style={{ top: `${top}rem`, height: `${height}rem` }}
-      >
-        <div className="group absolute inset-1 flex flex-col overflow-y-auto rounded-lg bg-primary/10 p-2 text-xs leading-5 hover:bg-primary/20">
-          <p className="font-semibold text-primary">{appointment.title}</p>
-          <p className="text-primary/80">{appointment.clientName}</p>
-          <p className="text-primary/50">
-            <time dateTime={appointment.start}>{format(start, 'HH:mm')}</time> -{' '}
-            <time dateTime={appointment.end}>{format(end, 'HH:mm')}</time>
-          </p>
-        </div>
-      </li>
+        <li
+            className="relative mt-px flex"
+            style={{ top: `${top}rem`, height: `${height}rem` }}
+        >
+            <div className="group absolute inset-1 flex flex-col overflow-y-auto rounded-lg bg-primary/10 p-2 text-xs leading-5 hover:bg-primary/20">
+                <p className="font-semibold text-primary">{appointment.title}</p>
+                <p className="text-primary/80">{appointment.clientName}</p>
+                <p className="text-primary/50">
+                    <time dateTime={appointment.start}>{format(start, 'HH:mm')}</time> -{' '}
+                    <time dateTime={appointment.end}>{format(end, 'HH:mm')}</time>
+                </p>
+                 <button onClick={() => onDelete(appointment.id)} className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100">
+                    <Trash2 className="h-4 w-4 text-destructive" />
+                </button>
+            </div>
+        </li>
     );
-  };
+};
