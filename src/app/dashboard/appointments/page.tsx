@@ -6,7 +6,7 @@ import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parse
 import { fr } from 'date-fns/locale';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsUpDown, Check } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsUpDown, Check, Calendar as CalendarIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
@@ -24,6 +24,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+
 
 type Appointment = {
     id: string;
@@ -33,6 +35,13 @@ type Appointment = {
     clientId: string;
     clientName: string;
     details?: string;
+};
+
+type Event = {
+    id: string;
+    title: string;
+    date: string; // This is an ISO string
+    isPublic: boolean;
 };
 
 type Client = {
@@ -73,6 +82,7 @@ export default function AppointmentsPage() {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+    const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
     const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -81,6 +91,13 @@ export default function AppointmentsPage() {
         return query(collection(firestore, `users/${user.uid}/appointments`));
     }, [user, firestore]);
     const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
+    
+    const eventsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'events'), where('counselorId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: events, isLoading: areEventsLoading } = useCollection<Event>(eventsQuery);
+
 
     const clientsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -131,17 +148,14 @@ export default function AppointmentsPage() {
 
         // Check for overlapping appointments
         const overlap = appointments?.some(app => {
-            // If we are editing, don't compare the appointment with itself
             if (editingAppointment && app.id === editingAppointment.id) {
                 return false;
             }
-             // Ensure the existing appointment has valid dates before parsing
             if (!app.start || !app.end) {
                 return false;
             }
             const existingStart = parseISO(app.start);
             const existingEnd = parseISO(app.end);
-            // Overlap condition: (StartA < EndB) and (StartB < EndA)
             return newStart < existingEnd && existingStart < newEnd;
         });
 
@@ -177,6 +191,20 @@ export default function AppointmentsPage() {
             toast({ title: 'Erreur', description: 'Impossible d\'enregistrer le rendez-vous.', variant: 'destructive'});
         } finally {
             setIsSubmitting(false);
+        }
+    };
+    
+    const handleDeleteAppointment = async () => {
+        if (!appointmentToDelete || !user) return;
+        const appointmentRef = doc(firestore, `users/${user.uid}/appointments`, appointmentToDelete.id);
+        
+        try {
+            await deleteDocumentNonBlocking(appointmentRef);
+            toast({ title: "Rendez-vous supprimé" });
+            setAppointmentToDelete(null);
+            setIsSheetOpen(false); // Close the edit dialog as well
+        } catch (error) {
+            toast({ title: "Erreur", description: "Impossible de supprimer le rendez-vous.", variant: 'destructive' });
         }
     };
 
@@ -228,12 +256,33 @@ export default function AppointmentsPage() {
                                             <FormField control={form.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     </ScrollArea>
-                                    <DialogFooter className="pt-4 border-t mt-auto">
-                                        <Button type="button" variant="outline" onClick={() => setIsSheetOpen(false)}>Annuler</Button>
-                                        <Button type="submit" disabled={isSubmitting}>
-                                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                            Sauvegarder
-                                        </Button>
+                                    <DialogFooter className="pt-4 border-t mt-auto flex justify-between w-full">
+                                         {editingAppointment && (
+                                            <AlertDialog>
+                                                <AlertDialogTrigger asChild>
+                                                    <Button type="button" variant="destructive">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                    </Button>
+                                                </AlertDialogTrigger>
+                                                <AlertDialogContent>
+                                                    <AlertDialogHeader>
+                                                        <AlertDialogTitle>Supprimer ce rendez-vous ?</AlertDialogTitle>
+                                                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                                                    </AlertDialogHeader>
+                                                    <AlertDialogFooter>
+                                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                        <AlertDialogAction onClick={handleDeleteAppointment}>Confirmer</AlertDialogAction>
+                                                    </AlertDialogFooter>
+                                                </AlertDialogContent>
+                                            </AlertDialog>
+                                        )}
+                                        <div className='flex gap-2'>
+                                            <Button type="button" variant="outline" onClick={() => setIsSheetOpen(false)}>Annuler</Button>
+                                            <Button type="submit" disabled={isSubmitting}>
+                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                                Sauvegarder
+                                            </Button>
+                                        </div>
                                     </DialogFooter>
                                 </form>
                             </Form>
@@ -274,6 +323,7 @@ export default function AppointmentsPage() {
                                     ></div>
                                 ))}
                             </div>
+                            {/* Render appointments */}
                             {appointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
                                  if (!app.start || !app.end) return null;
                                 const start = parseISO(app.start);
@@ -297,6 +347,31 @@ export default function AppointmentsPage() {
                                     >
                                         <p className="font-bold text-xs truncate">{app.title}</p>
                                         <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
+                                    </div>
+                                )
+                            })}
+                            {/* Render events */}
+                             {events?.filter(event => isSameDay(parseISO(event.date), day)).map(event => {
+                                const start = parseISO(event.date);
+                                // Assume 1-hour duration for events if no end time is specified
+                                const end = add(start, { hours: 1 });
+                                
+                                const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                const top = (topOffsetInMinutes / 60) * hourHeightInRem;
+
+                                const durationMinutes = 60; // 1 hour
+                                const height = (durationMinutes / 60) * hourHeightInRem;
+                                
+                                return (
+                                     <div
+                                        key={event.id}
+                                        className="absolute w-[calc(100%-4px)] left-[2px] bg-blue-500/20 border-l-4 border-blue-500 p-2 rounded-r-lg overflow-hidden"
+                                        style={{
+                                            top: `calc(4rem + ${top}rem)`,
+                                            height: `${height}rem`,
+                                        }}
+                                    >
+                                        <p className="font-bold text-xs truncate flex items-center gap-1"><CalendarIcon className='h-3 w-3'/> {event.title}</p>
                                     </div>
                                 )
                             })}
