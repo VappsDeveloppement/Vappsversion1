@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, PlusCircle, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
@@ -122,16 +122,15 @@ export default function AppointmentsPage() {
         if (!appointments) return false;
         for (const app of appointments) {
             if (editingAppointment && app.id === editingAppointment.id) continue;
-            if (!app.start || !app.end) continue; // Ignore incomplete appointments
+            if (!app.start || !app.end) continue;
             const existingStart = parseISO(app.start);
             const existingEnd = parseISO(app.end);
             if (start < existingEnd && end > existingStart) {
-                return true; // Overlap detected
+                return true;
             }
         }
         return false;
     };
-
 
     const handleSaveAppointment = async (data: AppointmentFormData) => {
         if (!user || !clients) return;
@@ -152,18 +151,25 @@ export default function AppointmentsPage() {
         setIsSubmitting(true);
 
         const client = clients.find(c => c.id === data.clientId);
-        if (!client) {
-            toast({ title: "Client non trouvé", variant: "destructive" });
+        
+        let clientName: string;
+        if (client) {
+            clientName = `${client.firstName} ${client.lastName}`;
+        } else if (editingAppointment) {
+            // If the client wasn't found but we are editing, use the existing client name
+            clientName = editingAppointment.clientName;
+        } else {
+             toast({ title: "Client non trouvé", description: "Le client sélectionné est invalide.", variant: "destructive" });
             setIsSubmitting(false);
             return;
         }
-        
+
         const appointmentData = {
             title: data.title,
             start: start.toISOString(),
             end: end.toISOString(),
             clientId: data.clientId,
-            clientName: `${client.firstName} ${client.lastName}`,
+            clientName: clientName,
             details: data.details,
             counselorId: user.uid
         };
@@ -187,84 +193,87 @@ export default function AppointmentsPage() {
     
     // Grid constants
     const startHour = 8;
-    const hourHeightInRem = 5; // 1 hour = 5rem
+    const hourHeightInRem = 5;
     
     return (
-        <>
-            <div className="flex flex-col h-[calc(100vh-6rem)]">
-                <header className="flex justify-between items-center mb-6">
-                    <div>
-                        <h1 className="text-3xl font-bold font-headline">Agenda</h1>
-                         <p className="text-muted-foreground">Planifiez et visualisez vos rendez-vous.</p>
+        <div className="flex flex-col h-full">
+            <header className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+                <div>
+                    <h1 className="text-3xl font-bold font-headline">Agenda</h1>
+                    <p className="text-muted-foreground">Planifiez et visualisez vos rendez-vous.</p>
+                </div>
+                <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2">
+                        <Button variant="outline" size="icon" onClick={handlePreviousWeek}><ChevronLeft /></Button>
+                        <Button variant="outline" onClick={handleToday}>Aujourd'hui</Button>
+                        <Button variant="outline" size="icon" onClick={handleNextWeek}><ChevronRight /></Button>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <Button variant="outline" size="icon" onClick={handlePreviousWeek}><ChevronLeft /></Button>
-                            <Button variant="outline" onClick={handleToday}>Aujourd'hui</Button>
-                            <Button variant="outline" size="icon" onClick={handleNextWeek}><ChevronRight /></Button>
-                        </div>
-                         <h2 className="font-semibold text-xl capitalize">
-                            {format(firstDayCurrentWeek, 'MMMM yyyy', { locale: fr })}
-                        </h2>
+                    <h2 className="font-semibold text-xl capitalize hidden md:block">
+                        {format(firstDayCurrentWeek, 'MMMM yyyy', { locale: fr })}
+                    </h2>
+                </div>
+            </header>
+
+            <div className="flex-1 grid grid-cols-[auto_1fr] overflow-auto border rounded-lg bg-background">
+                <div className="bg-muted/50 sticky left-0 z-20">
+                    <div className="h-16 border-b flex items-center justify-center">
                          <Button onClick={() => handleOpenForm()}>
                             <PlusCircle className="mr-2 h-4 w-4" />
-                            Nouveau rendez-vous
+                            Nouveau
                         </Button>
                     </div>
-                </header>
+                    {hours.map(hour => (
+                         <div key={hour} className="h-20 text-center border-b flex items-center justify-center">
+                            <span className="text-xs text-muted-foreground -translate-y-1/2">{hour}</span>
+                        </div>
+                    ))}
+                </div>
 
-                 <div className="flex-1 grid grid-cols-[auto_1fr] overflow-auto border rounded-lg bg-background">
-                    <div className="bg-muted/50">
-                        <div className="h-16 border-b"></div>
-                        {hours.map(hour => (
-                             <div key={hour} className="h-20 text-center border-b flex items-center justify-center">
-                                <span className="text-xs text-muted-foreground -translate-y-1/2">{hour}</span>
+                <div className="grid grid-cols-7 relative">
+                    {weekDays.map(day => (
+                        <div key={day.toString()} className="border-l relative">
+                            <div className="h-16 border-b p-2 text-center sticky top-0 bg-background z-10">
+                                <p className="text-sm text-muted-foreground">{format(day, 'EEE', { locale: fr })}</p>
+                                <p className={`text-2xl font-bold ${isSameDay(day, new Date()) ? 'text-primary' : ''}`}>
+                                    {format(day, 'd')}
+                                </p>
                             </div>
-                        ))}
-                    </div>
-
-                    <div className="grid grid-cols-7 relative">
-                        {weekDays.map(day => (
-                            <div key={day.toString()} className="border-l relative">
-                                <div className="h-16 border-b p-2 text-center sticky top-0 bg-background z-10">
-                                    <p className="text-sm text-muted-foreground">{format(day, 'EEE', { locale: fr })}</p>
-                                    <p className={`text-2xl font-bold ${isSameDay(day, new Date()) ? 'text-primary' : ''}`}>
-                                        {format(day, 'd')}
-                                    </p>
-                                </div>
-                                <div className="h-full">
-                                    {hours.map((hour) => (
-                                        <div key={`${day.toString()}-${hour}`} className="h-20 border-b"></div>
-                                    ))}
-                                </div>
-                                {appointments?.filter(app => app.start && app.end && isSameDay(parseISO(app.start), day)).map(app => {
-                                    const start = parseISO(app.start);
-                                    const end = parseISO(app.end);
-                                    
-                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
-                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
-
-                                    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-                                    const height = (durationMinutes / 60) * hourHeightInRem;
-
-                                    return (
-                                        <div
-                                            key={app.id}
-                                            onClick={() => handleOpenForm(app)}
-                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer"
-                                            style={{
-                                                top: `calc(4rem + ${top}rem)`, // 4rem is the header height
-                                                height: `${height}rem`,
-                                            }}
-                                        >
-                                            <p className="font-bold text-xs truncate">{app.title}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
-                                        </div>
-                                    )
-                                })}
+                            <div className="h-full">
+                                {hours.map((hour, hourIndex) => (
+                                    <div 
+                                        key={`${day.toString()}-${hour}`} 
+                                        className="h-20 border-b cursor-pointer hover:bg-muted/50"
+                                        onClick={() => handleOpenForm(null, day, hour)}
+                                    ></div>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                            {appointments?.filter(app => app.start && app.end && isSameDay(parseISO(app.start), day)).map(app => {
+                                const start = parseISO(app.start);
+                                const end = parseISO(app.end);
+                                
+                                const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                const top = (topOffsetInMinutes / 60) * hourHeightInRem;
+
+                                const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+                                const height = (durationMinutes / 60) * hourHeightInRem;
+
+                                return (
+                                    <div
+                                        key={app.id}
+                                        onClick={() => handleOpenForm(app)}
+                                        className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer"
+                                        style={{
+                                            top: `calc(4rem + ${top}rem)`,
+                                            height: `${height}rem`,
+                                        }}
+                                    >
+                                        <p className="font-bold text-xs truncate">{app.title}</p>
+                                        <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    ))}
                 </div>
             </div>
 
@@ -299,11 +308,11 @@ export default function AppointmentsPage() {
                                         <FormMessage /></FormItem>
                                     )}/>
                                     <div className="grid grid-cols-2 gap-4">
-                                         <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" value={format(field.value, 'yyyy-MM-dd')} onChange={e => field.onChange(parseISO(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" value={field.value ? format(field.value, 'yyyy-MM-dd') : ''} onChange={e => field.onChange(parseISO(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Heure de début</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                     <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (en minutes)</FormLabel><FormControl><Input type="number" step="15" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
                            </ScrollArea>
                             <DialogFooter className="pt-4 border-t">
@@ -317,6 +326,8 @@ export default function AppointmentsPage() {
                     </Form>
                 </DialogContent>
             </Dialog>
-        </>
+        </div>
     );
 }
+
+    
