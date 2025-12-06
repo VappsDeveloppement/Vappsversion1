@@ -1,46 +1,6 @@
 
 {
   "entities": {
-    "PublicForm": {
-        "title": "Public Form",
-        "type": "object",
-        "description": "A public-facing form based on a Question Model.",
-        "properties": {
-            "id": { "type": "string" },
-            "counselorId": { "type": "string" },
-            "name": { "type": "string" },
-            "description": { "type": "string" },
-            "modelId": { "type": "string" },
-            "modelName": { "type": "string" },
-            "questions": { "type": "array", "items": { "type": "object" } },
-            "isEnabled": { "type": "boolean" },
-            "createdAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["counselorId", "name", "modelId"]
-    },
-     "PublicFormSubmission": {
-        "title": "Public Form Submission",
-        "type": "object",
-        "description": "A submission for a public form.",
-        "properties": {
-            "id": { "type": "string" },
-            "formId": { "type": "string" },
-            "counselorId": { "type": "string" },
-            "respondent": {
-                "type": "object",
-                "properties": {
-                    "firstName": { "type": "string" },
-                    "lastName": { "type": "string" },
-                    "email": { "type": "string", "format": "email" },
-                    "phone": { "type": "string" }
-                },
-                "required": ["firstName", "lastName", "email"]
-            },
-            "answers": { "type": "array", "items": { "type": "object" } },
-            "submittedAt": { "type": "string", "format": "date-time" }
-        },
-        "required": ["formId", "counselorId", "respondent", "submittedAt"]
-    },
     "QuestionModel": {
         "title": "Question Model",
         "type": "object",
@@ -1011,52 +971,6 @@
             }
         }
     },
-    "Appointment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Appointment",
-      "type": "object",
-      "description": "Represents a scheduled appointment between a coach and a client.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the appointment."
-        },
-        "coachId": {
-          "type": "string",
-          "description": "Reference to User representing the coach. (Relationship: User 1:N Appointment)"
-        },
-        "clientId": {
-          "type": "string",
-          "description": "Reference to User representing the client. (Relationship: User 1:N Appointment)"
-        },
-        "startTime": {
-          "type": "string",
-          "description": "The start date and time of the appointment.",
-          "format": "date-time"
-        },
-        "endTime": {
-          "type": "string",
-          "description": "The end date and time of the appointment.",
-          "format": "date-time"
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the appointment (e.g., scheduled, completed, cancelled)."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Notes related to the appointment"
-        }
-      },
-      "required": [
-        "id",
-        "coachId",
-        "clientId",
-        "startTime",
-        "endTime",
-        "status"
-      ]
-    },
     "EmailCampaign": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "EmailCampaign",
@@ -1867,22 +1781,6 @@
         }
       },
       {
-        "path": "/public_forms/{formId}",
-        "definition": {
-            "entityName": "PublicForm",
-            "schema": { "$ref": "#/entities/PublicForm" },
-            "description": "Publicly accessible forms for lead generation or surveys."
-        }
-      },
-      {
-        "path": "/public_forms/{formId}/submissions/{submissionId}",
-        "definition": {
-            "entityName": "PublicFormSubmission",
-            "schema": { "$ref": "#/entities/PublicFormSubmission" },
-            "description": "Submissions for a specific public form."
-        }
-      },
-      {
         "path": "/minisites/{counselorId}",
         "definition": {
           "entityName": "CounselorProfile",
@@ -1966,16 +1864,6 @@
             "$ref": "#/backend/entities/Invoice"
           },
           "description": "Stores invoices for a specific user. Path-based ownership ensures only the user can access their invoices."
-        }
-      },
-      {
-        "path": "/users/{userId}/appointments/{appointmentId}",
-        "definition": {
-          "entityName": "Appointment",
-          "schema": {
-            "$ref": "#/backend/entities/Appointment"
-          },
-          "description": "Stores appointments for a specific user. Path-based ownership ensures only the user can access their appointments."
         }
       },
       {
