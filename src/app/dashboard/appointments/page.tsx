@@ -123,6 +123,10 @@ export default function AppointmentsPage() {
             if (editingAppointment && app.id === editingAppointment.id) {
                 return false;
             }
+             // Ensure the existing appointment has valid dates before parsing
+            if (!app.start || !app.end) {
+                return false;
+            }
             const existingStart = parseISO(app.start);
             const existingEnd = parseISO(app.end);
             // Overlap condition: (StartA < EndB) and (StartB < EndA)
