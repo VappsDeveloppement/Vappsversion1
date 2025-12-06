@@ -131,60 +131,68 @@ export default function AppointmentsPage() {
         }
         return false;
     };
-
+    
     const handleSaveAppointment = async (data: AppointmentFormData) => {
-        if (!user || !clients) return;
-
+        if (!user) return;
+        setIsSubmitting(true);
+    
         const [hours, minutes] = data.startTime.split(':').map(Number);
         const start = set(data.date, { hours, minutes, seconds: 0, milliseconds: 0 });
         const end = add(start, { minutes: data.duration });
-        
+    
         if (checkOverlap(start, end)) {
             toast({
                 title: "Conflit d'horaire",
                 description: "Ce créneau est déjà occupé par un autre rendez-vous.",
                 variant: "destructive",
             });
-            return;
-        }
-        
-        setIsSubmitting(true);
-
-        const client = clients.find(c => c.id === data.clientId);
-        
-        let clientName: string;
-        if (client) {
-            clientName = `${client.firstName} ${client.lastName}`;
-        } else if (editingAppointment) {
-            // If the client wasn't found but we are editing, use the existing client name
-            clientName = editingAppointment.clientName;
-        } else {
-             toast({ title: "Client non trouvé", description: "Le client sélectionné est invalide.", variant: "destructive" });
             setIsSubmitting(false);
             return;
         }
-
+    
+        // Correctly determine client name and ID
+        let clientName: string;
+        let clientId: string = data.clientId; // Start with the form's client ID
+    
+        const client = clients?.find(c => c.id === clientId);
+    
+        if (client) {
+            // A client was found from the selection
+            clientName = `${client.firstName} ${client.lastName}`;
+        } else if (editingAppointment) {
+            // We are editing, and maybe the client wasn't re-selected.
+            // Use the original appointment's client info as a fallback.
+            clientName = editingAppointment.clientName;
+            clientId = editingAppointment.clientId;
+        } else {
+            // We are creating a new appointment and the selected client is not valid.
+            toast({ title: "Client non trouvé", description: "Le client sélectionné est invalide.", variant: "destructive" });
+            setIsSubmitting(false);
+            return;
+        }
+    
         const appointmentData = {
             title: data.title,
             start: start.toISOString(),
             end: end.toISOString(),
-            clientId: data.clientId,
+            clientId: clientId,
             clientName: clientName,
             details: data.details,
             counselorId: user.uid
         };
-
+    
         try {
             const appointmentRef = editingAppointment
                 ? doc(firestore, `users/${user.uid}/appointments`, editingAppointment.id)
                 : doc(collection(firestore, `users/${user.uid}/appointments`));
-
+    
             await setDocumentNonBlocking(appointmentRef, appointmentData, { merge: true });
             
             toast({ title: editingAppointment ? "Rendez-vous mis à jour" : "Rendez-vous créé" });
             setIsFormOpen(false);
-
+    
         } catch (error) {
+            console.error("Save appointment error:", error);
             toast({ title: "Erreur", description: "Impossible de sauvegarder le rendez-vous.", variant: "destructive"});
         } finally {
             setIsSubmitting(false);
@@ -193,7 +201,7 @@ export default function AppointmentsPage() {
     
     // Grid constants
     const startHour = 8;
-    const hourHeightInRem = 5;
+    const hourHeightInRem = 5; // Corresponds to h-20
     
     return (
         <div className="flex flex-col h-full">
@@ -211,16 +219,17 @@ export default function AppointmentsPage() {
                     <h2 className="font-semibold text-xl capitalize hidden md:block">
                         {format(firstDayCurrentWeek, 'MMMM yyyy', { locale: fr })}
                     </h2>
+                     <Button onClick={() => handleOpenForm()}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Nouveau
+                    </Button>
                 </div>
             </header>
 
             <div className="flex-1 grid grid-cols-[auto_1fr] overflow-auto border rounded-lg bg-background">
                 <div className="bg-muted/50 sticky left-0 z-20">
-                    <div className="h-16 border-b flex items-center justify-center">
-                         <Button onClick={() => handleOpenForm()}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Nouveau
-                        </Button>
+                     <div className="h-16 border-b flex items-center justify-center font-semibold">
+                       Heures
                     </div>
                     {hours.map(hour => (
                          <div key={hour} className="h-20 text-center border-b flex items-center justify-center">
