@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -9,7 +8,7 @@ import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon, Copy, Power, PowerOff } from 'lucide-react';
+import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon, Copy, Power, PowerOff, Upload } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
@@ -1167,21 +1166,22 @@ function PublicFormManager() {
         const selectedModel = models.find(m => m.id === data.modelId);
         if (!selectedModel) return;
 
-        const formData = { 
+        const formData: Partial<PublicForm> = { 
             counselorId: user.uid,
             name: data.name,
             description: data.description,
             modelId: data.modelId,
             modelName: selectedModel.name,
-            questions: selectedModel.questions || [],
+            questions: selectedModel.questions || [], // Copy questions
             isEnabled: editingForm ? editingForm.isEnabled : true,
-            createdAt: editingForm?.createdAt || new Date().toISOString(),
         };
 
         if (editingForm) {
-            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), formData, { merge: true });
+            const formRef = doc(firestore, 'public_forms', editingForm.id);
+            setDocumentNonBlocking(formRef, formData, { merge: true });
             toast({ title: "Formulaire public mis à jour" });
         } else {
+            formData.createdAt = new Date().toISOString();
             addDocumentNonBlocking(collection(firestore, 'public_forms'), formData);
             toast({ title: "Formulaire public créé" });
         }
@@ -1475,7 +1475,3 @@ function PrismeBlockEditor({ remove, index }: { remove: (index: number) => void,
         </Card>
     );
 }
-
-    
-
-    
