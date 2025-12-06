@@ -580,19 +580,12 @@ function FollowUpManager() {
                     onOpenChange={setIsPdfModalOpen}
                     suivi={selectedSuivi}
                     model={models.find(m => m.id === selectedSuivi.modelId) || null}
+                    liveAnswers={selectedSuivi.answers?.reduce((acc, ans) => ({...acc, [ans.questionId]: ans.answer}), {}) || {}}
                 />
             )}
         </Card>
     );
 }
-
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
 
 function FormTemplateManager() {
   const { user } = useUser();
@@ -1131,6 +1124,207 @@ function LearningPathManager() {
     );
 }
 
+function PublicFormManager() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const { toast } = useToast();
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [editingForm, setEditingForm] = useState<PublicForm | null>(null);
+
+    const publicFormsQuery = useMemoFirebase(() => user ? query(collection(firestore, `public_forms`), where('counselorId', '==', user.uid)) : null, [user, firestore]);
+    const { data: publicForms, isLoading } = useCollection<PublicForm>(publicFormsQuery);
+    
+    const modelsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/question_models`)) : null, [user, firestore]);
+    const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
+
+    const form = useForm<PublicFormFormData>({
+        resolver: zodResolver(publicFormSchema),
+    });
+
+    useEffect(() => {
+        if (isSheetOpen) {
+            form.reset(editingForm ? {
+                name: editingForm.name,
+                description: editingForm.description,
+                modelId: editingForm.modelId,
+            } : { name: '', description: '', modelId: '' });
+        }
+    }, [isSheetOpen, editingForm, form]);
+
+    const handleNew = () => {
+        setEditingForm(null);
+        setIsSheetOpen(true);
+    };
+
+    const handleEdit = (form: PublicForm) => {
+        setEditingForm(form);
+        setIsSheetOpen(true);
+    };
+    
+    const handleDelete = (formId: string) => {
+        deleteDocumentNonBlocking(doc(firestore, 'public_forms', formId));
+        toast({ title: "Formulaire supprimé" });
+    };
+    
+    const toggleEnabled = (form: PublicForm) => {
+        const formRef = doc(firestore, 'public_forms', form.id);
+        setDocumentNonBlocking(formRef, { isEnabled: !form.isEnabled }, { merge: true });
+        toast({ title: `Formulaire ${form.isEnabled ? 'désactivé' : 'activé'}`});
+    };
+
+    const copyLink = (formId: string) => {
+        const url = `${window.location.origin}/form/${formId}`;
+        navigator.clipboard.writeText(url);
+        toast({ title: "Lien copié dans le presse-papiers" });
+    }
+
+    const onSubmit = (data: PublicFormFormData) => {
+        if (!user || !models) return;
+        const selectedModel = models.find(m => m.id === data.modelId);
+        if (!selectedModel) return;
+
+        const formData = { 
+            counselorId: user.uid,
+            name: data.name,
+            description: data.description,
+            modelId: data.modelId,
+            modelName: selectedModel.name,
+            questions: selectedModel.questions || [], // Copy questions here
+            isEnabled: editingForm ? editingForm.isEnabled : true,
+            createdAt: editingForm ? editingForm.createdAt : new Date().toISOString(),
+        };
+
+        if (editingForm) {
+            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), formData, { merge: true });
+            toast({ title: "Formulaire mis à jour" });
+        } else {
+            addDocumentNonBlocking(collection(firestore, 'public_forms'), formData);
+            toast({ title: "Formulaire public créé" });
+        }
+        setIsSheetOpen(false);
+    };
+
+    return (
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-start">
+                    <div>
+                        <CardTitle>Formulaires Publics</CardTitle>
+                        <CardDescription>
+                            Créez des formulaires pour les partager publiquement (via un lien ou sur votre mini-site).
+                        </CardDescription>
+                    </div>
+                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouveau Formulaire Public</Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <Table>
+                    <TableHeader><TableRow><TableHead>Nom</TableHead><TableHead>Modèle utilisé</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {isLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                        : publicForms && publicForms.length > 0 ? (
+                            publicForms.map(form => (
+                                <TableRow key={form.id}>
+                                    <TableCell>{form.name}</TableCell>
+                                    <TableCell>{form.modelName}</TableCell>
+                                    <TableCell>
+                                        <Badge variant={form.isEnabled ? 'default' : 'secondary'}>
+                                            {form.isEnabled ? 'Actif' : 'Inactif'}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <Button variant="ghost" size="icon" onClick={() => copyLink(form.id)}><Copy className="h-4 w-4"/></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => toggleEnabled(form)}>{form.isEnabled ? <PowerOff className="h-4 w-4"/> : <Power className="h-4 w-4"/>}</Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(form)}><Edit className="h-4 w-4" /></Button>
+                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(form.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                                    </TableCell>
+                                </TableRow>
+                            ))
+                        ) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucun formulaire public créé.</TableCell></TableRow>}
+                    </TableBody>
+                </Table>
+                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                    <SheetContent className="sm:max-w-lg">
+                        <SheetHeader>
+                            <SheetTitle>{editingForm ? 'Modifier le' : 'Nouveau'} formulaire public</SheetTitle>
+                        </SheetHeader>
+                        <Form {...form}>
+                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
+                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du formulaire</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField
+                                    control={form.control}
+                                    name="modelId"
+                                    render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel>Modèle de questions à utiliser</FormLabel>
+                                        <Select onValueChange={field.onChange} value={field.value}>
+                                            <FormControl>
+                                                <SelectTrigger disabled={areModelsLoading}><SelectValue placeholder="Sélectionner un modèle..." /></SelectTrigger>
+                                            </FormControl>
+                                            <SelectContent>{models?.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <SheetFooter className="pt-6">
+                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                    <Button type="submit">Sauvegarder</Button>
+                                </SheetFooter>
+                            </form>
+                        </Form>
+                    </SheetContent>
+                </Sheet>
+            </CardContent>
+        </Card>
+    )
+}
+
+export default function SuiviPage() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold font-headline">Suivi</h1>
+        <p className="text-muted-foreground">
+          Gérez le suivi de vos clients, vos modèles et vos parcours.
+        </p>
+      </div>
+
+      <Tabs defaultValue="suivi" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger value="suivi">
+            <ClipboardList className="mr-2 h-4 w-4" /> Suivi
+          </TabsTrigger>
+          <TabsTrigger value="form-templates">
+            <FileText className="mr-2 h-4 w-4" /> Modèle de formulaire
+          </TabsTrigger>
+           <TabsTrigger value="parcours">
+            <Route className="mr-2 h-4 w-4" /> Parcours
+          </TabsTrigger>
+          <TabsTrigger value="public-forms">
+            <Send className="mr-2 h-4 w-4" /> Formulaires Publics
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="suivi">
+            <FollowUpManager />
+        </TabsContent>
+        <TabsContent value="form-templates">
+          <FormTemplateManager />
+        </TabsContent>
+        <TabsContent value="parcours">
+            <LearningPathManager />
+        </TabsContent>
+         <TabsContent value="public-forms">
+            <PublicFormManager />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// ----- Other Child Components (ScaleBlockEditor, etc.) -----
 function BlocQuestionMenu({ onAddBlock, showPrisme, showVitae, showAura }: { onAddBlock: (type: string) => void, showPrisme: boolean, showVitae: boolean, showAura: boolean }) {
   const blockTypes = [
     { type: 'scale', label: 'Échelle', icon: <Scale className="mr-2 h-4 w-4" /> },
@@ -1296,204 +1490,4 @@ function PrismeBlockEditor({ remove, index }: { remove: (index: number) => void,
             </div>
         </Card>
     );
-}
-
-function PublicFormManager() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [editingForm, setEditingForm] = useState<PublicForm | null>(null);
-
-    const publicFormsQuery = useMemoFirebase(() => user ? query(collection(firestore, `public_forms`), where('counselorId', '==', user.uid)) : null, [user, firestore]);
-    const { data: publicForms, isLoading } = useCollection<PublicForm>(publicFormsQuery);
-    
-    const modelsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/question_models`)) : null, [user, firestore]);
-    const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
-
-    const form = useForm<PublicFormFormData>({
-        resolver: zodResolver(publicFormSchema),
-    });
-
-    useEffect(() => {
-        if (isSheetOpen) {
-            form.reset(editingForm ? {
-                name: editingForm.name,
-                description: editingForm.description,
-                modelId: editingForm.modelId,
-            } : { name: '', description: '', modelId: '' });
-        }
-    }, [isSheetOpen, editingForm, form]);
-
-    const handleNew = () => {
-        setEditingForm(null);
-        setIsSheetOpen(true);
-    };
-
-    const handleEdit = (form: PublicForm) => {
-        setEditingForm(form);
-        setIsSheetOpen(true);
-    };
-    
-    const handleDelete = (formId: string) => {
-        deleteDocumentNonBlocking(doc(firestore, 'public_forms', formId));
-        toast({ title: "Formulaire supprimé" });
-    };
-    
-    const toggleEnabled = (form: PublicForm) => {
-        const formRef = doc(firestore, 'public_forms', form.id);
-        setDocumentNonBlocking(formRef, { isEnabled: !form.isEnabled }, { merge: true });
-        toast({ title: `Formulaire ${form.isEnabled ? 'désactivé' : 'activé'}`});
-    };
-
-    const copyLink = (formId: string) => {
-        const url = `${window.location.origin}/form/${formId}`;
-        navigator.clipboard.writeText(url);
-        toast({ title: "Lien copié dans le presse-papiers" });
-    }
-
-    const onSubmit = (data: PublicFormFormData) => {
-        if (!user || !models) return;
-        const selectedModel = models.find(m => m.id === data.modelId);
-        if (!selectedModel) return;
-
-        const formData = { 
-            counselorId: user.uid,
-            name: data.name,
-            description: data.description,
-            modelId: data.modelId,
-            modelName: selectedModel.name,
-            questions: selectedModel.questions || [],
-            isEnabled: editingForm ? editingForm.isEnabled : true,
-            createdAt: editingForm ? editingForm.createdAt : new Date().toISOString(),
-        };
-
-        if (editingForm) {
-            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), formData, { merge: true });
-            toast({ title: "Formulaire mis à jour" });
-        } else {
-            addDocumentNonBlocking(collection(firestore, 'public_forms'), formData);
-            toast({ title: "Formulaire public créé" });
-        }
-        setIsSheetOpen(false);
-    };
-
-    return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle>Formulaires Publics</CardTitle>
-                        <CardDescription>
-                            Créez des formulaires pour les partager publiquement (via un lien ou sur votre mini-site).
-                        </CardDescription>
-                    </div>
-                    <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouveau Formulaire Public</Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader><TableRow><TableHead>Nom</TableHead><TableHead>Modèle utilisé</TableHead><TableHead>Statut</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                        {isLoading ? <TableRow><TableCell colSpan={4}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
-                        : publicForms && publicForms.length > 0 ? (
-                            publicForms.map(form => (
-                                <TableRow key={form.id}>
-                                    <TableCell>{form.name}</TableCell>
-                                    <TableCell>{form.modelName}</TableCell>
-                                    <TableCell>
-                                        <Badge variant={form.isEnabled ? 'default' : 'secondary'}>
-                                            {form.isEnabled ? 'Actif' : 'Inactif'}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => copyLink(form.id)}><Copy className="h-4 w-4"/></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => toggleEnabled(form)}>{form.isEnabled ? <PowerOff className="h-4 w-4"/> : <Power className="h-4 w-4"/>}</Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(form)}><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => handleDelete(form.id)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : <TableRow><TableCell colSpan={4} className="h-24 text-center">Aucun formulaire public créé.</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
-                <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-lg">
-                        <SheetHeader>
-                            <SheetTitle>{editingForm ? 'Modifier le' : 'Nouveau'} formulaire public</SheetTitle>
-                        </SheetHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4">
-                                <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du formulaire</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description (optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField
-                                    control={form.control}
-                                    name="modelId"
-                                    render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Modèle de questions à utiliser</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger disabled={areModelsLoading}><SelectValue placeholder="Sélectionner un modèle..." /></SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>{models?.map(m => <SelectItem key={m.id} value={m.id}>{m.name}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <SheetFooter className="pt-6">
-                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                    <Button type="submit">Sauvegarder</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
-                    </SheetContent>
-                </Sheet>
-            </CardContent>
-        </Card>
-    )
-}
-
-export default function SuiviPage() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline">Suivi</h1>
-        <p className="text-muted-foreground">
-          Gérez le suivi de vos clients, vos modèles et vos parcours.
-        </p>
-      </div>
-
-      <Tabs defaultValue="suivi" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
-          <TabsTrigger value="suivi">
-            <ClipboardList className="mr-2 h-4 w-4" /> Suivi
-          </TabsTrigger>
-          <TabsTrigger value="form-templates">
-            <FileText className="mr-2 h-4 w-4" /> Modèle de formulaire
-          </TabsTrigger>
-           <TabsTrigger value="parcours">
-            <Route className="mr-2 h-4 w-4" /> Parcours
-          </TabsTrigger>
-          <TabsTrigger value="public-forms">
-            <Send className="mr-2 h-4 w-4" /> Formulaires Publics
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="suivi">
-            <FollowUpManager />
-        </TabsContent>
-        <TabsContent value="form-templates">
-          <FormTemplateManager />
-        </TabsContent>
-        <TabsContent value="parcours">
-            <LearningPathManager />
-        </TabsContent>
-         <TabsContent value="public-forms">
-            <PublicFormManager />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
 }
