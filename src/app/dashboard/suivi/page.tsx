@@ -204,6 +204,7 @@ type PublicForm = {
     modelId: string;
     modelName: string;
     isEnabled: boolean;
+    createdAt: string;
     questions?: any[];
 };
 
@@ -1297,49 +1298,6 @@ function PrismeBlockEditor({ remove, index }: { remove: (index: number) => void,
     );
 }
 
-export default function SuiviPage() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline">Suivi</h1>
-        <p className="text-muted-foreground">
-          Gérez le suivi de vos clients, vos modèles et vos parcours.
-        </p>
-      </div>
-
-      <Tabs defaultValue="suivi" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
-          <TabsTrigger value="suivi">
-            <ClipboardList className="mr-2 h-4 w-4" /> Suivi
-          </TabsTrigger>
-          <TabsTrigger value="form-templates">
-            <FileText className="mr-2 h-4 w-4" /> Modèle de formulaire
-          </TabsTrigger>
-           <TabsTrigger value="parcours">
-            <Route className="mr-2 h-4 w-4" /> Parcours
-          </TabsTrigger>
-          <TabsTrigger value="public-forms">
-            <Send className="mr-2 h-4 w-4" /> Formulaires Publics
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="suivi">
-            <FollowUpManager />
-        </TabsContent>
-        <TabsContent value="form-templates">
-          <FormTemplateManager />
-        </TabsContent>
-        <TabsContent value="parcours">
-            <LearningPathManager />
-        </TabsContent>
-         <TabsContent value="public-forms">
-            <PublicFormManager />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
 function PublicFormManager() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -1359,7 +1317,11 @@ function PublicFormManager() {
 
     useEffect(() => {
         if (isSheetOpen) {
-            form.reset(editingForm || { name: '', description: '', modelId: '' });
+            form.reset(editingForm ? {
+                name: editingForm.name,
+                description: editingForm.description,
+                modelId: editingForm.modelId,
+            } : { name: '', description: '', modelId: '' });
         }
     }, [isSheetOpen, editingForm, form]);
 
@@ -1401,7 +1363,7 @@ function PublicFormManager() {
             description: data.description,
             modelId: data.modelId,
             modelName: selectedModel.name,
-            questions: selectedModel.questions || [], // Embed questions
+            questions: selectedModel.questions || [],
             isEnabled: editingForm ? editingForm.isEnabled : true,
             createdAt: editingForm ? editingForm.createdAt : new Date().toISOString(),
         };
@@ -1492,12 +1454,46 @@ function PublicFormManager() {
         </Card>
     )
 }
-    
-    
-const toBase64 = (file: File): Promise<string> =>
-  new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = (error) => reject(error);
-  });
+
+export default function SuiviPage() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold font-headline">Suivi</h1>
+        <p className="text-muted-foreground">
+          Gérez le suivi de vos clients, vos modèles et vos parcours.
+        </p>
+      </div>
+
+      <Tabs defaultValue="suivi" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger value="suivi">
+            <ClipboardList className="mr-2 h-4 w-4" /> Suivi
+          </TabsTrigger>
+          <TabsTrigger value="form-templates">
+            <FileText className="mr-2 h-4 w-4" /> Modèle de formulaire
+          </TabsTrigger>
+           <TabsTrigger value="parcours">
+            <Route className="mr-2 h-4 w-4" /> Parcours
+          </TabsTrigger>
+          <TabsTrigger value="public-forms">
+            <Send className="mr-2 h-4 w-4" /> Formulaires Publics
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="suivi">
+            <FollowUpManager />
+        </TabsContent>
+        <TabsContent value="form-templates">
+          <FormTemplateManager />
+        </TabsContent>
+        <TabsContent value="parcours">
+            <LearningPathManager />
+        </TabsContent>
+         <TabsContent value="public-forms">
+            <PublicFormManager />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
