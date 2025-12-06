@@ -272,7 +272,13 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                     const chartElement = document.getElementById(`chart-${block.id}`);
                     if (block.questions.length > 1 && chartElement) {
                         try {
-                            const canvas = await html2canvas(chartElement, { backgroundColor: null });
+                            const canvas = await html2canvas(chartElement, { 
+                                backgroundColor: null,
+                                useCORS: true,
+                                // This tells html2canvas to look for the element in the main document body,
+                                // which can help find elements inside portals like dialogs.
+                                container: document.body, 
+                            });
                             const imgData = canvas.toDataURL('image/png');
                             if(docJs.internal.pageSize.height - yPos < 90) { // Check space
                                 docJs.addPage();
@@ -285,14 +291,18 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                             // Fallback to text if canvas fails
                             block.questions.forEach((q: any) => {
                                 const value = answer?.[q.id] || 0;
-                                docJs.text(`${q.text}: ${value}/10`, 15, yPos);
+                                const text = `${q.text}: ${value}/10`;
+                                if (docJs.internal.pageSize.height - yPos < 10) { docJs.addPage(); yPos = 20; }
+                                docJs.text(text, 15, yPos);
                                 yPos += 8;
                             });
                         }
                     } else {
                         block.questions.forEach((q: any) => {
-                             const value = answer?.[q.id] || 0;
-                            docJs.text(`${q.text}: ${value}/10`, 15, yPos);
+                            const value = answer?.[q.id] || 0;
+                            const text = `${q.text}: ${value}/10`;
+                            if (docJs.internal.pageSize.height - yPos < 10) { docJs.addPage(); yPos = 20; }
+                            docJs.text(text, 15, yPos);
                             yPos += 8;
                         });
                     }
@@ -304,6 +314,7 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                         yPos += reportLines.length * 7 + 5;
                     }
                     if (answer?.partners?.length > 0) {
+                        if (docJs.internal.pageSize.height - yPos < 30) { docJs.addPage(); yPos = 20; }
                         docJs.text("Partenaires associés:", 15, yPos);
                         yPos += 8;
                         (autoTable as any)(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
