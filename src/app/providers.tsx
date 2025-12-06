@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import type { ReactNode } from 'react';
 import { AgencyProvider } from "@/context/agency-provider";
 import { Toaster } from "@/components/ui/toaster";
 import { FirebaseProvider } from '@/firebase/provider';
@@ -18,7 +19,7 @@ interface FirebaseServices {
   storage: FirebaseStorage;
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children }: { children: ReactNode }) {
     const [firebaseServices, setFirebaseServices] = React.useState<FirebaseServices | null>(null);
     const [error, setError] = React.useState<Error | null>(null);
 

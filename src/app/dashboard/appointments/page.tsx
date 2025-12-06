@@ -32,7 +32,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, setDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, setDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { cn } from '@/lib/utils';
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -323,17 +323,17 @@ export default function AppointmentsPage() {
     
     const handleSaveAppointment = async (data: AppointmentFormData) => {
         if (!user || !clients || !userData) return;
-        
+    
         const startDateTime = parse(`${data.date} ${data.time}`, 'yyyy-MM-dd HH:mm', new Date());
         const endDateTime = new Date(startDateTime.getTime() + data.duration * 60 * 1000);
-
+    
         const client = clients.find(c => c.id === data.clientId);
-
+    
         try {
             const appointmentRef = editingAppointment
                 ? doc(firestore, `users/${user.uid}/appointments`, editingAppointment.id)
                 : doc(collection(firestore, `users/${user.uid}/appointments`));
-
+    
             const appointmentData = {
                 id: appointmentRef.id,
                 title: data.title,
@@ -345,15 +345,25 @@ export default function AppointmentsPage() {
                 status: 'scheduled',
                 coachId: user.uid,
             };
-
+    
             await setDoc(appointmentRef, appointmentData, { merge: true });
-
+            
+            toast({ title: editingAppointment ? "Rendez-vous mis à jour" : "Rendez-vous ajouté" });
+            setIsFormOpen(false);
+            setEditingAppointment(null);
+    
             if (data.sendConfirmation && client) {
-                 const emailSettings = (userData as any)?.emailSettings?.fromEmail ? (userData as any).emailSettings : personalization?.emailSettings;
-                if(!emailSettings?.fromEmail) {
-                    toast({ title: "Configuration e-mail manquante", description: "Impossible d'envoyer l'e-mail de confirmation.", variant: "destructive"});
+                const counselorEmailSettings = (userData as any)?.emailSettings;
+                const agencyEmailSettings = personalization?.emailSettings;
+    
+                const emailSettings = (counselorEmailSettings && counselorEmailSettings.fromEmail)
+                    ? counselorEmailSettings
+                    : agencyEmailSettings;
+    
+                if (!emailSettings?.fromEmail) {
+                    toast({ title: "E-mail non envoyé", description: "La configuration pour l'envoi d'e-mail est manquante.", variant: "destructive" });
                 } else {
-                     await sendConfirmationEmails({
+                    await sendConfirmationEmails({
                         appointment: {
                             title: data.title,
                             start: startDateTime.toISOString(),
@@ -363,12 +373,10 @@ export default function AppointmentsPage() {
                         counselor: { name: emailSettings.fromName, email: emailSettings.fromEmail },
                         emailSettings: emailSettings,
                     });
+                     toast({ title: "Confirmation envoyée", description: `Un e-mail a été envoyé à ${client.email}.` });
                 }
             }
-
-            toast({ title: editingAppointment ? "Rendez-vous mis à jour" : "Rendez-vous ajouté" });
-            setIsFormOpen(false);
-            setEditingAppointment(null);
+    
         } catch (error) {
              toast({ title: "Erreur", description: "Impossible de sauvegarder le rendez-vous", variant: "destructive" });
         }
