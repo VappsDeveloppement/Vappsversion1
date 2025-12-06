@@ -96,6 +96,7 @@ export default function AppointmentsPage() {
     const [isAppointmentSheetOpen, setIsAppointmentSheetOpen] = useState(false);
     const [isUnavailabilitySheetOpen, setIsUnavailabilitySheetOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+    const [unavailabilityToDelete, setUnavailabilityToDelete] = useState<Unavailability | null>(null);
     const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
     const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -142,8 +143,8 @@ export default function AppointmentsPage() {
     useEffect(() => {
         if (isAppointmentSheetOpen) {
             if (editingAppointment) {
-                 const localStart = toLocalISOString(new Date(editingAppointment.start));
-                 const localEnd = toLocalISOString(new Date(editingAppointment.end));
+                const localStart = toLocalISOString(new Date(editingAppointment.start));
+                const localEnd = toLocalISOString(new Date(editingAppointment.end));
                 appointmentForm.reset({
                     title: editingAppointment.title,
                     start: localStart,
@@ -275,6 +276,20 @@ export default function AppointmentsPage() {
         }
     };
 
+    const handleDeleteUnavailability = async () => {
+        if (!unavailabilityToDelete || !user) return;
+        const unavailabilityRef = doc(firestore, `users/${user.uid}/unavailabilities`, unavailabilityToDelete.id);
+
+        try {
+            await deleteDocumentNonBlocking(unavailabilityRef);
+            toast({ title: "Créneau débloqué" });
+        } catch(error) {
+            toast({ title: "Erreur", description: "Impossible de supprimer le créneau.", variant: 'destructive'});
+        } finally {
+            setUnavailabilityToDelete(null);
+        }
+    }
+
     const weekDays = useMemo(() => {
         const start = startOfWeek(currentDate, { weekStartsOn: 1 });
         return Array.from({ length: 7 }).map((_, i) => addDays(start, i));
@@ -368,14 +383,14 @@ export default function AppointmentsPage() {
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
                                                         <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={handleDeleteAppointment}>Confirmer</AlertDialogAction>
+                                                        <AlertDialogAction onClick={() => { setAppointmentToDelete(editingAppointment); handleDeleteAppointment(); }}>Confirmer</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
                                             </AlertDialog>
                                         )}
                                         <div className='flex gap-2 ml-auto'>
                                             <Button type="button" variant="outline" onClick={() => setIsAppointmentSheetOpen(false)}>Annuler</Button>
-                                            <Button type="submit" disabled={isSubmitting} onClick={() => editingAppointment && setAppointmentToDelete(editingAppointment)}>
+                                            <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                                 Sauvegarder
                                             </Button>
@@ -435,7 +450,8 @@ export default function AppointmentsPage() {
                                 return (
                                     <div
                                         key={unav.id}
-                                        className="absolute w-full left-0 bg-gray-200/50 flex items-center justify-center"
+                                        onClick={() => setUnavailabilityToDelete(unav)}
+                                        className="absolute w-full left-0 bg-gray-200/50 flex items-center justify-center cursor-pointer hover:bg-gray-300/50"
                                         style={{
                                             top: `calc(4rem + ${top}rem)`,
                                             height: `${height}rem`,
@@ -501,6 +517,22 @@ export default function AppointmentsPage() {
                     ))}
                 </div>
             </div>
+             <AlertDialog open={!!unavailabilityToDelete} onOpenChange={(open) => !open && setUnavailabilityToDelete(null)}>
+                <AlertDialogContent>
+                    <AlertDialogHeader>
+                        <AlertDialogTitle>Supprimer ce créneau d'indisponibilité ?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                            Êtes-vous sûr de vouloir supprimer ce blocage de créneau ?
+                        </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel>Annuler</AlertDialogCancel>
+                        <AlertDialogAction onClick={handleDeleteUnavailability} className="bg-destructive hover:bg-destructive/90">
+                           Supprimer
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
+                </AlertDialogContent>
+            </AlertDialog>
         </div>
     );
 }
@@ -558,3 +590,5 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
+
+    
