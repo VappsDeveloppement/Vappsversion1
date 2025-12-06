@@ -537,7 +537,7 @@ function TrainingRequestsSection() {
         return query(collection(firestore, 'training_requests'), where('counselorId', '==', user.uid));
     }, [user, firestore]);
     
-    const { data: allRequests, isLoading: areRequestsLoading } = useCollection<TrainingRequest>(allRequests);
+    const { data: allRequests, isLoading: areRequestsLoading } = useCollection<TrainingRequest>(requestsQuery);
 
     const newRequests = useMemo(() => {
         return allRequests?.filter(req => req.status === 'new').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
