@@ -16,7 +16,6 @@ import { useFirestore } from '@/firebase/provider';
 import Image from 'next/image';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 
 // Types (must be self-contained or imported)
@@ -237,7 +236,7 @@ export const ResultDisplayBlock = ({ block, answer, suivi }: { block: any, answe
 
 const OffscreenChartRenderer = ({ blocks, answers, suivi }: { blocks: any[], answers: Record<string, any>, suivi: FollowUp }) => {
     return (
-        <div style={{ position: 'absolute', left: '-9999px', top: '-9999px', width: '600px' }}>
+        <div style={{ position: 'absolute', left: '-9999px', top: '0px', width: '600px', zIndex: -100 }}>
             {blocks
                 .filter(block => block.type === 'scale' && block.questions.length > 1)
                 .map(block => {
@@ -305,7 +304,7 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                     const chartElement = document.getElementById(`chart-${block.id}`);
                     if (block.questions.length > 1 && chartElement) {
                         try {
-                            const canvas = await html2canvas(chartElement, { useCORS: true, logging: false, removeContainer: true, foreignObjectRendering: false });
+                            const canvas = await html2canvas(chartElement, { useCORS: true, logging: false, removeContainer: true, foreignObjectRendering: false, container: document.body });
                             const imgData = canvas.toDataURL('image/png');
                             if (docJs.internal.pageSize.height - yPos < 90) {
                                 docJs.addPage();
@@ -341,8 +340,6 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                     }
                     if (answer?.partners?.length > 0) {
                         if (docJs.internal.pageSize.height - yPos < 30) { docJs.addPage(); yPos = 20; }
-                        docJs.text("Partenaires associés:", 15, yPos);
-                        yPos += 8;
                         autoTable(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     }
@@ -435,15 +432,29 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                                 data.byPathology.forEach((item: any) => {
                                     const products = item.products?.map((p: any) => p.title).join(', ') || 'Aucun';
                                     const protocoles = item.protocoles?.map((p: any) => p.name).join(', ') || 'Aucun';
-                                    docJs.text(`- ${item.pathology}:`, 20, yPos); yPos += 6;
-                                    docJs.text(`  Produits: ${products}`, 25, yPos); yPos += 6;
-                                    docJs.text(`  Protocoles: ${protocoles}`, 25, yPos); yPos += 6;
+                                    
+                                    const pathLines = docJs.splitTextToSize(`- ${item.pathology}:`, 180);
+                                    docJs.text(pathLines, 20, yPos); yPos += pathLines.length * 6;
+
+                                    const prodLines = docJs.splitTextToSize(`  Produits: ${products}`, 170);
+                                    docJs.text(prodLines, 25, yPos); yPos += prodLines.length * 6;
+
+                                    const protLines = docJs.splitTextToSize(`  Protocoles: ${protocoles}`, 170);
+                                    docJs.text(protLines, 25, yPos); yPos += protLines.length * 6;
                                 });
                              }
                         } else { // VITA
                              if (data.score) { docJs.text(`- Score de correspondance: ${data.score}%`, 20, yPos); yPos += 6; }
-                             if (data.matching?.length) { docJs.text(`- Points forts: ${data.matching.join(', ')}`, 20, yPos); yPos += 6; }
-                             if (data.missing?.length) { docJs.text(`- Points faibles: ${data.missing.join(', ')}`, 20, yPos); yPos += 6; }
+                             if (data.matching?.length) { 
+                                const lines = docJs.splitTextToSize(`- Points forts: ${data.matching.join(', ')}`, 170);
+                                docJs.text(lines, 20, yPos);
+                                yPos += lines.length * 6;
+                             }
+                             if (data.missing?.length) { 
+                                const lines = docJs.splitTextToSize(`- Points faibles: ${data.missing.join(', ')}`, 170);
+                                docJs.text(lines, 20, yPos);
+                                yPos += lines.length * 6;
+                             }
                         }
                     };
                     renderJsonAsList('Analyse', answer);
