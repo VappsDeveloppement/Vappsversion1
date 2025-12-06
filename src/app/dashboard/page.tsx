@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -25,6 +26,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import type { Quote } from '@/components/shared/quote-management';
 import type { Invoice } from '@/components/shared/invoice-management';
+import { ScrollArea } from '@/components/ui/scroll-area';
 
 // Redefine Client type locally to avoid dependency issues
 type Client = {
