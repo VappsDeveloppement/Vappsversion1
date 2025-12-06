@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -18,7 +17,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger, SheetFooter, SheetClose } from "@/components/ui/sheet";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Label } from "@/components/ui/label";
@@ -733,7 +732,7 @@ function FormTemplateManager() {
                   </SheetHeader>
                   <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                          <div className="space-y-6 py-4 pr-6">
+                           <div className="space-y-6 py-4 pr-6">
                               <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du modèle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                           </div>
                            <ScrollArea className="flex-1 pr-6 -mr-6">
@@ -1044,7 +1043,7 @@ function LearningPathManager() {
                         <SheetHeader><SheetTitle>{editingPath ? 'Modifier le' : 'Nouveau'} Parcours</SheetTitle></SheetHeader>
                         <Form {...form}>
                             <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
-                                <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-6">
+                                <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-8">
                                     <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du Parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                     <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage/></FormItem>)}/>
                                     <div>
