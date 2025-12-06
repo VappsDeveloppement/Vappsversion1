@@ -537,7 +537,7 @@ function TrainingRequestsSection() {
         return query(collection(firestore, 'training_requests'), where('counselorId', '==', user.uid));
     }, [user, firestore]);
     
-    const { data: allRequests, isLoading: areRequestsLoading } = useCollection<TrainingRequest>(requestsQuery);
+    const { data: allRequests, isLoading: areRequestsLoading } = useCollection<TrainingRequest>(allRequests);
 
     const newRequests = useMemo(() => {
         return allRequests?.filter(req => req.status === 'new').sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
@@ -693,7 +693,7 @@ function PublicFormSubmissionsManager() {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const [viewingSubmission, setViewingSubmission] = useState<any | null>(null);
+    const [viewingSubmission, setViewingSubmission] = useState<PublicFormSubmission | null>(null);
 
     const submissionsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -726,12 +726,16 @@ function PublicFormSubmissionsManager() {
     const getQuestionText = (formId: string, questionId: string) => {
         const form = formsMap.get(formId);
         if (!form) return questionId;
+        
+        const answer = viewingSubmission?.answers.find(a => a.questionId === questionId)?.answer;
+        
         const block = form.questions?.find((q: any) => q.id === questionId);
         if(!block) return questionId;
 
         // Find the specific question if it's a nested type
         if (block.type === 'scale' || block.type === 'qcm' || block.type === 'scorm') {
-            const subQuestionId = Object.keys(liveAnswers[questionId] || {})[0];
+            if (!answer) return block.title || questionId;
+            const subQuestionId = Object.keys(answer)[0];
             const subQuestion = block.questions?.find((sq: any) => sq.id === subQuestionId);
             return subQuestion?.text || questionId;
         }
@@ -763,7 +767,7 @@ function PublicFormSubmissionsManager() {
                                 submissions.map(sub => (
                                     <TableRow key={sub.id}>
                                         <TableCell>{formsMap.get(sub.formId)?.name || 'Formulaire inconnu'}</TableCell>
-                                        <TableCell>{sub.respondent.firstName} {sub.respondent.lastName}</TableCell>
+                                        <TableCell>{sub.respondent?.firstName} {sub.respondent?.lastName}</TableCell>
                                         <TableCell>{new Date(sub.submittedAt).toLocaleDateString()}</TableCell>
                                         <TableCell><Badge variant={statusVariant[sub.status]}>{statusText[sub.status]}</Badge></TableCell>
                                         <TableCell className="text-right">
@@ -781,7 +785,7 @@ function PublicFormSubmissionsManager() {
             <Dialog open={!!viewingSubmission} onOpenChange={() => setViewingSubmission(null)}>
                 <DialogContent className="sm:max-w-xl">
                     <DialogHeader>
-                        <DialogTitle>Réponses de {viewingSubmission?.respondent.firstName}</DialogTitle>
+                        <DialogTitle>Réponses de {viewingSubmission?.respondent?.firstName}</DialogTitle>
                         <DialogDescription>
                             Pour le formulaire: {viewingSubmission && formsMap.get(viewingSubmission.formId)?.name}
                         </DialogDescription>
