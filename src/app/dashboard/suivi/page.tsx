@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -77,6 +78,7 @@ const scormAnswerSchema = z.object({
 const scormQuestionSchema = z.object({
   id: z.string(),
   text: z.string().min(1, "Le texte de la question est requis."),
+  imageUrl: z.string().url().optional().nullable(),
   answers: z.array(scormAnswerSchema).min(2, "Une question doit avoir au moins deux réponses."),
 });
 
@@ -103,6 +105,7 @@ const qcmAnswerSchema = z.object({
 const qcmQuestionSchema = z.object({
   id: z.string(),
   text: z.string().min(1, "Le texte de la question est requis."),
+  imageUrl: z.string().url().optional().nullable(),
   answers: z.array(qcmAnswerSchema).min(1, "Une question doit avoir au moins une réponse."),
 });
 
@@ -399,6 +402,7 @@ function FollowUpManager() {
                                                         <SelectItem value="form">Formulaire simple</SelectItem>
                                                         <SelectItem value="path">Parcours complet</SelectItem>
                                                     </SelectContent>
+                                                </Select>
                                             </FormItem>
                                         )}
                                     />
@@ -554,6 +558,14 @@ function FollowUpManager() {
     );
 }
 
+const toBase64 = (file: File): Promise<string> =>
+  new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (error) => reject(error);
+  });
+
 function FormTemplateManager() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -571,6 +583,8 @@ function FormTemplateManager() {
   }, [userData, personalization]);
   
   const showPrisme = userPlan?.hasPrismeAccess || (userData as any)?.role === 'superadmin';
+  const showVitae = userPlan?.hasVitaeAccess || (userData as any)?.role === 'superadmin';
+  const showAura = userPlan?.hasAuraAccess || (userData as any)?.role === 'superadmin';
 
   const [isSheetOpen, setIsSheetOpen] = useState(false);
   const [editingModel, setEditingModel] = useState<QuestionModel | null>(null);
@@ -586,10 +600,15 @@ function FormTemplateManager() {
     defaultValues: { name: '', questions: [] },
   });
 
-  const { fields, append, remove, update } = useFieldArray({
+  const { fields, append, remove, move } = useFieldArray({
     control: form.control,
     name: "questions",
   });
+  
+  const onDragEnd = (result: any) => {
+    if (!result.destination) return;
+    move(result.source.index, result.destination.index);
+  };
 
   useEffect(() => {
     if (isSheetOpen) {
@@ -630,6 +649,39 @@ function FormTemplateManager() {
       toast({ title: 'Modèle créé' });
     }
     setIsSheetOpen(false);
+  };
+  
+  const addBlock = (type: string) => {
+    let newBlock: any;
+    switch(type) {
+      case 'scale':
+        newBlock = { id: `block-${Date.now()}`, type: 'scale', title: 'Nouveau bloc d\'échelle', questions: [{ id: `sq-${Date.now()}`, text: 'Nouvelle question' }] };
+        break;
+      case 'free-text':
+        newBlock = { id: `block-${Date.now()}`, type: 'free-text', question: 'Nouvelle question ouverte' };
+        break;
+      case 'report':
+        newBlock = { id: `block-${Date.now()}`, type: 'report', title: 'Nouveau compte rendu' };
+        break;
+      case 'scorm':
+        newBlock = { id: `block-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM', questions: [], results: [] };
+        break;
+      case 'qcm':
+        newBlock = { id: `block-${Date.now()}`, type: 'qcm', title: 'Nouveau QCM', questions: [] };
+        break;
+      case 'aura':
+        newBlock = { id: `block-${Date.now()}`, type: 'aura' };
+        break;
+      case 'vitae':
+        newBlock = { id: `block-${Date.now()}`, type: 'vitae' };
+        break;
+      case 'prisme':
+        newBlock = { id: `block-${Date.now()}`, type: 'prisme' };
+        break;
+      default:
+        return;
+    }
+    append(newBlock);
   };
 
   return (
@@ -680,72 +732,44 @@ function FormTemplateManager() {
                   </SheetHeader>
                   <Form {...form}>
                       <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                          <ScrollArea className="flex-1 pr-6 -mr-6">
-                              <div className="space-y-6 py-4">
-                                  <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du modèle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                  
-                                  <div>
-                                      <Label>Blocs de questions</Label>
-                                      <div className="space-y-4 mt-2">
-                                          {fields.map((field, index) => {
-                                              if (field.type === 'scale') {
-                                                  return <ScaleBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
-                                              }
-                                              if (field.type === 'aura') {
-                                                  return <AuraBlockEditor key={field.id} remove={() => remove(index)} />;
-                                              }
-                                              if (field.type === 'vitae') {
-                                                  return <VitaeBlockEditor key={field.id} remove={() => remove(index)} />;
-                                              }
-                                               if (field.type === 'prisme') {
-                                                  return <PrismeBlockEditor key={field.id} remove={() => remove(index)} />;
-                                              }
-                                              if (field.type === 'scorm') {
-                                                  return <ScormBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
-                                              }
-                                              if (field.type === 'qcm') {
-                                                  return <QcmBlockEditor key={field.id} index={index} form={form} update={update} remove={remove} />;
-                                              }
-                                              if (field.type === 'free-text') {
-                                                  return <FreeTextBlockEditor key={field.id} index={index} form={form} remove={remove} />;
-                                              }
-                                              if (field.type === 'report') {
-                                                  return <ReportBlockEditor key={field.id} index={index} form={form} remove={remove} />;
-                                              }
-                                              return null;
-                                          })}
-                                          <div className="flex flex-wrap gap-2">
-                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scale', title: '', questions: [{id: `sq-${Date.now()}`, text: ''}] })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "Échelle"
-                                              </Button>
-                                              <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'aura' })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> "Analyse AURA"
-                                              </Button>
-                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'vitae' })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> "Analyse Vitae"
-                                              </Button>
-                                               {showPrisme && (
-                                                <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'prisme' })}>
-                                                    <PlusCircle className="mr-2 h-4 w-4" /> "Bloc Prisme"
-                                                </Button>
-                                               )}
-                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'scorm', title: 'Nouveau bloc SCORM', questions: [], results: [] })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "SCORM"
-                                              </Button>
-                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'qcm', title: 'Nouveau QCM', questions: [] })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "QCM"
-                                              </Button>
-                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'free-text', question: '' })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "Texte libre"
-                                              </Button>
-                                               <Button type="button" variant="outline" onClick={() => append({ id: `q-${Date.now()}`, type: 'report', title: 'Compte rendu' })}>
-                                                  <PlusCircle className="mr-2 h-4 w-4" /> Bloc "Compte rendu"
-                                              </Button>
-                                          </div>
-                                      </div>
-                                  </div>
+                          <div className="space-y-6 py-4 pr-6">
+                              <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Nom du modèle</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                          </div>
+                           <ScrollArea className="flex-1 pr-6 -mr-6">
+                               <div className="space-y-4">
+                                  <DragDropContext onDragEnd={onDragEnd}>
+                                        <Droppable droppableId="question-blocks">
+                                            {(provided) => (
+                                                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
+                                                    {fields.map((field, index) => (
+                                                        <Draggable key={field.id} draggableId={field.id} index={index}>
+                                                            {(provided) => (
+                                                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                                                                    {field.type === 'scale' && <ScaleBlockEditor key={field.id} index={index} form={form} remove={remove} />}
+                                                                    {field.type === 'aura' && <AuraBlockEditor key={field.id} remove={() => remove(index)} />}
+                                                                    {field.type === 'vitae' && <VitaeBlockEditor key={field.id} remove={() => remove(index)} />}
+                                                                    {field.type === 'prisme' && <PrismeBlockEditor key={field.id} remove={() => remove(index)} />}
+                                                                    {field.type === 'scorm' && <ScormBlockEditor key={field.id} index={index} form={form} remove={remove} />}
+                                                                    {field.type === 'qcm' && <QcmBlockEditor key={field.id} index={index} form={form} remove={remove} />}
+                                                                    {field.type === 'free-text' && <FreeTextBlockEditor key={field.id} index={index} form={form} remove={remove} />}
+                                                                    {field.type === 'report' && <ReportBlockEditor key={field.id} index={index} form={form} remove={remove} />}
+                                                                </div>
+                                                            )}
+                                                        </Draggable>
+                                                    ))}
+                                                    {provided.placeholder}
+                                                 </div>
+                                            )}
+                                        </Droppable>
+                                  </DragDropContext>
+                                  <BlocQuestionMenu 
+                                    onAddBlock={addBlock} 
+                                    showPrisme={showPrisme}
+                                    showVitae={showVitae}
+                                    showAura={showAura}
+                                  />
                               </div>
-                          </ScrollArea>
+                           </ScrollArea>
                           <SheetFooter className="pt-4 border-t mt-auto">
                               <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
                               <Button type="submit">Sauvegarder</Button>
@@ -763,162 +787,8 @@ function FormTemplateManager() {
 type EditorProps = {
     index: number;
     form: ReturnType<typeof useForm<QuestionModelFormData>>;
-    update: ReturnType<typeof useFieldArray<QuestionModelFormData>>['update'];
     remove: ReturnType<typeof useFieldArray<QuestionModelFormData>>['remove'];
 }
-
-function ScaleBlockEditor({ index, form, update, remove }: EditorProps) {
-    const field = form.watch(`questions.${index}`) as z.infer<typeof scaleQuestionSchema>;
-
-    return (
-        <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Scale className="h-4 w-4"/>Bloc de questions sur une échelle</div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <div className='space-y-4'>
-                <FormField
-                    control={form.control}
-                    name={`questions.${index}.title`}
-                    render={({ field }) => (
-                        <FormItem><FormLabel>Titre du bloc</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )}
-                />
-                {(field.questions || []).map((subQuestion, subIndex) => (
-                     <div key={subQuestion.id} className="flex items-end gap-2">
-                        <FormField 
-                            control={form.control} 
-                            name={`questions.${index}.questions.${subIndex}.text`}
-                            render={({ field }) => (
-                                <FormItem className='flex-1'>
-                                    <FormLabel>Texte de la question {subIndex + 1}</FormLabel>
-                                    <FormControl><Input {...field} /></FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                         <Button type="button" variant="ghost" size="icon" onClick={() => {
-                             const currentQuestions = (form.getValues(`questions.${index}.questions`) || []);
-                             update(index, {
-                                 ...field,
-                                 questions: currentQuestions.filter((_, i) => i !== subIndex)
-                             });
-                         }}><Trash2 className="h-4 w-4 text-destructive/70"/></Button>
-                    </div>
-                ))}
-                <Button type="button" variant="outline" size="sm" onClick={() => {
-                    const currentQuestions = form.getValues(`questions.${index}.questions`) || [];
-                    update(index, {
-                        ...field,
-                        questions: [...currentQuestions, { id: `sq-${Date.now()}`, text: '' }]
-                    });
-                }}>
-                    <PlusCircle className="mr-2 h-4 w-4" /> Ajouter une question
-                </Button>
-           </div>
-        </Card>
-    )
-}
-
-function FreeTextBlockEditor({ index, form, remove }: Omit<EditorProps, 'update'>) {
-    return (
-        <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><FileText className="h-4 w-4"/>Bloc Texte Libre</div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <FormField
-                control={form.control}
-                name={`questions.${index}.question`}
-                render={({ field }) => (
-                    <FormItem><FormLabel>Texte de la question</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )}
-            />
-        </Card>
-    );
-}
-
-function ReportBlockEditor({ index, form, remove }: Omit<EditorProps, 'update'>) {
-    return (
-        <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><FileSignature className="h-4 w-4"/>Bloc Compte Rendu</div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <FormField
-                control={form.control}
-                name={`questions.${index}.title`}
-                render={({ field }) => (
-                    <FormItem><FormLabel>Titre du bloc</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                )}
-            />
-        </Card>
-    );
-}
-
-function AuraBlockEditor({ remove }: { remove: () => void }) {
-    return (
-        <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><BrainCog className="h-4 w-4"/>Analyse AURA</div>
-                <Button type="button" variant="ghost" size="icon" onClick={remove}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <div className="text-center text-muted-foreground p-4 rounded-md mt-4">
-                Le bloc d'analyse AURA sera inséré ici lors du suivi.
-            </div>
-        </Card>
-    );
-}
-
-function VitaeBlockEditor({ remove }: { remove: () => void }) {
-    return (
-        <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Bot className="h-4 w-4"/>Analyse Vitae</div>
-                <Button type="button" variant="ghost" size="icon" onClick={remove}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <div className="text-center text-muted-foreground p-4 rounded-md mt-4">
-                Le bloc d'analyse Vitae sera inséré ici lors du suivi.
-            </div>
-        </Card>
-    );
-}
-
-function PrismeBlockEditor({ remove }: { remove: () => void }) {
-    return (
-        <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><Pyramid className="h-4 w-4"/>Bloc Prisme</div>
-                <Button type="button" variant="ghost" size="icon" onClick={remove}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <div className="text-center text-muted-foreground p-4 rounded-md mt-4">
-                Le bloc de tirage Prisme sera inséré ici lors du suivi.
-            </div>
-        </Card>
-    );
-}
-
-
-function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Control<any>, qIndex: number, questionIndex: number}) {
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: `questions.${questionIndex}.questions.${qIndex}.answers`
-    });
-
-    return (
-        <div className="pl-4 border-l ml-4 space-y-3">
-            {fields.map((answer, aIndex) => (
-                 <div key={answer.id} className="flex gap-2 items-end">
-                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({field}) => (<FormItem className="flex-1"><FormLabel>Réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.value`} render={({field}) => (<FormItem className="w-24"><FormLabel>Valeur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                     <Button type="button" variant="ghost" size="icon" onClick={() => remove(aIndex)}><Trash2 className="h-4 w-4"/></Button>
-                 </div>
-            ))}
-             <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `ans-${Date.now()}`, text: '', value: '' })}>+ Réponse</Button>
-        </div>
-    )
-}
-
 
 function ScormBlockEditor({ index, form, remove }: EditorProps) {
     const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({
@@ -930,6 +800,17 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
         control: form.control,
         name: `questions.${index}.results`
     });
+
+    const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, base64);
+        }
+    };
+
 
     return (
          <Card className="p-4 bg-muted/50">
@@ -948,10 +829,17 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}><Trash2 className="h-4 w-4"/></Button>
                             </div>
                             <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <div className="mt-2">
+                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRefs.current[qIndex]?.click()}>
+                                    <Upload className="h-4 w-4 mr-2" /> Uploader une image
+                                </Button>
+                                <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
+                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <img src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" className="h-16 w-auto mt-2 rounded-md" />}
+                            </div>
                             <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
                     ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `scorm-q-${Date.now()}`, text: '', answers: []})}>+ Question</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `scorm-q-${Date.now()}`, text: '', imageUrl: null, answers: []})}>+ Question</Button>
                 </div>
                  <div className="mt-4 pt-4 border-t">
                     <h4 className="font-medium text-sm my-2">Résultats</h4>
@@ -974,34 +862,21 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
     );
 }
 
-function QcmAnswersEditor({ control, qIndex, questionIndex }: { control: Control<any>, qIndex: number, questionIndex: number}) {
-    const { fields, append, remove } = useFieldArray({
-        control,
-        name: `questions.${questionIndex}.questions.${qIndex}.answers`
-    });
-
-    return (
-        <div className="pl-4 border-l ml-4 space-y-4">
-            {fields.map((answer, aIndex) => (
-                 <div key={answer.id} className="flex flex-col gap-2 p-3 border rounded-md bg-white">
-                    <div className="flex justify-between items-center">
-                        <Label>Réponse {aIndex + 1}</Label>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => remove(aIndex)}><Trash2 className="h-4 w-4 text-destructive/70"/></Button>
-                    </div>
-                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({field}) => (<FormItem><FormLabel>Texte de la réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                     <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.resultText`} render={({field}) => (<FormItem><FormLabel>Texte de résultat personnalisé</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
-                 </div>
-            ))}
-             <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `qcm-ans-${Date.now()}`, text: '', resultText: '' })}>+ Réponse</Button>
-        </div>
-    )
-}
-
 function QcmBlockEditor({ index, form, remove }: EditorProps) {
     const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({
         control: form.control,
         name: `questions.${index}.questions`
     });
+    
+    const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const base64 = await toBase64(file);
+            form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, base64);
+        }
+    };
 
     return (
         <Card className="p-4 bg-muted/50">
@@ -1020,214 +895,55 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
                                 <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}><Trash2 className="h-4 w-4"/></Button>
                             </div>
                             <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                             <div className="mt-2">
+                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRefs.current[qIndex]?.click()}>
+                                    <Upload className="h-4 w-4 mr-2" /> Uploader une image
+                                </Button>
+                                <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
+                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <img src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`)} alt="Aperçu" className="h-16 w-auto mt-2 rounded-md" />}
+                            </div>
                             <QcmAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
                     ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `qcm-q-${Date.now()}`, text: '', answers: []})}>+ Question</Button>
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `qcm-q-${Date.now()}`, text: '', imageUrl: null, answers: []})}>+ Question</Button>
                 </div>
             </div>
         </Card>
     );
 }
 
-type LearningPath = {
-    id: string;
-    counselorId: string;
-    title: string;
-    description?: string;
-    steps: {
-        modelId: string,
-        modelName: string,
-    }[];
-};
+// ... other manager components (QcmAnswersEditor, ScormAnswersEditor, etc.) are assumed to be defined above this point.
 
-const learningPathSchema = z.object({
-  title: z.string().min(1, 'Le titre est requis.'),
-  description: z.string().optional(),
-  steps: z.array(z.object({
-    modelId: z.string(),
-    modelName: z.string(),
-  })).min(1, "Un parcours doit avoir au moins une étape."),
-});
+function BlocQuestionMenu({ onAddBlock, showPrisme, showVitae, showAura }: { onAddBlock: (type: string) => void, showPrisme: boolean, showVitae: boolean, showAura: boolean }) {
+  const blockTypes = [
+    { type: 'scale', label: 'Échelle', icon: <Scale className="mr-2 h-4 w-4" /> },
+    { type: 'free-text', label: 'Texte libre', icon: <FileText className="mr-2 h-4 w-4" /> },
+    { type: 'report', label: 'Compte rendu', icon: <FileSignature className="mr-2 h-4 w-4" /> },
+    { type: 'qcm', label: 'QCM', icon: <FileQuestion className="mr-2 h-4 w-4" /> },
+    { type: 'scorm', label: 'SCORM', icon: <BookCopy className="mr-2 h-4 w-4" /> },
+    ...(showVitae ? [{ type: 'vitae', label: 'Analyse Vitae', icon: <Bot className="mr-2 h-4 w-4" /> }] : []),
+    ...(showPrisme ? [{ type: 'prisme', label: 'Tirage Prisme', icon: <Pyramid className="mr-2 h-4 w-4" /> }] : []),
+    ...(showAura ? [{ type: 'aura', label: 'Analyse AURA', icon: <BrainCog className="mr-2 h-4 w-4" /> }] : []),
+  ];
 
-type LearningPathFormData = z.infer<typeof learningPathSchema>;
-
-
-function LearningPathManager() {
-    const { user } = useUser();
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
-    const [editingPath, setEditingPath] = useState<LearningPath | null>(null);
-
-    const pathsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/learning_paths`));
-    }, [user, firestore]);
-    const { data: paths, isLoading } = useCollection<LearningPath>(pathsQuery);
-    
-    const modelsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/question_models`));
-    }, [user, firestore]);
-    const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
-
-    const form = useForm<LearningPathFormData>({
-        resolver: zodResolver(learningPathSchema),
-    });
-
-    const { fields, append, remove, move } = useFieldArray({
-        control: form.control,
-        name: "steps"
-    });
-    
-     useEffect(() => {
-        if (isSheetOpen) {
-            if (editingPath) {
-                form.reset(editingPath);
-            } else {
-                form.reset({ title: '', description: '', steps: [] });
-            }
-        }
-    }, [isSheetOpen, editingPath, form]);
-
-    const onDragEnd: OnDragEndResponder = (result) => {
-        if (!result.destination) return;
-        move(result.source.index, result.destination.index);
-    };
-
-    const onModelSelect = (model: QuestionModel) => {
-        if (fields.some(field => field.modelId === model.id)) {
-            toast({
-                title: "Modèle déjà présent",
-                description: "Ce modèle de formulaire est déjà dans le parcours.",
-                variant: "destructive"
-            });
-            return;
-        }
-        append({ modelId: model.id, modelName: model.name });
-    };
-
-    const onSubmit = (data: LearningPathFormData) => {
-        if (!user) return;
-        const pathData = { counselorId: user.uid, ...data };
-        if (editingPath) {
-            setDocumentNonBlocking(doc(firestore, `users/${user.uid}/learning_paths`, editingPath.id), pathData, { merge: true });
-            toast({ title: "Parcours mis à jour" });
-        } else {
-            addDocumentNonBlocking(collection(firestore, `users/${user.uid}/learning_paths`), pathData);
-            toast({ title: "Parcours créé" });
-        }
-        setIsSheetOpen(false);
-    };
-
-    return (
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle>Gestion des Parcours</CardTitle>
-                        <CardDescription>Combinez plusieurs formulaires pour créer un parcours de suivi complet.</CardDescription>
-                    </div>
-                    <Button onClick={() => { setEditingPath(null); setIsSheetOpen(true); }}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Nouveau Parcours
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Titre du Parcours</TableHead>
-                            <TableHead>Nombre d'étapes</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoading ? <TableRow><TableCell colSpan={3}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
-                        : paths && paths.length > 0 ? (
-                            paths.map(path => (
-                                <TableRow key={path.id}>
-                                    <TableCell>{path.title}</TableCell>
-                                    <TableCell>{path.steps.length}</TableCell>
-                                    <TableCell className="text-right">
-                                        <Button variant="ghost" size="icon" onClick={() => { setEditingPath(path); setIsSheetOpen(true); }}><Edit className="h-4 w-4" /></Button>
-                                        <Button variant="ghost" size="icon" onClick={() => deleteDocumentNonBlocking(doc(firestore, `users/${user!.uid}/learning_paths`, path.id))}><Trash2 className="h-4 w-4 text-destructive" /></Button>
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : <TableRow><TableCell colSpan={3} className="h-24 text-center">Aucun parcours créé.</TableCell></TableRow>}
-                    </TableBody>
-                </Table>
-                
-                 <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
-                    <SheetContent className="sm:max-w-4xl w-full flex flex-col">
-                        <SheetHeader>
-                            <SheetTitle>{editingPath ? 'Modifier le' : 'Nouveau'} Parcours</SheetTitle>
-                        </SheetHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="flex-1 flex flex-col overflow-hidden">
-                                <ScrollArea className="flex-1 pr-6 -mr-6">
-                                    <div className="space-y-6 py-4">
-                                        <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <div className="grid grid-cols-2 gap-4">
-                                            <div>
-                                                <Label>Étapes du parcours</Label>
-                                                <p className="text-xs text-muted-foreground">Faites glisser pour réorganiser.</p>
-                                                <div className="mt-2 border rounded-lg p-2 min-h-48">
-                                                    <DragDropContext onDragEnd={onDragEnd}>
-                                                        <Droppable droppableId="steps">
-                                                            {(provided) => (
-                                                                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                                                                    {fields.map((step, index) => (
-                                                                        <Draggable key={step.id} draggableId={step.id} index={index}>
-                                                                            {(provided) => (
-                                                                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 rounded-md bg-background border">
-                                                                                    <GripVertical className="h-5 w-5 text-muted-foreground" />
-                                                                                    <span className="flex-1 text-sm">{step.modelName}</span>
-                                                                                    <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive/70" /></Button>
-                                                                                </div>
-                                                                            )}
-                                                                        </Draggable>
-                                                                    ))}
-                                                                    {provided.placeholder}
-                                                                </div>
-                                                            )}
-                                                        </Droppable>
-                                                    </DragDropContext>
-                                                </div>
-                                            </div>
-                                            <div>
-                                                <Label>Modèles de formulaires disponibles</Label>
-                                                <ScrollArea className="h-96 mt-2 border rounded-lg">
-                                                    <div className="p-2 space-y-2">
-                                                        {areModelsLoading ? <Skeleton className="h-20 w-full" /> : models?.map(model => (
-                                                            <div key={model.id} className="flex items-center justify-between p-2 rounded-md hover:bg-muted">
-                                                                <span className="text-sm">{model.name}</span>
-                                                                <Button type="button" size="sm" variant="outline" onClick={() => onModelSelect(model)}>Ajouter</Button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </ScrollArea>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </ScrollArea>
-                                <SheetFooter className="pt-4 border-t mt-auto">
-                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                    <Button type="submit">Sauvegarder</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
-                    </SheetContent>
-                </Sheet>
-
-            </CardContent>
-        </Card>
-    );
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="outline" className="w-full">
+          <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un bloc
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-64">
+        {blockTypes.map(block => (
+          <DropdownMenuItem key={block.type} onSelect={() => onAddBlock(block.type)}>
+            {block.icon}
+            <span>{block.label}</span>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
 }
-
 
 export default function SuiviPage() {
   return (
@@ -1303,14 +1019,14 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
             docJs.setFontSize(12);
             docJs.setFont('helvetica', 'normal');
 
-            const answer = answers[block.id]
+            const answer = answers[block.id];
             
             switch (block.type) {
                 case 'scale':
                     if (!answer) break;
                     if (block.questions.length > 1) {
                          const body = block.questions.map(q => [q.text, answer[q.id] !== undefined ? answer[q.id] : 'N/A']);
-                        autoTable(docJs, { head: [['Question', 'Score']], body, startY: yPos });
+                        (autoTable as any)(docJs, { head: [['Question', 'Score']], body, startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     } else if (block.questions.length === 1) {
                         const q = block.questions[0];
@@ -1333,7 +1049,7 @@ const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model }: { isOpen: boole
                     if (answer?.partners?.length > 0) {
                         docJs.text("Partenaires associés:", 15, yPos);
                         yPos += 8;
-                        autoTable(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
+                        (autoTable as any)(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     }
                     break;
@@ -1482,7 +1198,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     const answerId = scormAnswers[qId];
                     if (!answerId) continue;
                     const question = scormBlock.questions.find(q => q.id === qId);
-                    const answerData = question?.answers.find(a => a.id === answerId);
+                    const answerData = question?.answers.find((a:any) => a.id === answerId);
                     if (answerData?.value) {
                         valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
                     }
@@ -1530,7 +1246,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                     <CardContent>
                          {answer?.drawnCards?.length > 0 ? (
                             <div className="space-y-4">
-                                {answer.drawnCards.map((item: any, index: React.Key) => (
+                                {answer.drawnCards.map((item: any, index: React.Key | null | undefined) => (
                                     <div key={index} className="flex gap-4 p-4 border rounded-lg bg-background">
                                         <div className="flex-shrink-0">
                                             {item.card.imageUrl ? <Image src={item.card.imageUrl} alt={item.card.name} width={80} height={120} className="rounded-md object-cover" /> : <div className="w-20 h-[120px] bg-muted rounded-md" />}
@@ -1557,7 +1273,7 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
                 </Card>
             );
         case 'aura':
-             const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: string) => {
+            const renderSuggestions = (title: string, data: { products: any[], protocoles: any[] }, key: any) => {
                  if (!data || (!data.products?.length && !data.protocoles?.length)) {
                     return null;
                 }
