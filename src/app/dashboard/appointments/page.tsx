@@ -23,6 +23,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { cn } from '@/lib/utils';
+import { Label } from '@/components/ui/label';
 
 type Appointment = {
     id: string;
@@ -99,19 +100,23 @@ export default function AppointmentsPage() {
     }, [isSheetOpen, editingAppointment, form]);
     
     const handleSaveAppointment = async (data: AppointmentFormData) => {
-        if (!user || (!selectedClient && !editingAppointment)) {
-            toast({ title: 'Erreur', description: 'Veuillez sélectionner un client.', variant: 'destructive'});
+        if (!user) return;
+        
+        const clientInfo = selectedClient || (editingAppointment ? {id: editingAppointment.clientId, name: editingAppointment.clientName} : null);
+
+        if (!clientInfo) {
+             toast({ title: 'Erreur', description: 'Veuillez sélectionner un client.', variant: 'destructive'});
             return;
         }
-        
+
         setIsSubmitting(true);
 
         const appointmentData = {
             ...data,
             start: new Date(data.start).toISOString(),
             end: new Date(data.end).toISOString(),
-            clientId: selectedClient?.id || editingAppointment?.clientId,
-            clientName: selectedClient?.name || editingAppointment?.clientName,
+            clientId: clientInfo.id,
+            clientName: clientInfo.name,
             details: data.details || '',
         };
 
@@ -319,3 +324,5 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
+
+    
