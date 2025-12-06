@@ -134,7 +134,7 @@ export default function AppointmentsPage() {
         if (!appointments) return false;
         for (const app of appointments) {
             if (editingAppointment && app.id === editingAppointment.id) continue;
-            if (!app.start || !app.end) continue; // Skip if appointment has no dates
+            if (!app.start || !app.end) continue;
             const existingStart = parseISO(app.start);
             const existingEnd = parseISO(app.end);
             if (start < existingEnd && end > existingStart) {
@@ -169,17 +169,22 @@ export default function AppointmentsPage() {
             setIsSubmitting(false);
             return;
         }
+        
+        const counselorData = userData as any;
 
-        const appointmentData = {
+        const appointmentData: any = {
             title: data.title,
             start: start.toISOString(),
             end: end.toISOString(),
             clientId: data.clientId,
             clientName: `${client.firstName} ${client.lastName}`,
-            clientEmail: client.email,
             details: data.details,
             counselorId: user.uid
         };
+
+        if (data.sendConfirmation) {
+            appointmentData.clientEmail = client.email;
+        }
 
         try {
             const appointmentRef = editingAppointment
@@ -189,7 +194,8 @@ export default function AppointmentsPage() {
             await setDocumentNonBlocking(appointmentRef, appointmentData, { merge: true });
 
             if (data.sendConfirmation) {
-                const emailSettings = (userData as any)?.emailSettings?.fromEmail ? (userData as any).emailSettings : personalization?.emailSettings;
+                const emailSettings = (counselorData?.emailSettings && counselorData.emailSettings.fromEmail) ? counselorData.emailSettings : personalization?.emailSettings;
+                
                 if (!emailSettings?.fromEmail) {
                     toast({ title: "Avertissement", description: "Les paramètres d'envoi d'e-mail ne sont pas configurés. Le rendez-vous est sauvegardé mais l'e-mail n'a pas été envoyé.", variant: "destructive"});
                 } else {
@@ -261,7 +267,7 @@ export default function AppointmentsPage() {
                                         <div key={`${day.toString()}-${hour}`} className="h-20 border-b"></div>
                                     ))}
                                 </div>
-                                 {appointments?.filter(app => isSameDay(parseISO(app.start), day)).map(app => {
+                                 {appointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
                                     const start = parseISO(app.start);
                                     const end = parseISO(app.end);
                                     const top = ((getHours(start) - startHour) * 60 + getMinutes(start)) / (13 * 60) * 100;
