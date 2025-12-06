@@ -131,6 +131,12 @@ export default function AppointmentsPage() {
     
     const unavailabilityForm = useForm<UnavailabilityFormData>({
         resolver: zodResolver(unavailabilitySchema),
+         defaultValues: {
+            title: '',
+            start: '',
+            end: '',
+            repeatDays: 0,
+        }
     });
 
     useEffect(() => {
@@ -309,12 +315,12 @@ export default function AppointmentsPage() {
                             </DialogHeader>
                             <Form {...unavailabilityForm}>
                                 <form onSubmit={unavailabilityForm.handleSubmit(handleSaveUnavailability)} className="space-y-4 py-4">
-                                     <FormField control={unavailabilityForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Motif (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={unavailabilityForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Motif (optionnel)</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                      <div className="grid grid-cols-2 gap-4">
                                          <FormField control={unavailabilityForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                          <FormField control={unavailabilityForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                      </div>
-                                     <FormField control={unavailabilityForm.control} name="repeatDays" render={({ field }) => (<FormItem><FormLabel>Répéter pour les X prochains jours</FormLabel><FormControl><Input type="number" min="0" placeholder="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={unavailabilityForm.control} name="repeatDays" render={({ field }) => (<FormItem><FormLabel>Répéter pour les X prochains jours</FormLabel><FormControl><Input type="number" min="0" placeholder="0" {...field} value={field.value || 0} /></FormControl><FormMessage /></FormItem>)} />
                                      <DialogFooter>
                                         <DialogClose asChild><Button type="button" variant="outline">Annuler</Button></DialogClose>
                                         <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Bloquer</Button>
@@ -361,7 +367,7 @@ export default function AppointmentsPage() {
                                                         <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
                                                     </AlertDialogHeader>
                                                     <AlertDialogFooter>
-                                                        <AlertDialogCancel onClick={() => setAppointmentToDelete(null)}>Annuler</AlertDialogCancel>
+                                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
                                                         <AlertDialogAction onClick={handleDeleteAppointment}>Confirmer</AlertDialogAction>
                                                     </AlertDialogFooter>
                                                 </AlertDialogContent>
