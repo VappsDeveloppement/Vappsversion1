@@ -15,6 +15,9 @@ import { doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import Image from 'next/image';
 import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
 
 // Types (must be self-contained or imported)
 type FollowUp = {
@@ -271,7 +274,6 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
     const handleExportPdf = async () => {
         if (!suivi || !model || !currentUserData) return;
         
-        // Dynamically import jspdf and autotable to avoid server-side issues
         const { default: jsPDF } = await import('jspdf');
         const { default: autoTable } = await import('jspdf-autotable');
         const docJs = new jsPDF();
@@ -294,7 +296,6 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
             const title = (block as any).title || (block.type === 'free-text' ? (block as any).question : `Bloc ${block.type}`);
             docJs.text(title, 15, yPos);
             yPos += 10;
-            docJs.setFontSize(12);
             docJs.setFont('helvetica', 'normal');
 
             const answer = liveAnswers[block.id];
@@ -304,9 +305,9 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                     const chartElement = document.getElementById(`chart-${block.id}`);
                     if (block.questions.length > 1 && chartElement) {
                         try {
-                            const canvas = await html2canvas(chartElement, { useCORS: true, logging: false, container: document.body });
+                            const canvas = await html2canvas(chartElement, { useCORS: true, logging: false, removeContainer: true, foreignObjectRendering: false });
                             const imgData = canvas.toDataURL('image/png');
-                            if(docJs.internal.pageSize.height - yPos < 90) { // Check space
+                            if (docJs.internal.pageSize.height - yPos < 90) {
                                 docJs.addPage();
                                 yPos = 20;
                             }
@@ -342,47 +343,111 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                         if (docJs.internal.pageSize.height - yPos < 30) { docJs.addPage(); yPos = 20; }
                         docJs.text("Partenaires associés:", 15, yPos);
                         yPos += 8;
-                        (autoTable as any)(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
+                        autoTable(docJs, { head: [['Nom', 'Spécialités']], body: answer.partners.map((p: any) => [p.name, p.specialties?.join(', ') || '']), startY: yPos });
                         yPos = (docJs as any).lastAutoTable.finalY + 10;
                     }
                     break;
+                case 'qcm':
                 case 'scorm':
-                    const calculateScormResult = (scormBlock: any, scormAnswers: any): any | null => {
-                         if (!scormBlock.questions || !scormBlock.results || !scormAnswers) return null;
-                        const questionIds = scormBlock.questions.map((q: any) => q.id);
-                        if (questionIds.some((qId: string) => !scormAnswers[qId])) {
-                            return null;
-                        }
-                    
+                    const isScorm = block.type === 'scorm';
+                    let finalResultText: string | null = null;
+                    if(isScorm && answer) {
                         const valueCounts: Record<string, number> = {};
-                        for (const qId of questionIds) {
-                            const answerId = scormAnswers[qId];
-                            if (!answerId) continue;
-                            const question = scormBlock.questions.find((q: any) => q.id === qId);
-                            const answerData = question?.answers.find((a:any) => a.id === answerId);
-                            if (answerData?.value) {
-                                valueCounts[answerData.value] = (valueCounts[answerData.value] || 0) + 1;
+                        block.questions.forEach((q:any) => {
+                            const ansId = answer[q.id];
+                            if(ansId) {
+                                const ans = q.answers.find((a:any) => a.id === ansId);
+                                if(ans && ans.value) valueCounts[ans.value] = (valueCounts[ans.value] || 0) + 1;
                             }
-                        }
-                    
-                        if (Object.keys(valueCounts).length === 0) return null;
-                    
-                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b);
-                        return scormBlock.results.find((r: any) => r.value === dominantValue) || null;
-                    };
+                        });
+                        const dominantValue = Object.keys(valueCounts).reduce((a, b) => valueCounts[a] > valueCounts[b] ? a : b, '');
+                        finalResultText = block.results?.find((r:any) => r.value === dominantValue)?.text || null;
+                    }
 
-                    const scormResult = calculateScormResult(block, answer);
-                    if (scormResult?.text) {
+                    (block.questions || []).forEach((q: any) => {
+                        const selectedAnswerId = answer?.[q.id];
+                        const selectedAnswer = q.answers.find((a:any) => a.id === selectedAnswerId);
+                        
+                        docJs.setFontSize(11);
+                        docJs.setFont('helvetica', 'bold');
+                        const questionLines = docJs.splitTextToSize(q.text, 180);
+                        docJs.text(questionLines, 15, yPos);
+                        yPos += questionLines.length * 6;
+
+                        docJs.setFontSize(10);
+                        docJs.setFont('helvetica', 'normal');
+                        docJs.text(`Réponse : ${selectedAnswer?.text || 'Non répondu'}`, 20, yPos);
+                        yPos += 6;
+
+                        if (selectedAnswer?.resultText) {
+                            const resultLines = docJs.splitTextToSize(selectedAnswer.resultText, 170);
+                            docJs.text(resultLines, 20, yPos);
+                            yPos += resultLines.length * 6;
+                        }
+                        yPos += 4;
+                    });
+                     if (isScorm && finalResultText) {
+                        docJs.setFontSize(12);
+                        docJs.setFont('helvetica', 'bold');
+                        docJs.text("Résultat Final:", 15, yPos);
+                        yPos += 8;
                         const tempDiv = document.createElement('div');
-                        tempDiv.innerHTML = scormResult.text;
+                        tempDiv.innerHTML = finalResultText;
                         const textContent = tempDiv.textContent || tempDiv.innerText || "";
                         const lines = docJs.splitTextToSize(textContent, 180);
+                        docJs.setFont('helvetica', 'normal');
                         docJs.text(lines, 15, yPos);
                         yPos += lines.length * 7 + 5;
-                    } else {
-                        docJs.text("Résultat non calculé.", 15, yPos);
-                        yPos += 12;
                     }
+                    break;
+                 case 'prisme':
+                    if (answer?.drawnCards?.length > 0) {
+                       answer.drawnCards.forEach((item: any) => {
+                           if (yPos > 240) { docJs.addPage(); yPos = 20; }
+                           docJs.setFontSize(10);
+                           docJs.setFont('helvetica', 'bold');
+                           docJs.text(`${item.position.positionNumber}. ${item.position.meaning}:`, 15, yPos);
+                           yPos += 6;
+                           docJs.setFont('helvetica', 'normal');
+                           docJs.text(`Carte: ${item.card.name}`, 20, yPos);
+                           yPos += 10;
+                       });
+                    } else {
+                        docJs.text("Aucun tirage effectué.", 15, yPos); yPos += 10;
+                    }
+                    break;
+                case 'vitae':
+                case 'aura':
+                     const renderJsonAsList = (title: string, data: any) => {
+                        if (!data) return;
+                        if (Array.isArray(data) && data.length === 0) return;
+                        if (typeof data === 'object' && Object.keys(data).length === 0) return;
+                        
+                        docJs.setFontSize(12);
+                        docJs.setFont('helvetica', 'bold');
+                        docJs.text(title, 15, yPos);
+                        yPos += 8;
+                        docJs.setFontSize(10);
+                        docJs.setFont('helvetica', 'normal');
+
+                        if (block.type === 'aura') {
+                             if(data.byPathology) {
+                                data.byPathology.forEach((item: any) => {
+                                    const products = item.products?.map((p: any) => p.title).join(', ') || 'Aucun';
+                                    const protocoles = item.protocoles?.map((p: any) => p.name).join(', ') || 'Aucun';
+                                    docJs.text(`- ${item.pathology}:`, 20, yPos); yPos += 6;
+                                    docJs.text(`  Produits: ${products}`, 25, yPos); yPos += 6;
+                                    docJs.text(`  Protocoles: ${protocoles}`, 25, yPos); yPos += 6;
+                                });
+                             }
+                        } else { // VITA
+                             if (data.score) { docJs.text(`- Score de correspondance: ${data.score}%`, 20, yPos); yPos += 6; }
+                             if (data.matching?.length) { docJs.text(`- Points forts: ${data.matching.join(', ')}`, 20, yPos); yPos += 6; }
+                             if (data.missing?.length) { docJs.text(`- Points faibles: ${data.missing.join(', ')}`, 20, yPos); yPos += 6; }
+                        }
+                    };
+                    renderJsonAsList('Analyse', answer);
+                    yPos += 5;
                     break;
                 default:
                     const answerText = answer !== undefined ? JSON.stringify(answer, null, 2) : "Non répondu";
