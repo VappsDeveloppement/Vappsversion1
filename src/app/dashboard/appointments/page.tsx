@@ -55,6 +55,8 @@ type AppointmentFormData = z.infer<typeof appointmentSchema>;
 
 
 const hours = Array.from({ length: 13 }, (_, i) => `${(i + 8).toString().padStart(2, '0')}:00`);
+const startHour = 8;
+const hourHeightInRem = 5; // Corresponds to h-20
 
 export default function AppointmentsPage() {
     const { user } = useUser();
@@ -149,26 +151,17 @@ export default function AppointmentsPage() {
             setIsSubmitting(false);
             return;
         }
-    
-        // Correctly determine client name and ID
-        let clientName: string;
-        let clientId: string = data.clientId; // Start with the form's client ID
-    
-        const client = clients?.find(c => c.id === clientId);
-    
-        if (client) {
-            // A client was found from the selection
-            clientName = `${client.firstName} ${client.lastName}`;
-        } else if (editingAppointment) {
-            // We are editing, and maybe the client wasn't re-selected.
-            // Use the original appointment's client info as a fallback.
-            clientName = editingAppointment.clientName;
-            clientId = editingAppointment.clientId;
-        } else {
-            // We are creating a new appointment and the selected client is not valid.
-            toast({ title: "Client non trouvé", description: "Le client sélectionné est invalide.", variant: "destructive" });
-            setIsSubmitting(false);
-            return;
+
+        const client = clients?.find(c => c.id === data.clientId);
+        
+        // This is the main change: ensuring clientName and clientId are correctly sourced.
+        const clientId = client?.id || editingAppointment?.clientId;
+        const clientName = client ? `${client.firstName} ${client.lastName}` : editingAppointment?.clientName;
+
+        if (!clientId || !clientName) {
+             toast({ title: "Client non trouvé", description: "Le client pour ce rendez-vous est invalide.", variant: "destructive" });
+             setIsSubmitting(false);
+             return;
         }
     
         const appointmentData = {
@@ -177,7 +170,7 @@ export default function AppointmentsPage() {
             end: end.toISOString(),
             clientId: clientId,
             clientName: clientName,
-            details: data.details,
+            details: data.details || '',
             counselorId: user.uid
         };
     
@@ -198,10 +191,6 @@ export default function AppointmentsPage() {
             setIsSubmitting(false);
         }
     };
-    
-    // Grid constants
-    const startHour = 8;
-    const hourHeightInRem = 5; // Corresponds to h-20
     
     return (
         <div className="flex flex-col h-full">
@@ -256,7 +245,7 @@ export default function AppointmentsPage() {
                                     ></div>
                                 ))}
                             </div>
-                            {appointments?.filter(app => app.start && app.end && isSameDay(parseISO(app.start), day)).map(app => {
+                            {appointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
                                 const start = parseISO(app.start);
                                 const end = parseISO(app.end);
                                 
@@ -338,5 +327,3 @@ export default function AppointmentsPage() {
         </div>
     );
 }
-
-    
