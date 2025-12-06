@@ -11,7 +11,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, PlusCircle, Loader2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, useDoc } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
 import { collection, query, where, doc } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription, DialogClose } from '@/components/ui/dialog';
@@ -122,7 +122,7 @@ export default function AppointmentsPage() {
         if (!appointments) return false;
         for (const app of appointments) {
             if (editingAppointment && app.id === editingAppointment.id) continue;
-            if (!app.start || !app.end) continue;
+            if (!app.start || !app.end) continue; // Ignore incomplete appointments
             const existingStart = parseISO(app.start);
             const existingEnd = parseISO(app.end);
             if (start < existingEnd && end > existingStart) {
@@ -137,7 +137,7 @@ export default function AppointmentsPage() {
         if (!user || !clients) return;
 
         const [hours, minutes] = data.startTime.split(':').map(Number);
-        const start = set(data.date, { hours, minutes });
+        const start = set(data.date, { hours, minutes, seconds: 0, milliseconds: 0 });
         const end = add(start, { minutes: data.duration });
         
         if (checkOverlap(start, end)) {
@@ -185,6 +185,10 @@ export default function AppointmentsPage() {
         }
     };
     
+    // Grid constants
+    const startHour = 8;
+    const hourHeightInRem = 5; // 1 hour = 5rem
+    
     return (
         <>
             <div className="flex flex-col h-[calc(100vh-6rem)]">
@@ -214,7 +218,7 @@ export default function AppointmentsPage() {
                         <div className="h-16 border-b"></div>
                         {hours.map(hour => (
                              <div key={hour} className="h-20 text-center border-b flex items-center justify-center">
-                                <span className="text-xs text-muted-foreground">{hour}</span>
+                                <span className="text-xs text-muted-foreground -translate-y-1/2">{hour}</span>
                             </div>
                         ))}
                     </div>
@@ -233,28 +237,31 @@ export default function AppointmentsPage() {
                                         <div key={`${day.toString()}-${hour}`} className="h-20 border-b"></div>
                                     ))}
                                 </div>
-                                 {appointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
-                                    if (!app.start || !app.end) return null;
+                                {appointments?.filter(app => app.start && app.end && isSameDay(parseISO(app.start), day)).map(app => {
                                     const start = parseISO(app.start);
                                     const end = parseISO(app.end);
-                                    const startHour = 8;
                                     
-                                    const topOffset = ((start.getHours() - startHour) * 60 + start.getMinutes()) / 60 * 20; // 20rem per hour
+                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
+
                                     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-                                    const height = durationMinutes / 60 * 20; // 20rem per hour
+                                    const height = (durationMinutes / 60) * hourHeightInRem;
 
                                     return (
                                         <div
                                             key={app.id}
                                             onClick={() => handleOpenForm(app)}
                                             className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer"
-                                            style={{ top: `calc(${topOffset}rem + 4rem)`, height: `${height}rem`}}
+                                            style={{
+                                                top: `calc(4rem + ${top}rem)`, // 4rem is the header height
+                                                height: `${height}rem`,
+                                            }}
                                         >
                                             <p className="font-bold text-xs truncate">{app.title}</p>
                                             <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
                                         </div>
                                     )
-                                 })}
+                                })}
                             </div>
                         ))}
                     </div>
