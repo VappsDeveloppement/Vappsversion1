@@ -8,8 +8,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Download, Mail, Phone } from 'lucide-react';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
 import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { useDoc, useMemoFirebase, useUser } from '@/firebase';
@@ -272,6 +270,8 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
 
     const handleExportPdf = async () => {
         if (!suivi || !model || !currentUserData) return;
+        const { default: jsPDF } = await import('jspdf');
+        const { default: autoTable } = await import('jspdf-autotable');
         const docJs = new jsPDF();
         let yPos = 20;
 
@@ -302,7 +302,7 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                     const chartElement = document.getElementById(`chart-${block.id}`);
                     if (block.questions.length > 1 && chartElement) {
                         try {
-                            const canvas = await html2canvas(chartElement, { useCORS: true });
+                            const canvas = await html2canvas(chartElement, { useCORS: true, container: document.body });
                             const imgData = canvas.toDataURL('image/png');
                             if(docJs.internal.pageSize.height - yPos < 90) { // Check space
                                 docJs.addPage();
@@ -312,6 +312,7 @@ export const PdfPreviewModal = ({ isOpen, onOpenChange, suivi, model, liveAnswer
                             yPos += 90;
                         } catch(e) {
                             console.error("Failed to render chart to canvas, printing text fallback.", e);
+                            // Fallback to text if canvas fails
                             block.questions.forEach((q: any) => {
                                 const value = answer?.[q.id] || 0;
                                 const text = `${q.text}: ${value}/10`;
