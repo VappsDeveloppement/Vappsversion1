@@ -261,7 +261,7 @@ export default function AppointmentsPage() {
                                          {editingAppointment && (
                                             <AlertDialog>
                                                 <AlertDialogTrigger asChild>
-                                                    <Button type="button" variant="destructive">
+                                                    <Button type="button" variant="destructive" onClick={() => setAppointmentToDelete(editingAppointment)}>
                                                         <Trash2 className="mr-2 h-4 w-4" /> Supprimer
                                                     </Button>
                                                 </AlertDialogTrigger>
@@ -442,3 +442,5 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
+
+    
