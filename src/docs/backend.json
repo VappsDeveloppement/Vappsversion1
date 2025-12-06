@@ -981,7 +981,7 @@
           "type": "string",
           "description": "Unique identifier for the appointment."
         },
-        "coachId": {
+        "counselorId": {
           "type": "string",
           "description": "Reference to User representing the coach. (Relationship: User 1:N Appointment)"
         },
@@ -989,32 +989,32 @@
           "type": "string",
           "description": "Reference to User representing the client. (Relationship: User 1:N Appointment)"
         },
-        "startTime": {
+        "clientName": {
           "type": "string",
-          "description": "The start date and time of the appointment.",
+          "description": "Full name of the client."
+        },
+        "start": {
+          "type": "string",
+          "description": "The start date and time of the appointment (ISO 8601).",
           "format": "date-time"
         },
-        "endTime": {
+        "end": {
           "type": "string",
-          "description": "The end date and time of the appointment.",
+          "description": "The end date and time of the appointment (ISO 8601).",
           "format": "date-time"
         },
-        "status": {
+        "details": {
           "type": "string",
-          "description": "The status of the appointment (e.g., scheduled, completed, cancelled)."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Notes related to the appointment"
+          "description": "Notes or details related to the appointment"
         }
       },
       "required": [
         "id",
-        "coachId",
+        "counselorId",
         "clientId",
-        "startTime",
-        "endTime",
-        "status"
+        "clientName",
+        "start",
+        "end"
       ]
     },
     "EmailCampaign": {
@@ -1913,13 +1913,13 @@
         }
       },
       {
-        "path": "/users/{userId}/appointments/{appointmentId}",
+        "path": "/appointments/{appointmentId}",
         "definition": {
           "entityName": "Appointment",
           "schema": {
             "$ref": "#/backend/entities/Appointment"
           },
-          "description": "Stores appointments for a specific user. Path-based ownership ensures only the user can access their appointments."
+          "description": "Stores appointments. Access is controlled via counselorId field."
         }
       },
       {

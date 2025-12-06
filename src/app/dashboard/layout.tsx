@@ -50,6 +50,7 @@ const mainMenuItems = [
   { href: "/dashboard", label: "Tableau de bord", icon: <LayoutDashboard /> },
   { href: "/dashboard/suivi", label: "Suivi", icon: <ClipboardList /> },
   { href: "/dashboard/messages", label: "Messagerie", icon: <MessageSquare /> },
+  { href: "/dashboard/appointments", label: "Agenda", icon: <CalendarDays /> },
 ];
 
 const profileMenuItems = [
