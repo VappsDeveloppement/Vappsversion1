@@ -1022,6 +1022,19 @@
         "end"
       ]
     },
+    "Unavailability": {
+      "title": "Unavailability",
+      "type": "object",
+      "description": "Represents a block of time where a counselor is unavailable.",
+      "properties": {
+        "id": { "type": "string" },
+        "counselorId": { "type": "string" },
+        "title": { "type": "string" },
+        "start": { "type": "string", "format": "date-time" },
+        "end": { "type": "string", "format": "date-time" }
+      },
+      "required": ["counselorId", "start", "end"]
+    },
     "EmailCampaign": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "EmailCampaign",
@@ -1784,6 +1797,14 @@
         }
       },
       {
+        "path": "/users/{userId}/unavailabilities/{unavailabilityId}",
+        "definition": {
+          "entityName": "Unavailability",
+          "schema": { "$ref": "#/entities/Unavailability" },
+          "description": "Stores unavailability blocks for a specific counselor."
+        }
+      },
+      {
         "path": "/users/{userId}/learning_paths/{pathId}",
         "definition": {
           "entityName": "LearningPath",
@@ -2123,4 +2144,3 @@
     "reasoning": "The architecture is simplified to a single-app model centered around counselors. The `Membership` entity and `/memberships` collection are removed. Data segregation is now achieved using a `counselorId` field on `User`, `Quote`, `Invoice`, and `Contract` documents. This avoids complex lookups in security rules. Firestore collections for quotes, invoices, plans, and contracts are now at the root level, relying on `counselorId` for security rules, which is a more scalable and direct approach for this model."
   }
 }
-

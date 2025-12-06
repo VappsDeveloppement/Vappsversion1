@@ -1,16 +1,17 @@
 
+
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, getHours, getMinutes } from 'date-fns';
+import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, getHours, getMinutes, set } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsUpDown, Check, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsUpDown, Check, Calendar as CalendarIcon, Ban } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, doc, where } from 'firebase/firestore';
+import { collection, query, doc, where, writeBatch } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,13 @@ type Appointment = {
     details?: string;
 };
 
+type Unavailability = {
+    id: string;
+    title?: string;
+    start: string;
+    end: string;
+}
+
 type Event = {
     id: string;
     title: string;
@@ -60,6 +68,15 @@ const appointmentSchema = z.object({
 
 type AppointmentFormData = z.infer<typeof appointmentSchema>;
 
+const unavailabilitySchema = z.object({
+  title: z.string().optional(),
+  start: z.string().min(1, "L'heure de début est requise."),
+  end: z.string().min(1, "L'heure de fin est requise."),
+  repeatDays: z.coerce.number().min(0).optional(),
+});
+type UnavailabilityFormData = z.infer<typeof unavailabilitySchema>;
+
+
 const hours = Array.from({ length: 20 }, (_, i) => `${(i + 4).toString().padStart(2, '0')}:00`);
 const startHour = 4;
 const hourHeightInRem = 5;
@@ -80,7 +97,8 @@ export default function AppointmentsPage() {
     const { toast } = useToast();
 
     const [currentDate, setCurrentDate] = useState(new Date());
-    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [isAppointmentSheetOpen, setIsAppointmentSheetOpen] = useState(false);
+    const [isUnavailabilitySheetOpen, setIsUnavailabilitySheetOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
     const [appointmentToDelete, setAppointmentToDelete] = useState<Appointment | null>(null);
     const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
@@ -92,6 +110,12 @@ export default function AppointmentsPage() {
     }, [user, firestore]);
     const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
     
+    const unavailabilitiesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, `users/${user.uid}/unavailabilities`));
+    }, [user, firestore]);
+    const { data: unavailabilities, isLoading: areUnavailabilitiesLoading } = useCollection<Unavailability>(unavailabilitiesQuery);
+
     const eventsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, 'events'), where('counselorId', '==', user.uid));
@@ -105,16 +129,20 @@ export default function AppointmentsPage() {
     }, [user, firestore]);
     const { data: clients, isLoading: areClientsLoading } = useCollection<Client>(clientsQuery);
 
-    const form = useForm<AppointmentFormData>({
+    const appointmentForm = useForm<AppointmentFormData>({
         resolver: zodResolver(appointmentSchema),
+    });
+    
+    const unavailabilityForm = useForm<UnavailabilityFormData>({
+        resolver: zodResolver(unavailabilitySchema),
     });
 
     useEffect(() => {
-        if (isSheetOpen) {
+        if (isAppointmentSheetOpen) {
             if (editingAppointment) {
                  const localStart = toLocalISOString(new Date(editingAppointment.start));
                  const localEnd = toLocalISOString(new Date(editingAppointment.end));
-                form.reset({
+                appointmentForm.reset({
                     title: editingAppointment.title,
                     start: localStart,
                     end: localEnd,
@@ -122,11 +150,11 @@ export default function AppointmentsPage() {
                 });
                 setSelectedClient({ id: editingAppointment.clientId, name: editingAppointment.clientName });
             } else {
-                form.reset({ title: '', start: '', end: '', details: '' });
+                appointmentForm.reset({ title: '', start: '', end: '', details: '' });
                 setSelectedClient(null);
             }
         }
-    }, [isSheetOpen, editingAppointment, form]);
+    }, [isAppointmentSheetOpen, editingAppointment, appointmentForm]);
     
     const handleSaveAppointment = async (data: AppointmentFormData) => {
         if (!user) return;
@@ -146,22 +174,21 @@ export default function AppointmentsPage() {
             return;
         }
 
-        // Check for overlapping appointments
-        const overlap = appointments?.some(app => {
-            if (editingAppointment && app.id === editingAppointment.id) {
+        const allBlockedSlots = [...(appointments || []), ...(unavailabilities || [])];
+        const overlap = allBlockedSlots.some(slot => {
+            if (editingAppointment && 'title' in slot && slot.id === editingAppointment.id) {
                 return false;
             }
-            if (!app.start || !app.end) {
+            if (!slot.start || !slot.end) {
                 return false;
             }
-            const existingStart = parseISO(app.start);
-            const existingEnd = parseISO(app.end);
-            // Overlap condition: (StartA < EndB) and (StartB < EndA)
+            const existingStart = parseISO(slot.start);
+            const existingEnd = parseISO(slot.end);
             return newStart < existingEnd && existingStart < newEnd;
         });
 
         if (overlap) {
-            toast({ title: 'Conflit de rendez-vous', description: 'Ce créneau horaire est déjà occupé.', variant: 'destructive'});
+            toast({ title: 'Conflit de créneau', description: 'Ce créneau horaire est déjà occupé ou indisponible.', variant: 'destructive'});
             return;
         }
 
@@ -186,10 +213,47 @@ export default function AppointmentsPage() {
                 await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/appointments`), appointmentData);
                 toast({ title: 'Rendez-vous créé' });
             }
-            setIsSheetOpen(false);
+            setIsAppointmentSheetOpen(false);
         } catch (error) {
             console.error("Error saving appointment: ", error);
             toast({ title: 'Erreur', description: 'Impossible d\'enregistrer le rendez-vous.', variant: 'destructive'});
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+    
+    const handleSaveUnavailability = async (data: UnavailabilityFormData) => {
+        if (!user) return;
+
+        setIsSubmitting(true);
+
+        const startDate = new Date(data.start);
+        const endDate = new Date(data.end);
+        const repeatDays = data.repeatDays || 0;
+
+        const batch = writeBatch(firestore);
+
+        for (let i = 0; i <= repeatDays; i++) {
+            const currentStartDate = addDays(startDate, i);
+            const currentEndDate = addDays(endDate, i);
+
+            const unavailabilityData = {
+                title: data.title || 'Indisponible',
+                start: currentStartDate.toISOString(),
+                end: currentEndDate.toISOString(),
+                counselorId: user.uid,
+            };
+            const newDocRef = doc(collection(firestore, `users/${user.uid}/unavailabilities`));
+            batch.set(newDocRef, unavailabilityData);
+        }
+        
+        try {
+            await batch.commit();
+            toast({ title: 'Indisponibilité(s) ajoutée(s)' });
+            setIsUnavailabilitySheetOpen(false);
+            unavailabilityForm.reset();
+        } catch (error) {
+            toast({ title: 'Erreur', description: "Impossible de sauvegarder l'indisponibilité.", variant: "destructive" });
         } finally {
             setIsSubmitting(false);
         }
@@ -203,7 +267,7 @@ export default function AppointmentsPage() {
             await deleteDocumentNonBlocking(appointmentRef);
             toast({ title: "Rendez-vous supprimé" });
             setAppointmentToDelete(null);
-            setIsSheetOpen(false); // Close the edit dialog as well
+            setIsAppointmentSheetOpen(false);
         } catch (error) {
             toast({ title: "Erreur", description: "Impossible de supprimer le rendez-vous.", variant: 'destructive' });
         }
@@ -233,7 +297,32 @@ export default function AppointmentsPage() {
                         <Button variant="outline" onClick={handleToday}>Aujourd'hui</Button>
                         <Button variant="outline" size="icon" onClick={handleNextWeek}><ChevronRight /></Button>
                     </div>
-                     <Dialog open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+                     <Dialog open={isUnavailabilitySheetOpen} onOpenChange={setIsUnavailabilitySheetOpen}>
+                        <DialogTrigger asChild>
+                            <Button variant="secondary"><Ban className="mr-2 h-4 w-4" />Bloquer un créneau</Button>
+                        </DialogTrigger>
+                         <DialogContent>
+                             <DialogHeader>
+                                <DialogTitle>Bloquer un créneau</DialogTitle>
+                                <DialogDescription>Définissez une période d'indisponibilité.</DialogDescription>
+                            </DialogHeader>
+                            <Form {...unavailabilityForm}>
+                                <form onSubmit={unavailabilityForm.handleSubmit(handleSaveUnavailability)} className="space-y-4 py-4">
+                                     <FormField control={unavailabilityForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Motif (optionnel)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <div className="grid grid-cols-2 gap-4">
+                                         <FormField control={unavailabilityForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={unavailabilityForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     </div>
+                                     <FormField control={unavailabilityForm.control} name="repeatDays" render={({ field }) => (<FormItem><FormLabel>Répéter pour les X prochains jours</FormLabel><FormControl><Input type="number" min="0" placeholder="0" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <DialogFooter>
+                                        <DialogClose asChild><Button type="button" variant="outline">Annuler</Button></DialogClose>
+                                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Bloquer</Button>
+                                    </DialogFooter>
+                                </form>
+                            </Form>
+                         </DialogContent>
+                     </Dialog>
+                     <Dialog open={isAppointmentSheetOpen} onOpenChange={setIsAppointmentSheetOpen}>
                         <DialogTrigger asChild>
                             <Button>
                                 <PlusCircle className="mr-2 h-4 w-4" />
@@ -244,17 +333,17 @@ export default function AppointmentsPage() {
                             <DialogHeader>
                                 <DialogTitle>{editingAppointment ? 'Modifier le' : 'Nouveau'} rendez-vous</DialogTitle>
                             </DialogHeader>
-                            <Form {...form}>
-                                <form onSubmit={form.handleSubmit(handleSaveAppointment)} className="flex-1 flex flex-col overflow-hidden">
+                            <Form {...appointmentForm}>
+                                <form onSubmit={appointmentForm.handleSubmit(handleSaveAppointment)} className="flex-1 flex flex-col overflow-hidden">
                                      <ScrollArea className="flex-1 pr-6 -mr-6">
                                         <div className="space-y-6 py-4">
                                             <ClientSelector clients={clients || []} onClientSelect={setSelectedClient} isLoading={areClientsLoading} defaultValue={editingAppointment ? {id: editingAppointment.clientId, name: editingAppointment.clientName} : undefined} />
-                                            <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du rendez-vous</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={appointmentForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du rendez-vous</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             <div className="grid grid-cols-2 gap-4">
-                                                <FormField control={form.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={form.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={appointmentForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={appointmentForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
-                                            <FormField control={form.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={appointmentForm.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
                                     </ScrollArea>
                                     <DialogFooter className="pt-4 border-t mt-auto flex justify-between w-full">
@@ -278,7 +367,7 @@ export default function AppointmentsPage() {
                                             </AlertDialog>
                                         )}
                                         <div className='flex gap-2 ml-auto'>
-                                            <Button type="button" variant="outline" onClick={() => setIsSheetOpen(false)}>Annuler</Button>
+                                            <Button type="button" variant="outline" onClick={() => setIsAppointmentSheetOpen(false)}>Annuler</Button>
                                             <Button type="submit" disabled={isSubmitting}>
                                                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
                                                 Sauvegarder
@@ -324,6 +413,32 @@ export default function AppointmentsPage() {
                                     ></div>
                                 ))}
                             </div>
+                            {/* Render Unavailabilities */}
+                            {unavailabilities?.filter(unav => unav.start && isSameDay(parseISO(unav.start), day)).map(unav => {
+                                if (!unav.start || !unav.end) return null;
+                                const start = parseISO(unav.start);
+                                const end = parseISO(unav.end);
+                                
+                                const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                const top = (topOffsetInMinutes / 60) * hourHeightInRem;
+
+                                const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+                                const height = (durationMinutes / 60) * hourHeightInRem;
+
+                                return (
+                                    <div
+                                        key={unav.id}
+                                        className="absolute w-full left-0 bg-gray-200/50 flex items-center justify-center"
+                                        style={{
+                                            top: `calc(4rem + ${top}rem)`,
+                                            height: `${height}rem`,
+                                            backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 8px)',
+                                        }}
+                                    >
+                                        <p className="text-xs text-gray-500 font-medium">{unav.title || 'Indisponible'}</p>
+                                    </div>
+                                )
+                            })}
                             {/* Render appointments */}
                             {appointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
                                  if (!app.start || !app.end) return null;
@@ -354,13 +469,12 @@ export default function AppointmentsPage() {
                             {/* Render events */}
                              {events?.filter(event => isSameDay(parseISO(event.date), day)).map(event => {
                                 const start = parseISO(event.date);
-                                // Assume 1-hour duration for events if no end time is specified
                                 const end = add(start, { hours: 1 });
                                 
                                 const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
                                 const top = (topOffsetInMinutes / 60) * hourHeightInRem;
 
-                                const durationMinutes = 60; // 1 hour
+                                const durationMinutes = 60;
                                 const height = (durationMinutes / 60) * hourHeightInRem;
                                 
                                 return (
@@ -385,7 +499,7 @@ export default function AppointmentsPage() {
 
     function handleEditAppointment(appointment: Appointment) {
         setEditingAppointment(appointment);
-        setIsSheetOpen(true);
+        setIsAppointmentSheetOpen(true);
     }
 }
 
