@@ -30,10 +30,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useAgency } from '@/context/agency-provider';
-import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
 import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search } from 'lucide-react';
@@ -826,8 +823,11 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
         const file = event.target.files?.[0];
         if (file) {
-            const base64 = await toBase64(file);
-            form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, base64);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, reader.result as string);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -893,8 +893,11 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
         const file = event.target.files?.[0];
         if (file) {
-            const base64 = await toBase64(file);
-            form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, base64);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, reader.result as string);
+            };
+            reader.readAsDataURL(file);
         }
     };
 
@@ -1182,27 +1185,21 @@ function PublicFormManager() {
         const selectedModel = models.find(m => m.id === data.modelId);
         if (!selectedModel) return;
 
+        const formData = { 
+            counselorId: user.uid,
+            name: data.name,
+            description: data.description,
+            modelId: data.modelId,
+            modelName: selectedModel.name,
+            questions: selectedModel.questions || [], // Copy questions here
+            isEnabled: editingForm ? editingForm.isEnabled : true,
+            createdAt: editingForm?.createdAt || new Date().toISOString(),
+        };
+
         if (editingForm) {
-            const updatedData = {
-                name: data.name,
-                description: data.description,
-                modelId: data.modelId,
-                modelName: selectedModel.name,
-                questions: selectedModel.questions || [],
-            };
-            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), updatedData, { merge: true });
-            toast({ title: "Formulaire mis à jour" });
+            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), formData, { merge: true });
+            toast({ title: "Formulaire public mis à jour" });
         } else {
-            const formData = { 
-                counselorId: user.uid,
-                name: data.name,
-                description: data.description,
-                modelId: data.modelId,
-                modelName: selectedModel.name,
-                questions: selectedModel.questions || [],
-                isEnabled: true,
-                createdAt: new Date().toISOString(),
-            };
             addDocumentNonBlocking(collection(firestore, 'public_forms'), formData);
             toast({ title: "Formulaire public créé" });
         }
