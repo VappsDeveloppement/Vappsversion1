@@ -24,7 +24,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
 
 type Appointment = {
@@ -156,6 +156,7 @@ export default function AppointmentsPage() {
             }
             const existingStart = parseISO(app.start);
             const existingEnd = parseISO(app.end);
+            // Overlap condition: (StartA < EndB) and (StartB < EndA)
             return newStart < existingEnd && existingStart < newEnd;
         });
 
