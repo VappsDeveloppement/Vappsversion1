@@ -5,7 +5,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parse, setHours, setMinutes, getHours, getMinutes } from 'date-fns';
+import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, set, getHours, getMinutes } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -25,6 +25,8 @@ import { useToast } from '@/hooks/use-toast';
 import { sendConfirmationEmail } from '@/app/actions/appointment';
 import { useAgency } from '@/context/agency-provider';
 import { Checkbox } from '@/components/ui/checkbox';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 
 
 type Appointment = {
@@ -104,13 +106,13 @@ export default function AppointmentsPage() {
     const handleOpenForm = (appointment: Appointment | null = null, date?: Date, time?: string) => {
         setEditingAppointment(appointment);
         if (appointment) {
-            const startDate = new Date(appointment.start);
+            const startDate = parseISO(appointment.start);
             form.reset({
                 title: appointment.title,
                 clientId: appointment.clientId,
                 date: startDate,
                 startTime: format(startDate, 'HH:mm'),
-                duration: (new Date(appointment.end).getTime() - startDate.getTime()) / 60000,
+                duration: (parseISO(appointment.end).getTime() - startDate.getTime()) / 60000,
                 details: appointment.details,
                 sendConfirmation: false,
             });
@@ -132,21 +134,22 @@ export default function AppointmentsPage() {
         if (!appointments) return false;
         for (const app of appointments) {
             if (editingAppointment && app.id === editingAppointment.id) continue;
-            if (!app.start || !app.end) continue;
-            const existingStart = new Date(app.start);
-            const existingEnd = new Date(app.end);
+            if (!app.start || !app.end) continue; // Skip if appointment has no dates
+            const existingStart = parseISO(app.start);
+            const existingEnd = parseISO(app.end);
             if (start < existingEnd && end > existingStart) {
-                return true;
+                return true; // Overlap detected
             }
         }
         return false;
     };
 
+
     const handleSaveAppointment = async (data: AppointmentFormData) => {
         if (!user || !clients) return;
 
         const [hours, minutes] = data.startTime.split(':').map(Number);
-        const start = setMinutes(setHours(data.date, hours), minutes);
+        const start = set(data.date, { hours, minutes });
         const end = add(start, { minutes: data.duration });
         
         if (checkOverlap(start, end)) {
@@ -173,6 +176,7 @@ export default function AppointmentsPage() {
             end: end.toISOString(),
             clientId: data.clientId,
             clientName: `${client.firstName} ${client.lastName}`,
+            clientEmail: client.email,
             details: data.details,
             counselorId: user.uid
         };
@@ -185,14 +189,17 @@ export default function AppointmentsPage() {
             await setDocumentNonBlocking(appointmentRef, appointmentData, { merge: true });
 
             if (data.sendConfirmation) {
-                const emailSettings = userData?.emailSettings?.fromEmail ? userData.emailSettings : personalization?.emailSettings;
+                const emailSettings = (userData as any)?.emailSettings?.fromEmail ? (userData as any).emailSettings : personalization?.emailSettings;
                 if (!emailSettings?.fromEmail) {
                     toast({ title: "Avertissement", description: "Les paramètres d'envoi d'e-mail ne sont pas configurés. Le rendez-vous est sauvegardé mais l'e-mail n'a pas été envoyé.", variant: "destructive"});
                 } else {
-                     await sendConfirmationEmail({
-                        appointment: { ...appointmentData, start: start.toISOString() },
-                        emailSettings: { ...emailSettings, fromName: emailSettings.fromName || userData.firstName },
+                     const sendResult = await sendConfirmationEmail({
+                        appointment: appointmentData,
+                        emailSettings,
                     });
+                     if (!sendResult.success) {
+                        toast({ title: "Erreur d'envoi", description: sendResult.error, variant: "destructive"});
+                    }
                 }
             }
             
@@ -254,9 +261,9 @@ export default function AppointmentsPage() {
                                         <div key={`${day.toString()}-${hour}`} className="h-20 border-b"></div>
                                     ))}
                                 </div>
-                                 {appointments?.filter(app => isSameDay(new Date(app.start), day)).map(app => {
-                                    const start = new Date(app.start);
-                                    const end = new Date(app.end);
+                                 {appointments?.filter(app => isSameDay(parseISO(app.start), day)).map(app => {
+                                    const start = parseISO(app.start);
+                                    const end = parseISO(app.end);
                                     const top = ((getHours(start) - startHour) * 60 + getMinutes(start)) / (13 * 60) * 100;
                                     const height = (end.getTime() - start.getTime()) / (1000 * 60) / (13 * 60) * 100;
 
@@ -279,52 +286,55 @@ export default function AppointmentsPage() {
             </div>
 
             <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogContent className="sm:max-w-lg flex flex-col">
+                 <DialogContent className="sm:max-w-lg flex flex-col h-auto max-h-[90vh]">
                     <DialogHeader>
                         <DialogTitle>{editingAppointment ? "Modifier" : "Nouveau"} rendez-vous</DialogTitle>
                     </DialogHeader>
-                    <ScrollArea className="flex-1 pr-6 -mr-6">
-                    <Form {...form}>
-                        <form id="appointment-form" onSubmit={form.handleSubmit(handleSaveAppointment)} className="space-y-4 py-4">
-                            <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                             <FormField control={form.control} name="clientId" render={({ field }) => (
-                                 <FormItem><FormLabel>Client</FormLabel>
-                                    <Popover>
-                                        <PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
-                                            {field.value ? clients?.find(c => c.id === field.value)?.email : "Sélectionner un client"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button></FormControl></PopoverTrigger>
-                                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command>
-                                            <CommandInput placeholder="Rechercher..." />
-                                            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
-                                            <CommandGroup><CommandList>{clients?.map((client) => (<CommandItem value={client.email} key={client.id} onSelect={() => form.setValue("clientId", client.id)}>
-                                                <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                {client.firstName} {client.lastName}
-                                            </CommandItem>))}</CommandList></CommandGroup>
-                                        </Command></PopoverContent>
-                                    </Popover>
-                                <FormMessage /></FormItem>
-                            )}/>
-                            <div className="grid grid-cols-2 gap-4">
-                                 <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" value={format(field.value, 'yyyy-MM-dd')} onChange={e => field.onChange(new Date(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Heure de début</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            </div>
-                            <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (en minutes)</FormLabel><FormControl><Input type="number" step="15" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                             <FormField control={form.control} name="sendConfirmation" render={({ field }) => (<FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Envoyer un e-mail de confirmation au client</FormLabel></div></FormItem>)}/>
+                     <Form {...form}>
+                        <form id="appointment-form" onSubmit={form.handleSubmit(handleSaveAppointment)} className="flex-1 overflow-hidden flex flex-col">
+                           <ScrollArea className="flex-1 pr-6 -mr-6">
+                                <div className="space-y-4 py-4">
+                                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={form.control} name="clientId" render={({ field }) => (
+                                         <FormItem><FormLabel>Client</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild><FormControl><Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
+                                                    {field.value ? clients?.find(c => c.id === field.value)?.email : "Sélectionner un client"}
+                                                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                </Button></FormControl></PopoverTrigger>
+                                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0"><Command>
+                                                    <CommandInput placeholder="Rechercher..." />
+                                                    <CommandList>
+                                                        <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                                                        <CommandGroup>{clients?.map((client) => (<CommandItem value={client.email} key={client.id} onSelect={() => form.setValue("clientId", client.id)}>
+                                                            <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                            {client.firstName} {client.lastName}
+                                                        </CommandItem>))}</CommandGroup>
+                                                    </CommandList>
+                                                </Command></PopoverContent>
+                                            </Popover>
+                                        <FormMessage /></FormItem>
+                                    )}/>
+                                    <div className="grid grid-cols-2 gap-4">
+                                         <FormField control={form.control} name="date" render={({ field }) => (<FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" value={format(field.value, 'yyyy-MM-dd')} onChange={e => field.onChange(parseISO(e.target.value))} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="startTime" render={({ field }) => (<FormItem><FormLabel>Heure de début</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
+                                    <FormField control={form.control} name="duration" render={({ field }) => (<FormItem><FormLabel>Durée (en minutes)</FormLabel><FormControl><Input type="number" step="15" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                     <FormField control={form.control} name="sendConfirmation" render={({ field }) => (<FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-4"><FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl><div className="space-y-1 leading-none"><FormLabel>Envoyer un e-mail de confirmation au client</FormLabel></div></FormItem>)}/>
+                                </div>
+                           </ScrollArea>
+                            <DialogFooter className="pt-4 border-t">
+                                <DialogClose asChild><Button type="button" variant="outline">Annuler</Button></DialogClose>
+                                <Button type="submit" disabled={isSubmitting}>
+                                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                    Sauvegarder
+                                </Button>
+                            </DialogFooter>
                         </form>
                     </Form>
-                    </ScrollArea>
-                    <DialogFooter>
-                        <DialogClose asChild><Button type="button" variant="outline">Annuler</Button></DialogClose>
-                        <Button type="submit" form="appointment-form" disabled={isSubmitting}>
-                            {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                            Sauvegarder
-                        </Button>
-                    </DialogFooter>
                 </DialogContent>
             </Dialog>
         </>
     );
 }
-
