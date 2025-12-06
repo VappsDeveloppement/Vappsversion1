@@ -31,8 +31,8 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, where, doc, setDoc } from 'firebase/firestore';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, deleteDocumentNonBlocking, useDoc, setDocumentNonBlocking } from '@/firebase';
+import { collection, query, where, doc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { cn } from '@/lib/utils';
 import { PlusCircle, Trash2, ChevronLeft, ChevronRight, Loader2 } from 'lucide-react';
@@ -50,7 +50,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 const appointmentSchema = z.object({
     title: z.string().min(1, "Le titre est requis."),
     date: z.string(),
-    time: z.string().optional(),
+    time: z.string().min(1, "L'heure est requise."),
+    duration: z.coerce.number().min(1, "La durée doit être d'au moins 1 minute."),
     clientId: z.string().optional(),
     description: z.string().optional(),
     sendConfirmation: z.boolean().default(false),
@@ -76,39 +77,99 @@ type Client = {
 };
 
 
-function AppointmentForm({ selectedDate, clients, onSave, onCancel }: { selectedDate: Date; clients: Client[]; onSave: (data: AppointmentFormData) => Promise<void>; onCancel: () => void; }) {
+function AppointmentForm({
+  selectedDate,
+  clients,
+  onSave,
+  onCancel,
+  existingAppointments,
+  editingAppointment,
+}: {
+  selectedDate: Date;
+  clients: Client[];
+  onSave: (data: AppointmentFormData) => Promise<void>;
+  onCancel: () => void;
+  existingAppointments: Appointment[];
+  editingAppointment: Appointment | null;
+}) {
     const form = useForm<AppointmentFormData>({
         resolver: zodResolver(appointmentSchema),
-        defaultValues: {
-            date: format(selectedDate, 'yyyy-MM-dd'),
-            title: '',
-            time: format(new Date(), 'HH:mm'),
-            clientId: '',
-            description: '',
-            sendConfirmation: false,
-        }
     });
+
+     useEffect(() => {
+        if (editingAppointment) {
+            const start = parseISO(editingAppointment.start);
+            const end = parseISO(editingAppointment.end);
+            const duration = (end.getTime() - start.getTime()) / (1000 * 60);
+
+            form.reset({
+                title: editingAppointment.title,
+                date: format(start, 'yyyy-MM-dd'),
+                time: format(start, 'HH:mm'),
+                duration: duration,
+                clientId: editingAppointment.clientId || '',
+                description: editingAppointment.description || '',
+                sendConfirmation: false
+            });
+        } else {
+             form.reset({
+                date: format(selectedDate, 'yyyy-MM-dd'),
+                title: '',
+                time: '09:00',
+                duration: 60,
+                clientId: '',
+                description: '',
+                sendConfirmation: false,
+            });
+        }
+    }, [editingAppointment, selectedDate, form]);
+
+    const checkOverlap = (start: Date, end: Date) => {
+        for (const app of existingAppointments) {
+            // Skip the appointment being edited
+            if (editingAppointment && app.id === editingAppointment.id) continue;
+
+            const existingStart = parseISO(app.start);
+            const existingEnd = parseISO(app.end);
+            if (start < existingEnd && end > existingStart) {
+                return true; // Overlap detected
+            }
+        }
+        return false;
+    };
+    
+     const handleSave = async (data: AppointmentFormData) => {
+        const startDateTime = parse(`${data.date} ${data.time}`, 'yyyy-MM-dd HH:mm', new Date());
+        const endDateTime = new Date(startDateTime.getTime() + data.duration * 60 * 1000);
+        
+        if (checkOverlap(startDateTime, endDateTime)) {
+            form.setError("time", { type: 'manual', message: 'Ce créneau est déjà pris ou chevauche un autre rendez-vous.' });
+            return;
+        }
+
+        await onSave(data);
+    };
 
     return (
       <DialogContent className="sm:max-w-lg flex flex-col">
         <DialogHeader>
-          <DialogTitle>Nouveau rendez-vous</DialogTitle>
+          <DialogTitle>{editingAppointment ? 'Modifier' : 'Nouveau'} rendez-vous</DialogTitle>
           <DialogDescription>
-            Ajouter un nouveau rendez-vous pour le {format(selectedDate, 'PPP', { locale: fr })}.
+            {editingAppointment ? 'Modifiez les détails' : `Ajouter pour le ${format(selectedDate, 'PPP', { locale: fr })}`}.
           </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto pr-6 -mr-6">
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSave)} className="space-y-4">
+                <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4">
                     <FormField control={form.control} name="title" render={({ field }) => (
                         <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                     )}/>
                     <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="date" render={({ field }) => (
-                            <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
                         <FormField control={form.control} name="time" render={({ field }) => (
                             <FormItem><FormLabel>Heure (HH:mm)</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <FormField control={form.control} name="duration" render={({ field }) => (
+                            <FormItem><FormLabel>Durée (minutes)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
                     </div>
                      <FormField
@@ -188,7 +249,8 @@ export default function AppointmentsPage() {
 
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [selectedDateForNew, setSelectedDateForNew] = useState<Date>(new Date());
-    
+    const [editingAppointment, setEditingAppointment] = useState<Appointment | null>(null);
+
     let today = startOfToday()
     let [currentDate, setCurrentDate] = useState(today);
 
@@ -241,7 +303,13 @@ export default function AppointmentsPage() {
     const handleToday = () => setCurrentDate(new Date());
 
     const handleAddAppointmentClick = (day: Date) => {
+        setEditingAppointment(null);
         setSelectedDateForNew(day);
+        setIsFormOpen(true);
+    };
+
+    const handleEditAppointment = (appointment: Appointment) => {
+        setEditingAppointment(appointment);
         setIsFormOpen(true);
     };
     
@@ -249,16 +317,17 @@ export default function AppointmentsPage() {
         if (!user || !clients || !userData) return;
         
         const startDateTime = parse(`${data.date} ${data.time}`, 'yyyy-MM-dd HH:mm', new Date());
-        
-        // La durée par défaut est de 60 minutes
-        const endDateTime = new Date(startDateTime.getTime() + 60 * 60 * 1000);
+        const endDateTime = new Date(startDateTime.getTime() + data.duration * 60 * 1000);
 
         const client = clients.find(c => c.id === data.clientId);
 
         try {
-            const newDocRef = doc(collection(firestore, `users/${user.uid}/appointments`));
-            await setDoc(newDocRef, {
-                id: newDocRef.id,
+            const appointmentRef = editingAppointment
+                ? doc(firestore, `users/${user.uid}/appointments`, editingAppointment.id)
+                : doc(collection(firestore, `users/${user.uid}/appointments`));
+
+            const appointmentData = {
+                id: appointmentRef.id,
                 title: data.title,
                 start: startDateTime.toISOString(),
                 end: endDateTime.toISOString(),
@@ -267,7 +336,9 @@ export default function AppointmentsPage() {
                 description: data.description || null,
                 status: 'scheduled',
                 coachId: user.uid,
-            });
+            };
+
+            await setDoc(appointmentRef, appointmentData, { merge: true });
 
             if (data.sendConfirmation && client) {
                  const emailSettings = (userData as any)?.emailSettings?.fromEmail ? (userData as any).emailSettings : personalization?.emailSettings;
@@ -287,10 +358,11 @@ export default function AppointmentsPage() {
                 }
             }
 
-            toast({ title: "Rendez-vous ajouté" });
+            toast({ title: editingAppointment ? "Rendez-vous mis à jour" : "Rendez-vous ajouté" });
             setIsFormOpen(false);
+            setEditingAppointment(null);
         } catch (error) {
-             toast({ title: "Erreur", description: "Impossible d'ajouter le rendez-vous", variant: "destructive" });
+             toast({ title: "Erreur", description: "Impossible de sauvegarder le rendez-vous", variant: "destructive" });
         }
     };
     
@@ -299,22 +371,11 @@ export default function AppointmentsPage() {
         deleteDocumentNonBlocking(doc(firestore, `users/${user.uid}/appointments`, appointmentId));
         toast({ title: 'Rendez-vous supprimé' });
     };
-    
-    const colStartClasses = [
-        'col-start-2',
-        'col-start-3',
-        'col-start-4',
-        'col-start-5',
-        'col-start-6',
-        'col-start-7',
-        'col-start-8',
-    ];
 
-    // Generate time slots from 4:30 to 23:00
     const timeSlots = [];
     for (let i = 4; i <= 22; i++) {
         timeSlots.push(`${i}:30`);
-        if (i < 22) {
+        if (i < 23) {
             timeSlots.push(`${i + 1}:00`);
         }
     }
@@ -337,6 +398,10 @@ export default function AppointmentsPage() {
                         <Button variant="outline" size="icon" className="h-9 w-9 rounded-r-none" onClick={handlePreviousWeek}><ChevronLeft className="h-4 w-4" /></Button>
                         <Button variant="outline" size="icon" className="h-9 w-9 rounded-l-none" onClick={handleNextWeek}><ChevronRight className="h-4 w-4" /></Button>
                     </div>
+                     <Button onClick={() => handleAddAppointmentClick(new Date())}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Rendez-vous
+                    </Button>
                 </div>
             </header>
             <div className="isolate flex flex-auto flex-col overflow-auto bg-background">
@@ -358,10 +423,10 @@ export default function AppointmentsPage() {
                             {/* Horizontal lines and time markers */}
                             <div
                                 className="col-start-1 col-end-2 row-start-1 grid divide-y divide-border"
-                                style={{ gridTemplateRows: 'repeat(38, minmax(3rem, 1fr))' }}
+                                style={{ gridTemplateRows: 'repeat(38, minmax(3.5rem, 1fr))' }}
                             >
                                 <div className="row-end-1 h-7"></div>
-                                {timeSlots.map((time, index) => (
+                                {timeSlots.map((time) => (
                                     <div key={time}>
                                         <div className="sticky left-0 z-20 -ml-14 -mt-2.5 w-14 pr-2 text-right text-xs leading-5 text-muted-foreground">
                                             {time}
@@ -372,10 +437,10 @@ export default function AppointmentsPage() {
 
                             {/* Vertical lines for days */}
                             <div className="col-start-1 col-end-2 row-start-1 grid grid-cols-7 grid-rows-1 divide-x divide-border">
-                                {days.map((day, dayIdx) => (
+                                {days.map((day) => (
                                      <div key={day.toISOString()} className="row-start-1 h-full relative">
                                         {(appointmentsByDay[format(day, 'yyyy-MM-dd')] || []).map(app => (
-                                            <Meeting key={app.id} appointment={app} onDelete={handleDeleteAppointment} />
+                                            <Meeting key={app.id} appointment={app} onEdit={() => handleEditAppointment(app)} onDelete={() => handleDeleteAppointment(app.id)} />
                                         ))}
                                     </div>
                                 ))}
@@ -390,6 +455,8 @@ export default function AppointmentsPage() {
                     clients={clients || []}
                     onSave={handleSaveAppointment}
                     onCancel={() => setIsFormOpen(false)}
+                    existingAppointments={appointments || []}
+                    editingAppointment={editingAppointment}
                 />
             </Dialog>
         </div>
@@ -397,30 +464,33 @@ export default function AppointmentsPage() {
 }
 
 
-const Meeting = ({ appointment, onDelete }: { appointment: Appointment, onDelete: (id: string) => void }) => {
+const Meeting = ({ appointment, onEdit, onDelete }: { appointment: Appointment, onEdit: () => void, onDelete: () => void }) => {
     const start = parseISO(appointment.start);
     const end = parseISO(appointment.end);
     
-    const startHour = 4.5; // Calendar starts at 4:30
+    const startHour = 4.5;
     const totalMinutes = (start.getHours() + start.getMinutes() / 60) - startHour;
-    const top = totalMinutes * (3 * 2); // Each hour is 6rem (3rem per 30min slot * 2)
+    const top = totalMinutes * (3.5 * 2); // 3.5rem per 30min slot
 
     const durationMinutes = (end.getTime() - start.getTime()) / (1000 * 60);
-    const height = (durationMinutes / 30) * 3; // 3rem per 30 minutes
+    const height = (durationMinutes / 30) * 3.5;
 
     return (
         <li
-            className="relative mt-px flex"
+            className="relative mt-px flex px-1"
             style={{ top: `${top}rem`, height: `${height}rem` }}
         >
-            <div className="group absolute inset-1 flex flex-col overflow-y-auto rounded-lg bg-primary/10 p-2 text-xs leading-5 hover:bg-primary/20">
+            <div
+              className="group absolute inset-1 flex cursor-pointer flex-col overflow-y-auto rounded-lg bg-primary/10 p-2 text-xs leading-5 hover:bg-primary/20"
+              onClick={onEdit}
+            >
                 <p className="font-semibold text-primary">{appointment.title}</p>
                 <p className="text-primary/80">{appointment.clientName}</p>
                 <p className="text-primary/50">
                     <time dateTime={appointment.start}>{format(start, 'HH:mm')}</time> -{' '}
                     <time dateTime={appointment.end}>{format(end, 'HH:mm')}</time>
                 </p>
-                 <button onClick={() => onDelete(appointment.id)} className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100">
+                 <button onClick={(e) => { e.stopPropagation(); onDelete(); }} className="absolute bottom-1 right-1 opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-destructive/20">
                     <Trash2 className="h-4 w-4 text-destructive" />
                 </button>
             </div>
