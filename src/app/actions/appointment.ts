@@ -18,6 +18,7 @@ const appointmentDetailsSchema = z.object({
     title: z.string(),
     start: z.string(),
     clientName: z.string(),
+    clientId: z.string(), // Gardé pour référence, mais pas utilisé dans l'email
     clientEmail: z.string().email(),
 });
 
