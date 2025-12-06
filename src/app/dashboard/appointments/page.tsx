@@ -130,7 +130,6 @@ function AppointmentForm({
             // Skip the appointment being edited
             if (editingAppointment && app.id === editingAppointment.id) continue;
 
-            // Ensure app.start and app.end are defined before parsing
             if (!app.start || !app.end) continue;
 
             const existingStart = parseISO(app.start);
@@ -155,95 +154,97 @@ function AppointmentForm({
     };
 
     return (
-      <DialogContent className="sm:max-w-lg flex flex-col">
+      <DialogContent className="sm:max-w-lg flex flex-col h-full max-h-[90vh]">
         <DialogHeader>
           <DialogTitle>{editingAppointment ? 'Modifier' : 'Nouveau'} rendez-vous</DialogTitle>
           <DialogDescription>
             {editingAppointment ? 'Modifiez les détails' : `Ajouter pour le ${format(selectedDate, 'PPP', { locale: fr })}`}.
           </DialogDescription>
         </DialogHeader>
-        <ScrollArea className="flex-1 pr-4 -mr-4">
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(handleSave)} className="space-y-4 pr-2">
-                    <FormField control={form.control} name="title" render={({ field }) => (
-                        <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                    )}/>
-                    <div className="grid grid-cols-2 gap-4">
-                        <FormField control={form.control} name="date" render={({ field }) => (
-                            <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+         <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleSave)} className="flex-1 flex flex-col overflow-hidden">
+                <ScrollArea className="flex-1 pr-6 -mr-6">
+                    <div className="space-y-4 py-4 pr-2">
+                        <FormField control={form.control} name="title" render={({ field }) => (
+                            <FormItem><FormLabel>Titre</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
                         )}/>
-                        <FormField control={form.control} name="time" render={({ field }) => (
-                            <FormItem><FormLabel>Heure (HH:mm)</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                    </div>
-                     <FormField control={form.control} name="duration" render={({ field }) => (
-                            <FormItem><FormLabel>Durée (minutes)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
-                        )}/>
-                     <FormField
-                        control={form.control}
-                        name="clientId"
-                        render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Client (Optionnel)</FormLabel>
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <FormControl>
-                                        <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
-                                            {field.value ? clients.find(c => c.id === field.value)?.email : "Sélectionner un client"}
-                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                                        </Button>
-                                    </FormControl>
-                                </PopoverTrigger>
-                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                    <Command>
-                                        <CommandInput placeholder="Rechercher un client..." />
-                                        <CommandList><CommandEmpty>Aucun client trouvé.</CommandEmpty><CommandGroup>
-                                            {clients.map((client) => (
-                                                <CommandItem value={client.email} key={client.id} onSelect={() => form.setValue("clientId", client.id)}>
-                                                    <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                    <div>
-                                                        <p>{client.firstName} {client.lastName}</p>
-                                                        <p className="text-xs text-muted-foreground">{client.email}</p>
-                                                    </div>
-                                                </CommandItem>
-                                            ))}
-                                        </CommandGroup></CommandList>
-                                    </Command>
-                                </PopoverContent>
-                            </Popover>
-                            <FormMessage />
-                        </FormItem>
-                        )}
-                    />
-                     <FormField control={form.control} name="description" render={({ field }) => (
-                        <FormItem><FormLabel>Description (Optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
-                    )}/>
-                    <FormField
-                        control={form.control}
-                        name="sendConfirmation"
-                        render={({ field }) => (
-                            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                            <FormControl>
-                                <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                                />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                                <FormLabel>
-                                Envoyer une confirmation par e-mail au client
-                                </FormLabel>
-                            </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField control={form.control} name="date" render={({ field }) => (
+                                <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                            <FormField control={form.control} name="time" render={({ field }) => (
+                                <FormItem><FormLabel>Heure (HH:mm)</FormLabel><FormControl><Input type="time" {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                        </div>
+                         <FormField control={form.control} name="duration" render={({ field }) => (
+                                <FormItem><FormLabel>Durée (minutes)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>
+                            )}/>
+                         <FormField
+                            control={form.control}
+                            name="clientId"
+                            render={({ field }) => (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Client (Optionnel)</FormLabel>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <FormControl>
+                                            <Button variant="outline" role="combobox" className={cn("w-full justify-between", !field.value && "text-muted-foreground")}>
+                                                {field.value ? clients.find(c => c.id === field.value)?.email : "Sélectionner un client"}
+                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                            </Button>
+                                        </FormControl>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Rechercher un client..." />
+                                            <CommandList><CommandEmpty>Aucun client trouvé.</CommandEmpty><CommandGroup>
+                                                {clients.map((client) => (
+                                                    <CommandItem value={client.email} key={client.id} onSelect={() => form.setValue("clientId", client.id)}>
+                                                        <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                        <div>
+                                                            <p>{client.firstName} {client.lastName}</p>
+                                                            <p className="text-xs text-muted-foreground">{client.email}</p>
+                                                        </div>
+                                                    </CommandItem>
+                                                ))}
+                                            </CommandGroup></CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                                <FormMessage />
                             </FormItem>
-                        )}
+                            )}
                         />
-                </form>
-            </Form>
-        </ScrollArea>
-        <DialogFooter className="pt-4 border-t">
-            <Button type="button" variant="ghost" onClick={onCancel}>Annuler</Button>
-            <Button type="button" onClick={form.handleSubmit(handleSave)}>Enregistrer</Button>
-        </DialogFooter>
+                         <FormField control={form.control} name="description" render={({ field }) => (
+                            <FormItem><FormLabel>Description (Optionnel)</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                        )}/>
+                        <FormField
+                            control={form.control}
+                            name="sendConfirmation"
+                            render={({ field }) => (
+                                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                                <FormControl>
+                                    <Checkbox
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                    />
+                                </FormControl>
+                                <div className="space-y-1 leading-none">
+                                    <FormLabel>
+                                    Envoyer une confirmation par e-mail au client
+                                    </FormLabel>
+                                </div>
+                                </FormItem>
+                            )}
+                            />
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="pt-4 border-t mt-auto">
+                    <Button type="button" variant="ghost" onClick={onCancel}>Annuler</Button>
+                    <Button type="submit">Enregistrer</Button>
+                </DialogFooter>
+            </form>
+        </Form>
       </DialogContent>
     );
 }
@@ -504,5 +505,3 @@ const Meeting = ({ appointment, onEdit, onDelete }: { appointment: Appointment, 
         </li>
     );
 };
-
-    
