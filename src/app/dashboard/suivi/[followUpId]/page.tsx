@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import Image from 'next/image';
 
 // Types pour le suivi simple (formulaire)
 type FollowUp = {
@@ -389,6 +390,11 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                             return (
                                                 <div key={question.id}>
                                                     <Label className="font-semibold">{question.text}</Label>
+                                                    {question.imageUrl && (
+                                                        <div className="my-4 relative w-full max-w-sm h-64">
+                                                            <Image src={question.imageUrl} alt={question.text} fill className="object-contain rounded-md border" />
+                                                        </div>
+                                                    )}
                                                     <RadioGroup value={selectedAnswerId} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})} className="mt-2 space-y-2">
                                                         {question.answers.map((answer: any) => (
                                                             <div key={answer.id} className="flex items-center space-x-2">
@@ -950,4 +956,5 @@ const ResultDisplayBlock = ({ block, answer, suivi }: { block: QuestionModel['qu
             );
     }
 };
+
 
