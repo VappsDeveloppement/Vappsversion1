@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
@@ -31,12 +32,12 @@ import { Badge } from "@/components/ui/badge";
 import { RichTextEditor } from '@/components/ui/rich-text-editor';
 import { useAgency } from '@/context/agency-provider';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import 'jspdf-autotable';
 import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
-import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search, Upload } from 'lucide-react';
+import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 import Image from 'next/image';
@@ -258,10 +259,14 @@ function FollowUpManager() {
     const { data: pathEnrollmentsData, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(pathEnrollmentsQuery);
 
     const combinedFollowUps = useMemo(() => {
-        const forms: CombinedFollowUp[] = (followUpsData || []).map(f => ({ ...f, type: 'form' }));
+        // Filter out follow-ups that are part of a path
+        const standaloneForms: CombinedFollowUp[] = (followUpsData || [])
+            .filter(f => !f.pathEnrollmentId)
+            .map(f => ({ ...f, type: 'form' }));
+
         const paths: CombinedFollowUp[] = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' }));
         
-        let allFollowUps = [...forms, ...paths];
+        let allFollowUps = [...standaloneForms, ...paths];
 
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
@@ -371,23 +376,25 @@ function FollowUpManager() {
                                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                                                     <Command>
                                                         <CommandInput placeholder="Rechercher un client..." />
-                                                        <CommandEmpty>Aucun client trouvé.</CommandEmpty>
                                                         <CommandList>
-                                                            {clients?.map((client) => (
-                                                                <CommandItem value={client.email} key={client.id} onSelect={() => { form.setValue("clientId", client.id) }}>
-                                                                    <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
-                                                                    <div>
-                                                                        <p>{client.firstName} {client.lastName}</p>
-                                                                        <p className="text-xs text-muted-foreground">{client.email}</p>
-                                                                    </div>
-                                                                </CommandItem>
-                                                            ))}
+                                                            <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                                                            <CommandGroup>
+                                                                {clients?.map((client) => (
+                                                                    <CommandItem value={client.email} key={client.id} onSelect={() => { form.setValue("clientId", client.id) }}>
+                                                                        <Check className={cn("mr-2 h-4 w-4", client.id === field.value ? "opacity-100" : "opacity-0")} />
+                                                                        <div>
+                                                                            <p>{client.firstName} {client.lastName}</p>
+                                                                            <p className="text-xs text-muted-foreground">{client.email}</p>
+                                                                        </div>
+                                                                    </CommandItem>
+                                                                ))}
+                                                            </CommandGroup>
                                                         </CommandList>
                                                     </Command>
                                                 </PopoverContent>
-                                            </Popover>
-                                            <FormMessage />
-                                        </FormItem>
+                                                </Popover>
+                                                <FormMessage />
+                                            </FormItem>
                                         )}
                                     />
                                     <FormField
@@ -1652,4 +1659,6 @@ const ResultDisplayBlock = ({ block, answer }: { block: QuestionModel['questions
             );
     }
 };
+
+
 
