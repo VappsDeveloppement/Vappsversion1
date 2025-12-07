@@ -796,7 +796,7 @@ function PublicFormSubmissionsManager() {
                                 const question = formsMap.get(viewingSubmission.formId)?.questions?.find((q:any) => q.id === ans.questionId);
                                 if (!question) return <p key={index}>Question inconnue</p>;
 
-                                let answerDisplay = JSON.stringify(ans.answer);
+                                let answerDisplay = JSON.stringify(ans.answer, null, 2);
                                 if (question.type === 'scale') {
                                     answerDisplay = Object.entries(ans.answer).map(([qId, val]) => {
                                         const subQ = question.questions.find((sq: any) => sq.id === qId);
@@ -808,12 +808,14 @@ function PublicFormSubmissionsManager() {
                                         const selectedAns = subQ?.answers.find((a: any) => a.id === ansId);
                                         return `${subQ.text}: ${selectedAns?.text || 'N/A'}`;
                                      }).join('; ');
+                                } else if (typeof ans.answer === 'string') {
+                                  answerDisplay = ans.answer;
                                 }
 
                                 return (
                                     <div key={index} className="text-sm">
                                         <p className="font-semibold">{question.title || question.question}</p>
-                                        <p className="text-muted-foreground pl-4">{answerDisplay}</p>
+                                        <p className="text-muted-foreground pl-4 whitespace-pre-wrap">{answerDisplay}</p>
                                     </div>
                                 )
                            })}
@@ -853,9 +855,6 @@ export default function DashboardPage() {
             <TrainingRequestsSection />
             <PublicFormSubmissionsManager />
 
-            <div className="flex items-center justify-center h-64 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground">D'autres statistiques et informations seront bientôt disponibles ici.</p>
-            </div>
         </div>
     );
 }
