@@ -834,7 +834,7 @@ function PublicFormSubmissionsManager() {
     );
 }
 
-export default function DashboardPage() {
+function CounselorDashboard() {
     const { user } = useUser();
     const firestore = useFirestore();
     const { personalization, isLoading: isAgencyLoading } = useAgency();
@@ -857,4 +857,59 @@ export default function DashboardPage() {
 
         </div>
     );
+}
+
+function MemberDashboard() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+    
+    return (
+        <div className="space-y-8">
+             <div>
+                <h1 className="text-3xl font-bold font-headline">Tableau de bord</h1>
+                <p className="text-muted-foreground">
+                    Bienvenue sur votre espace personnel, {userData?.firstName || '...'}.
+                </p>
+            </div>
+            <div className="flex items-center justify-center h-96 border-2 border-dashed rounded-lg">
+                <p className="text-muted-foreground">Tableau de bord membre</p>
+            </div>
+        </div>
+    );
+}
+
+
+export default function DashboardPage() {
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+    const isLoading = isUserLoading || isUserDataLoading;
+
+    if (isLoading) {
+        return (
+             <div className="space-y-8">
+                <Skeleton className="h-12 w-1/3" />
+                <Skeleton className="h-6 w-2/3" />
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                    <Skeleton className="h-28" />
+                    <Skeleton className="h-28" />
+                    <Skeleton className="h-28" />
+                    <Skeleton className="h-28" />
+                </div>
+                <Skeleton className="h-64" />
+            </div>
+        )
+    }
+
+    if (userData?.role === 'membre') {
+        return <MemberDashboard />;
+    }
+    
+    // Default to counselor dashboard for 'conseiller' or 'superadmin'
+    return <CounselorDashboard />;
 }
