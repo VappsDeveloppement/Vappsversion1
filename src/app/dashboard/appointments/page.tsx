@@ -2,15 +2,15 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, getHours, getMinutes, set } from 'date-fns';
+import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, getHours, getMinutes, set, getDay } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsUpDown, Check, Calendar as CalendarIcon, Ban } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking } from '@/firebase';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, doc, where, writeBatch } from 'firebase/firestore';
+import { collection, query, doc, where, writeBatch, getDocs } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -35,6 +35,7 @@ type Appointment = {
     clientId: string;
     clientName: string;
     details?: string;
+    counselorId?: string;
 };
 
 type Unavailability = {
@@ -56,6 +57,12 @@ type Client = {
     firstName: string;
     lastName: string;
     email: string;
+};
+
+type UserData = {
+    id: string;
+    role: 'conseiller' | 'membre';
+    counselorIds?: string[];
 };
 
 const appointmentSchema = z.object({
@@ -88,7 +95,7 @@ const toLocalISOString = (date: Date) => {
 };
 
 export default function AppointmentsPage() {
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
 
@@ -101,11 +108,67 @@ export default function AppointmentsPage() {
     const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
-    const appointmentsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, `users/${user.uid}/appointments`));
-    }, [user, firestore]);
-    const { data: appointments, isLoading: areAppointmentsLoading } = useCollection<Appointment>(appointmentsQuery);
+    const userDocRef = useMemoFirebase(() => user ? doc(firestore, 'users', user.uid) : null, [user, firestore]);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc<UserData>(userDocRef);
+
+    const [allAppointments, setAllAppointments] = useState<Appointment[]>([]);
+    const [areAppointmentsLoading, setAreAppointmentsLoading] = useState(true);
+
+    useEffect(() => {
+        if (!user || !userData) return;
+
+        setAreAppointmentsLoading(true);
+        let unsubscribes: (() => void)[] = [];
+
+        const fetchAppointments = async () => {
+            if (userData.role === 'conseiller') {
+                const q = query(collection(firestore, `users/${user.uid}/appointments`));
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    const counselorAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
+                    setAllAppointments(counselorAppointments);
+                    setAreAppointmentsLoading(false);
+                });
+                unsubscribes.push(unsubscribe);
+            } else if (userData.role === 'membre' && userData.counselorIds) {
+                const appointmentsMap = new Map<string, Appointment>();
+
+                const fetchPromises = userData.counselorIds.map(counselorId => {
+                    return new Promise<void>(resolve => {
+                        const q = query(
+                            collection(firestore, `users/${counselorId}/appointments`),
+                            where('clientId', '==', user.uid)
+                        );
+                        const unsubscribe = onSnapshot(q, snapshot => {
+                            snapshot.docChanges().forEach(change => {
+                                const appointment = { id: change.doc.id, ...change.doc.data(), counselorId } as Appointment;
+                                if (change.type === 'removed') {
+                                    appointmentsMap.delete(appointment.id);
+                                } else {
+                                    appointmentsMap.set(appointment.id, appointment);
+                                }
+                            });
+                            setAllAppointments(Array.from(appointmentsMap.values()));
+                            setAreAppointmentsLoading(false); // Can be set multiple times, but that's okay
+                            resolve();
+                        });
+                        unsubscribes.push(unsubscribe);
+                    });
+                });
+                 Promise.all(fetchPromises).finally(() => setAreAppointmentsLoading(false));
+            } else {
+                 setAreAppointmentsLoading(false);
+                 setAllAppointments([]);
+            }
+        };
+
+        fetchAppointments();
+
+        return () => {
+            unsubscribes.forEach(unsub => unsub());
+        };
+    }, [user, userData, firestore]);
+
+
     
     const unavailabilitiesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -177,7 +240,7 @@ export default function AppointmentsPage() {
             return;
         }
 
-        const allBlockedSlots = [...(appointments || []), ...(unavailabilities || [])];
+        const allBlockedSlots = [...(allAppointments || []), ...(unavailabilities || [])];
         const overlap = allBlockedSlots.some(slot => {
             if (editingAppointment && 'title' in slot && slot.id === editingAppointment.id) {
                 return false;
@@ -264,7 +327,13 @@ export default function AppointmentsPage() {
     
     const handleDeleteAppointment = async () => {
         if (!appointmentToDelete || !user) return;
-        const appointmentRef = doc(firestore, `users/${user.uid}/appointments`, appointmentToDelete.id);
+        const counselorId = userData?.role === 'conseiller' ? user.uid : appointmentToDelete.counselorId;
+        if (!counselorId) {
+             toast({ title: "Erreur", description: "Impossible de trouver le créateur du rendez-vous.", variant: 'destructive' });
+             return;
+        }
+
+        const appointmentRef = doc(firestore, `users/${counselorId}/appointments`, appointmentToDelete.id);
         
         try {
             await deleteDocumentNonBlocking(appointmentRef);
@@ -305,6 +374,8 @@ export default function AppointmentsPage() {
         setEditingAppointment(appointment);
         setIsAppointmentSheetOpen(true);
     }
+    
+    const isConseiller = userData?.role === 'conseiller';
 
     return (
         <div className="flex flex-col h-full">
@@ -319,87 +390,91 @@ export default function AppointmentsPage() {
                         <Button variant="outline" onClick={handleToday}>Aujourd'hui</Button>
                         <Button variant="outline" size="icon" onClick={handleNextWeek}><ChevronRight /></Button>
                     </div>
-                     <Dialog open={isUnavailabilitySheetOpen} onOpenChange={setIsUnavailabilitySheetOpen}>
-                        <DialogTrigger asChild>
-                            <Button variant="secondary"><Ban className="mr-2 h-4 w-4" />Bloquer un créneau</Button>
-                        </DialogTrigger>
-                         <DialogContent>
-                             <DialogHeader>
-                                <DialogTitle>Bloquer un créneau</DialogTitle>
-                                <DialogDescription>Définissez une période d'indisponibilité.</DialogDescription>
-                            </DialogHeader>
-                            <Form {...unavailabilityForm}>
-                                <form onSubmit={unavailabilityForm.handleSubmit(handleSaveUnavailability)} className="space-y-4 py-4">
-                                     <FormField control={unavailabilityForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Motif (optionnel)</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
-                                     <div className="grid grid-cols-2 gap-4">
-                                         <FormField control={unavailabilityForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                         <FormField control={unavailabilityForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                     </div>
-                                     <FormField control={unavailabilityForm.control} name="repeatDays" render={({ field }) => (<FormItem><FormLabel>Répéter pour les X prochains jours</FormLabel><FormControl><Input type="number" min="0" placeholder="0" {...field} value={field.value || 0} /></FormControl><FormMessage /></FormItem>)} />
-                                     <DialogFooter>
-                                        <DialogClose asChild><Button type="button" variant="outline">Annuler</Button></DialogClose>
-                                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Bloquer</Button>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                         </DialogContent>
-                     </Dialog>
-                     <Dialog open={isAppointmentSheetOpen} onOpenChange={setIsAppointmentSheetOpen}>
-                        <DialogTrigger asChild>
-                            <Button>
-                                <PlusCircle className="mr-2 h-4 w-4" />
-                                Ajouter un rendez-vous
-                            </Button>
-                        </DialogTrigger>
-                        <DialogContent className="sm:max-w-2xl flex flex-col max-h-[90vh]">
-                            <DialogHeader>
-                                <DialogTitle>{editingAppointment ? 'Modifier le' : 'Nouveau'} rendez-vous</DialogTitle>
-                            </DialogHeader>
-                            <Form {...appointmentForm}>
-                                <form onSubmit={appointmentForm.handleSubmit(handleSaveAppointment)} className="flex-1 flex flex-col overflow-hidden">
-                                     <ScrollArea className="flex-1 pr-6 -mr-6">
-                                        <div className="space-y-6 py-4">
-                                            <ClientSelector clients={clients || []} onClientSelect={setSelectedClient} isLoading={areClientsLoading} defaultValue={editingAppointment ? {id: editingAppointment.clientId, name: editingAppointment.clientName} : undefined} />
-                                            <FormField control={appointmentForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du rendez-vous</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                     {isConseiller && (
+                        <>
+                            <Dialog open={isUnavailabilitySheetOpen} onOpenChange={setIsUnavailabilitySheetOpen}>
+                                <DialogTrigger asChild>
+                                    <Button variant="secondary"><Ban className="mr-2 h-4 w-4" />Bloquer un créneau</Button>
+                                </DialogTrigger>
+                                <DialogContent>
+                                    <DialogHeader>
+                                        <DialogTitle>Bloquer un créneau</DialogTitle>
+                                        <DialogDescription>Définissez une période d'indisponibilité.</DialogDescription>
+                                    </DialogHeader>
+                                    <Form {...unavailabilityForm}>
+                                        <form onSubmit={unavailabilityForm.handleSubmit(handleSaveUnavailability)} className="space-y-4 py-4">
+                                            <FormField control={unavailabilityForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Motif (optionnel)</FormLabel><FormControl><Input {...field} value={field.value || ''} /></FormControl><FormMessage /></FormItem>)} />
                                             <div className="grid grid-cols-2 gap-4">
-                                                <FormField control={appointmentForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                                <FormField control={appointmentForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={unavailabilityForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                <FormField control={unavailabilityForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             </div>
-                                            <FormField control={appointmentForm.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        </div>
-                                    </ScrollArea>
-                                    <DialogFooter className="pt-4 border-t mt-auto flex justify-between w-full">
-                                         {editingAppointment && (
-                                            <AlertDialog>
-                                                <AlertDialogTrigger asChild>
-                                                    <Button type="button" variant="destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                            <FormField control={unavailabilityForm.control} name="repeatDays" render={({ field }) => (<FormItem><FormLabel>Répéter pour les X prochains jours</FormLabel><FormControl><Input type="number" min="0" placeholder="0" {...field} value={field.value || 0} /></FormControl><FormMessage /></FormItem>)} />
+                                            <DialogFooter>
+                                                <DialogClose asChild><Button type="button" variant="outline">Annuler</Button></DialogClose>
+                                                <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}Bloquer</Button>
+                                            </DialogFooter>
+                                        </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
+                            <Dialog open={isAppointmentSheetOpen} onOpenChange={setIsAppointmentSheetOpen}>
+                                <DialogTrigger asChild>
+                                    <Button>
+                                        <PlusCircle className="mr-2 h-4 w-4" />
+                                        Ajouter un rendez-vous
+                                    </Button>
+                                </DialogTrigger>
+                                <DialogContent className="sm:max-w-2xl flex flex-col max-h-[90vh]">
+                                    <DialogHeader>
+                                        <DialogTitle>{editingAppointment ? 'Modifier le' : 'Nouveau'} rendez-vous</DialogTitle>
+                                    </DialogHeader>
+                                    <Form {...appointmentForm}>
+                                        <form onSubmit={appointmentForm.handleSubmit(handleSaveAppointment)} className="flex-1 flex flex-col overflow-hidden">
+                                            <ScrollArea className="flex-1 pr-6 -mr-6">
+                                                <div className="space-y-6 py-4">
+                                                    <ClientSelector clients={clients || []} onClientSelect={setSelectedClient} isLoading={areClientsLoading} defaultValue={editingAppointment ? {id: editingAppointment.clientId, name: editingAppointment.clientName} : undefined} />
+                                                    <FormField control={appointmentForm.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du rendez-vous</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <div className="grid grid-cols-2 gap-4">
+                                                        <FormField control={appointmentForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                        <FormField control={appointmentForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    </div>
+                                                    <FormField control={appointmentForm.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                </div>
+                                            </ScrollArea>
+                                            <DialogFooter className="pt-4 border-t mt-auto flex justify-between w-full">
+                                                {editingAppointment && (
+                                                    <AlertDialog>
+                                                        <AlertDialogTrigger asChild>
+                                                            <Button type="button" variant="destructive">
+                                                                <Trash2 className="mr-2 h-4 w-4" /> Supprimer
+                                                            </Button>
+                                                        </AlertDialogTrigger>
+                                                        <AlertDialogContent>
+                                                            <AlertDialogHeader>
+                                                                <AlertDialogTitle>Supprimer ce rendez-vous ?</AlertDialogTitle>
+                                                                <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
+                                                            </AlertDialogHeader>
+                                                            <AlertDialogFooter>
+                                                                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                                                                <AlertDialogAction onClick={() => { setAppointmentToDelete(editingAppointment); handleDeleteAppointment(); }}>Confirmer</AlertDialogAction>
+                                                            </AlertDialogFooter>
+                                                        </AlertDialogContent>
+                                                    </AlertDialog>
+                                                )}
+                                                <div className='flex gap-2 ml-auto'>
+                                                    <Button type="button" variant="outline" onClick={() => setIsAppointmentSheetOpen(false)}>Annuler</Button>
+                                                    <Button type="submit" disabled={isSubmitting}>
+                                                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
+                                                        Sauvegarder
                                                     </Button>
-                                                </AlertDialogTrigger>
-                                                <AlertDialogContent>
-                                                    <AlertDialogHeader>
-                                                        <AlertDialogTitle>Supprimer ce rendez-vous ?</AlertDialogTitle>
-                                                        <AlertDialogDescription>Cette action est irréversible.</AlertDialogDescription>
-                                                    </AlertDialogHeader>
-                                                    <AlertDialogFooter>
-                                                        <AlertDialogCancel>Annuler</AlertDialogCancel>
-                                                        <AlertDialogAction onClick={() => { setAppointmentToDelete(editingAppointment); handleDeleteAppointment(); }}>Confirmer</AlertDialogAction>
-                                                    </AlertDialogFooter>
-                                                </AlertDialogContent>
-                                            </AlertDialog>
-                                        )}
-                                        <div className='flex gap-2 ml-auto'>
-                                            <Button type="button" variant="outline" onClick={() => setIsAppointmentSheetOpen(false)}>Annuler</Button>
-                                            <Button type="submit" disabled={isSubmitting}>
-                                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin"/>}
-                                                Sauvegarder
-                                            </Button>
-                                        </div>
-                                    </DialogFooter>
-                                </form>
-                            </Form>
-                        </DialogContent>
-                    </Dialog>
+                                                </div>
+                                            </DialogFooter>
+                                        </form>
+                                    </Form>
+                                </DialogContent>
+                            </Dialog>
+                        </>
+                    )}
                     <h2 className="font-semibold text-xl capitalize hidden md:block">
                         {format(firstDayCurrentWeek, 'MMMM yyyy', { locale: fr })}
                     </h2>
@@ -450,8 +525,8 @@ export default function AppointmentsPage() {
                                 return (
                                     <div
                                         key={unav.id}
-                                        onClick={() => setUnavailabilityToDelete(unav)}
-                                        className="absolute w-full left-0 bg-gray-200/50 flex items-center justify-center cursor-pointer hover:bg-gray-300/50"
+                                        onClick={() => isConseiller && setUnavailabilityToDelete(unav)}
+                                        className={cn("absolute w-full left-0 bg-gray-200/50 flex items-center justify-center", isConseiller && "cursor-pointer hover:bg-gray-300/50")}
                                         style={{
                                             top: `calc(4rem + ${top}rem)`,
                                             height: `${height}rem`,
@@ -463,7 +538,7 @@ export default function AppointmentsPage() {
                                 )
                             })}
                             {/* Render appointments */}
-                            {appointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
+                            {allAppointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
                                  if (!app.start || !app.end) return null;
                                 const start = parseISO(app.start);
                                 const end = parseISO(app.end);
@@ -482,7 +557,7 @@ export default function AppointmentsPage() {
                                             top: `calc(4rem + ${top}rem)`,
                                             height: `${height}rem`,
                                         }}
-                                        onClick={() => handleEditAppointment(app)}
+                                        onClick={() => isConseiller && handleEditAppointment(app)}
                                     >
                                         <p className="font-bold text-xs truncate">{app.title}</p>
                                         <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
