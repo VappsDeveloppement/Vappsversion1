@@ -2,7 +2,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, getHours, getMinutes, set, getDay } from 'date-fns';
+import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +24,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 
 type Appointment = {
@@ -287,7 +287,7 @@ export default function AppointmentsPage() {
             setIsAppointmentSheetOpen(false);
         } catch (error) {
             console.error("Error saving appointment: ", error);
-            toast({ title: 'Erreur', description: 'Impossible d\'enregistrer le rendez-vous.', variant: 'destructive'});
+            toast({ title: 'Erreur', description: "Impossible d'enregistrer le rendez-vous.", variant: 'destructive'});
         } finally {
             setIsSubmitting(false);
         }
@@ -488,7 +488,7 @@ export default function AppointmentsPage() {
 
             <div className="flex-1 grid grid-cols-[auto_1fr] overflow-hidden border rounded-lg bg-background">
                 <ScrollArea className='h-full'>
-                    <div className="bg-muted/50 sticky top-0 left-0 z-20">
+                    <div className="bg-muted/50 sticky top-0 left-0 z-10">
                         <div className="h-16 border-b flex items-center justify-center font-semibold">
                         Heures
                         </div>
@@ -534,7 +534,7 @@ export default function AppointmentsPage() {
                                         <div
                                             key={unav.id}
                                             onClick={() => isConseiller && setUnavailabilityToDelete(unav)}
-                                            className={cn("absolute w-full left-0 bg-gray-200/50 flex items-center justify-center", isConseiller && "cursor-pointer hover:bg-gray-300/50")}
+                                            className={cn("absolute w-full left-0 bg-gray-200/50 flex items-center justify-center z-20", isConseiller && "cursor-pointer hover:bg-gray-300/50")}
                                             style={{
                                                 top: `${top}rem`,
                                                 height: `${height}rem`,
@@ -548,7 +548,7 @@ export default function AppointmentsPage() {
                                 {/* Render appointments */}
                                 {allAppointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
                                     if (!app.start || !app.end) return null;
-                                    const start = new Date(app.start); // Use new Date() to get local time from ISO string
+                                    const start = new Date(app.start);
                                     const end = new Date(app.end);
                                     
                                     const topOffsetInMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
@@ -560,7 +560,7 @@ export default function AppointmentsPage() {
                                     return (
                                         <div
                                             key={app.id}
-                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer"
+                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer z-20"
                                             style={{
                                                 top: `${top}rem`,
                                                 height: `${height}rem`,
@@ -586,7 +586,7 @@ export default function AppointmentsPage() {
                                     return (
                                         <div
                                             key={event.id}
-                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-blue-500/20 border-l-4 border-blue-500 p-2 rounded-r-lg overflow-hidden"
+                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-blue-500/20 border-l-4 border-blue-500 p-2 rounded-r-lg overflow-hidden z-20"
                                             style={{
                                                 top: `${top}rem`,
                                                 height: `${height}rem`,
@@ -674,3 +674,5 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
+
+    
