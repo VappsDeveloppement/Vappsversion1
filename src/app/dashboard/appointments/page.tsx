@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
-import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, isAfter } from 'date-fns';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, isAfter, isValid } from 'date-fns';
 import { fr } from 'date-fns/locale';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -281,7 +281,7 @@ export default function AppointmentsPage() {
             setIsAppointmentSheetOpen(false);
         } catch (error) {
             console.error("Error saving appointment: ", error);
-            toast({ title: 'Erreur', description: 'Impossible d\'enregistrer le rendez-vous.', variant: 'destructive'});
+            toast({ title: 'Erreur', description: "Impossible d'enregistrer le rendez-vous.", variant: 'destructive'});
         } finally {
             setIsSubmitting(false);
         }
@@ -486,8 +486,17 @@ export default function AppointmentsPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
                     {weekDays.map(day => {
                         const dayEvents = [...(allAppointments || []), ...(unavailabilities || []), ...(events || [])]
-                          .filter(e => e.start ? isSameDay(parseISO(e.start), day) : isSameDay(parseISO((e as Event).date), day))
-                          .sort((a,b) => isAfter(parseISO(a.start || (a as Event).date), parseISO(b.start || (b as Event).date)) ? 1 : -1);
+                          .filter(e => {
+                              const dateStr = (e as any).start || (e as Event).date;
+                              if (!dateStr || !isValid(parseISO(dateStr))) return false;
+                              return isSameDay(parseISO(dateStr), day);
+                          })
+                          .sort((a,b) => {
+                              const dateA = (a as any).start || (a as Event).date;
+                              const dateB = (b as any).start || (b as Event).date;
+                              if (!dateA || !dateB) return 0;
+                              return isAfter(parseISO(dateA), parseISO(dateB)) ? 1 : -1;
+                          });
 
                         return (
                         <Card key={day.toString()} className={cn("flex flex-col", isSameDay(day, new Date()) && "border-primary")}>
@@ -503,7 +512,7 @@ export default function AppointmentsPage() {
                                                 <div key={event.id} onClick={() => isConseiller && handleEditAppointment(event)} className="p-2 rounded-md bg-primary/10 border-l-4 border-primary space-y-1 cursor-pointer hover:bg-primary/20">
                                                     <p className="font-bold text-sm truncate">{event.title}</p>
                                                     <div className="text-xs text-muted-foreground space-y-0.5">
-                                                        <p className="flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(parseISO(event.start), 'HH:mm')} - {format(parseISO(event.end), 'HH:mm')}</p>
+                                                        <p className="flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(new Date(event.start), 'HH:mm')} - {format(new Date(event.end), 'HH:mm')}</p>
                                                         <p className="flex items-center gap-1.5"><UserIcon className="h-3 w-3"/>{event.clientName}</p>
                                                     </div>
                                                 </div>
@@ -512,14 +521,14 @@ export default function AppointmentsPage() {
                                              return (
                                                 <div key={event.id} className="p-2 rounded-md bg-blue-500/10 border-l-4 border-blue-500 space-y-1">
                                                      <p className="font-bold text-sm truncate flex items-center gap-1"><CalendarIcon className='h-3 w-3'/> {event.title}</p>
-                                                      <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(parseISO(event.date), 'HH:mm')}</p>
+                                                      <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(new Date(event.date), 'HH:mm')}</p>
                                                 </div>
                                             )
                                         } else { // It's an Unavailability
                                              return (
                                                  <div key={event.id} onClick={() => isConseiller && setUnavailabilityToDelete(event)} className={cn("p-2 rounded-md bg-gray-200/50 space-y-1", isConseiller && "cursor-pointer hover:bg-gray-300/50")}>
                                                      <p className="text-xs text-gray-500 font-medium truncate">{event.title}</p>
-                                                     <p className="text-xs text-gray-500 flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(parseISO(event.start), 'HH:mm')} - {format(parseISO(event.end), 'HH:mm')}</p>
+                                                     <p className="text-xs text-gray-500 flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(new Date(event.start), 'HH:mm')} - {format(new Date(event.end), 'HH:mm')}</p>
                                                  </div>
                                             )
                                         }
