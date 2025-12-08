@@ -521,10 +521,10 @@ export default function AppointmentsPage() {
                                 {/* Render Unavailabilities */}
                                 {unavailabilities?.filter(unav => unav.start && isSameDay(parseISO(unav.start), day)).map(unav => {
                                     if (!unav.start || !unav.end) return null;
-                                    const start = parseISO(unav.start);
-                                    const end = parseISO(unav.end);
+                                    const start = new Date(unav.start);
+                                    const end = new Date(unav.end);
                                     
-                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                    const topOffsetInMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
                                     const top = (topOffsetInMinutes / 60) * hourHeightInRem;
 
                                     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
@@ -548,10 +548,10 @@ export default function AppointmentsPage() {
                                 {/* Render appointments */}
                                 {allAppointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
                                     if (!app.start || !app.end) return null;
-                                    const start = parseISO(app.start);
-                                    const end = parseISO(app.end);
+                                    const start = new Date(app.start); // Use new Date() to get local time from ISO string
+                                    const end = new Date(app.end);
                                     
-                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                    const topOffsetInMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
                                     const top = (topOffsetInMinutes / 60) * hourHeightInRem;
 
                                     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
@@ -574,10 +574,10 @@ export default function AppointmentsPage() {
                                 })}
                                 {/* Render events */}
                                 {events?.filter(event => isSameDay(parseISO(event.date), day)).map(event => {
-                                    const start = parseISO(event.date);
+                                    const start = new Date(event.date);
                                     const end = add(start, { hours: 1 });
                                     
-                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                    const topOffsetInMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
                                     const top = (topOffsetInMinutes / 60) * hourHeightInRem;
 
                                     const durationMinutes = 60;
