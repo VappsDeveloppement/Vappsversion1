@@ -438,7 +438,7 @@ export default function AppointmentsPage() {
                                                         <FormField control={appointmentForm.control} name="start" render={({ field }) => (<FormItem><FormLabel>Début</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                         <FormField control={appointmentForm.control} name="end" render={({ field }) => (<FormItem><FormLabel>Fin</FormLabel><FormControl><Input type="datetime-local" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                                     </div>
-                                                    <FormField control={appointmentForm.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                                    <FormField control={appointmentForm.control} name="details" render={({ field }) => (<FormItem><FormLabel>Détails</FormLabel><FormControl><Textarea rows={4} {...field} value={field.value || ''}/></FormControl><FormMessage /></FormItem>)} />
                                                 </div>
                                             </ScrollArea>
                                             <DialogFooter className="pt-4 border-t mt-auto flex justify-between w-full">
@@ -481,116 +481,120 @@ export default function AppointmentsPage() {
                 </div>
             </header>
 
-            <div className="flex-1 grid grid-cols-[auto_1fr] overflow-auto border rounded-lg bg-background">
-                <div className="bg-muted/50 sticky left-0 z-20">
-                     <div className="h-16 border-b flex items-center justify-center font-semibold">
-                       Heures
+            <div className="flex-1 grid grid-cols-[auto_1fr] overflow-hidden border rounded-lg bg-background">
+                <ScrollArea className='h-full'>
+                    <div className="bg-muted/50 sticky top-0 left-0 z-20">
+                        <div className="h-16 border-b flex items-center justify-center font-semibold">
+                        Heures
+                        </div>
+                        {hours.map(hour => (
+                            <div key={hour} className="h-20 text-center border-b flex items-center justify-center">
+                                <span className="text-xs text-muted-foreground -translate-y-1/2">{hour}</span>
+                            </div>
+                        ))}
                     </div>
-                    {hours.map(hour => (
-                         <div key={hour} className="h-20 text-center border-b flex items-center justify-center">
-                            <span className="text-xs text-muted-foreground -translate-y-1/2">{hour}</span>
-                        </div>
-                    ))}
-                </div>
+                </ScrollArea>
 
-                <div className="grid grid-cols-7 relative">
-                    {weekDays.map(day => (
-                        <div key={day.toString()} className="border-l relative">
-                            <div className="h-16 border-b p-2 text-center sticky top-0 bg-background z-10">
-                                <p className="text-sm text-muted-foreground">{format(day, 'EEE', { locale: fr })}</p>
-                                <p className={`text-2xl font-bold ${isSameDay(day, new Date()) ? 'text-primary' : ''}`}>
-                                    {format(day, 'd')}
-                                </p>
+                <ScrollArea className="h-full">
+                    <div className="grid grid-cols-7 relative min-h-full">
+                        {weekDays.map(day => (
+                            <div key={day.toString()} className="border-l relative">
+                                <div className="h-16 border-b p-2 text-center sticky top-0 bg-background z-10">
+                                    <p className="text-sm text-muted-foreground">{format(day, 'EEE', { locale: fr })}</p>
+                                    <p className={`text-2xl font-bold ${isSameDay(day, new Date()) ? 'text-primary' : ''}`}>
+                                        {format(day, 'd')}
+                                    </p>
+                                </div>
+                                <div className="h-full">
+                                    {hours.map((hour, hourIndex) => (
+                                        <div 
+                                            key={`${day.toString()}-${hour}`} 
+                                            className="h-20 border-b"
+                                        ></div>
+                                    ))}
+                                </div>
+                                {/* Render Unavailabilities */}
+                                {unavailabilities?.filter(unav => unav.start && isSameDay(parseISO(unav.start), day)).map(unav => {
+                                    if (!unav.start || !unav.end) return null;
+                                    const start = parseISO(unav.start);
+                                    const end = parseISO(unav.end);
+                                    
+                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
+
+                                    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+                                    const height = (durationMinutes / 60) * hourHeightInRem;
+
+                                    return (
+                                        <div
+                                            key={unav.id}
+                                            onClick={() => isConseiller && setUnavailabilityToDelete(unav)}
+                                            className={cn("absolute w-full left-0 bg-gray-200/50 flex items-center justify-center", isConseiller && "cursor-pointer hover:bg-gray-300/50")}
+                                            style={{
+                                                top: `${top}rem`,
+                                                height: `${height}rem`,
+                                                backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 8px)',
+                                            }}
+                                        >
+                                            <p className="text-xs text-gray-500 font-medium">{unav.title || 'Indisponible'}</p>
+                                        </div>
+                                    )
+                                })}
+                                {/* Render appointments */}
+                                {allAppointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
+                                    if (!app.start || !app.end) return null;
+                                    const start = parseISO(app.start);
+                                    const end = parseISO(app.end);
+                                    
+                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
+
+                                    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
+                                    const height = (durationMinutes / 60) * hourHeightInRem;
+
+                                    return (
+                                        <div
+                                            key={app.id}
+                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer"
+                                            style={{
+                                                top: `${top}rem`,
+                                                height: `${height}rem`,
+                                            }}
+                                            onClick={() => isConseiller && handleEditAppointment(app)}
+                                        >
+                                            <p className="font-bold text-xs truncate">{app.title}</p>
+                                            <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
+                                        </div>
+                                    )
+                                })}
+                                {/* Render events */}
+                                {events?.filter(event => isSameDay(parseISO(event.date), day)).map(event => {
+                                    const start = parseISO(event.date);
+                                    const end = add(start, { hours: 1 });
+                                    
+                                    const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
+                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
+
+                                    const durationMinutes = 60;
+                                    const height = (durationMinutes / 60) * hourHeightInRem;
+                                    
+                                    return (
+                                        <div
+                                            key={event.id}
+                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-blue-500/20 border-l-4 border-blue-500 p-2 rounded-r-lg overflow-hidden"
+                                            style={{
+                                                top: `${top}rem`,
+                                                height: `${height}rem`,
+                                            }}
+                                        >
+                                            <p className="font-bold text-xs truncate flex items-center gap-1"><CalendarIcon className='h-3 w-3'/> {event.title}</p>
+                                        </div>
+                                    )
+                                })}
                             </div>
-                            <div className="h-full">
-                                {hours.map((hour, hourIndex) => (
-                                    <div 
-                                        key={`${day.toString()}-${hour}`} 
-                                        className="h-20 border-b"
-                                    ></div>
-                                ))}
-                            </div>
-                            {/* Render Unavailabilities */}
-                            {unavailabilities?.filter(unav => unav.start && isSameDay(parseISO(unav.start), day)).map(unav => {
-                                if (!unav.start || !unav.end) return null;
-                                const start = parseISO(unav.start);
-                                const end = parseISO(unav.end);
-                                
-                                const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
-                                const top = (topOffsetInMinutes / 60) * hourHeightInRem;
-
-                                const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-                                const height = (durationMinutes / 60) * hourHeightInRem;
-
-                                return (
-                                    <div
-                                        key={unav.id}
-                                        onClick={() => isConseiller && setUnavailabilityToDelete(unav)}
-                                        className={cn("absolute w-full left-0 bg-gray-200/50 flex items-center justify-center", isConseiller && "cursor-pointer hover:bg-gray-300/50")}
-                                        style={{
-                                            top: `calc(4rem + ${top}rem)`,
-                                            height: `${height}rem`,
-                                            backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 8px)',
-                                        }}
-                                    >
-                                        <p className="text-xs text-gray-500 font-medium">{unav.title || 'Indisponible'}</p>
-                                    </div>
-                                )
-                            })}
-                            {/* Render appointments */}
-                            {allAppointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
-                                 if (!app.start || !app.end) return null;
-                                const start = parseISO(app.start);
-                                const end = parseISO(app.end);
-                                
-                                const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
-                                const top = (topOffsetInMinutes / 60) * hourHeightInRem;
-
-                                const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-                                const height = (durationMinutes / 60) * hourHeightInRem;
-
-                                return (
-                                    <div
-                                        key={app.id}
-                                        className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer"
-                                        style={{
-                                            top: `calc(4rem + ${top}rem)`,
-                                            height: `${height}rem`,
-                                        }}
-                                        onClick={() => isConseiller && handleEditAppointment(app)}
-                                    >
-                                        <p className="font-bold text-xs truncate">{app.title}</p>
-                                        <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
-                                    </div>
-                                )
-                            })}
-                            {/* Render events */}
-                             {events?.filter(event => isSameDay(parseISO(event.date), day)).map(event => {
-                                const start = parseISO(event.date);
-                                const end = add(start, { hours: 1 });
-                                
-                                const topOffsetInMinutes = (getHours(start) - startHour) * 60 + getMinutes(start);
-                                const top = (topOffsetInMinutes / 60) * hourHeightInRem;
-
-                                const durationMinutes = 60;
-                                const height = (durationMinutes / 60) * hourHeightInRem;
-                                
-                                return (
-                                     <div
-                                        key={event.id}
-                                        className="absolute w-[calc(100%-4px)] left-[2px] bg-blue-500/20 border-l-4 border-blue-500 p-2 rounded-r-lg overflow-hidden"
-                                        style={{
-                                            top: `calc(4rem + ${top}rem)`,
-                                            height: `${height}rem`,
-                                        }}
-                                    >
-                                        <p className="font-bold text-xs truncate flex items-center gap-1"><CalendarIcon className='h-3 w-3'/> {event.title}</p>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    ))}
-                </div>
+                        ))}
+                    </div>
+                </ScrollArea>
             </div>
              <AlertDialog open={!!unavailabilityToDelete} onOpenChange={(open) => !open && setUnavailabilityToDelete(null)}>
                 <AlertDialogContent>
@@ -665,7 +669,3 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
-
-    
-
-    

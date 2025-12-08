@@ -363,7 +363,7 @@ export default function DashboardLayout({
                 </div>
                 <SidebarTrigger className="md:hidden" />
             </header>
-            <main className="flex-1 p-4 sm:p-6 lg:p-8">
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 h-[calc(100vh-65px)] overflow-auto">
                 {children}
             </main>
         </SidebarInset>
