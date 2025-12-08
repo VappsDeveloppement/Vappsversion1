@@ -551,7 +551,7 @@ export default function AppointmentsPage() {
                                     const start = new Date(app.start);
                                     const end = new Date(app.end);
                                     
-                                    const topOffsetInMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
+                                    const topOffsetInMinutes = (start.getUTCHours() - startHour) * 60 + start.getUTCMinutes();
                                     const top = (topOffsetInMinutes / 60) * hourHeightInRem;
 
                                     const durationMinutes = (end.getTime() - start.getTime()) / 60000;
