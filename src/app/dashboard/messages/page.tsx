@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -41,6 +40,9 @@ type Conversation = {
         text: string;
         timestamp: any;
     };
+    lastRead?: {
+        [key: string]: any;
+    }
 };
 
 type Message = {
@@ -163,11 +165,21 @@ function MessagesView({ conversation }: { conversation: Conversation }) {
     }, [conversation, firestore]);
     const { data: messages, isLoading } = useCollection<Message>(messagesQuery);
     
-    useEffect(() => {
+     useEffect(() => {
         if (scrollAreaRef.current) {
             scrollAreaRef.current.scrollTo({ top: scrollAreaRef.current.scrollHeight });
         }
-    }, [messages]);
+        
+        // Mark conversation as read when messages are viewed
+        if (user && conversation.id && messages) {
+             const convoRef = doc(firestore, 'conversations', conversation.id);
+             setDocumentNonBlocking(convoRef, {
+                lastRead: {
+                    [user.uid]: serverTimestamp()
+                }
+            }, { merge: true });
+        }
+    }, [messages, user, conversation.id, firestore]);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
@@ -187,6 +199,9 @@ function MessagesView({ conversation }: { conversation: Conversation }) {
             lastMessage: {
                 text: newMessage,
                 timestamp: serverTimestamp(),
+            },
+            lastRead: { // Also update our own last read
+                [user.uid]: serverTimestamp()
             }
         }, { merge: true });
 
@@ -289,6 +304,10 @@ export default function MessagesPage() {
                         <nav className="p-2 space-y-1">
                             {sortedConversations?.map(convo => {
                                 const otherParticipant = convo.participantInfo.find(p => p.userId !== user?.uid);
+                                const lastMessageTimestamp = convo.lastMessage?.timestamp?.toDate();
+                                const lastReadTimestamp = convo.lastRead?.[user!.uid]?.toDate();
+                                const hasUnread = lastMessageTimestamp && (!lastReadTimestamp || lastMessageTimestamp > lastReadTimestamp);
+
                                 return (
                                     <button
                                         key={convo.id}
@@ -306,6 +325,7 @@ export default function MessagesPage() {
                                             <p className="font-semibold truncate">{otherParticipant?.name}</p>
                                             {convo.lastMessage && <p className="text-xs text-muted-foreground truncate">{convo.lastMessage.text}</p>}
                                         </div>
+                                        {hasUnread && <div className="w-2.5 h-2.5 rounded-full bg-primary flex-shrink-0" />}
                                     </button>
                                 )
                             })}

@@ -1,6 +1,50 @@
-
 {
   "entities": {
+    "Conversation": {
+      "title": "Conversation",
+      "type": "object",
+      "description": "Represents a private conversation between two or more users.",
+      "properties": {
+        "participantIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "An array of user IDs participating in the conversation."
+        },
+        "participantInfo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string" },
+              "name": { "type": "string" },
+              "photoUrl": { "type": "string", "format": "uri", "nullable": true }
+            }
+          }
+        },
+        "lastMessage": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "timestamp": { "type": "string", "format": "date-time" }
+          }
+        },
+        "lastRead": {
+          "type": "object",
+          "description": "A map of user IDs to the timestamp of their last read.",
+          "additionalProperties": { "type": "string", "format": "date-time" }
+        }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a single message within a conversation.",
+      "properties": {
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
     "QuestionModel": {
         "title": "Question Model",
         "type": "object",
@@ -1017,47 +1061,6 @@
         "status"
       ]
     },
-    "Message": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Message",
-      "type": "object",
-      "description": "Represents a message sent between users on the platform.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the message."
-        },
-        "senderId": {
-          "type": "string",
-          "description": "Reference to User who sent the message. (Relationship: User 1:N Message)"
-        },
-        "recipientId": {
-          "type": "string",
-          "description": "Reference to User who received the message. (Relationship: User 1:N Message)"
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "The date and time the message was sent.",
-          "format": "date-time"
-        },
-        "content": {
-          "type": "string",
-          "description": "The content of the message."
-        },
-        "isRead": {
-          "type": "boolean",
-          "description": "Indicates whether the recipient has read the message."
-        }
-      },
-      "required": [
-        "id",
-        "senderId",
-        "recipientId",
-        "timestamp",
-        "content",
-        "isRead"
-      ]
-    },
     "Consent": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Consent",
@@ -1780,6 +1783,22 @@
           "description": "Stores question templates created by a counselor."
         }
       },
+       {
+        "path": "/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "schema": { "$ref": "#/entities/Conversation" },
+          "description": "Stores conversation metadata."
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": { "$ref": "#/entities/Message" },
+          "description": "Subcollection for messages within a conversation."
+        }
+      },
       {
         "path": "/minisites/{counselorId}",
         "definition": {
@@ -1857,6 +1876,14 @@
         }
       },
       {
+        "path": "/quotes/{quoteId}",
+        "definition": {
+            "entityName": "Quote",
+            "schema": { "$ref": "#/entities/Quote" },
+            "description": "Publicly accessible quotes for client validation. Document ID matches the one in the user's subcollection."
+        }
+      },
+      {
         "path": "/users/{userId}/invoices/{invoiceId}",
         "definition": {
           "entityName": "Invoice",
@@ -1864,16 +1891,6 @@
             "$ref": "#/backend/entities/Invoice"
           },
           "description": "Stores invoices for a specific user. Path-based ownership ensures only the user can access their invoices."
-        }
-      },
-      {
-        "path": "/users/{userId}/messages/{messageId}",
-        "definition": {
-          "entityName": "Message",
-          "schema": {
-            "$ref": "#/backend/entities/Message"
-          },
-          "description": "Stores messages for a specific user. Path-based ownership secures message access."
         }
       },
       {
@@ -2034,6 +2051,22 @@
           "entityName": "Product",
           "schema": { "$ref": "#/entities/Product" },
           "description": "Stores products for the Aura tool."
+        }
+      },
+      {
+        "path": "/plans/{planId}",
+        "definition": {
+            "entityName": "SubscriptionPlan",
+            "schema": { "$ref": "#/entities/SubscriptionPlan" },
+            "description": "Stores subscription plans created by counselors."
+        }
+      },
+      {
+        "path": "/contracts/{contractId}",
+        "definition": {
+            "entityName": "Contract",
+            "schema": { "$ref": "#/entities/Contract" },
+            "description": "Stores contract templates created by counselors."
         }
       }
     ],
