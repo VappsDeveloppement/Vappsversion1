@@ -3,32 +3,52 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Règles Publiques Spécifiques ---
+    // --- Règles Utilisateurs ---
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+      allow create: if request.auth.uid != null;
+    }
 
-    // Permet à n'importe qui de créer une candidature (formulaire public)
-    // Seuls les utilisateurs authentifiés peuvent lire ou modifier les candidatures existantes.
+    // --- Règles Conseillers Spécifiques ---
+    match /users/{counselorId}/{collection}/{docId} {
+      allow read, write: if request.auth.uid == counselorId;
+    }
+    
+    // --- Règles de Messagerie ---
+    match /conversations/{conversationId} {
+      allow read, create, update: if request.auth.uid in resource.data.participantIds;
+      
+      match /messages/{messageId} {
+        allow read, create: if get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds.hasAny([request.auth.uid]);
+      }
+    }
+
+    // --- Règles Publiques Spécifiques ---
     match /job_applications/{applicationId} {
       allow create: if true;
       allow read, update, delete: if request.auth != null;
     }
-
-    // Permet à n'importe qui de créer un message de contact (formulaire public)
     match /contact_messages/{messageId} {
       allow create: if true;
       allow read, update, delete: if request.auth != null;
     }
-
-    // Permet à n'importe qui de lire un devis public et de le mettre à jour (pour signature/refus)
     match /quotes/{quoteId} {
       allow read: if true;
       allow update: if request.auth == null && resource.data.status != write.resource.data.status;
     }
+    match /public_forms/{formId} {
+        allow read: if true;
+        allow write: if request.auth != null;
+    }
+     match /public_forms/{formId}/submissions/{submissionId} {
+        allow create: if true;
+        allow read, update, delete: if request.auth != null;
+    }
     
     // --- Règles Générales ---
-    // Cette règle s'applique à toutes les autres collections qui n'ont pas de règle spécifique.
     match /{document=**} {
-      allow read: if true; // Permet la lecture publique (mini-sites, articles, etc.)
-      allow write: if request.auth != null; // Requiert une authentification pour toute écriture
+      allow read: if true;
+      allow write: if request.auth != null;
     }
   }
 }

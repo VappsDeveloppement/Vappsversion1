@@ -1,6 +1,45 @@
-
 {
   "entities": {
+    "Conversation": {
+      "title": "Conversation",
+      "type": "object",
+      "description": "Represents a private conversation between two or more users.",
+      "properties": {
+        "participantIds": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "An array of user IDs participating in the conversation."
+        },
+        "participantInfo": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": { "type": "string" },
+              "name": { "type": "string" },
+              "photoUrl": { "type": "string", "format": "uri" }
+            }
+          }
+        },
+        "lastMessage": {
+          "type": "object",
+          "properties": {
+            "text": { "type": "string" },
+            "timestamp": { "type": "string", "format": "date-time" }
+          }
+        }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "description": "Represents a single message within a conversation.",
+      "properties": {
+        "senderId": { "type": "string" },
+        "text": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      }
+    },
     "QuestionModel": {
         "title": "Question Model",
         "type": "object",
@@ -971,70 +1010,6 @@
             }
         }
     },
-    "Appointment": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Appointment",
-      "type": "object",
-      "description": "Represents a scheduled appointment between a coach and a client.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the appointment."
-        },
-        "counselorId": {
-          "type": "string",
-          "description": "Reference to User representing the coach. (Relationship: User 1:N Appointment)"
-        },
-        "clientId": {
-          "type": "string",
-          "description": "Reference to User representing the client. (Relationship: User 1:N Appointment)"
-        },
-        "clientName": {
-          "type": "string",
-          "description": "Full name of the client."
-        },
-        "title": {
-            "type": "string",
-            "description": "The title or subject of the appointment."
-        },
-        "start": {
-          "type": "string",
-          "description": "The start date and time of the appointment (ISO 8601).",
-          "format": "date-time"
-        },
-        "end": {
-          "type": "string",
-          "description": "The end date and time of the appointment (ISO 8601).",
-          "format": "date-time"
-        },
-        "details": {
-          "type": "string",
-          "description": "Notes or details related to the appointment"
-        }
-      },
-      "required": [
-        "id",
-        "counselorId",
-        "clientId",
-        "clientName",
-        "title",
-        "start",
-        "end"
-      ]
-    },
-    "Unavailability": {
-      "title": "Unavailability",
-      "type": "object",
-      "description": "Represents a block of time where a counselor is unavailable.",
-      "properties": {
-        "id": { "type": "string" },
-        "counselorId": { "type": "string" },
-        "title": { "type": "string" },
-        "start": { "type": "string", "format": "date-time" },
-        "end": { "type": "string", "format": "date-time" }
-      },
-      "required": ["counselorId", "start", "end"]
-    },
     "EmailCampaign": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "EmailCampaign",
@@ -1079,47 +1054,6 @@
         "segment",
         "scheduledTime",
         "status"
-      ]
-    },
-    "Message": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "Message",
-      "type": "object",
-      "description": "Represents a message sent between users on the platform.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the message."
-        },
-        "senderId": {
-          "type": "string",
-          "description": "Reference to User who sent the message. (Relationship: User 1:N Message)"
-        },
-        "recipientId": {
-          "type": "string",
-          "description": "Reference to User who received the message. (Relationship: User 1:N Message)"
-        },
-        "timestamp": {
-          "type": "string",
-          "description": "The date and time the message was sent.",
-          "format": "date-time"
-        },
-        "content": {
-          "type": "string",
-          "description": "The content of the message."
-        },
-        "isRead": {
-          "type": "boolean",
-          "description": "Indicates whether the recipient has read the message."
-        }
-      },
-      "required": [
-        "id",
-        "senderId",
-        "recipientId",
-        "timestamp",
-        "content",
-        "isRead"
       ]
     },
     "Consent": {
@@ -1788,22 +1722,6 @@
           "description": "Stores client enrollments in learning paths created by a counselor."
         }
       },
-       {
-        "path": "/users/{userId}/appointments/{appointmentId}",
-        "definition": {
-          "entityName": "Appointment",
-          "schema": { "$ref": "#/entities/Appointment" },
-          "description": "Stores appointments for a specific counselor."
-        }
-      },
-      {
-        "path": "/users/{userId}/unavailabilities/{unavailabilityId}",
-        "definition": {
-          "entityName": "Unavailability",
-          "schema": { "$ref": "#/entities/Unavailability" },
-          "description": "Stores unavailability blocks for a specific counselor."
-        }
-      },
       {
         "path": "/users/{userId}/learning_paths/{pathId}",
         "definition": {
@@ -1858,6 +1776,22 @@
           "entityName": "QuestionModel",
           "schema": { "$ref": "#/entities/QuestionModel" },
           "description": "Stores question templates created by a counselor."
+        }
+      },
+       {
+        "path": "/conversations/{conversationId}",
+        "definition": {
+          "entityName": "Conversation",
+          "schema": { "$ref": "#/entities/Conversation" },
+          "description": "Stores conversation metadata."
+        }
+      },
+      {
+        "path": "/conversations/{conversationId}/messages/{messageId}",
+        "definition": {
+          "entityName": "Message",
+          "schema": { "$ref": "#/entities/Message" },
+          "description": "Subcollection for messages within a conversation."
         }
       },
       {
@@ -1952,16 +1886,6 @@
             "$ref": "#/backend/entities/Invoice"
           },
           "description": "Stores invoices for a specific user. Path-based ownership ensures only the user can access their invoices."
-        }
-      },
-      {
-        "path": "/users/{userId}/messages/{messageId}",
-        "definition": {
-          "entityName": "Message",
-          "schema": {
-            "$ref": "#/backend/entities/Message"
-          },
-          "description": "Stores messages for a specific user. Path-based ownership secures message access."
         }
       },
       {
