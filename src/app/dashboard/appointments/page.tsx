@@ -10,7 +10,7 @@ import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsU
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, doc, where, writeBatch, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, doc, where, writeBatch, getDocs, onSnapshot, Unsubscribe } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -116,53 +116,58 @@ export default function AppointmentsPage() {
 
     useEffect(() => {
         if (!user || !userData) return;
-
-        setAreAppointmentsLoading(true);
-        let unsubscribes: (() => void)[] = [];
-
-        const fetchAppointments = async () => {
-            if (userData.role === 'conseiller') {
-                const q = query(collection(firestore, `users/${user.uid}/appointments`));
-                const unsubscribe = onSnapshot(q, (snapshot) => {
-                    const counselorAppointments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Appointment));
-                    setAllAppointments(counselorAppointments);
-                    setAreAppointmentsLoading(false);
+    
+        let unsubscribes: Unsubscribe[] = [];
+        const appointmentsMap = new Map<string, Appointment>();
+    
+        const subscribeToAppointments = (queryPath: any, counselorId?: string) => {
+            const q = query(queryPath);
+            const unsubscribe = onSnapshot(q, snapshot => {
+                snapshot.docChanges().forEach(change => {
+                    const docData = change.doc.data();
+                    const appointmentId = change.doc.id;
+                    if (change.type === 'removed') {
+                        appointmentsMap.delete(appointmentId);
+                    } else {
+                        appointmentsMap.set(appointmentId, { 
+                            id: appointmentId, 
+                            ...docData,
+                            counselorId: docData.counselorId || counselorId,
+                        } as Appointment);
+                    }
                 });
-                unsubscribes.push(unsubscribe);
-            } else if (userData.role === 'membre' && userData.counselorIds) {
-                const appointmentsMap = new Map<string, Appointment>();
-
-                const fetchPromises = userData.counselorIds.map(counselorId => {
-                    return new Promise<void>(resolve => {
-                        const q = query(
-                            collection(firestore, `users/${counselorId}/appointments`),
-                            where('clientId', '==', user.uid)
-                        );
-                        const unsubscribe = onSnapshot(q, snapshot => {
-                            snapshot.docChanges().forEach(change => {
-                                const appointment = { id: change.doc.id, ...change.doc.data(), counselorId } as Appointment;
-                                if (change.type === 'removed') {
-                                    appointmentsMap.delete(appointment.id);
-                                } else {
-                                    appointmentsMap.set(appointment.id, appointment);
-                                }
-                            });
-                            setAllAppointments(Array.from(appointmentsMap.values()));
-                            setAreAppointmentsLoading(false); // Can be set multiple times, but that's okay
-                            resolve();
-                        });
-                        unsubscribes.push(unsubscribe);
-                    });
-                });
-                 Promise.all(fetchPromises).finally(() => setAreAppointmentsLoading(false));
-            } else {
-                 setAreAppointmentsLoading(false);
-                 setAllAppointments([]);
-            }
+                setAllAppointments(Array.from(appointmentsMap.values()));
+                setAreAppointmentsLoading(false);
+            }, error => {
+                console.error("Error fetching appointments:", error);
+                setAreAppointmentsLoading(false);
+            });
+            unsubscribes.push(unsubscribe);
         };
-
-        fetchAppointments();
-
+    
+        setAreAppointmentsLoading(true);
+    
+        if (userData.role === 'conseiller') {
+            const queryPath = collection(firestore, `users/${user.uid}/appointments`);
+            subscribeToAppointments(queryPath, user.uid);
+        } else if (userData.role === 'membre' && userData.counselorIds?.length) {
+            userData.counselorIds.forEach(counselorId => {
+                const queryPath = query(
+                    collection(firestore, `users/${counselorId}/appointments`),
+                    where('clientId', '==', user.uid)
+                );
+                subscribeToAppointments(queryPath, counselorId);
+            });
+            // If the member has no counselors, we need to ensure loading stops
+            if (userData.counselorIds.length === 0) {
+              setAreAppointmentsLoading(false);
+              setAllAppointments([]);
+            }
+        } else {
+            setAreAppointmentsLoading(false);
+            setAllAppointments([]);
+        }
+    
         return () => {
             unsubscribes.forEach(unsub => unsub());
         };
