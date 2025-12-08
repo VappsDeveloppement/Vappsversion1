@@ -190,7 +190,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
-      <div className="flex" style={dashboardStyle}>
+      <div className="flex h-screen" style={dashboardStyle}>
         <Sidebar>
           <SidebarHeader>
             <Logo />
@@ -363,7 +363,7 @@ export default function DashboardLayout({
                 </div>
                 <SidebarTrigger className="md:hidden" />
             </header>
-            <main className="flex-1 p-4 sm:p-6 lg:p-8 h-[calc(100vh-65px)] overflow-auto">
+            <main className="flex-1 p-4 sm:p-6 lg:p-8 h-[calc(100vh-65px)] overflow-auto bg-muted/30">
                 {children}
             </main>
         </SidebarInset>
