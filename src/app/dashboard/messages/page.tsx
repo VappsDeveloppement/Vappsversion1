@@ -3,8 +3,8 @@
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
-import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking } from '@/firebase';
-import { collection, query, where, doc, orderBy, serverTimestamp, getDocs } from 'firebase/firestore';
+import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, useDoc } from '@/firebase';
+import { collection, query, where, doc, orderBy, serverTimestamp, getDocs, documentId } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
@@ -23,12 +23,14 @@ type UserData = {
     lastName: string;
     email: string;
     photoUrl?: string;
+    role: 'conseiller' | 'membre';
+    counselorIds?: string[];
 };
 
 type ParticipantInfo = {
     userId: string;
     name: string;
-    photoUrl?: string | null; // Allow null
+    photoUrl?: string | null;
 };
 
 type Conversation = {
@@ -48,23 +50,34 @@ type Message = {
     timestamp: any;
 };
 
-function NewConversationManager({ onCreate }: { onCreate: (conversation: Conversation) => void }) {
+function NewConversationManager({ onCreate, currentUserData }: { onCreate: (conversation: Conversation) => void, currentUserData: UserData | null }) {
     const { user } = useUser();
     const firestore = useFirestore();
     const [open, setOpen] = useState(false);
     const { toast } = useToast();
 
-    const clientsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
-    }, [user, firestore]);
-    const { data: clients, isLoading } = useCollection<UserData>(clientsQuery);
+    const isConseiller = currentUserData?.role === 'conseiller';
 
-    const handleSelectClient = async (client: UserData) => {
-        if (!user) return;
+    const contactListQuery = useMemoFirebase(() => {
+        if (!user || !currentUserData) return null;
+        
+        if (isConseiller) {
+            // Un conseiller voit ses clients
+            return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+        } else {
+            // Un client voit ses conseillers
+            if (!currentUserData.counselorIds || currentUserData.counselorIds.length === 0) return null;
+            return query(collection(firestore, 'users'), where(documentId(), 'in', currentUserData.counselorIds));
+        }
+    }, [user, firestore, currentUserData, isConseiller]);
+    
+    const { data: contacts, isLoading } = useCollection<UserData>(contactListQuery);
+    
+    const handleSelectContact = async (contact: UserData) => {
+        if (!user || !currentUserData) return;
         setOpen(false);
 
-        const participantIds = [user.uid, client.id].sort();
+        const participantIds = [user.uid, contact.id].sort();
         
         // Check if conversation already exists
         const conversationsRef = collection(firestore, 'conversations');
@@ -73,48 +86,48 @@ function NewConversationManager({ onCreate }: { onCreate: (conversation: Convers
 
         if (!existingConvos.empty) {
             const existingConvo = { id: existingConvos.docs[0].id, ...existingConvos.docs[0].data() } as Conversation;
-            onCreate(existingConvo); // Pass existing conversation to parent
-            toast({ title: "Conversation existante", description: `Une conversation avec ${client.firstName} existe déjà.` });
+            onCreate(existingConvo);
+            toast({ title: "Conversation existante", description: `Une conversation avec ${contact.firstName} existe déjà.` });
             return;
         }
 
         // Create new conversation
-        const counselorInfo: ParticipantInfo = {
+        const currentUserInfo: ParticipantInfo = {
             userId: user.uid,
-            name: user.displayName || 'Conseiller',
-            photoUrl: user.photoURL || null
+            name: `${currentUserData.firstName} ${currentUserData.lastName}` || 'Utilisateur',
+            photoUrl: currentUserData.photoUrl || null
         };
-        const clientInfo: ParticipantInfo = {
-            userId: client.id,
-            name: `${client.firstName} ${client.lastName}`,
-            photoUrl: client.photoUrl || null
+        const contactInfo: ParticipantInfo = {
+            userId: contact.id,
+            name: `${contact.firstName} ${contact.lastName}`,
+            photoUrl: contact.photoUrl || null
         };
         
         const newConversationData: Omit<Conversation, 'id'> = {
             participantIds,
-            participantInfo: [counselorInfo, clientInfo],
+            participantInfo: [currentUserInfo, contactInfo],
         };
 
         const newDocRef = await addDocumentNonBlocking(conversationsRef, newConversationData);
         onCreate({ id: newDocRef.id, ...newConversationData } as Conversation);
-        toast({ title: "Nouvelle conversation", description: `Vous pouvez maintenant discuter avec ${client.firstName}.` });
+        toast({ title: "Nouvelle conversation", description: `Vous pouvez maintenant discuter avec ${contact.firstName}.` });
     };
 
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-                <Button variant="outline"><UserPlus className="mr-2 h-4 w-4"/>Nouvelle Conversation</Button>
+                <Button variant="outline"><UserPlus className="mr-2 h-4 w-4"/>Nouveau</Button>
             </PopoverTrigger>
             <PopoverContent className="w-[300px] p-0">
                 <Command>
-                    <CommandInput placeholder="Rechercher un client..." />
+                    <CommandInput placeholder={`Rechercher un ${isConseiller ? 'client' : 'conseiller'}...`} />
                     <CommandList>
-                        <CommandEmpty>Aucun client trouvé.</CommandEmpty>
+                        <CommandEmpty>Aucun contact trouvé.</CommandEmpty>
                         <CommandGroup>
                             {isLoading ? <p className="p-4 text-sm">Chargement...</p> :
-                                (clients || []).map((client) => (
-                                    <CommandItem key={client.id} onSelect={() => handleSelectClient(client)}>
-                                        {`${client.firstName} ${client.lastName}`}
+                                (contacts || []).map((contact) => (
+                                    <CommandItem key={contact.id} onSelect={() => handleSelectContact(contact)}>
+                                        {`${contact.firstName} ${contact.lastName}`}
                                     </CommandItem>
                                 ))
                             }
@@ -219,14 +232,22 @@ export default function MessagesPage() {
     const firestore = useFirestore();
     const [selectedConversation, setSelectedConversation] = useState<Conversation | null>(null);
 
+    const userDocRef = useMemoFirebase(() => {
+        if (!user) return null;
+        return doc(firestore, 'users', user.uid);
+    }, [firestore, user]);
+    const { data: currentUserData, isLoading: isUserDataLoading } = useDoc<UserData>(userDocRef);
+
     const conversationsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, 'conversations'), where('participantIds', 'array-contains', user.uid));
     }, [user, firestore]);
 
-    const { data: conversations, isLoading } = useCollection<Conversation>(conversationsQuery);
+    const { data: conversations, isLoading: areConversationsLoading } = useCollection<Conversation>(conversationsQuery);
     
-    if (isUserLoading || isLoading) {
+    const isLoading = isUserLoading || isUserDataLoading || areConversationsLoading;
+
+    if (isLoading) {
         return (
             <div className="grid grid-cols-1 md:grid-cols-[300px_1fr] h-[calc(100vh-8rem)] border rounded-lg overflow-hidden">
                 <div className="border-r"><Skeleton className="h-full w-full"/></div>
@@ -247,7 +268,10 @@ export default function MessagesPage() {
                 <aside className="border-r flex flex-col">
                     <header className="p-4 border-b flex justify-between items-center">
                         <h2 className="text-lg font-semibold">Conversations</h2>
-                         <NewConversationManager onCreate={(newConvo) => setSelectedConversation(newConvo)} />
+                         <NewConversationManager 
+                            onCreate={(newConvo) => setSelectedConversation(newConvo)}
+                            currentUserData={currentUserData} 
+                         />
                     </header>
                     <ScrollArea>
                         <nav className="p-2 space-y-1">
@@ -292,3 +316,4 @@ export default function MessagesPage() {
         </div>
     );
 }
+
