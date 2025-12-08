@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useState, useMemo, useEffect, useRef } from 'react';
@@ -27,7 +28,7 @@ type UserData = {
 type ParticipantInfo = {
     userId: string;
     name: string;
-    photoUrl?: string;
+    photoUrl?: string | null; // Allow null
 };
 
 type Conversation = {
@@ -78,15 +79,15 @@ function NewConversationManager({ onCreate }: { onCreate: (conversation: Convers
         }
 
         // Create new conversation
-        const counselorInfo = {
+        const counselorInfo: ParticipantInfo = {
             userId: user.uid,
             name: user.displayName || 'Conseiller',
-            photoUrl: user.photoURL || undefined
+            photoUrl: user.photoURL || null
         };
-        const clientInfo = {
+        const clientInfo: ParticipantInfo = {
             userId: client.id,
             name: `${client.firstName} ${client.lastName}`,
-            photoUrl: client.photoUrl || undefined
+            photoUrl: client.photoUrl || null
         };
         
         const newConversationData: Omit<Conversation, 'id'> = {
@@ -95,7 +96,7 @@ function NewConversationManager({ onCreate }: { onCreate: (conversation: Convers
         };
 
         const newDocRef = await addDocumentNonBlocking(conversationsRef, newConversationData);
-        onCreate({ id: newDocRef.id, ...newConversationData });
+        onCreate({ id: newDocRef.id, ...newConversationData } as Conversation);
         toast({ title: "Nouvelle conversation", description: `Vous pouvez maintenant discuter avec ${client.firstName}.` });
     };
 
@@ -173,7 +174,7 @@ function MessagesView({ conversation }: { conversation: Conversation }) {
         <div className="flex flex-col h-full bg-background">
             <header className="p-4 border-b flex items-center gap-4">
                 <Avatar>
-                    <AvatarImage src={otherParticipant?.photoUrl} />
+                    <AvatarImage src={otherParticipant?.photoUrl || undefined} />
                     <AvatarFallback>{otherParticipant?.name?.charAt(0) || '?'}</AvatarFallback>
                 </Avatar>
                 <h3 className="font-semibold">{otherParticipant?.name || 'Conversation'}</h3>
@@ -262,7 +263,7 @@ export default function MessagesPage() {
                                         )}
                                     >
                                         <Avatar>
-                                            <AvatarImage src={otherParticipant?.photoUrl} />
+                                            <AvatarImage src={otherParticipant?.photoUrl || undefined} />
                                             <AvatarFallback>{otherParticipant?.name?.charAt(0) || '?'}</AvatarFallback>
                                         </Avatar>
                                         <div className="flex-1 truncate">
