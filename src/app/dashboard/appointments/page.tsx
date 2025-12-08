@@ -2,15 +2,15 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO } from 'date-fns';
+import { add, format, startOfWeek, addDays, isSameDay, subWeeks, addWeeks, parseISO, isAfter } from 'date-fns';
 import { fr } from 'date-fns/locale';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsUpDown, Check, Calendar as CalendarIcon, Ban } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Loader2, PlusCircle, Edit, Trash2, ChevronsUpDown, Check, Calendar as CalendarIcon, Ban, Clock, User as UserIcon } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
 import { useFirestore } from '@/firebase/provider';
-import { collection, query, doc, where, writeBatch, getDocs, onSnapshot, Unsubscribe } from 'firebase/firestore';
+import { collection, query, doc, where, writeBatch, getDocs, onSnapshot, Unsubscribe, orderBy } from 'firebase/firestore';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -83,10 +83,6 @@ const unavailabilitySchema = z.object({
 type UnavailabilityFormData = z.infer<typeof unavailabilitySchema>;
 
 
-const hours = Array.from({ length: 20 }, (_, i) => `${(i + 4).toString().padStart(2, '0')}:00`);
-const startHour = 4;
-const hourHeightInRem = 5;
-
 // Helper to format ISO date string to a local datetime-local input format
 const toLocalISOString = (date: Date) => {
     const tzOffset = date.getTimezoneOffset() * 60000;
@@ -117,11 +113,10 @@ export default function AppointmentsPage() {
     useEffect(() => {
         if (!user || !userData) return;
     
-        let unsubscribes: Unsubscribe[] = [];
         const appointmentsMap = new Map<string, Appointment>();
+        let unsubscribes: Unsubscribe[] = [];
     
-        const subscribeToAppointments = (queryPath: any, counselorId?: string) => {
-            const q = query(queryPath);
+        const subscribeToAppointments = (q: any, counselorId?: string) => {
             const unsubscribe = onSnapshot(q, snapshot => {
                 snapshot.docChanges().forEach(change => {
                     const docData = change.doc.data();
@@ -148,17 +143,16 @@ export default function AppointmentsPage() {
         setAreAppointmentsLoading(true);
     
         if (userData.role === 'conseiller') {
-            const queryPath = collection(firestore, `users/${user.uid}/appointments`);
-            subscribeToAppointments(queryPath, user.uid);
+            const q = query(collection(firestore, `users/${user.uid}/appointments`));
+            subscribeToAppointments(q, user.uid);
         } else if (userData.role === 'membre' && userData.counselorIds?.length) {
             userData.counselorIds.forEach(counselorId => {
-                const queryPath = query(
+                const q = query(
                     collection(firestore, `users/${counselorId}/appointments`),
                     where('clientId', '==', user.uid)
                 );
-                subscribeToAppointments(queryPath, counselorId);
+                subscribeToAppointments(q, counselorId);
             });
-            // If the member has no counselors, we need to ensure loading stops
             if (userData.counselorIds.length === 0) {
               setAreAppointmentsLoading(false);
               setAllAppointments([]);
@@ -287,7 +281,7 @@ export default function AppointmentsPage() {
             setIsAppointmentSheetOpen(false);
         } catch (error) {
             console.error("Error saving appointment: ", error);
-            toast({ title: 'Erreur', description: "Impossible d'enregistrer le rendez-vous.", variant: 'destructive'});
+            toast({ title: 'Erreur', description: 'Impossible d\'enregistrer le rendez-vous.', variant: 'destructive'});
         } finally {
             setIsSubmitting(false);
         }
@@ -381,6 +375,8 @@ export default function AppointmentsPage() {
     }
     
     const isConseiller = userData?.role === 'conseiller';
+    
+    const isLoading = isUserLoading || isUserDataLoading || areAppointmentsLoading || areUnavailabilitiesLoading || areEventsLoading;
 
     return (
         <div className="flex flex-col h-full">
@@ -486,121 +482,56 @@ export default function AppointmentsPage() {
                 </div>
             </header>
 
-            <div className="flex-1 grid grid-cols-[auto_1fr] overflow-hidden border rounded-lg bg-background">
-                <ScrollArea className='h-full'>
-                    <div className="bg-muted/50 sticky top-0 left-0 z-10">
-                        <div className="h-16 border-b flex items-center justify-center font-semibold">
-                        Heures
-                        </div>
-                        {hours.map(hour => (
-                            <div key={hour} className="h-20 text-center border-b flex items-center justify-center">
-                                <span className="text-xs text-muted-foreground -translate-y-1/2">{hour}</span>
-                            </div>
-                        ))}
-                    </div>
-                </ScrollArea>
+            <ScrollArea className="flex-1">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-7 gap-4">
+                    {weekDays.map(day => {
+                        const dayEvents = [...(allAppointments || []), ...(unavailabilities || []), ...(events || [])]
+                          .filter(e => e.start ? isSameDay(parseISO(e.start), day) : isSameDay(parseISO((e as Event).date), day))
+                          .sort((a,b) => isAfter(parseISO(a.start || (a as Event).date), parseISO(b.start || (b as Event).date)) ? 1 : -1);
 
-                <ScrollArea className="h-full">
-                    <div className="grid grid-cols-7 relative min-h-full">
-                        {weekDays.map(day => (
-                            <div key={day.toString()} className="border-l relative">
-                                <div className="h-16 border-b p-2 text-center sticky top-0 bg-background z-10">
-                                    <p className="text-sm text-muted-foreground">{format(day, 'EEE', { locale: fr })}</p>
-                                    <p className={`text-2xl font-bold ${isSameDay(day, new Date()) ? 'text-primary' : ''}`}>
-                                        {format(day, 'd')}
-                                    </p>
-                                </div>
-                                <div className="h-full">
-                                    {hours.map((hour, hourIndex) => (
-                                        <div 
-                                            key={`${day.toString()}-${hour}`} 
-                                            className="h-20 border-b"
-                                        ></div>
-                                    ))}
-                                </div>
-                                {/* Render Unavailabilities */}
-                                {unavailabilities?.filter(unav => unav.start && isSameDay(parseISO(unav.start), day)).map(unav => {
-                                    if (!unav.start || !unav.end) return null;
-                                    const start = new Date(unav.start);
-                                    const end = new Date(unav.end);
-                                    
-                                    const topOffsetInMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
-                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
-
-                                    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-                                    const height = (durationMinutes / 60) * hourHeightInRem;
-
-                                    return (
-                                        <div
-                                            key={unav.id}
-                                            onClick={() => isConseiller && setUnavailabilityToDelete(unav)}
-                                            className={cn("absolute w-full left-0 bg-gray-200/50 flex items-center justify-center z-20", isConseiller && "cursor-pointer hover:bg-gray-300/50")}
-                                            style={{
-                                                top: `${top}rem`,
-                                                height: `${height}rem`,
-                                                backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 4px, rgba(0,0,0,0.05) 4px, rgba(0,0,0,0.05) 8px)',
-                                            }}
-                                        >
-                                            <p className="text-xs text-gray-500 font-medium">{unav.title || 'Indisponible'}</p>
-                                        </div>
-                                    )
-                                })}
-                                {/* Render appointments */}
-                                {allAppointments?.filter(app => app.start && isSameDay(parseISO(app.start), day)).map(app => {
-                                    if (!app.start || !app.end) return null;
-                                    const start = new Date(app.start);
-                                    const end = new Date(app.end);
-                                    
-                                    const topOffsetInMinutes = (start.getUTCHours() - startHour) * 60 + start.getUTCMinutes();
-                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
-
-                                    const durationMinutes = (end.getTime() - start.getTime()) / 60000;
-                                    const height = (durationMinutes / 60) * hourHeightInRem;
-
-                                    return (
-                                        <div
-                                            key={app.id}
-                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-primary/20 border-l-4 border-primary p-2 rounded-r-lg overflow-hidden cursor-pointer z-20"
-                                            style={{
-                                                top: `${top}rem`,
-                                                height: `${height}rem`,
-                                            }}
-                                            onClick={() => isConseiller && handleEditAppointment(app)}
-                                        >
-                                            <p className="font-bold text-xs truncate">{app.title}</p>
-                                            <p className="text-xs text-muted-foreground truncate">{app.clientName}</p>
-                                        </div>
-                                    )
-                                })}
-                                {/* Render events */}
-                                {events?.filter(event => isSameDay(parseISO(event.date), day)).map(event => {
-                                    const start = new Date(event.date);
-                                    const end = add(start, { hours: 1 });
-                                    
-                                    const topOffsetInMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
-                                    const top = (topOffsetInMinutes / 60) * hourHeightInRem;
-
-                                    const durationMinutes = 60;
-                                    const height = (durationMinutes / 60) * hourHeightInRem;
-                                    
-                                    return (
-                                        <div
-                                            key={event.id}
-                                            className="absolute w-[calc(100%-4px)] left-[2px] bg-blue-500/20 border-l-4 border-blue-500 p-2 rounded-r-lg overflow-hidden z-20"
-                                            style={{
-                                                top: `${top}rem`,
-                                                height: `${height}rem`,
-                                            }}
-                                        >
-                                            <p className="font-bold text-xs truncate flex items-center gap-1"><CalendarIcon className='h-3 w-3'/> {event.title}</p>
-                                        </div>
-                                    )
-                                })}
-                            </div>
-                        ))}
-                    </div>
-                </ScrollArea>
-            </div>
+                        return (
+                        <Card key={day.toString()} className={cn("flex flex-col", isSameDay(day, new Date()) && "border-primary")}>
+                            <CardHeader className="text-center p-3 border-b">
+                                <p className="text-sm font-medium capitalize">{format(day, 'EEE', { locale: fr })}</p>
+                                <p className={cn("text-2xl font-bold", isSameDay(day, new Date()) && 'text-primary')}>{format(day, 'd')}</p>
+                            </CardHeader>
+                            <CardContent className="p-2 space-y-2 flex-1">
+                                {isLoading ? <Skeleton className="h-20 w-full" /> : dayEvents.length > 0 ? (
+                                    dayEvents.map(event => {
+                                        if ('clientId' in event) { // It's an Appointment
+                                            return (
+                                                <div key={event.id} onClick={() => isConseiller && handleEditAppointment(event)} className="p-2 rounded-md bg-primary/10 border-l-4 border-primary space-y-1 cursor-pointer hover:bg-primary/20">
+                                                    <p className="font-bold text-sm truncate">{event.title}</p>
+                                                    <div className="text-xs text-muted-foreground space-y-0.5">
+                                                        <p className="flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(parseISO(event.start), 'HH:mm')} - {format(parseISO(event.end), 'HH:mm')}</p>
+                                                        <p className="flex items-center gap-1.5"><UserIcon className="h-3 w-3"/>{event.clientName}</p>
+                                                    </div>
+                                                </div>
+                                            )
+                                        } else if ('counselorId' in event) { // It's an Event
+                                             return (
+                                                <div key={event.id} className="p-2 rounded-md bg-blue-500/10 border-l-4 border-blue-500 space-y-1">
+                                                     <p className="font-bold text-sm truncate flex items-center gap-1"><CalendarIcon className='h-3 w-3'/> {event.title}</p>
+                                                      <p className="text-xs text-muted-foreground flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(parseISO(event.date), 'HH:mm')}</p>
+                                                </div>
+                                            )
+                                        } else { // It's an Unavailability
+                                             return (
+                                                 <div key={event.id} onClick={() => isConseiller && setUnavailabilityToDelete(event)} className={cn("p-2 rounded-md bg-gray-200/50 space-y-1", isConseiller && "cursor-pointer hover:bg-gray-300/50")}>
+                                                     <p className="text-xs text-gray-500 font-medium truncate">{event.title}</p>
+                                                     <p className="text-xs text-gray-500 flex items-center gap-1.5"><Clock className="h-3 w-3"/>{format(parseISO(event.start), 'HH:mm')} - {format(parseISO(event.end), 'HH:mm')}</p>
+                                                 </div>
+                                            )
+                                        }
+                                    })
+                                ) : (
+                                    <div className="text-center text-xs text-muted-foreground pt-8">Aucun événement</div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )})}
+                </div>
+            </ScrollArea>
              <AlertDialog open={!!unavailabilityToDelete} onOpenChange={(open) => !open && setUnavailabilityToDelete(null)}>
                 <AlertDialogContent>
                     <AlertDialogHeader>
@@ -674,5 +605,3 @@ function ClientSelector({ clients, onClientSelect, isLoading, defaultValue }: { 
         </div>
     );
 }
-
-    
