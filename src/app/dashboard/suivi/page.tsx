@@ -1,8 +1,8 @@
 
 'use client';
 
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useForm, useFieldArray, useWatch, Control } from 'react-hook-form';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -33,187 +33,30 @@ import { useAgency } from '@/context/agency-provider';
 import 'jspdf-autotable';
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
-import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Mail, Phone, Save, Search } from 'lucide-react';
+import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2 } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 import Image from 'next/image';
 import { PdfPreviewModal } from '@/components/shared/suivi-pdf-preview';
 
-const scaleSubQuestionSchema = z.object({
-  id: z.string(),
-  text: z.string().min(1, 'Le texte de la question est requis.'),
-});
-
-const scaleQuestionSchema = z.object({
-  id: z.string(),
-  type: z.literal('scale'),
-  title: z.string().optional(),
-  questions: z.array(scaleSubQuestionSchema).min(1, "Le bloc doit contenir au moins une question."),
-});
-
-const auraBlockSchema = z.object({
-  id: z.string(),
-  type: z.literal('aura'),
-});
-
-const prismeBlockSchema = z.object({
-  id: z.string(),
-  type: z.literal('prisme'),
-});
-
-const vitaeAnalysisBlockSchema = z.object({
-  id: z.string(),
-  type: z.literal('vitae'),
-});
-
-
-const scormAnswerSchema = z.object({
-  id: z.string(),
-  text: z.string().min(1, "Le texte de la réponse est requis."),
-  value: z.string().min(1, "La valeur est requise."),
-});
-
-const scormQuestionSchema = z.object({
-  id: z.string(),
-  text: z.string().min(1, "Le texte de la question est requis."),
-  imageUrl: z.string().url().optional().nullable(),
-  answers: z.array(scormAnswerSchema).min(2, "Une question doit avoir au moins deux réponses."),
-});
-
-const scormResultSchema = z.object({
-    id: z.string(),
-    value: z.string().min(1, "La valeur de résultat est requise."),
-    text: z.string().min(1, "Le texte du résultat est requis."),
-});
-
-const scormBlockSchema = z.object({
-    id: z.string(),
-    type: z.literal('scorm'),
-    title: z.string().min(1, "Le titre du bloc SCORM est requis."),
-    questions: z.array(scormQuestionSchema).optional(),
-    results: z.array(scormResultSchema).optional(),
-});
-
-const qcmAnswerSchema = z.object({
-  id: z.string(),
-  text: z.string().min(1, "Le texte de la réponse est requis."),
-  resultText: z.string().optional(),
-});
-
-const qcmQuestionSchema = z.object({
-  id: z.string(),
-  text: z.string().min(1, "Le texte de la question est requis."),
-  imageUrl: z.string().url().optional().nullable(),
-  answers: z.array(qcmAnswerSchema).min(1, "Une question doit avoir au moins une réponse."),
-});
-
-const qcmBlockSchema = z.object({
-    id: z.string(),
-    type: z.literal('qcm'),
-    title: z.string().min(1, "Le titre du bloc QCM est requis."),
-    questions: z.array(qcmQuestionSchema).optional(),
-});
-
-const freeTextBlockSchema = z.object({
-  id: z.string(),
-  type: z.literal('free-text'),
-  question: z.string().min(1, "La question est requise."),
-});
-
-const reportBlockSchema = z.object({
-  id: z.string(),
-  type: z.literal('report'),
-  title: z.string().min(1, "Le titre est requis."),
-});
-
-
-const questionSchema = z.discriminatedUnion("type", [
-  scaleQuestionSchema,
-  auraBlockSchema,
-  scormBlockSchema,
-  qcmBlockSchema,
-  vitaeAnalysisBlockSchema,
-  prismeBlockSchema,
-  freeTextBlockSchema,
-  reportBlockSchema,
-]);
-
-const questionModelSchema = z.object({
-  name: z.string().min(1, "Le nom du modèle est requis."),
-  questions: z.array(questionSchema).optional(),
-});
-
-
-type QuestionModelFormData = z.infer<typeof questionModelSchema>;
-
-type QuestionModel = {
-  id: string;
-  counselorId: string;
-} & QuestionModelFormData;
-
-type Client = {
-    id: string;
-    firstName: string;
-    lastName: string;
-    email: string;
-};
-
-type FollowUp = {
-    id: string;
-    counselorId: string;
-    clientId: string;
-    clientName: string;
-    modelId: string;
-    modelName: string;
-    createdAt: string;
-    status: 'pending' | 'completed';
-    answers?: { questionId: string; answer: any }[];
-    pathEnrollmentId?: string;
-};
-
-type LearningPath = {
-    id: string;
-    title: string;
-    description?: string;
-    steps: {
-        modelId: string,
-        modelName: string,
-    }[];
-};
-
-type PathEnrollment = {
-    id: string;
-    counselorId: string;
-    userId: string;
-    clientName: string;
-    pathId: string;
-    pathName: string;
-    enrolledAt: string;
-    status: 'pending' | 'completed';
-};
-
-type PublicForm = {
-    id: string;
-    counselorId: string;
-    name: string;
-    description: string;
-    modelId: string;
-    modelName: string;
-    isEnabled: boolean;
-    createdAt: string;
-    questions?: any[];
-};
-
-const publicFormSchema = z.object({
-    name: z.string().min(1, 'Le nom du formulaire est requis.'),
-    description: z.string().optional(),
-    modelId: z.string().min(1, 'Veuillez sélectionner un modèle de questions.'),
-});
-type PublicFormFormData = z.infer<typeof publicFormSchema>;
-
-
-type CombinedFollowUp = (FollowUp & { type: 'form' }) | (PathEnrollment & { type: 'path' });
-
+// Schemas
+const scaleSubQuestionSchema = z.object({ id: z.string(), text: z.string().min(1, 'Le texte de la question est requis.') });
+const scaleQuestionSchema = z.object({ id: z.string(), type: z.literal('scale'), title: z.string().optional(), questions: z.array(scaleSubQuestionSchema).min(1, "Le bloc doit contenir au moins une question.") });
+const auraBlockSchema = z.object({ id: z.string(), type: z.literal('aura') });
+const prismeBlockSchema = z.object({ id: z.string(), type: z.literal('prisme') });
+const vitaeAnalysisBlockSchema = z.object({ id: z.string(), type: z.literal('vitae') });
+const scormAnswerSchema = z.object({ id: z.string(), text: z.string().min(1, "Le texte de la réponse est requis."), value: z.string().min(1, "La valeur est requise.") });
+const scormQuestionSchema = z.object({ id: z.string(), text: z.string().min(1, "Le texte de la question est requis."), imageUrl: z.string().url().optional().nullable(), answers: z.array(scormAnswerSchema).min(2, "Une question doit avoir au moins deux réponses.") });
+const scormResultSchema = z.object({ id: z.string(), value: z.string().min(1, "La valeur de résultat est requise."), text: z.string().min(1, "Le texte du résultat est requis.") });
+const scormBlockSchema = z.object({ id: z.string(), type: z.literal('scorm'), title: z.string().min(1, "Le titre du bloc SCORM est requis."), questions: z.array(scormQuestionSchema).optional(), results: z.array(scormResultSchema).optional() });
+const qcmAnswerSchema = z.object({ id: z.string(), text: z.string().min(1, "Le texte de la réponse est requis."), resultText: z.string().optional() });
+const qcmQuestionSchema = z.object({ id: z.string(), text: z.string().min(1, "Le texte de la question est requis."), imageUrl: z.string().url().optional().nullable(), answers: z.array(qcmAnswerSchema).min(1, "Une question doit avoir au moins une réponse.") });
+const qcmBlockSchema = z.object({ id: z.string(), type: z.literal('qcm'), title: z.string().min(1, "Le titre du bloc QCM est requis."), questions: z.array(qcmQuestionSchema).optional() });
+const freeTextBlockSchema = z.object({ id: z.string(), type: z.literal('free-text'), question: z.string().min(1, "La question est requise.") });
+const reportBlockSchema = z.object({ id: z.string(), type: z.literal('report'), title: z.string().min(1, "Le titre est requis.") });
+const questionSchema = z.discriminatedUnion("type", [scaleQuestionSchema, auraBlockSchema, scormBlockSchema, qcmBlockSchema, vitaeAnalysisBlockSchema, prismeBlockSchema, freeTextBlockSchema, reportBlockSchema]);
+const questionModelSchema = z.object({ name: z.string().min(1, "Le nom du modèle est requis."), questions: z.array(questionSchema).optional() });
+const publicFormSchema = z.object({ name: z.string().min(1, 'Le nom du formulaire est requis.'), description: z.string().optional(), modelId: z.string().min(1, 'Veuillez sélectionner un modèle de questions.') });
 const newFollowUpSchema = z.object({
     assignationType: z.enum(['form', 'path']).default('form'),
     clientId: z.string().min(1, "Veuillez sélectionner un client."),
@@ -223,13 +66,155 @@ const newFollowUpSchema = z.object({
     if (data.assignationType === 'form') return !!data.modelId;
     if (data.assignationType === 'path') return !!data.pathId;
     return false;
-}, {
-    message: "Veuillez sélectionner un formulaire ou un parcours.",
-    path: ['modelId'], 
-});
+}, { message: "Veuillez sélectionner un formulaire ou un parcours.", path: ['modelId'] });
 
 
+// Types
+type QuestionModelFormData = z.infer<typeof questionModelSchema>;
+type PublicFormFormData = z.infer<typeof publicFormSchema>;
 type NewFollowUpFormData = z.infer<typeof newFollowUpSchema>;
+type QuestionModel = { id: string; counselorId: string; } & QuestionModelFormData;
+type Client = { id: string; firstName: string; lastName: string; email: string; };
+type FollowUp = { id: string; counselorId: string; clientId: string; clientName: string; modelId: string; modelName: string; createdAt: string; status: 'pending' | 'completed'; answers?: { questionId: string; answer: any }[]; pathEnrollmentId?: string; };
+type LearningPath = { id: string; title: string; description?: string; steps: { modelId: string, modelName: string }[]; };
+type PathEnrollment = { id: string; counselorId: string; userId: string; clientName: string; pathId: string; pathName: string; enrolledAt: string; status: 'pending' | 'completed'; };
+type PublicForm = { id: string; counselorId: string; name: string; description: string; modelId: string; modelName: string; isEnabled: boolean; createdAt: string; questions?: any[]; };
+type CombinedFollowUp = (FollowUp & { type: 'form' }) | (PathEnrollment & { type: 'path' });
+
+// Main Page Component
+export default function SuiviPage() {
+    const { user, isUserLoading } = useUser();
+    const firestore = useFirestore();
+
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+    const isLoading = isUserLoading || isUserDataLoading;
+
+    if (isLoading) {
+        return (
+             <div className="space-y-8">
+                <Skeleton className="h-12 w-1/3" />
+                <Skeleton className="h-6 w-2/3" />
+                <Card><CardContent className="p-6"><Skeleton className="h-64 w-full" /></CardContent></Card>
+            </div>
+        )
+    }
+
+    if (userData?.role === 'membre') {
+        return <MemberFollowUpView />;
+    }
+    
+    // Default to counselor dashboard
+    return <CounselorSuiviManager />;
+}
+
+// Counselor-facing UI
+function CounselorSuiviManager() {
+  return (
+    <div className="space-y-8">
+      <div>
+        <h1 className="text-3xl font-bold font-headline">Suivi</h1>
+        <p className="text-muted-foreground">
+          Gérez le suivi de vos clients, vos modèles et vos parcours.
+        </p>
+      </div>
+
+      <Tabs defaultValue="suivi" className="w-full">
+        <TabsList className="grid w-full grid-cols-4 h-auto">
+          <TabsTrigger value="suivi"><ClipboardList className="mr-2 h-4 w-4" /> Suivi</TabsTrigger>
+          <TabsTrigger value="form-templates"><FileText className="mr-2 h-4 w-4" /> Modèle de formulaire</TabsTrigger>
+          <TabsTrigger value="parcours"><Route className="mr-2 h-4 w-4" /> Parcours</TabsTrigger>
+          <TabsTrigger value="public-forms"><Send className="mr-2 h-4 w-4" /> Formulaires Publics</TabsTrigger>
+        </TabsList>
+        <TabsContent value="suivi"><FollowUpManager /></TabsContent>
+        <TabsContent value="form-templates"><FormTemplateManager /></TabsContent>
+        <TabsContent value="parcours"><LearningPathManager /></TabsContent>
+        <TabsContent value="public-forms"><PublicFormManager /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+// Member-facing UI
+function MemberFollowUpView() {
+    const { user } = useUser();
+    const firestore = useFirestore();
+
+    const memberFollowUpsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'follow_ups'), where('clientId', '==', user.uid));
+    }, [user, firestore]);
+
+    const memberPathEnrollmentsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'path_enrollments'), where('userId', '==', user.uid));
+    }, [user, firestore]);
+
+    const { data: followUpsData, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(memberFollowUpsQuery);
+    const { data: pathEnrollmentsData, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(memberPathEnrollmentsQuery);
+    
+    const combinedFollowUps = useMemo(() => {
+        const forms: CombinedFollowUp[] = (followUpsData || []).map(f => ({ ...f, type: 'form' }));
+        const paths: CombinedFollowUp[] = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' }));
+        const all = [...forms, ...paths];
+        return all.sort((a,b) => new Date(b.createdAt || (b as PathEnrollment).enrolledAt).getTime() - new Date(a.createdAt || (a as PathEnrollment).enrolledAt).getTime());
+    }, [followUpsData, pathEnrollmentsData]);
+    
+    const isLoading = areFollowUpsLoading || areEnrollmentsLoading;
+
+    return (
+        <div className="space-y-8">
+            <div>
+                <h1 className="text-3xl font-bold font-headline">Mes Suivis</h1>
+                <p className="text-muted-foreground">Consultez ici les suivis et parcours qui vous ont été assignés.</p>
+            </div>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Liste de vos suivis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead>Nom du suivi</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Date d'assignation</TableHead>
+                                <TableHead>Statut</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
+                            : combinedFollowUps && combinedFollowUps.length > 0 ? (
+                                combinedFollowUps.map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell>{(item as FollowUp).modelName || (item as PathEnrollment).pathName}</TableCell>
+                                        <TableCell><Badge variant={item.type === 'path' ? 'default': 'secondary'}>{item.type === 'path' ? 'Parcours' : 'Formulaire'}</Badge></TableCell>
+                                        <TableCell>{new Date(item.createdAt || (item as PathEnrollment).enrolledAt).toLocaleDateString()}</TableCell>
+                                        <TableCell><Badge variant={item.status === 'completed' ? 'default' : 'secondary'}>{item.status}</Badge></TableCell>
+                                        <TableCell className="text-right">
+                                            <Button asChild size="sm" variant="outline">
+                                                <Link href={`/dashboard/suivi/${item.id}?mode=view`}>
+                                                    <Eye className="mr-2 h-4 w-4" /> Voir
+                                                </Link>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun suivi ne vous a été assigné.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
+
+// All other manager components (FollowUpManager, FormTemplateManager, etc.) remain below
+// They are only used by the CounselorSuiviManager component
 
 function FollowUpManager() {
     const { user } = useUser();
@@ -241,9 +226,7 @@ function FollowUpManager() {
     const [selectedSuivi, setSelectedSuivi] = useState<FollowUp | null>(null);
     const [searchTerm, setSearchTerm] = useState('');
     
-    const form = useForm<NewFollowUpFormData>({
-        resolver: zodResolver(newFollowUpSchema)
-    });
+    const form = useForm<NewFollowUpFormData>({ resolver: zodResolver(newFollowUpSchema) });
 
     const clientsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -276,61 +259,35 @@ function FollowUpManager() {
     const { data: pathEnrollmentsData, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(pathEnrollmentsQuery);
 
     const combinedFollowUps = useMemo(() => {
-        // Filter out follow-ups that are part of a path
-        const standaloneForms: CombinedFollowUp[] = (followUpsData || [])
-            .filter(f => !f.pathEnrollmentId)
-            .map(f => ({ ...f, type: 'form' }));
-
+        const standaloneForms: CombinedFollowUp[] = (followUpsData || []).filter(f => !f.pathEnrollmentId).map(f => ({ ...f, type: 'form' }));
         const paths: CombinedFollowUp[] = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' }));
-        
         let allFollowUps = [...standaloneForms, ...paths];
-
         if (searchTerm) {
             const lowercasedTerm = searchTerm.toLowerCase();
             allFollowUps = allFollowUps.filter(item => {
                 const nameMatch = item.clientName.toLowerCase().includes(lowercasedTerm);
-                const modelMatch = item.type === 'form' 
-                    ? item.modelName.toLowerCase().includes(lowercasedTerm) 
-                    : item.pathName.toLowerCase().includes(lowercasedTerm);
+                const modelMatch = item.type === 'form' ? item.modelName.toLowerCase().includes(lowercasedTerm) : item.pathName.toLowerCase().includes(lowercasedTerm);
                 return nameMatch || modelMatch;
             });
         }
-        
         return allFollowUps.sort((a,b) => new Date(b.createdAt || (b as PathEnrollment).enrolledAt).getTime() - new Date(a.createdAt || (a as PathEnrollment).enrolledAt).getTime());
     }, [followUpsData, pathEnrollmentsData, searchTerm]);
 
     const onSubmit = (data: NewFollowUpFormData) => {
         if (!user) return;
-        
         const client = clients?.find(c => c.id === data.clientId);
         if (!client) return;
 
         if (data.assignationType === 'form' && data.modelId) {
             const model = models?.find(m => m.id === data.modelId);
             if (!model) return;
-            const newFollowUp: Omit<FollowUp, 'id'> = {
-                counselorId: user.uid,
-                clientId: client.id,
-                clientName: `${client.firstName} ${client.lastName}`,
-                modelId: model.id,
-                modelName: model.name,
-                createdAt: new Date().toISOString(),
-                status: 'pending',
-            };
+            const newFollowUp: Omit<FollowUp, 'id'> = { counselorId: user.uid, clientId: client.id, clientName: `${client.firstName} ${client.lastName}`, modelId: model.id, modelName: model.name, createdAt: new Date().toISOString(), status: 'pending' };
             addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUp);
             toast({title: "Suivi de formulaire créé"});
         } else if (data.assignationType === 'path' && data.pathId) {
             const path = learningPaths?.find(p => p.id === data.pathId);
             if(!path) return;
-            const newEnrollment: Omit<PathEnrollment, 'id'> = {
-                counselorId: user.uid,
-                userId: client.id,
-                clientName: `${client.firstName} ${client.lastName}`,
-                pathId: path.id,
-                pathName: path.title,
-                enrolledAt: new Date().toISOString(),
-                status: 'pending',
-            };
+            const newEnrollment: Omit<PathEnrollment, 'id'> = { counselorId: user.uid, userId: client.id, clientName: `${client.firstName} ${client.lastName}`, pathId: path.id, pathName: path.title, enrolledAt: new Date().toISOString(), status: 'pending' };
             addDocumentNonBlocking(collection(firestore, `users/${user.uid}/path_enrollments`), newEnrollment);
             toast({title: "Suivi de parcours créé"});
         }
@@ -583,6 +540,8 @@ function FollowUpManager() {
     );
 }
 
+// All other manager components (FormTemplateManager, etc.) remain below
+// They are only used by the CounselorSuiviManager component
 function FormTemplateManager() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -808,21 +767,8 @@ type EditorProps = {
 }
 
 function ScormBlockEditor({ index, form, remove }: EditorProps) {
-    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({
-        control: form.control,
-        name: `questions.${index}.questions`
-    });
-    
-    const { fields: resultFields, append: appendResult, remove: removeResult } = useFieldArray({
-        control: form.control,
-        name: `questions.${index}.results`
-    });
-
-    const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
-
-    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
-        // ...
-    };
+    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({ control: form.control, name: `questions.${index}.questions` });
+    const { fields: resultFields, append: appendResult, remove: removeResult } = useFieldArray({ control: form.control, name: `questions.${index}.results` });
 
     return (
          <Card className="p-4 bg-muted/50">
@@ -836,7 +782,6 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
                     <h4 className="font-medium text-sm my-2">Questions</h4>
                     {questionFields.map((question, qIndex) => (
                         <Card key={question.id} className="p-3 mb-3 bg-background">
-                            {/* ... */}
                             <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
                         </Card>
                     ))}
@@ -864,20 +809,14 @@ function ScormBlockEditor({ index, form, remove }: EditorProps) {
 }
 
 function QcmBlockEditor({ index, form, remove }: EditorProps) {
-    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({
-        control: form.control,
-        name: `questions.${index}.questions`
-    });
-    
+    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({ control: form.control, name: `questions.${index}.questions` });
     const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
 
     const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
         const file = event.target.files?.[0];
         if (file) {
             const reader = new FileReader();
-            reader.onloadend = () => {
-                form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, reader.result as string);
-            };
+            reader.onloadend = () => { form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, reader.result as string); };
             reader.readAsDataURL(file);
         }
     };
@@ -917,10 +856,7 @@ function QcmBlockEditor({ index, form, remove }: EditorProps) {
 }
 
 function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `questions.${questionIndex}.questions.${qIndex}.answers`,
-  });
+  const { fields, append, remove } = useFieldArray({ control, name: `questions.${questionIndex}.questions.${qIndex}.answers` });
 
   return (
     <div className="mt-4 pl-4 border-l">
@@ -938,10 +874,7 @@ function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Contr
 }
 
 function QcmAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
-  const { fields, append, remove } = useFieldArray({
-    control,
-    name: `questions.${questionIndex}.questions.${qIndex}.answers`,
-  });
+  const { fields, append, remove } = useFieldArray({ control, name: `questions.${questionIndex}.questions.${qIndex}.answers` });
   return (
     <div className="mt-4 pl-4 border-l">
       <h5 className="text-xs font-semibold mb-2">Réponses</h5>
@@ -964,7 +897,6 @@ function LearningPathManager() {
     const { user } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
-
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [editingPath, setEditingPath] = useState<LearningPath | null>(null);
 
@@ -974,18 +906,10 @@ function LearningPathManager() {
     const modelsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/question_models`)) : null, [user, firestore]);
     const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
 
-    const form = useForm<{ title: string; description: string; steps: { modelId: string, modelName: string }[] }>({
-        defaultValues: { title: '', description: '', steps: [] }
-    });
-
+    const form = useForm<{ title: string; description: string; steps: { modelId: string, modelName: string }[] }>({ defaultValues: { title: '', description: '', steps: [] } });
     const { fields, append, remove, move } = useFieldArray({ control: form.control, name: 'steps' });
 
-    useEffect(() => {
-        if(isSheetOpen) {
-            form.reset(editingPath || { title: '', description: '', steps: [] });
-        }
-    }, [isSheetOpen, editingPath, form]);
-
+    useEffect(() => { if(isSheetOpen) { form.reset(editingPath || { title: '', description: '', steps: [] }); } }, [isSheetOpen, editingPath, form]);
     const handleNew = () => { setEditingPath(null); setIsSheetOpen(true); };
     const handleEdit = (path: LearningPath) => { setEditingPath(path); setIsSheetOpen(true); };
     
@@ -1008,20 +932,14 @@ function LearningPathManager() {
         setIsSheetOpen(false);
     };
 
-    const onDragEnd: OnDragEndResponder = (result) => {
-        if (!result.destination) return;
-        move(result.source.index, result.destination.index);
-    };
+    const onDragEnd: OnDragEndResponder = (result) => { if (!result.destination) return; move(result.source.index, result.destination.index); };
 
 
     return (
         <Card>
             <CardHeader>
                 <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle>Parcours d'apprentissage</CardTitle>
-                        <CardDescription>Créez des séquences de formation pour vos clients.</CardDescription>
-                    </div>
+                    <div><CardTitle>Parcours d'apprentissage</CardTitle><CardDescription>Créez des séquences de formation pour vos clients.</CardDescription></div>
                     <Button onClick={handleNew}><PlusCircle className="mr-2 h-4 w-4" /> Nouveau parcours</Button>
                 </div>
             </CardHeader>
@@ -1045,61 +963,59 @@ function LearningPathManager() {
                  <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
                     <SheetContent className="sm:max-w-xl w-full">
                         <SheetHeader><SheetTitle>{editingPath ? 'Modifier le' : 'Nouveau'} Parcours</SheetTitle></SheetHeader>
-                        <Form {...form}>
-                            <form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
-                                <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-8">
-                                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du Parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
-                                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage/></FormItem>)}/>
-                                    <div>
-                                        <Label className="mb-2 block">Étapes</Label>
-                                         <DragDropContext onDragEnd={onDragEnd}>
-                                            <Droppable droppableId="steps">
-                                                {(provided) => (
-                                                    <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                                                        {fields.map((field, index) => (
-                                                             <Draggable key={field.id} draggableId={field.id} index={index}>
-                                                                {(provided) => (
-                                                                    <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 border rounded-md bg-muted">
-                                                                        <GripVertical className="h-5 w-5 text-muted-foreground" />
-                                                                        <p className="flex-1">{field.modelName}</p>
-                                                                        <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
-                                                                    </div>
-                                                                )}
-                                                             </Draggable>
-                                                        ))}
-                                                        {provided.placeholder}
-                                                    </div>
-                                                )}
-                                            </Droppable>
-                                         </DragDropContext>
-                                    </div>
-                                    <Popover>
-                                        <PopoverTrigger asChild>
-                                            <Button type="button" variant="outline" className="w-full"><PlusCircle className="mr-2 h-4 w-4" />Ajouter une étape</Button>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-[300px] p-0">
-                                            <Command>
-                                                <CommandInput placeholder="Rechercher un modèle..." />
-                                                <CommandList>
-                                                    <CommandEmpty>Aucun modèle trouvé.</CommandEmpty>
-                                                    <CommandGroup>
-                                                        {models?.map(model => (
-                                                            <CommandItem key={model.id} onSelect={() => append({ modelId: model.id, modelName: model.name })}>
-                                                                {model.name}
-                                                            </CommandItem>
-                                                        ))}
-                                                    </CommandGroup>
-                                                </CommandList>
-                                            </Command>
-                                        </PopoverContent>
-                                    </Popover>
-                                </div></ScrollArea>
-                                 <SheetFooter className="pt-4 border-t mt-auto">
-                                    <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
-                                    <Button type="submit">Sauvegarder</Button>
-                                </SheetFooter>
-                            </form>
-                        </Form>
+                        <Form {...form}><form onSubmit={form.handleSubmit(onSubmit)} className="h-full flex flex-col">
+                            <ScrollArea className="flex-1 pr-6 py-4 -mr-6"><div className="space-y-8">
+                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Titre du Parcours</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage/></FormItem>)}/>
+                                <div>
+                                    <Label className="mb-2 block">Étapes</Label>
+                                     <DragDropContext onDragEnd={onDragEnd}>
+                                        <Droppable droppableId="steps">
+                                            {(provided) => (
+                                                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
+                                                    {fields.map((field, index) => (
+                                                         <Draggable key={field.id} draggableId={field.id} index={index}>
+                                                            {(provided) => (
+                                                                <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps} className="flex items-center gap-2 p-2 border rounded-md bg-muted">
+                                                                    <GripVertical className="h-5 w-5 text-muted-foreground" />
+                                                                    <p className="flex-1">{field.modelName}</p>
+                                                                    <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(index)}><X className="h-4 w-4" /></Button>
+                                                                </div>
+                                                            )}
+                                                         </Draggable>
+                                                    ))}
+                                                    {provided.placeholder}
+                                                </div>
+                                            )}
+                                        </Droppable>
+                                     </DragDropContext>
+                                </div>
+                                <Popover>
+                                    <PopoverTrigger asChild>
+                                        <Button type="button" variant="outline" className="w-full"><PlusCircle className="mr-2 h-4 w-4" />Ajouter une étape</Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-[300px] p-0">
+                                        <Command>
+                                            <CommandInput placeholder="Rechercher un modèle..." />
+                                            <CommandList>
+                                                <CommandEmpty>Aucun modèle trouvé.</CommandEmpty>
+                                                <CommandGroup>
+                                                    {models?.map(model => (
+                                                        <CommandItem key={model.id} onSelect={() => append({ modelId: model.id, modelName: model.name })}>
+                                                            {model.name}
+                                                        </CommandItem>
+                                                    ))}
+                                                </CommandGroup>
+                                            </CommandList>
+                                        </Command>
+                                    </PopoverContent>
+                                </Popover>
+                            </div></ScrollArea>
+                             <SheetFooter className="pt-4 border-t mt-auto">
+                                <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                                <Button type="submit">Sauvegarder</Button>
+                            </SheetFooter>
+                        </form></Form>
                     </SheetContent>
                 </Sheet>
             </CardContent>
@@ -1120,29 +1036,11 @@ function PublicFormManager() {
     const modelsQuery = useMemoFirebase(() => user ? query(collection(firestore, `users/${user.uid}/question_models`)) : null, [user, firestore]);
     const { data: models, isLoading: areModelsLoading } = useCollection<QuestionModel>(modelsQuery);
 
-    const form = useForm<PublicFormFormData>({
-        resolver: zodResolver(publicFormSchema),
-    });
+    const form = useForm<PublicFormFormData>({ resolver: zodResolver(publicFormSchema) });
 
-    useEffect(() => {
-        if (isSheetOpen) {
-            form.reset(editingForm ? {
-                name: editingForm.name,
-                description: editingForm.description,
-                modelId: editingForm.modelId,
-            } : { name: '', description: '', modelId: '' });
-        }
-    }, [isSheetOpen, editingForm, form]);
-
-    const handleNew = () => {
-        setEditingForm(null);
-        setIsSheetOpen(true);
-    };
-
-    const handleEdit = (form: PublicForm) => {
-        setEditingForm(form);
-        setIsSheetOpen(true);
-    };
+    useEffect(() => { if (isSheetOpen) { form.reset(editingForm ? { name: editingForm.name, description: editingForm.description, modelId: editingForm.modelId, } : { name: '', description: '', modelId: '' }); } }, [isSheetOpen, editingForm, form]);
+    const handleNew = () => { setEditingForm(null); setIsSheetOpen(true); };
+    const handleEdit = (form: PublicForm) => { setEditingForm(form); setIsSheetOpen(true); };
     
     const handleDelete = (formId: string) => {
         deleteDocumentNonBlocking(doc(firestore, 'public_forms', formId));
@@ -1166,19 +1064,10 @@ function PublicFormManager() {
         const selectedModel = models.find(m => m.id === data.modelId);
         if (!selectedModel) return;
 
-        const formData: Partial<PublicForm> = { 
-            counselorId: user.uid,
-            name: data.name,
-            description: data.description,
-            modelId: data.modelId,
-            modelName: selectedModel.name,
-            questions: selectedModel.questions || [], // Copy questions
-            isEnabled: editingForm ? editingForm.isEnabled : true,
-        };
+        const formData: Partial<PublicForm> = { counselorId: user.uid, name: data.name, description: data.description, modelId: data.modelId, modelName: selectedModel.name, questions: selectedModel.questions || [], isEnabled: editingForm ? editingForm.isEnabled : true };
 
         if (editingForm) {
-            const formRef = doc(firestore, 'public_forms', editingForm.id);
-            setDocumentNonBlocking(formRef, formData, { merge: true });
+            setDocumentNonBlocking(doc(firestore, 'public_forms', editingForm.id), formData, { merge: true });
             toast({ title: "Formulaire public mis à jour" });
         } else {
             formData.createdAt = new Date().toISOString();
@@ -1265,50 +1154,8 @@ function PublicFormManager() {
     )
 }
 
-export default function SuiviPage() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold font-headline">Suivi</h1>
-        <p className="text-muted-foreground">
-          Gérez le suivi de vos clients, vos modèles et vos parcours.
-        </p>
-      </div>
-
-      <Tabs defaultValue="suivi" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-auto">
-          <TabsTrigger value="suivi">
-            <ClipboardList className="mr-2 h-4 w-4" /> Suivi
-          </TabsTrigger>
-          <TabsTrigger value="form-templates">
-            <FileText className="mr-2 h-4 w-4" /> Modèle de formulaire
-          </TabsTrigger>
-           <TabsTrigger value="parcours">
-            <Route className="mr-2 h-4 w-4" /> Parcours
-          </TabsTrigger>
-          <TabsTrigger value="public-forms">
-            <Send className="mr-2 h-4 w-4" /> Formulaires Publics
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="suivi">
-            <FollowUpManager />
-        </TabsContent>
-        <TabsContent value="form-templates">
-          <FormTemplateManager />
-        </TabsContent>
-        <TabsContent value="parcours">
-            <LearningPathManager />
-        </TabsContent>
-         <TabsContent value="public-forms">
-            <PublicFormManager />
-        </TabsContent>
-      </Tabs>
-    </div>
-  );
-}
-
 // ----- Other Child Components (ScaleBlockEditor, etc.) -----
+// ... [These components remain unchanged but are needed for context] ...
 function BlocQuestionMenu({ onAddBlock, showPrisme, showVitae, showAura }: { onAddBlock: (type: string) => void, showPrisme: boolean, showVitae: boolean, showAura: boolean }) {
   const blockTypes = [
     { type: 'scale', label: 'Échelle', icon: <Scale className="mr-2 h-4 w-4" /> },

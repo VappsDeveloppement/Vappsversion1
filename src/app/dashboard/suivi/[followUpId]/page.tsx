@@ -2,13 +2,13 @@
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, useRouter } from 'next/navigation';
-import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser, useCollection, addDocumentNonBlocking } from '@/firebase';
-import { doc, collection, query, where, getDocs } from 'firebase/firestore';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useDoc, useMemoFirebase, setDocumentNonBlocking, useUser, useCollection } from '@/firebase';
+import { doc, collection, query, where, getDocs, addDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Download, CheckCircle, Route, X, Mail, Phone, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,14 +19,9 @@ import { VitaeAnalysisBlock } from '@/components/shared/vitae-analysis-block';
 import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
-import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Radar, RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer } from 'recharts';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import Image from 'next/image';
 import { PdfPreviewModal } from '@/components/shared/suivi-pdf-preview';
+import { ResultDisplayBlock } from '@/components/shared/suivi-pdf-preview';
 
 // Types pour le suivi simple (formulaire)
 type FollowUp = {
@@ -80,53 +75,72 @@ type LearningPath = {
 // Main Component
 export default function FollowUpPage() {
     const params = useParams();
+    const searchParams = useSearchParams();
     const { followUpId } = params; // This ID can be for a FollowUp OR a PathEnrollment
     const { user } = useUser();
     const firestore = useFirestore();
 
-    // Attempt to fetch as a simple FollowUp
-    const followUpRef = useMemoFirebase(() => {
+    const isViewMode = searchParams.get('mode') === 'view';
+
+    // Attempt to fetch as a simple FollowUp (for counselors)
+    const counselorFollowUpRef = useMemoFirebase(() => {
         if (!user || !followUpId) return null;
         return doc(firestore, `users/${user.uid}/follow_ups`, followUpId as string);
     }, [firestore, user, followUpId]);
-    const { data: followUp, isLoading: isFollowUpLoading } = useDoc<FollowUp>(followUpRef);
+    const { data: counselorFollowUp, isLoading: isCounselorFollowUpLoading } = useDoc<FollowUp>(counselorFollowUpRef);
 
-    // Attempt to fetch as a PathEnrollment
-    const pathEnrollmentRef = useMemoFirebase(() => {
+    // Attempt to fetch as a PathEnrollment (for counselors)
+    const counselorPathEnrollmentRef = useMemoFirebase(() => {
         if (!user || !followUpId) return null;
         return doc(firestore, `users/${user.uid}/path_enrollments`, followUpId as string);
     }, [firestore, user, followUpId]);
-    const { data: pathEnrollment, isLoading: isPathEnrollmentLoading } = useDoc<PathEnrollment>(pathEnrollmentRef);
+    const { data: counselorPathEnrollment, isLoading: isCounselorPathEnrollmentLoading } = useDoc<PathEnrollment>(counselorPathEnrollmentRef);
+    
+    // Attempt to fetch as a FollowUp (for members)
+    const memberFollowUpRef = useMemoFirebase(() => {
+        if (!user || !followUpId) return null;
+        return doc(firestore, `follow_ups`, followUpId as string);
+    }, [firestore, user, followUpId]);
+    const { data: memberFollowUp, isLoading: isMemberFollowUpLoading } = useDoc<FollowUp>(memberFollowUpRef);
+    
+    // Attempt to fetch as a PathEnrollment (for members)
+    const memberPathEnrollmentRef = useMemoFirebase(() => {
+        if (!user || !followUpId) return null;
+        return doc(firestore, `path_enrollments`, followUpId as string);
+    }, [firestore, user, followUpId]);
+    const { data: memberPathEnrollment, isLoading: isMemberPathEnrollmentLoading } = useDoc<PathEnrollment>(memberPathEnrollmentRef);
+
+    // Based on what loaded, determine the context
+    const followUp = counselorFollowUp || (memberFollowUp?.clientId === user?.uid ? memberFollowUp : undefined);
+    const pathEnrollment = counselorPathEnrollment || (memberPathEnrollment?.userId === user?.uid ? memberPathEnrollment : undefined);
+    const counselorIdForModel = followUp?.counselorId || pathEnrollment?.counselorId;
 
     const modelRef = useMemoFirebase(() => {
-        if (!user || !followUp?.modelId) return null;
-        return doc(firestore, `users/${user.uid}/question_models`, followUp.modelId);
-    }, [firestore, user, followUp]);
+        if (!counselorIdForModel || !followUp?.modelId) return null;
+        return doc(firestore, `users/${counselorIdForModel}/question_models`, followUp.modelId);
+    }, [firestore, counselorIdForModel, followUp]);
     const { data: model, isLoading: isModelLoading } = useDoc<QuestionModel>(modelRef);
     
     const learningPathRef = useMemoFirebase(() => {
-        if (!user || !pathEnrollment?.pathId) return null;
-        return doc(firestore, `users/${user.uid}/learning_paths`, pathEnrollment.pathId);
-    }, [firestore, user, pathEnrollment]);
+        if (!counselorIdForModel || !pathEnrollment?.pathId) return null;
+        return doc(firestore, `users/${counselorIdForModel}/learning_paths`, pathEnrollment.pathId);
+    }, [firestore, counselorIdForModel, pathEnrollment]);
     const { data: learningPath, isLoading: isPathLoading } = useDoc<LearningPath>(learningPathRef);
 
-    const isLoading = isFollowUpLoading || isPathEnrollmentLoading;
+    const isLoading = isCounselorFollowUpLoading || isCounselorPathEnrollmentLoading || isMemberFollowUpLoading || isMemberPathEnrollmentLoading;
 
     if (isLoading) {
         return <div className="p-8 space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-96 w-full" /></div>;
     }
 
     if (pathEnrollment && learningPath) {
-        // Render the learning path view
-        return <LearningPathFollowUpView pathEnrollment={pathEnrollment} learningPath={learningPath} />;
+        return <LearningPathFollowUpView pathEnrollment={pathEnrollment} learningPath={learningPath} isViewMode={isViewMode} />;
     }
 
     if (followUp && model) {
-        // Render the single form follow-up view
-        return <SingleFormFollowUpView followUp={followUp} model={model} />;
+        return <SingleFormFollowUpView followUp={followUp} model={model} isViewMode={isViewMode} />;
     }
     
-    // If neither is found after loading
     return (
         <div className="p-8 space-y-4">
             <Link href="/dashboard/suivi" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
@@ -142,40 +156,32 @@ export default function FollowUpPage() {
 // COMPONENT FOR LEARNING PATH FOLLOW-UP
 // =====================================================================
 
-function LearningPathFollowUpView({ pathEnrollment, learningPath }: { pathEnrollment: PathEnrollment, learningPath: LearningPath }) {
+function LearningPathFollowUpView({ pathEnrollment, learningPath, isViewMode }: { pathEnrollment: PathEnrollment, learningPath: LearningPath, isViewMode: boolean }) {
     const { user } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
 
+    const counselorId = pathEnrollment.counselorId;
+    
     const followUpsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!counselorId) return null;
         return query(
-            collection(firestore, `users/${user.uid}/follow_ups`),
+            collection(firestore, `users/${counselorId}/follow_ups`),
             where('pathEnrollmentId', '==', pathEnrollment.id)
         );
-    }, [user, firestore, pathEnrollment.id]);
+    }, [counselorId, firestore, pathEnrollment.id]);
     
-    const { data: clientFollowUps, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
+    const { data: clientFollowUps, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(clientFollowUpsQuery);
 
     const handleOpenOrCreateFollowUp = async (step: { modelId: string, modelName: string }) => {
         if (!user || areFollowUpsLoading) return;
-
-        // Check if a follow-up for this specific step in this enrollment already exists
         const existingFollowUp = clientFollowUps?.find(f => f.modelId === step.modelId);
         
         if (existingFollowUp) {
-            router.push(`/dashboard/suivi/${existingFollowUp.id}`);
+            router.push(`/dashboard/suivi/${existingFollowUp.id}${isViewMode ? '?mode=view' : ''}`);
         } else {
-            const newFollowUpData: Omit<FollowUp, 'id'> = {
-                counselorId: user.uid,
-                clientId: pathEnrollment.userId,
-                clientName: pathEnrollment.clientName,
-                modelId: step.modelId,
-                modelName: step.modelName,
-                pathEnrollmentId: pathEnrollment.id, // Link to the enrollment
-                createdAt: new Date().toISOString(),
-                status: 'pending',
-            };
+            if(isViewMode) return; // Members can't create new follow-ups
+            const newFollowUpData: Omit<FollowUp, 'id'> = { counselorId: user.uid, clientId: pathEnrollment.userId, clientName: pathEnrollment.clientName, modelId: step.modelId, modelName: step.modelName, pathEnrollmentId: pathEnrollment.id, createdAt: new Date().toISOString(), status: 'pending' };
             const newDoc = await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUpData);
             router.push(`/dashboard/suivi/${newDoc.id}`);
         }
@@ -213,14 +219,16 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath }: { pathEnroll
                                             <p className="font-medium">{step.modelName}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {followUpForStep && (
+                                            {followUpForStep && isViewMode && (
                                                 <Button variant="secondary" size="sm" asChild>
-                                                    <Link href={`/dashboard/suivi/${followUpForStep.id}?mode=results`}>Voir les résultats</Link>
+                                                    <Link href={`/dashboard/suivi/${followUpForStep.id}?mode=view`}>Voir les résultats</Link>
                                                 </Button>
                                             )}
-                                            <Button size="sm" onClick={() => handleOpenOrCreateFollowUp(step)}>
-                                                {followUpForStep ? 'Continuer' : 'Démarrer'}
-                                            </Button>
+                                            {!isViewMode && (
+                                                <Button size="sm" onClick={() => handleOpenOrCreateFollowUp(step)}>
+                                                    {followUpForStep ? 'Continuer' : 'Démarrer'}
+                                                </Button>
+                                            )}
                                         </div>
                                     </div>
                                 );
@@ -237,7 +245,7 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath }: { pathEnroll
 // COMPONENT FOR SINGLE FORM FOLLOW-UP
 // =====================================================================
 
-function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model: QuestionModel }) {
+function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: FollowUp, model: QuestionModel, isViewMode: boolean }) {
     const { user } = useUser();
     const firestore = useFirestore();
     const router = useRouter();
@@ -257,29 +265,24 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
     }, [followUp]);
 
     const handleAnswerChange = (questionId: string, answer: any) => {
+        if (isViewMode) return;
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
     };
 
     const persistAnswers = async (currentAnswers: Record<string, any>) => {
-        if (!user) return;
+        if (isViewMode || !user) return;
         const followUpRef = doc(firestore, `users/${user.uid}/follow_ups`, followUp.id);
-        const answersToSave = Object.entries(currentAnswers).map(([questionId, answer]) => ({
-            questionId,
-            answer,
-        }));
+        const answersToSave = Object.entries(currentAnswers).map(([questionId, answer]) => ({ questionId, answer }));
         const cleanedAnswers = cleanDataForFirestore(answersToSave);
         await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers }, { merge: true });
         toast({title: "Progression enregistrée"});
     };
 
     const handleSave = async () => {
-        if (!user) return;
+        if (isViewMode || !user) return;
         const followUpRef = doc(firestore, `users/${user.uid}/follow_ups`, followUp.id);
         setIsSubmitting(true);
-        const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({
-            questionId,
-            answer,
-        }));
+        const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer }));
         const cleanedAnswers = cleanDataForFirestore(answersToSave);
         try {
             await setDocumentNonBlocking(followUpRef, { answers: cleanedAnswers, status: 'completed' }, { merge: true });
@@ -302,7 +305,6 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                  <Button onClick={() => setIsPdfModalOpen(true)} variant="outline">Aperçu des résultats</Button>
             </div>
 
-
             <div>
                 <h1 className="text-3xl font-bold font-headline">Suivi: {followUp.modelName}</h1>
                 <p className="text-muted-foreground">Pour {followUp.clientName}</p>
@@ -322,8 +324,8 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                             <div key={question.id} className="space-y-3">
                                                 <Label>{question.text}</Label>
                                                 <div className="flex items-center gap-4">
-                                                    <Slider min={1} max={10} step={1} value={[(blockAnswer?.[question.id] || 5)]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value[0]})}/>
-                                                    <div className="font-bold text-lg w-10 text-center">{blockAnswer?.[question.id] || '5'}</div>
+                                                    <Slider min={1} max={10} step={1} value={[(blockAnswer?.[question.id] || 5)]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value[0]})} disabled={isViewMode}/>
+                                                    <div className="font-bold text-lg w-10 text-center">{blockAnswer?.[question.id] || ''}</div>
                                                 </div>
                                             </div>
                                         ))}
@@ -335,7 +337,7 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                                     <CardContent>
-                                        <BlocQuestionModele savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })} followUpClientId={followUp.clientId}/>
+                                        <BlocQuestionModele savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })} followUpClientId={followUp.clientId} readOnly={isViewMode}/>
                                     </CardContent>
                                 </Card>
                             );
@@ -344,7 +346,7 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>Analyse de Parcours Professionnel (Vitae)</CardTitle></CardHeader>
                                     <CardContent>
-                                        <VitaeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} clientId={followUp.clientId}/>
+                                        <VitaeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} clientId={followUp.clientId} readOnly={isViewMode}/>
                                     </CardContent>
                                 </Card>
                             );
@@ -353,7 +355,7 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>Tirage Prisme</CardTitle></CardHeader>
                                     <CardContent>
-                                        <PrismeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}/>
+                                        <PrismeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} readOnly={isViewMode}/>
                                     </CardContent>
                                 </Card>
                             );
@@ -365,7 +367,7 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                         {(questionBlock.questions || []).map(question => (
                                             <div key={question.id}>
                                                 <Label className="font-semibold">{question.text}</Label>
-                                                <RadioGroup value={blockAnswer?.[question.id]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})} className="mt-2 space-y-2">
+                                                <RadioGroup value={blockAnswer?.[question.id]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})} className="mt-2 space-y-2" disabled={isViewMode}>
                                                     {question.answers.map((answer: any) => (
                                                         <div key={answer.id} className="flex items-center space-x-2">
                                                             <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
@@ -390,17 +392,10 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                                             return (
                                                 <div key={question.id}>
                                                     <Label className="font-semibold">{question.text}</Label>
-                                                    {question.imageUrl && (
-                                                        <div className="my-4 relative w-full max-w-sm h-64">
-                                                            <Image src={question.imageUrl} alt={question.text} fill className="object-contain rounded-md border" />
-                                                        </div>
-                                                    )}
-                                                    <RadioGroup value={selectedAnswerId} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})} className="mt-2 space-y-2">
+                                                    {question.imageUrl && ( <div className="my-4 relative w-full max-w-sm h-64"><Image src={question.imageUrl} alt={question.text} fill className="object-contain rounded-md border" /></div> )}
+                                                    <RadioGroup value={selectedAnswerId} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})} className="mt-2 space-y-2" disabled={isViewMode}>
                                                         {question.answers.map((answer: any) => (
-                                                            <div key={answer.id} className="flex items-center space-x-2">
-                                                                <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
-                                                                <Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label>
-                                                            </div>
+                                                            <div key={answer.id} className="flex items-center space-x-2"><RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} /><Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label></div>
                                                         ))}
                                                     </RadioGroup>
                                                     {selectedAnswer && selectedAnswer.resultText && (
@@ -418,22 +413,24 @@ function SingleFormFollowUpView({ followUp, model }: { followUp: FollowUp, model
                             return (
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>{questionBlock.question}</CardTitle></CardHeader>
-                                    <CardContent><Textarea value={blockAnswer || ''} onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)} rows={8} placeholder="Votre réponse ici..."/></CardContent>
+                                    <CardContent><Textarea value={blockAnswer || ''} onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)} rows={8} placeholder="Votre réponse ici..." disabled={isViewMode}/></CardContent>
                                 </Card>
                             );
                         case 'report':
-                            return (<ReportBlock key={questionBlock.id} questionBlock={questionBlock} initialAnswer={blockAnswer} onAnswerChange={(value: any) => handleAnswerChange(questionBlock.id, value)} onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })}/>);
+                            return (<ReportBlock key={questionBlock.id} questionBlock={questionBlock} initialAnswer={blockAnswer} onAnswerChange={(value: any) => handleAnswerChange(questionBlock.id, value)} onSaveBlock={async () => await persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} readOnly={isViewMode} />);
                         default: return null;
                     }
                 })}
             </div>
 
-            <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Enregistrer et Terminer le Suivi
-                </Button>
-            </div>
+             {!isViewMode && (
+                <div className="flex justify-end">
+                    <Button onClick={handleSave} disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Enregistrer et Terminer le Suivi
+                    </Button>
+                </div>
+            )}
             
             <PdfPreviewModal
                 isOpen={isPdfModalOpen}
@@ -476,7 +473,7 @@ type Partner = {
   specialties: string[];
 };
 
-function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock }: any) {
+function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock, readOnly }: any) {
     const { user } = useUser();
     const firestore = useFirestore();
     
@@ -526,6 +523,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
     };
     
     const handlePartnerSelect = (partner: Partner) => {
+        if (readOnly) return;
         const isSelected = selectedPartners.some(p => p.id === partner.id);
         if (isSelected) return; // Prevent duplicates
 
@@ -535,6 +533,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
     };
 
     const removePartner = (partnerId: string) => {
+        if (readOnly) return;
         const newSelection = selectedPartners.filter(p => p.id !== partnerId);
         setSelectedPartners(newSelection);
         onAnswerChange({ text: reportText, partners: newSelection });
@@ -553,47 +552,52 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                         onChange={handleTextChange}
                         rows={10}
                         placeholder="Rédigez votre compte rendu ici..."
+                        disabled={readOnly}
                     />
                 </div>
                  <div className="space-y-4">
                     <Label>Associer des partenaires</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
-                            <SelectTrigger><SelectValue placeholder="Filtrer par spécialité" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Toutes les spécialités</SelectItem>
-                                {allSpecialties.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                        <Select value={sectorFilter} onValueChange={setSectorFilter}>
-                            <SelectTrigger><SelectValue placeholder="Filtrer par secteur" /></SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">Tous les secteurs</SelectItem>
-                                {allSectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    {isLoading ? <Skeleton className="h-40 w-full" /> : (
-                        <Card className="max-h-60 overflow-y-auto">
-                            <CardContent className="p-2 space-y-2">
-                                {filteredPartners.length > 0 ? (
-                                    filteredPartners.map(partner => (
-                                        <div key={partner.id} className="flex justify-between items-center p-2 hover:bg-muted/50 rounded-md">
-                                            <div>
-                                                <p className="font-semibold">{partner.name}</p>
-                                                <div className="text-xs text-muted-foreground space-y-1">
-                                                    {partner.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</p>}
-                                                    {partner.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</p>}
+                    {!readOnly && (
+                        <>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
+                                <SelectTrigger><SelectValue placeholder="Filtrer par spécialité" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Toutes les spécialités</SelectItem>
+                                    {allSpecialties.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <Select value={sectorFilter} onValueChange={setSectorFilter}>
+                                <SelectTrigger><SelectValue placeholder="Filtrer par secteur" /></SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">Tous les secteurs</SelectItem>
+                                    {allSectors.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        {isLoading ? <Skeleton className="h-40 w-full" /> : (
+                            <Card className="max-h-60 overflow-y-auto">
+                                <CardContent className="p-2 space-y-2">
+                                    {filteredPartners.length > 0 ? (
+                                        filteredPartners.map(partner => (
+                                            <div key={partner.id} className="flex justify-between items-center p-2 hover:bg-muted/50 rounded-md">
+                                                <div>
+                                                    <p className="font-semibold">{partner.name}</p>
+                                                    <div className="text-xs text-muted-foreground space-y-1">
+                                                        {partner.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</p>}
+                                                        {partner.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</p>}
+                                                    </div>
                                                 </div>
+                                                <Button size="sm" variant="outline" onClick={() => handlePartnerSelect(partner)}>Ajouter</Button>
                                             </div>
-                                            <Button size="sm" variant="outline" onClick={() => handlePartnerSelect(partner)}>Ajouter</Button>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <p className="text-center text-sm text-muted-foreground p-4">Aucun partenaire ne correspond à la recherche.</p>
-                                )}
-                            </CardContent>
-                        </Card>
+                                        ))
+                                    ) : (
+                                        <p className="text-center text-sm text-muted-foreground p-4">Aucun partenaire ne correspond à la recherche.</p>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        )}
+                        </>
                     )}
 
                     {selectedPartners.length > 0 && (
@@ -610,18 +614,22 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                                                 {partner.specialties && partner.specialties.length > 0 && <p><strong>Spéc:</strong> {partner.specialties.join(', ')}</p>}
                                             </div>
                                         </div>
-                                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removePartner(partner.id)}>
-                                            <X className="h-4 w-4" />
-                                        </Button>
+                                        {!readOnly && (
+                                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removePartner(partner.id)}>
+                                                <X className="h-4 w-4" />
+                                            </Button>
+                                        )}
                                     </div>
                                 ))}
                             </div>
                         </div>
                     )}
                 </div>
-                 <div className="flex justify-end">
-                    <Button onClick={onSaveBlock}><Save className="mr-2 h-4 w-4" /> Enregistrer le compte rendu</Button>
-                </div>
+                 {!readOnly && (
+                    <div className="flex justify-end">
+                        <Button onClick={onSaveBlock}><Save className="mr-2 h-4 w-4" /> Enregistrer le compte rendu</Button>
+                    </div>
+                )}
             </CardContent>
         </Card>
     );
