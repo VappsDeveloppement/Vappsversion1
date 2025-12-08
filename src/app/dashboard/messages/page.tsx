@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, UserPlus, Loader2, Search, ChevronsUpDown, Check } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from '@/components/ui/command';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 
@@ -56,22 +56,19 @@ function NewConversationManager({ onCreate, currentUserData }: { onCreate: (conv
     const [open, setOpen] = useState(false);
     const { toast } = useToast();
 
-    const isConseiller = currentUserData?.role === 'conseiller';
+    // Query for user's clients (if they are a counselor)
+    const clientsQuery = useMemoFirebase(() => {
+        if (!user || currentUserData?.role !== 'conseiller') return null;
+        return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
+    }, [user, firestore, currentUserData]);
+    const { data: clients, isLoading: areClientsLoading } = useCollection<UserData>(clientsQuery);
 
-    const contactListQuery = useMemoFirebase(() => {
-        if (!user || !currentUserData) return null;
-        
-        if (isConseiller) {
-            // Un conseiller voit ses clients
-            return query(collection(firestore, 'users'), where('counselorIds', 'array-contains', user.uid));
-        } else {
-            // Un client voit ses conseillers
-            if (!currentUserData.counselorIds || currentUserData.counselorIds.length === 0) return null;
-            return query(collection(firestore, 'users'), where(documentId(), 'in', currentUserData.counselorIds));
-        }
-    }, [user, firestore, currentUserData, isConseiller]);
-    
-    const { data: contacts, isLoading } = useCollection<UserData>(contactListQuery);
+    // Query for user's own counselors
+    const myCounselorsQuery = useMemoFirebase(() => {
+        if (!user || !currentUserData?.counselorIds || currentUserData.counselorIds.length === 0) return null;
+        return query(collection(firestore, 'users'), where(documentId(), 'in', currentUserData.counselorIds));
+    }, [user, firestore, currentUserData]);
+    const { data: myCounselors, isLoading: areMyCounselorsLoading } = useCollection<UserData>(myCounselorsQuery);
     
     const handleSelectContact = async (contact: UserData) => {
         if (!user || !currentUserData) return;
@@ -79,7 +76,6 @@ function NewConversationManager({ onCreate, currentUserData }: { onCreate: (conv
 
         const participantIds = [user.uid, contact.id].sort();
         
-        // Check if conversation already exists
         const conversationsRef = collection(firestore, 'conversations');
         const q = query(conversationsRef, where('participantIds', '==', participantIds));
         const existingConvos = await getDocs(q);
@@ -91,7 +87,6 @@ function NewConversationManager({ onCreate, currentUserData }: { onCreate: (conv
             return;
         }
 
-        // Create new conversation
         const currentUserInfo: ParticipantInfo = {
             userId: user.uid,
             name: `${currentUserData.firstName} ${currentUserData.lastName}` || 'Utilisateur',
@@ -113,6 +108,8 @@ function NewConversationManager({ onCreate, currentUserData }: { onCreate: (conv
         toast({ title: "Nouvelle conversation", description: `Vous pouvez maintenant discuter avec ${contact.firstName}.` });
     };
 
+    const isLoading = areClientsLoading || areMyCounselorsLoading;
+
     return (
         <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
@@ -120,24 +117,39 @@ function NewConversationManager({ onCreate, currentUserData }: { onCreate: (conv
             </PopoverTrigger>
             <PopoverContent className="w-[300px] p-0">
                 <Command>
-                    <CommandInput placeholder={`Rechercher un ${isConseiller ? 'client' : 'conseiller'}...`} />
+                    <CommandInput placeholder="Rechercher un contact..." />
                     <CommandList>
                         <CommandEmpty>Aucun contact trouvé.</CommandEmpty>
-                        <CommandGroup>
-                            {isLoading ? <p className="p-4 text-sm">Chargement...</p> :
-                                (contacts || []).map((contact) => (
-                                    <CommandItem key={contact.id} onSelect={() => handleSelectContact(contact)}>
-                                        {`${contact.firstName} ${contact.lastName}`}
-                                    </CommandItem>
-                                ))
-                            }
-                        </CommandGroup>
+                        {isLoading ? <p className="p-4 text-sm">Chargement...</p> : (
+                            <>
+                                {myCounselors && myCounselors.length > 0 && (
+                                    <CommandGroup heading="Mes Conseillers">
+                                        {myCounselors.map((contact) => (
+                                            <CommandItem key={`counselor-${contact.id}`} onSelect={() => handleSelectContact(contact)}>
+                                                {`${contact.firstName} ${contact.lastName}`}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                )}
+                                {clients && clients.length > 0 && myCounselors && myCounselors.length > 0 && <CommandSeparator />}
+                                {clients && clients.length > 0 && (
+                                    <CommandGroup heading="Mes Clients">
+                                        {clients.map((contact) => (
+                                            <CommandItem key={`client-${contact.id}`} onSelect={() => handleSelectContact(contact)}>
+                                                {`${contact.firstName} ${contact.lastName}`}
+                                            </CommandItem>
+                                        ))}
+                                    </CommandGroup>
+                                )}
+                            </>
+                        )}
                     </CommandList>
                 </Command>
             </PopoverContent>
         </Popover>
     );
 }
+
 
 function MessagesView({ conversation }: { conversation: Conversation }) {
     const { user } = useUser();
@@ -316,4 +328,3 @@ export default function MessagesPage() {
         </div>
     );
 }
-
