@@ -9,7 +9,7 @@ import { doc, collection, query, where, getDocs, addDoc } from 'firebase/firesto
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Download, Check } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Download, Check, Phone, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -168,7 +168,7 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath, isViewMode }: 
         } else {
             if(isViewMode) return; // Members can't create new follow-ups
             const newFollowUpData: Omit<FollowUp, 'id'> = { counselorId: user.uid, clientId: pathEnrollment.userId, clientName: pathEnrollment.clientName, modelId: step.modelId, modelName: step.modelName, pathEnrollmentId: pathEnrollment.id, createdAt: new Date().toISOString(), status: 'pending' };
-            const newDoc = await addDocumentNonBlocking(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUpData);
+            const newDoc = await addDoc(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUpData);
             router.push(`/dashboard/suivi/${newDoc.id}`);
         }
     };
@@ -563,8 +563,8 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                                                 <div>
                                                     <p className="font-semibold">{partner.name}</p>
                                                     <div className="text-xs text-muted-foreground space-y-1">
-                                                        {partner.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</p>}
-                                                        {partner.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</p>}
+                                                        {partner.email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</div>}
+                                                        {partner.phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</div>}
                                                     </div>
                                                 </div>
                                                 <Button size="sm" variant="outline" onClick={() => handlePartnerSelect(partner)}>Ajouter</Button>
