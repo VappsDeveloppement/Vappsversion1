@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -84,6 +83,7 @@ export default function FollowUpPage() {
 
     const isViewMode = searchParams.get('mode') === 'view';
     const counselorIdForFetch = searchParams.get('counselorId');
+
     const counselorId = isViewMode ? counselorIdForFetch : user?.uid;
 
     const followUpRef = useMemoFirebase(() => {
@@ -165,7 +165,7 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath, isViewMode }: 
         const counselorIdToUse = isViewMode ? pathEnrollment.counselorId : user.uid;
 
         if (existingFollowUp) {
-            router.push(`/dashboard/suivi/${existingFollowUp.id}${isViewMode ? `?mode=view&counselorId=${counselorIdToUse}` : ''}`);
+            router.push(`/dashboard/suivi/${existingFollowUp.id}?mode=${isViewMode ? 'view' : 'edit'}&counselorId=${counselorIdToUse}`);
         } else {
             if(isViewMode) return; // Members can't create new follow-ups
             const newFollowUpData: Omit<FollowUp, 'id'> = { counselorId: user.uid, clientId: pathEnrollment.userId, clientName: pathEnrollment.clientName, modelId: step.modelId, modelName: step.modelName, pathEnrollmentId: pathEnrollment.id, createdAt: new Date().toISOString(), status: 'pending' };
