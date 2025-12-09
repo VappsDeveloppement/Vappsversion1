@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -8,7 +9,7 @@ import { doc, collection, query, where, getDocs, addDoc } from 'firebase/firesto
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Download, Check, Phone, Mail, X } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Download, Check, Phone, Mail, X, Scale, FileText, FileSignature, BookCopy, Bot, Pyramid, BrainCog, FileQuestion } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,8 +21,7 @@ import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
 import 'jspdf-autotable';
-import { PdfPreviewModal } from '@/components/shared/suivi-pdf-preview';
-import { ResultDisplayBlock } from '@/components/shared/suivi-pdf-preview';
+import { PdfPreviewModal, ResultDisplayBlock } from '@/components/shared/suivi-pdf-preview';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -297,6 +297,11 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                 {model.questions?.map(questionBlock => {
                     const blockAnswer = answers[questionBlock.id];
                     
+                    if (isViewMode) {
+                        return <ResultDisplayBlock key={questionBlock.id} block={questionBlock} answer={blockAnswer} suivi={followUp} />;
+                    }
+
+                    // Counselor/Editing View
                     switch (questionBlock.type) {
                         case 'scale':
                             return (
@@ -307,7 +312,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                             <div key={question.id} className="space-y-3">
                                                 <Label>{question.text}</Label>
                                                 <div className="flex items-center gap-4">
-                                                    <Slider min={1} max={10} step={1} value={[(blockAnswer?.[question.id] || 5)]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value[0]})} disabled={isViewMode}/>
+                                                    <Slider min={1} max={10} step={1} value={[(blockAnswer?.[question.id] || 5)]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value[0]})}/>
                                                     <div className="font-bold text-lg w-10 text-center">{blockAnswer?.[question.id] || ''}</div>
                                                 </div>
                                             </div>
@@ -320,7 +325,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>Analyse AURA</CardTitle></CardHeader>
                                     <CardContent>
-                                        <BlocQuestionModele savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })} followUpClientId={followUp.clientId} readOnly={isViewMode}/>
+                                        <BlocQuestionModele savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] || {} })} followUpClientId={followUp.clientId} />
                                     </CardContent>
                                 </Card>
                             );
@@ -329,7 +334,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>Analyse de Parcours Professionnel (Vitae)</CardTitle></CardHeader>
                                     <CardContent>
-                                        <VitaeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} clientId={followUp.clientId} readOnly={isViewMode}/>
+                                        <VitaeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} clientId={followUp.clientId} />
                                     </CardContent>
                                 </Card>
                             );
@@ -338,7 +343,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>Tirage Prisme</CardTitle></CardHeader>
                                     <CardContent>
-                                        <PrismeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} readOnly={isViewMode}/>
+                                        <PrismeAnalysisBlock savedAnalysis={blockAnswer} onSaveAnalysis={(result) => handleAnswerChange(questionBlock.id, result)} onSaveBlock={() => persistAnswers({ ...answers, [questionBlock.id]: answers[questionBlock.id] })} />
                                     </CardContent>
                                 </Card>
                             );
@@ -350,7 +355,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                         {(questionBlock.questions || []).map((question: any) => (
                                             <div key={question.id}>
                                                 <Label className="font-semibold">{question.text}</Label>
-                                                <RadioGroup value={blockAnswer?.[question.id]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})} className="mt-2 space-y-2" disabled={isViewMode}>
+                                                <RadioGroup value={blockAnswer?.[question.id]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})} className="mt-2 space-y-2">
                                                     {question.answers.map((answer: any) => (
                                                         <div key={answer.id} className="flex items-center space-x-2">
                                                             <RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} />
@@ -376,7 +381,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                                 <div key={question.id}>
                                                     <Label className="font-semibold">{question.text}</Label>
                                                     {question.imageUrl && ( <div className="my-4 relative w-full max-w-sm h-64"><Image src={question.imageUrl} alt={question.text} fill className="object-contain rounded-md border" /></div> )}
-                                                    <RadioGroup value={selectedAnswerId} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})} className="mt-2 space-y-2" disabled={isViewMode}>
+                                                    <RadioGroup value={selectedAnswerId} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...qcmAnswers, [question.id]: value})} className="mt-2 space-y-2">
                                                         {question.answers.map((answer: any) => (
                                                             <div key={answer.id} className="flex items-center space-x-2"><RadioGroupItem value={answer.id} id={`${question.id}-${answer.id}`} /><Label htmlFor={`${question.id}-${answer.id}`} className="font-normal">{answer.text}</Label></div>
                                                         ))}
@@ -396,7 +401,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                             return (
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>{questionBlock.question}</CardTitle></CardHeader>
-                                    <CardContent><Textarea value={blockAnswer || ''} onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)} rows={8} placeholder="Votre réponse ici..." disabled={isViewMode}/></CardContent>
+                                    <CardContent><Textarea value={blockAnswer || ''} onChange={(e) => handleAnswerChange(questionBlock.id, e.target.value)} rows={8} placeholder="Votre réponse ici..."/></CardContent>
                                 </Card>
                             );
                         case 'report':
@@ -618,3 +623,4 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
         </Card>
     );
 }
+
