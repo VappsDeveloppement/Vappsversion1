@@ -1,0 +1,16 @@
+
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Permet à tout le monde de lire les fichiers.
+    // Ceci est nécessaire pour que les images (photos de profil, images de blog, etc.)
+    // puissent être affichées publiquement sur votre site.
+    match /{allPaths=**} {
+      allow read;
+      // Seuls les utilisateurs authentifiés peuvent écrire (téléverser) des fichiers.
+      // Cela empêche les utilisateurs anonymes de téléverser n'importe quoi.
+      allow write: if request.auth != null;
+    }
+  }
+}
