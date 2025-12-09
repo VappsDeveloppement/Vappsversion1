@@ -23,6 +23,7 @@ import { Textarea } from '@/components/ui/textarea';
 import 'jspdf-autotable';
 import { PdfPreviewModal } from '@/components/shared/suivi-pdf-preview';
 import { ResultDisplayBlock } from '@/components/shared/suivi-pdf-preview';
+import Image from 'next/image';
 
 // Types pour le suivi simple (formulaire)
 type FollowUp = {
@@ -497,6 +498,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
     }, [allPartners, specialtyFilter, sectorFilter]);
 
     const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        if (readOnly) return;
         setReportText(e.target.value);
         onAnswerChange({ text: e.target.value, partners: selectedPartners });
     };
@@ -530,7 +532,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                         value={reportText}
                         onChange={handleTextChange}
                         rows={10}
-                        placeholder="Rédigez votre compte rendu ici..."
+                        placeholder={readOnly ? "Aucun compte rendu rédigé." : "Rédigez votre compte rendu ici..."}
                         disabled={readOnly}
                     />
                 </div>
