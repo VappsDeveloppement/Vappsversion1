@@ -4,7 +4,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useMemo } from 'react';
 import { useFirebase } from '@/firebase/provider';
-import { doc, onSnapshot, Firestore, FirestoreError } from 'firebase/firestore';
+import { doc, onSnapshot, Firestore, FirestoreError, getDoc, setDoc } from 'firebase/firestore';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
@@ -576,8 +576,20 @@ export const AgencyProvider = ({ children }: AgencyProviderProps) => {
                 };
                 setPersonalization(mergedPersonalization);
             } else {
-                setPersonalization(defaultPersonalization);
-                setAgencyData({ id: agencyIdToLoad, name: "VApps", personalization: defaultPersonalization });
+                // If agency doc doesn't exist, create it with defaults
+                (async () => {
+                    try {
+                        const newAgencyData = { name: "VApps", personalization: defaultPersonalization };
+                        await setDoc(agencyDocRef, newAgencyData);
+                        setAgencyData(newAgencyData);
+                        setPersonalization(defaultPersonalization);
+                        console.log("Agency document created with default settings.");
+                    } catch (err) {
+                         console.error("Failed to create agency document:", err);
+                        // Use default personalization as a fallback
+                         setPersonalization(defaultPersonalization);
+                    }
+                })();
             }
             setIsLoading(false);
             setError(null);
@@ -631,3 +643,4 @@ export function useAgency() {
     
 
     
+

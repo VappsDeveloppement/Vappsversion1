@@ -3,27 +3,51 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Règle d'initialisation (très permissive, pour le premier démarrage) ---
+    // Permet de créer le premier document "agencies" et le premier utilisateur si la base est vide.
+    function isInitialSetup() {
+      return !exists(/databases/$(database)/documents/agencies/vapps-agency) || !exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    
     // --- Règles Utilisateurs ---
     match /users/{userId} {
-      allow read, write: if request.auth.uid == userId;
-      allow create: if request.auth.uid != null;
+      // Tout le monde peut créer son propre compte.
+      allow create: if request.auth.uid == userId;
+      // L'utilisateur peut lire et modifier son propre profil.
+      allow read, update: if request.auth.uid == userId;
+      // Un admin (FULLACCESS) peut lire le profil de n'importe qui (utile pour la gestion).
+      allow get: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']);
     }
 
     // --- Règles Conseillers Spécifiques ---
+    // Les conseillers peuvent gérer leurs propres données dans leurs sous-collections.
     match /users/{counselorId}/{collection}/{docId} {
       allow read, write: if request.auth.uid == counselorId;
     }
     
     // --- Règles de Messagerie ---
     match /conversations/{conversationId} {
-      allow read, create, update: if request.auth.uid in resource.data.participantIds;
+      // Seuls les participants à une conversation peuvent la lire ou la modifier.
+      allow read, update: if request.auth.uid in resource.data.participantIds;
+      // N'importe qui peut créer une nouvelle conversation. La sécurité est sur qui peut la lire/modifier.
+      allow create: if request.auth.uid != null;
       
       match /messages/{messageId} {
+        // Seuls les participants peuvent lire ou écrire des messages.
         allow read, create: if get(/databases/$(database)/documents/conversations/$(conversationId)).data.participantIds.hasAny([request.auth.uid]);
       }
     }
+    
+    // --- Règles pour le document "Agency" ---
+    // Ce document contient la configuration globale de la plateforme.
+    match /agencies/vapps-agency {
+      // Tout le monde peut lire la configuration (nécessaire pour l'affichage public).
+      allow read: if true;
+      // Seul un admin (FULLACCESS) peut modifier la configuration de l'agence.
+      allow write: if get(/databases/$(database)/documents/users/$(request.auth.uid)).data.permissions.hasAny(['FULLACCESS']) || isInitialSetup();
+    }
 
-    // --- Règles Publiques Spécifiques ---
+    // --- Règles Publiques Spécifiques (Formulaires) ---
     match /job_applications/{applicationId} {
       allow create: if true;
       allow read, update, delete: if request.auth != null;
@@ -46,8 +70,11 @@ service cloud.firestore {
     }
     
     // --- Règles Générales ---
+    // S'applique à toutes les autres collections.
     match /{document=**} {
+      // La lecture est publique par défaut (pour les mini-sites, articles, etc.).
       allow read: if true;
+      // L'écriture nécessite une authentification.
       allow write: if request.auth != null;
     }
   }

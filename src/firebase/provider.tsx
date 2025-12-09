@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -120,6 +121,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                       // This ensures the very first user ever gets admin rights.
                       if (isFirstUser) {
                         newUserDoc.permissions = ['FULLACCESS'];
+                        console.log(`First user detected (${firebaseUser.email}). Assigning FULLACCESS.`);
                       }
                       
                       setDocumentNonBlocking(userDocRef, newUserDoc);
@@ -133,6 +135,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
                       // If this is the only user account and it doesn't have permissions set, grant them.
                       if (allUsersSnapshot.size === 1 && !userData.permissions) {
                            setDocumentNonBlocking(userDocRef, { permissions: ['FULLACCESS'] }, { merge: true });
+                           console.log(`Sole user (${firebaseUser.email}) detected without permissions. Assigning FULLACCESS.`);
                       } else {
                           // Just update the sign-in time for regular users.
                           const lastSignInTime = new Date().toISOString();
