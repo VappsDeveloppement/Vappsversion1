@@ -18,6 +18,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
+import { addDocumentNonBlocking } from '@/firebase';
 
 type FaqItem = {
   id: string;
@@ -72,7 +73,7 @@ function GeneralFaqViewer({ scope }: { scope: 'conseiller' | 'membre' }) {
           ) : (
             <div className="flex flex-col items-center justify-center h-48 border-2 border-dashed rounded-lg text-center">
                 <BookOpen className="h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold">Aucune question dans la FAQ</h3>
+                <h3 className="mt-4 text-lg font-semibold">Aucune question dans cette FAQ</h3>
                 <p className="mt-2 text-sm text-muted-foreground">La section d'aide est en cours de construction.</p>
             </div>
           )}
@@ -98,7 +99,7 @@ export default function SupportPage() {
     });
 
     useEffect(() => {
-        if(user) {
+        if(user && userData) {
             supportForm.reset({
                 name: userData?.firstName ? `${userData.firstName} ${userData.lastName}` : user.displayName || '',
                 email: user.email || '',
@@ -109,10 +110,17 @@ export default function SupportPage() {
     }, [user, userData, supportForm]);
     
      const handleSupportSubmit = async (data: SupportFormData) => {
+        if (!user) {
+            toast({ title: 'Erreur', description: 'Vous devez être connecté pour envoyer une demande.', variant: 'destructive' });
+            return;
+        }
         setIsSubmitting(true);
         try {
             await addDocumentNonBlocking(collection(firestore, 'support_requests'), {
-                ...data, status: 'new', createdAt: new Date().toISOString(),
+                ...data,
+                userId: user.uid, // Add user ID
+                status: 'new',
+                createdAt: new Date().toISOString(),
             });
             toast({ title: 'Demande envoyée', description: 'Votre demande de support a été envoyée.' });
             setIsDialogOpen(false);
@@ -140,7 +148,9 @@ export default function SupportPage() {
                     <p className="text-muted-foreground">Accédez à la FAQ et contactez le support si besoin.</p>
                 </div>
                  <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-                    <DialogTrigger asChild><Button><Send className="mr-2 h-4 w-4" />Contacter le support</Button></DialogTrigger>
+                    <DialogTrigger asChild>
+                        <Button><Send className="mr-2 h-4 w-4" />Contacter le support</Button>
+                    </DialogTrigger>
                     <DialogContent>
                         <DialogHeader><DialogTitle>Soumettre une demande de support</DialogTitle><DialogDescription>Décrivez votre problème ou votre question.</DialogDescription></DialogHeader>
                         <Form {...supportForm}>
