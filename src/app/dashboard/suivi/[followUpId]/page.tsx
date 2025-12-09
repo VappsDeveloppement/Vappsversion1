@@ -20,7 +20,7 @@ import { BlocQuestionModele } from '@/components/shared/bloc-question-modele';
 import { PrismeAnalysisBlock } from '@/components/shared/prisme-analysis-block';
 import { Textarea } from '@/components/ui/textarea';
 import 'jspdf-autotable';
-import { PdfPreviewModal, ResultDisplayBlock } from '@/components/shared/suivi-pdf-preview';
+import { PdfPreviewModal, ResultDisplayBlock as FullResultDisplayBlock } from '@/components/shared/suivi-pdf-preview';
 import Image from 'next/image';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -84,22 +84,18 @@ export default function FollowUpPage() {
     const isViewMode = searchParams.get('mode') === 'view';
     const counselorIdForFetch = searchParams.get('counselorId');
 
-    const counselorId = isViewMode ? counselorIdForFetch : user?.uid;
-
     const followUpRef = useMemoFirebase(() => {
-        if (!counselorId || !followUpId) return null;
-        return doc(firestore, `users/${counselorId}/follow_ups`, followUpId as string);
-    }, [firestore, counselorId, followUpId]);
+        if (!counselorIdForFetch || !followUpId) return null;
+        return doc(firestore, `users/${counselorIdForFetch}/follow_ups`, followUpId as string);
+    }, [firestore, counselorIdForFetch, followUpId]);
     const { data: followUp, isLoading: isFollowUpLoading } = useDoc<FollowUp>(followUpRef);
 
     const pathEnrollmentRef = useMemoFirebase(() => {
-         if (!counselorId || !followUpId) return null;
-        return doc(firestore, `users/${counselorId}/path_enrollments`, followUpId as string);
-    }, [firestore, counselorId, followUpId]);
+         if (!counselorIdForFetch || !followUpId) return null;
+        return doc(firestore, `users/${counselorIdForFetch}/path_enrollments`, followUpId as string);
+    }, [firestore, counselorIdForFetch, followUpId]);
     const { data: pathEnrollment, isLoading: isPathEnrollmentLoading } = useDoc<PathEnrollment>(pathEnrollmentRef);
 
-    // If we are viewing, the model owner is the counselor who assigned the task.
-    // If we are editing, the model owner is the current user (who must be a counselor).
     const modelOwnerId = isViewMode ? (followUp?.counselorId || pathEnrollment?.counselorId) : user?.uid;
 
     const modelRef = useMemoFirebase(() => {
@@ -172,7 +168,7 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath, isViewMode }: 
             if(isViewMode) return; // Members can't create new follow-ups
             const newFollowUpData: Omit<FollowUp, 'id'> = { counselorId: user.uid, clientId: pathEnrollment.userId, clientName: pathEnrollment.clientName, modelId: step.modelId, modelName: step.modelName, pathEnrollmentId: pathEnrollment.id, createdAt: new Date().toISOString(), status: 'pending' };
             const newDoc = await addDoc(collection(firestore, `users/${user.uid}/follow_ups`), newFollowUpData);
-            router.push(`/dashboard/suivi/${newDoc.id}`);
+            router.push(`/dashboard/suivi/${newDoc.id}?counselorId=${user.uid}`);
         }
     };
 
@@ -247,7 +243,6 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
     }, [followUp]);
 
     const handleAnswerChange = (questionId: string, answer: any) => {
-        if (isViewMode) return;
         setAnswers(prev => ({ ...prev, [questionId]: answer }));
     };
 
@@ -261,7 +256,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
     };
 
     const handleSave = async () => {
-        if (isViewMode || !user) return;
+        if (!user) return;
         const followUpRef = doc(firestore, `users/${user.uid}/follow_ups`, followUp.id);
         setIsSubmitting(true);
         const answersToSave = Object.entries(answers).map(([questionId, answer]) => ({ questionId, answer }));
@@ -277,6 +272,37 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
         }
     };
     
+    // Member View: Show only the results overview
+    if (isViewMode) {
+        return (
+             <div className="space-y-6">
+                <Link href="/dashboard/suivi" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                    <ArrowLeft className="h-4 w-4" />
+                    Retour à la liste des suivis
+                </Link>
+                <div>
+                    <h1 className="text-3xl font-bold font-headline">Résultats du Suivi: {followUp.modelName}</h1>
+                    <p className="text-muted-foreground">Voici la synthèse de vos réponses.</p>
+                </div>
+                 <div className="space-y-8">
+                    {model.questions?.map(questionBlock => {
+                        const blockAnswer = answers[questionBlock.id];
+                        return <FullResultDisplayBlock key={questionBlock.id} block={questionBlock} answer={blockAnswer} suivi={followUp} />;
+                    })}
+                </div>
+                 <Button onClick={() => setIsPdfModalOpen(true)} variant="outline">Aperçu et Téléchargement PDF</Button>
+                 <PdfPreviewModal
+                    isOpen={isPdfModalOpen}
+                    onOpenChange={setIsPdfModalOpen}
+                    suivi={followUp}
+                    model={model}
+                    liveAnswers={answers}
+                />
+            </div>
+        );
+    }
+    
+    // Counselor View: Show the editable form
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
@@ -296,11 +322,6 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                 {model.questions?.map(questionBlock => {
                     const blockAnswer = answers[questionBlock.id];
                     
-                    if (isViewMode) {
-                        return <ResultDisplayBlock key={questionBlock.id} block={questionBlock} answer={blockAnswer} suivi={followUp} />;
-                    }
-
-                    // Counselor/Editing View
                     switch (questionBlock.type) {
                         case 'scale':
                             return (
@@ -410,14 +431,12 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                 })}
             </div>
 
-             {!isViewMode && (
-                <div className="flex justify-end">
-                    <Button onClick={handleSave} disabled={isSubmitting}>
-                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Enregistrer et Terminer le Suivi
-                    </Button>
-                </div>
-            )}
+            <div className="flex justify-end">
+                <Button onClick={handleSave} disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Enregistrer et Terminer le Suivi
+                </Button>
+            </div>
             
             <PdfPreviewModal
                 isOpen={isPdfModalOpen}
@@ -426,12 +445,11 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                 model={model}
                 liveAnswers={answers}
             />
-
         </div>
     );
 }
     
-// Helper functions and sub-components for SingleFormFollowUpView
+// Helper functions and sub-components
 const cleanDataForFirestore = (data: any): any => {
     if (Array.isArray(data)) {
         return data.map(item => cleanDataForFirestore(item));
@@ -622,3 +640,5 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
         </Card>
     );
 }
+
+    
