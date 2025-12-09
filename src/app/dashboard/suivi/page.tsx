@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon, Copy, Power, PowerOff, Upload } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, writeBatch, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -144,26 +144,58 @@ function MemberFollowUpView() {
     const firestore = useFirestore();
     const router = useRouter();
 
-    const memberPathEnrollmentsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, 'path_enrollments'), where('userId', '==', user.uid));
-    }, [user, firestore]);
-    const { data: pathEnrollmentsData, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(memberPathEnrollmentsQuery);
+    const [combinedFollowUps, setCombinedFollowUps] = useState<CombinedFollowUp[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
 
-    const followUpsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, 'follow_ups'), where('clientId', '==', user.uid));
-    }, [user, firestore]);
-    const { data: followUpsData, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
-    
-    const combinedFollowUps = useMemo(() => {
-        const forms: CombinedFollowUp[] = (followUpsData || []).map(f => ({ ...f, type: 'form' }));
-        const paths: CombinedFollowUp[] = (pathEnrollmentsData || []).map(p => ({ ...p, type: 'path' }));
-        const all = [...forms, ...paths];
-        return all.sort((a,b) => new Date(b.createdAt || (b as PathEnrollment).enrolledAt).getTime() - new Date(a.createdAt || (a as PathEnrollment).enrolledAt).getTime());
-    }, [followUpsData, pathEnrollmentsData]);
-    
-    const isLoading = areFollowUpsLoading || areEnrollmentsLoading;
+    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.uid) : null), [user, firestore]);
+    const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
+
+    useEffect(() => {
+        if (!user || !userData) {
+            setIsLoading(false);
+            return;
+        }
+
+        const fetchAllData = async () => {
+            setIsLoading(true);
+            const counselorIds = userData.counselorIds || [];
+            if (counselorIds.length === 0) {
+                setCombinedFollowUps([]);
+                setIsLoading(false);
+                return;
+            }
+
+            const allFollowUps: FollowUp[] = [];
+            const allEnrollments: PathEnrollment[] = [];
+
+            for (const counselorId of counselorIds) {
+                const followUpsQuery = query(collection(firestore, `users/${counselorId}/follow_ups`), where('clientId', '==', user.uid));
+                const enrollmentsQuery = query(collection(firestore, `users/${counselorId}/path_enrollments`), where('userId', '==', user.uid));
+
+                const [followUpsSnapshot, enrollmentsSnapshot] = await Promise.all([
+                    getDocs(followUpsQuery),
+                    getDocs(enrollmentsQuery),
+                ]);
+
+                followUpsSnapshot.forEach(doc => allFollowUps.push({ id: doc.id, ...doc.data() } as FollowUp));
+                enrollmentsSnapshot.forEach(doc => allEnrollments.push({ id: doc.id, ...doc.data() } as PathEnrollment));
+            }
+
+            const forms: CombinedFollowUp[] = allFollowUps.map(f => ({ ...f, type: 'form' }));
+            const paths: CombinedFollowUp[] = allEnrollments.map(p => ({ ...p, type: 'path' }));
+
+            const combined = [...forms, ...paths].sort((a, b) => {
+                const dateA = a.createdAt || (a as PathEnrollment).enrolledAt;
+                const dateB = b.createdAt || (b as PathEnrollment).enrolledAt;
+                return new Date(dateB).getTime() - new Date(dateA).getTime();
+            });
+
+            setCombinedFollowUps(combined);
+            setIsLoading(false);
+        };
+
+        fetchAllData();
+    }, [user, userData, firestore]);
 
     return (
         <div className="space-y-8">
@@ -190,15 +222,12 @@ function MemberFollowUpView() {
                             {isLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
                             : combinedFollowUps && combinedFollowUps.length > 0 ? (
                                 combinedFollowUps.map(item => {
-                                    const link = item.type === 'path'
-                                        ? `/dashboard/suivi/${item.id}`
-                                        : `/dashboard/suivi/${item.id}`;
-                                    
                                     const isCompleted = item.status === 'completed';
+                                    const link = `/dashboard/suivi/${item.id}?mode=view&counselorId=${item.counselorId}`;
                                     const buttonText = isCompleted ? "Voir les résultats" : "Commencer";
                                     
                                     return (
-                                        <TableRow key={item.id}>
+                                        <TableRow key={`${item.type}-${item.id}`}>
                                             <TableCell>{(item as FollowUp).modelName || (item as PathEnrollment).pathName}</TableCell>
                                             <TableCell><Badge variant={item.type === 'path' ? 'default': 'secondary'}>{item.type === 'path' ? 'Parcours' : 'Formulaire'}</Badge></TableCell>
                                             <TableCell>{new Date(item.createdAt || (item as PathEnrollment).enrolledAt).toLocaleDateString()}</TableCell>
@@ -505,7 +534,7 @@ function FollowUpManager() {
                          {isLoading ? <TableRow><TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell></TableRow>
                          : combinedFollowUps && combinedFollowUps.length > 0 ? (
                             combinedFollowUps.map(item => (
-                                <TableRow key={item.id}>
+                                <TableRow key={`${item.type}-${item.id}`}>
                                     <TableCell>{item.clientName}</TableCell>
                                     <TableCell><Badge variant={item.type === 'path' ? 'default': 'secondary'}>{item.type === 'path' ? 'Parcours' : 'Formulaire'}</Badge></TableCell>
                                     <TableCell>{(item as FollowUp).modelName || (item as PathEnrollment).pathName}</TableCell>

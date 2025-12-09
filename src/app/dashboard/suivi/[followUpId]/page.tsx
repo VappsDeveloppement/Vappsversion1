@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -76,43 +77,27 @@ type LearningPath = {
 export default function FollowUpPage() {
     const params = useParams();
     const searchParams = useSearchParams();
-    const { followUpId } = params; // This ID can be for a FollowUp OR a PathEnrollment
+    const { followUpId } = params; 
     const { user } = useUser();
     const firestore = useFirestore();
 
     const isViewMode = searchParams.get('mode') === 'view';
+    const counselorIdForFetch = searchParams.get('counselorId');
+    const counselorId = user?.uid || counselorIdForFetch;
 
-    // Attempt to fetch as a simple FollowUp (for counselors)
-    const counselorFollowUpRef = useMemoFirebase(() => {
-        if (!user || !followUpId) return null;
-        return doc(firestore, `users/${user.uid}/follow_ups`, followUpId as string);
-    }, [firestore, user, followUpId]);
-    const { data: counselorFollowUp, isLoading: isCounselorFollowUpLoading } = useDoc<FollowUp>(counselorFollowUpRef);
 
-    // Attempt to fetch as a PathEnrollment (for counselors)
-    const counselorPathEnrollmentRef = useMemoFirebase(() => {
-        if (!user || !followUpId) return null;
-        return doc(firestore, `users/${user.uid}/path_enrollments`, followUpId as string);
-    }, [firestore, user, followUpId]);
-    const { data: counselorPathEnrollment, isLoading: isCounselorPathEnrollmentLoading } = useDoc<PathEnrollment>(counselorPathEnrollmentRef);
-    
-    // Attempt to fetch as a FollowUp (for members)
-    const memberFollowUpRef = useMemoFirebase(() => {
-        if (!user || !followUpId) return null;
-        return doc(firestore, `follow_ups`, followUpId as string);
-    }, [firestore, user, followUpId]);
-    const { data: memberFollowUp, isLoading: isMemberFollowUpLoading } = useDoc<FollowUp>(memberFollowUpRef);
-    
-    // Attempt to fetch as a PathEnrollment (for members)
-    const memberPathEnrollmentRef = useMemoFirebase(() => {
-        if (!user || !followUpId) return null;
-        return doc(firestore, `path_enrollments`, followUpId as string);
-    }, [firestore, user, followUpId]);
-    const { data: memberPathEnrollment, isLoading: isMemberPathEnrollmentLoading } = useDoc<PathEnrollment>(memberPathEnrollmentRef);
+    const followUpRef = useMemoFirebase(() => {
+        if (!counselorId || !followUpId) return null;
+        return doc(firestore, `users/${counselorId}/follow_ups`, followUpId as string);
+    }, [firestore, counselorId, followUpId]);
+    const { data: followUp, isLoading: isFollowUpLoading } = useDoc<FollowUp>(followUpRef);
 
-    // Based on what loaded, determine the context
-    const followUp = counselorFollowUp || (memberFollowUp?.clientId === user?.uid ? memberFollowUp : undefined);
-    const pathEnrollment = counselorPathEnrollment || (memberPathEnrollment?.userId === user?.uid ? memberPathEnrollment : undefined);
+    const pathEnrollmentRef = useMemoFirebase(() => {
+         if (!counselorId || !followUpId) return null;
+        return doc(firestore, `users/${counselorId}/path_enrollments`, followUpId as string);
+    }, [firestore, counselorId, followUpId]);
+    const { data: pathEnrollment, isLoading: isPathEnrollmentLoading } = useDoc<PathEnrollment>(pathEnrollmentRef);
+
     const counselorIdForModel = followUp?.counselorId || pathEnrollment?.counselorId;
 
     const modelRef = useMemoFirebase(() => {
@@ -127,7 +112,7 @@ export default function FollowUpPage() {
     }, [firestore, counselorIdForModel, pathEnrollment]);
     const { data: learningPath, isLoading: isPathLoading } = useDoc<LearningPath>(learningPathRef);
 
-    const isLoading = isCounselorFollowUpLoading || isCounselorPathEnrollmentLoading || isMemberFollowUpLoading || isMemberPathEnrollmentLoading;
+    const isLoading = isFollowUpLoading || isPathEnrollmentLoading;
 
     if (isLoading) {
         return <div className="p-8 space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-96 w-full" /></div>;
@@ -163,7 +148,7 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath, isViewMode }: 
 
     const counselorId = pathEnrollment.counselorId;
     
-    const followUpsQuery = useMemoFirebase(() => {
+    const clientFollowUpsQuery = useMemoFirebase(() => {
         if (!counselorId) return null;
         return query(
             collection(firestore, `users/${counselorId}/follow_ups`),
@@ -177,8 +162,10 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath, isViewMode }: 
         if (!user || areFollowUpsLoading) return;
         const existingFollowUp = clientFollowUps?.find(f => f.modelId === step.modelId);
         
+        const counselorIdToUse = isViewMode ? pathEnrollment.counselorId : user.uid;
+
         if (existingFollowUp) {
-            router.push(`/dashboard/suivi/${existingFollowUp.id}${isViewMode ? '?mode=view' : ''}`);
+            router.push(`/dashboard/suivi/${existingFollowUp.id}${isViewMode ? `?mode=view&counselorId=${counselorIdToUse}` : ''}`);
         } else {
             if(isViewMode) return; // Members can't create new follow-ups
             const newFollowUpData: Omit<FollowUp, 'id'> = { counselorId: user.uid, clientId: pathEnrollment.userId, clientName: pathEnrollment.clientName, modelId: step.modelId, modelName: step.modelName, pathEnrollmentId: pathEnrollment.id, createdAt: new Date().toISOString(), status: 'pending' };
@@ -219,16 +206,9 @@ function LearningPathFollowUpView({ pathEnrollment, learningPath, isViewMode }: 
                                             <p className="font-medium">{step.modelName}</p>
                                         </div>
                                         <div className="flex items-center gap-2">
-                                            {followUpForStep && isViewMode && (
-                                                <Button variant="secondary" size="sm" asChild>
-                                                    <Link href={`/dashboard/suivi/${followUpForStep.id}?mode=view`}>Voir les résultats</Link>
-                                                </Button>
-                                            )}
-                                            {!isViewMode && (
-                                                <Button size="sm" onClick={() => handleOpenOrCreateFollowUp(step)}>
-                                                    {followUpForStep ? 'Continuer' : 'Démarrer'}
-                                                </Button>
-                                            )}
+                                            <Button size="sm" onClick={() => handleOpenOrCreateFollowUp(step)}>
+                                                {isViewMode ? 'Voir' : (followUpForStep ? 'Continuer' : 'Démarrer')}
+                                            </Button>
                                         </div>
                                     </div>
                                 );
