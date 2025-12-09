@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import React, { useState, useEffect, useMemo } from 'react';
@@ -19,8 +20,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from '@/components/ui/input';
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Skeleton } from "@/components/ui/skeleton";
-import { Label } from "@/components/ui/label";
+import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
 import { BlocQuestionModele } from "@/components/shared/bloc-question-modele";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -33,11 +34,12 @@ import { useAgency } from '@/context/agency-provider';
 import 'jspdf-autotable';
 import { VitaeAnalysisBlock } from "@/components/shared/vitae-analysis-block";
 import { PrismeAnalysisBlock } from "@/components/shared/prisme-analysis-block";
-import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2 } from 'lucide-react';
+import { FileText, ClipboardList, Route, Scale, BrainCog, ChevronsUpDown, Check, MoreHorizontal, Eye, BookCopy, FileQuestion, Bot, Pyramid, FileSignature, Loader2, Search } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DragDropContext, Droppable, Draggable, OnDragEndResponder } from '@hello-pangea/dnd';
 import Image from 'next/image';
 import { PdfPreviewModal } from '@/components/shared/suivi-pdf-preview';
+import { useRouter } from 'next/navigation';
 
 // Schemas
 const scaleSubQuestionSchema = z.object({ id: z.string(), text: z.string().min(1, 'Le texte de la question est requis.') });
@@ -140,19 +142,19 @@ function CounselorSuiviManager() {
 function MemberFollowUpView() {
     const { user } = useUser();
     const firestore = useFirestore();
-
-    const memberFollowUpsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, 'follow_ups'), where('clientId', '==', user.uid));
-    }, [user, firestore]);
+    const router = useRouter();
 
     const memberPathEnrollmentsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(collection(firestore, 'path_enrollments'), where('userId', '==', user.uid));
     }, [user, firestore]);
-
-    const { data: followUpsData, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(memberFollowUpsQuery);
     const { data: pathEnrollmentsData, isLoading: areEnrollmentsLoading } = useCollection<PathEnrollment>(memberPathEnrollmentsQuery);
+
+    const followUpsQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(collection(firestore, 'follow_ups'), where('clientId', '==', user.uid));
+    }, [user, firestore]);
+    const { data: followUpsData, isLoading: areFollowUpsLoading } = useCollection<FollowUp>(followUpsQuery);
     
     const combinedFollowUps = useMemo(() => {
         const forms: CombinedFollowUp[] = (followUpsData || []).map(f => ({ ...f, type: 'form' }));
@@ -187,21 +189,30 @@ function MemberFollowUpView() {
                         <TableBody>
                             {isLoading ? <TableRow><TableCell colSpan={5}><Skeleton className="h-8 w-full"/></TableCell></TableRow>
                             : combinedFollowUps && combinedFollowUps.length > 0 ? (
-                                combinedFollowUps.map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>{(item as FollowUp).modelName || (item as PathEnrollment).pathName}</TableCell>
-                                        <TableCell><Badge variant={item.type === 'path' ? 'default': 'secondary'}>{item.type === 'path' ? 'Parcours' : 'Formulaire'}</Badge></TableCell>
-                                        <TableCell>{new Date(item.createdAt || (item as PathEnrollment).enrolledAt).toLocaleDateString()}</TableCell>
-                                        <TableCell><Badge variant={item.status === 'completed' ? 'default' : 'secondary'}>{item.status}</Badge></TableCell>
-                                        <TableCell className="text-right">
-                                            <Button asChild size="sm" variant="outline">
-                                                <Link href={`/dashboard/suivi/${item.id}?mode=view`}>
-                                                    <Eye className="mr-2 h-4 w-4" /> Voir
-                                                </Link>
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))
+                                combinedFollowUps.map(item => {
+                                    const link = item.type === 'path'
+                                        ? `/dashboard/suivi/${item.id}`
+                                        : `/dashboard/suivi/${item.id}`;
+                                    
+                                    const isCompleted = item.status === 'completed';
+                                    const buttonText = isCompleted ? "Voir les résultats" : "Commencer";
+                                    
+                                    return (
+                                        <TableRow key={item.id}>
+                                            <TableCell>{(item as FollowUp).modelName || (item as PathEnrollment).pathName}</TableCell>
+                                            <TableCell><Badge variant={item.type === 'path' ? 'default': 'secondary'}>{item.type === 'path' ? 'Parcours' : 'Formulaire'}</Badge></TableCell>
+                                            <TableCell>{new Date(item.createdAt || (item as PathEnrollment).enrolledAt).toLocaleDateString()}</TableCell>
+                                            <TableCell><Badge variant={isCompleted ? 'default' : 'secondary'}>{item.status}</Badge></TableCell>
+                                            <TableCell className="text-right">
+                                                <Button asChild size="sm" variant={isCompleted ? 'outline' : 'default'}>
+                                                    <Link href={link}>
+                                                        {buttonText}
+                                                    </Link>
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })
                             ) : (
                                 <TableRow><TableCell colSpan={5} className="h-24 text-center">Aucun suivi ne vous a été assigné.</TableCell></TableRow>
                             )}
@@ -759,140 +770,6 @@ function FormTemplateManager() {
   );
 }
 
-// ----- Child Editor Components -----
-type EditorProps = {
-    index: number;
-    form: ReturnType<typeof useForm<QuestionModelFormData>>;
-    remove: ReturnType<typeof useFieldArray<QuestionModelFormData>>['remove'];
-}
-
-function ScormBlockEditor({ index, form, remove }: EditorProps) {
-    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({ control: form.control, name: `questions.${index}.questions` });
-    const { fields: resultFields, append: appendResult, remove: removeResult } = useFieldArray({ control: form.control, name: `questions.${index}.results` });
-
-    return (
-         <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><BookCopy className="h-4 w-4"/>Bloc SCORM</div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <div className="space-y-4">
-                <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc SCORM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div>
-                    <h4 className="font-medium text-sm my-2">Questions</h4>
-                    {questionFields.map((question, qIndex) => (
-                        <Card key={question.id} className="p-3 mb-3 bg-background">
-                            <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
-                        </Card>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `scorm-q-${Date.now()}`, text: '', imageUrl: null, answers: []})}>+ Question</Button>
-                </div>
-                 <div className="mt-4 pt-4 border-t">
-                    <h4 className="font-medium text-sm my-2">Résultats</h4>
-                     {(resultFields || []).map((result, rIndex) => (
-                        <div key={result.id} className="p-3 mb-3 border rounded-md bg-background">
-                            <div className="flex justify-between items-center mb-2">
-                                <Label>Résultat {rIndex + 1}</Label>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => removeResult(rIndex)}><Trash2 className="h-4 w-4"/></Button>
-                            </div>
-                            <div className="grid grid-cols-1 gap-4">
-                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.value`} render={({field}) => (<FormItem><FormLabel>Valeur du résultat (seuil)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.text`} render={({field}) => (<FormItem><FormLabel>Texte du résultat</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
-                            </div>
-                        </div>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendResult({id: `scorm-r-${Date.now()}`, value: '', text: ''})}>+ Résultat</Button>
-                </div>
-            </div>
-        </Card>
-    );
-}
-
-function QcmBlockEditor({ index, form, remove }: EditorProps) {
-    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({ control: form.control, name: `questions.${index}.questions` });
-    const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
-
-    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
-        const file = event.target.files?.[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onloadend = () => { form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, reader.result as string); };
-            reader.readAsDataURL(file);
-        }
-    };
-
-    return (
-        <Card className="p-4 bg-muted/50">
-            <div className="flex justify-between items-center mb-4">
-                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><FileQuestion className="h-4 w-4"/>Bloc QCM</div>
-                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
-            </div>
-            <div className="space-y-4">
-                <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc QCM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                <div>
-                    <h4 className="font-medium text-sm my-2">Questions</h4>
-                    {questionFields.map((question, qIndex) => (
-                        <Card key={question.id} className="p-3 mb-3 bg-background">
-                            <div className="flex justify-between items-center mb-2">
-                                <Label>Question {qIndex + 1}</Label>
-                                <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}><Trash2 className="h-4 w-4"/></Button>
-                            </div>
-                            <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
-                             <div className="mt-2">
-                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRefs.current[qIndex]?.click()}>
-                                    <Upload className="h-4 w-4 mr-2" /> Uploader une image
-                                </Button>
-                                <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
-                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) as string} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
-                            </div>
-                            <QcmAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
-                        </Card>
-                    ))}
-                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `qcm-q-${Date.now()}`, text: '', imageUrl: null, answers: []})}>+ Question</Button>
-                </div>
-            </div>
-        </Card>
-    );
-}
-
-function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
-  const { fields, append, remove } = useFieldArray({ control, name: `questions.${questionIndex}.questions.${qIndex}.answers` });
-
-  return (
-    <div className="mt-4 pl-4 border-l">
-      <h5 className="text-xs font-semibold mb-2">Réponses</h5>
-      {fields.map((answer, aIndex) => (
-        <div key={answer.id} className="flex gap-2 items-end mb-2">
-          <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormLabel className="text-xs">Texte</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.value`} render={({ field }) => (<FormItem className="w-24"><FormLabel className="text-xs">Valeur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-          <Button type="button" variant="ghost" size="icon" onClick={() => remove(aIndex)}><X className="h-4 w-4" /></Button>
-        </div>
-      ))}
-      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `scorm-a-${Date.now()}`, text: '', value: '' })}>+ Réponse</Button>
-    </div>
-  );
-}
-
-function QcmAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
-  const { fields, append, remove } = useFieldArray({ control, name: `questions.${questionIndex}.questions.${qIndex}.answers` });
-  return (
-    <div className="mt-4 pl-4 border-l">
-      <h5 className="text-xs font-semibold mb-2">Réponses</h5>
-      {fields.map((answer, aIndex) => (
-        <div key={answer.id} className="flex flex-col gap-2 items-start mb-4 border-b pb-4">
-            <div className="flex justify-between w-full items-center">
-                <Label className="text-xs">Réponse {aIndex + 1}</Label>
-                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(aIndex)}><X className="h-4 w-4" /></Button>
-            </div>
-            <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({ field }) => (<FormItem className="w-full"><FormLabel className="text-xs">Texte de la réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.resultText`} render={({ field }) => (<FormItem className="w-full"><FormLabel className="text-xs">Texte de résultat (si cette réponse est choisie)</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
-        </div>
-      ))}
-      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `qcm-a-${Date.now()}`, text: '', resultText: '' })}>+ Réponse</Button>
-    </div>
-  );
-}
-
 function LearningPathManager() {
     const { user } = useUser();
     const firestore = useFirestore();
@@ -1154,8 +1031,140 @@ function PublicFormManager() {
     )
 }
 
-// ----- Other Child Components (ScaleBlockEditor, etc.) -----
-// ... [These components remain unchanged but are needed for context] ...
+// ----- Child Editor Components -----
+type EditorProps = {
+    index: number;
+    form: ReturnType<typeof useForm<QuestionModelFormData>>;
+    remove: ReturnType<typeof useFieldArray<QuestionModelFormData>>['remove'];
+}
+
+function ScormBlockEditor({ index, form, remove }: EditorProps) {
+    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({ control: form.control, name: `questions.${index}.questions` });
+    const { fields: resultFields, append: appendResult, remove: removeResult } = useFieldArray({ control: form.control, name: `questions.${index}.results` });
+
+    return (
+         <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><BookCopy className="h-4 w-4"/>Bloc SCORM</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className="space-y-4">
+                <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc SCORM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <div>
+                    <h4 className="font-medium text-sm my-2">Questions</h4>
+                    {questionFields.map((question, qIndex) => (
+                        <Card key={question.id} className="p-3 mb-3 bg-background">
+                            <ScormAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
+                        </Card>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `scorm-q-${Date.now()}`, text: '', imageUrl: null, answers: []})}>+ Question</Button>
+                </div>
+                 <div className="mt-4 pt-4 border-t">
+                    <h4 className="font-medium text-sm my-2">Résultats</h4>
+                     {(resultFields || []).map((result, rIndex) => (
+                        <div key={result.id} className="p-3 mb-3 border rounded-md bg-background">
+                            <div className="flex justify-between items-center mb-2">
+                                <Label>Résultat {rIndex + 1}</Label>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeResult(rIndex)}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+                            <div className="grid grid-cols-1 gap-4">
+                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.value`} render={({field}) => (<FormItem><FormLabel>Valeur du résultat (seuil)</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name={`questions.${index}.results.${rIndex}.text`} render={({field}) => (<FormItem><FormLabel>Texte du résultat</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+                            </div>
+                        </div>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendResult({id: `scorm-r-${Date.now()}`, value: '', text: ''})}>+ Résultat</Button>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function QcmBlockEditor({ index, form, remove }: EditorProps) {
+    const { fields: questionFields, append: appendQuestion, remove: removeQuestion } = useFieldArray({ control: form.control, name: `questions.${index}.questions` });
+    const fileInputRefs = React.useRef<(HTMLInputElement | null)[]>([]);
+
+    const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>, questionIndex: number) => {
+        const file = event.target.files?.[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onloadend = () => { form.setValue(`questions.${index}.questions.${questionIndex}.imageUrl`, reader.result as string); };
+            reader.readAsDataURL(file);
+        }
+    };
+
+    return (
+        <Card className="p-4 bg-muted/50">
+            <div className="flex justify-between items-center mb-4">
+                <div className="flex items-center gap-2 text-sm font-semibold text-muted-foreground"><FileQuestion className="h-4 w-4"/>Bloc QCM</div>
+                <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}><Trash2 className="h-4 w-4 text-destructive"/></Button>
+            </div>
+            <div className="space-y-4">
+                <FormField control={form.control} name={`questions.${index}.title`} render={({ field }) => (<FormItem><FormLabel>Titre du bloc QCM</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <div>
+                    <h4 className="font-medium text-sm my-2">Questions</h4>
+                    {questionFields.map((question, qIndex) => (
+                        <Card key={question.id} className="p-3 mb-3 bg-background">
+                            <div className="flex justify-between items-center mb-2">
+                                <Label>Question {qIndex + 1}</Label>
+                                <Button type="button" variant="ghost" size="icon" onClick={() => removeQuestion(qIndex)}><Trash2 className="h-4 w-4"/></Button>
+                            </div>
+                            <FormField control={form.control} name={`questions.${index}.questions.${qIndex}.text`} render={({field}) => (<FormItem className="mb-2"><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>)} />
+                             <div className="mt-2">
+                                <Button type="button" variant="outline" size="sm" onClick={() => fileInputRefs.current[qIndex]?.click()}>
+                                    <Upload className="h-4 w-4 mr-2" /> Uploader une image
+                                </Button>
+                                <input type="file" ref={el => fileInputRefs.current[qIndex] = el} onChange={(e) => handleImageUpload(e, qIndex)} className="hidden" accept="image/*" />
+                                {form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) && <Image src={form.watch(`questions.${index}.questions.${qIndex}.imageUrl`) as string} alt="Aperçu" width={64} height={64} className="h-16 w-auto mt-2 rounded-md" />}
+                            </div>
+                            <QcmAnswersEditor control={form.control} qIndex={qIndex} questionIndex={index} />
+                        </Card>
+                    ))}
+                    <Button type="button" variant="outline" size="sm" onClick={() => appendQuestion({id: `qcm-q-${Date.now()}`, text: '', imageUrl: null, answers: []})}>+ Question</Button>
+                </div>
+            </div>
+        </Card>
+    );
+}
+
+function ScormAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
+  const { fields, append, remove } = useFieldArray({ control, name: `questions.${questionIndex}.questions.${qIndex}.answers` });
+
+  return (
+    <div className="mt-4 pl-4 border-l">
+      <h5 className="text-xs font-semibold mb-2">Réponses</h5>
+      {fields.map((answer, aIndex) => (
+        <div key={answer.id} className="flex gap-2 items-end mb-2">
+          <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({ field }) => (<FormItem className="flex-1"><FormLabel className="text-xs">Texte</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.value`} render={({ field }) => (<FormItem className="w-24"><FormLabel className="text-xs">Valeur</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+          <Button type="button" variant="ghost" size="icon" onClick={() => remove(aIndex)}><X className="h-4 w-4" /></Button>
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `scorm-a-${Date.now()}`, text: '', value: '' })}>+ Réponse</Button>
+    </div>
+  );
+}
+
+function QcmAnswersEditor({ control, qIndex, questionIndex }: { control: Control<QuestionModelFormData>, qIndex: number, questionIndex: number }) {
+  const { fields, append, remove } = useFieldArray({ control, name: `questions.${questionIndex}.questions.${qIndex}.answers` });
+  return (
+    <div className="mt-4 pl-4 border-l">
+      <h5 className="text-xs font-semibold mb-2">Réponses</h5>
+      {fields.map((answer, aIndex) => (
+        <div key={answer.id} className="flex flex-col gap-2 items-start mb-4 border-b pb-4">
+            <div className="flex justify-between w-full items-center">
+                <Label className="text-xs">Réponse {aIndex + 1}</Label>
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => remove(aIndex)}><X className="h-4 w-4" /></Button>
+            </div>
+            <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.text`} render={({ field }) => (<FormItem className="w-full"><FormLabel className="text-xs">Texte de la réponse</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={control} name={`questions.${questionIndex}.questions.${qIndex}.answers.${aIndex}.resultText`} render={({ field }) => (<FormItem className="w-full"><FormLabel className="text-xs">Texte de résultat (si cette réponse est choisie)</FormLabel><FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl><FormMessage /></FormItem>)} />
+        </div>
+      ))}
+      <Button type="button" variant="outline" size="sm" onClick={() => append({ id: `qcm-a-${Date.now()}`, text: '', resultText: '' })}>+ Réponse</Button>
+    </div>
+  );
+}
+
 function BlocQuestionMenu({ onAddBlock, showPrisme, showVitae, showAura }: { onAddBlock: (type: string) => void, showPrisme: boolean, showVitae: boolean, showAura: boolean }) {
   const blockTypes = [
     { type: 'scale', label: 'Échelle', icon: <Scale className="mr-2 h-4 w-4" /> },
