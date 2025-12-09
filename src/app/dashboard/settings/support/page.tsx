@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -15,7 +16,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { RichTextEditor } from "@/components/ui/rich-text-editor";
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useAgency } from "@/context/agency-provider";
 import { useFirestore } from "@/firebase/provider";
 import { addDocumentNonBlocking, deleteDocumentNonBlocking, setDocumentNonBlocking, useCollection, useMemoFirebase, useUser, useDoc } from "@/firebase";
@@ -24,7 +25,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const faqFormSchema = z.object({
   category: z.string().min(1, 'La thématique est requise.'),
@@ -34,7 +35,8 @@ const faqFormSchema = z.object({
   pdfUrls: z.array(z.object({
     name: z.string().min(1, "Le nom du document est requis."),
     url: z.string().url("Veuillez entrer une URL valide."),
-  })).optional()
+  })).optional(),
+  targetRole: z.enum(['all', 'conseiller', 'membre']).default('all'),
 });
 
 type FaqFormData = z.infer<typeof faqFormSchema>;
@@ -42,33 +44,270 @@ type FaqFormData = z.infer<typeof faqFormSchema>;
 type FaqItem = FaqFormData & {
   id: string;
   scope: 'general' | 'agency';
-  agencyId?: string; // Kept for potential backward compatibility but not used for filtering anymore
+  agencyId?: string;
 };
 
-function FaqViewer({ scope }: { scope: 'general' | 'agency' }) {
+function GeneralFaqManager() {
+  const firestore = useFirestore();
+  const { toast } = useToast();
+  
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingFaq, setEditingFaq] = useState<FaqItem | null>(null);
+
+  const generalFaqQuery = useMemoFirebase(() => {
+    return query(
+      collection(firestore, 'faq_items'),
+      where('scope', '==', 'general')
+    );
+  }, [firestore]);
+
+  const { data: faqItems, isLoading: areFaqsLoading } = useCollection<FaqItem>(generalFaqQuery);
+
+  const form = useForm<FaqFormData>({
+    resolver: zodResolver(faqFormSchema),
+    defaultValues: { category: '', question: '', content: '', videoUrl: '', pdfUrls: [], targetRole: 'all' },
+  });
+
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "pdfUrls",
+  });
+
+  const handleNew = () => {
+    setEditingFaq(null);
+    form.reset({ category: '', question: '', content: '', videoUrl: '', pdfUrls: [], targetRole: 'all' });
+    setIsSheetOpen(true);
+  };
+
+  const handleEdit = (faqItem: FaqItem) => {
+    setEditingFaq(faqItem);
+    form.reset({
+      ...faqItem,
+      pdfUrls: faqItem.pdfUrls || []
+    });
+    setIsSheetOpen(true);
+  };
+
+  const handleDelete = (faqId: string) => {
+      const faqDocRef = doc(firestore, 'faq_items', faqId);
+      deleteDocumentNonBlocking(faqDocRef);
+      toast({ title: 'Question supprimée', description: 'La question a été retirée de la FAQ générale.' });
+  };
+
+  const onSubmit = async (data: FaqFormData) => {
+    setIsSubmitting(true);
+    
+    const faqData = { ...data, scope: 'general' as const };
+
+    try {
+      if (editingFaq) {
+        const faqDocRef = doc(firestore, 'faq_items', editingFaq.id);
+        await setDocumentNonBlocking(faqDocRef, faqData, { merge: true });
+        toast({ title: 'Question mise à jour', description: 'La question a été mise à jour dans la FAQ générale.' });
+      } else {
+        const faqCollectionRef = collection(firestore, 'faq_items');
+        await addDocumentNonBlocking(faqCollectionRef, faqData);
+        toast({ title: 'Question ajoutée', description: 'La nouvelle question a été ajoutée à la FAQ générale.' });
+      }
+      setIsSheetOpen(false);
+      setEditingFaq(null);
+      form.reset();
+    } catch (error) {
+      console.error(error);
+      toast({ variant: 'destructive', title: 'Erreur', description: 'Une erreur est survenue.' });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Gestion de la FAQ</CardTitle>
+              <CardDescription>Créez et modifiez les questions-réponses pour la page d'aide de la plateforme.</CardDescription>
+            </div>
+            <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
+              <SheetTrigger asChild>
+                <Button onClick={handleNew}>
+                  <PlusCircle className="mr-2 h-4 w-4" />
+                  Ajouter une question
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="sm:max-w-3xl w-full overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>{editingFaq ? 'Modifier' : 'Ajouter'} une question</SheetTitle>
+                </SheetHeader>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 py-4 pr-6">
+                    <FormField
+                        control={form.control}
+                        name="targetRole"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Cible de la question</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Sélectionnez un rôle" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="all">Tous</SelectItem>
+                                    <SelectItem value="conseiller">Conseiller</SelectItem>
+                                    <SelectItem value="membre">Membre</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField control={form.control} name="category" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Thématique</FormLabel>
+                        <FormControl><Input placeholder="Ex: Facturation" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="question" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Question</FormLabel>
+                        <FormControl><Input placeholder="Comment retrouver mes factures ?" {...field} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="content" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contenu de la réponse</FormLabel>
+                        <FormControl><RichTextEditor content={field.value || ''} onChange={field.onChange} /></FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="videoUrl" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>URL de la vidéo (Optionnel)</FormLabel>
+                        <FormControl>
+                          <div className="flex items-center gap-2">
+                            <Video className="h-4 w-4 text-muted-foreground" />
+                            <Input placeholder="https://youtube.com/embed/..." {...field} />
+                          </div>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <div>
+                      <FormLabel>Documents PDF (Optionnel)</FormLabel>
+                      <div className="space-y-2 mt-2">
+                        {fields.map((field, index) => (
+                          <div key={field.id} className="flex gap-2 items-center">
+                            <FormField control={form.control} name={`pdfUrls.${index}.name`} render={({ field }) => (
+                              <Input {...field} placeholder="Nom du document" className="flex-1" />
+                            )} />
+                            <FormField control={form.control} name={`pdfUrls.${index}.url`} render={({ field }) => (
+                              <Input {...field} placeholder="URL du PDF" className="flex-1" />
+                            )} />
+                            <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)}>
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                       <Button type="button" variant="outline" size="sm" onClick={() => append({ name: '', url: '' })} className="mt-2" disabled={fields.length >= 2}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Ajouter un PDF
+                        </Button>
+                    </div>
+                    <SheetFooter className="pt-6">
+                      <SheetClose asChild><Button type="button" variant="outline">Annuler</Button></SheetClose>
+                      <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Sauvegarder
+                      </Button>
+                    </SheetFooter>
+                  </form>
+                </Form>
+              </SheetContent>
+            </Sheet>
+        </div>
+      </CardHeader>
+      <CardContent>
+          {areFaqsLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          ) : faqItems && faqItems.length > 0 ? (
+            <Accordion type="single" collapsible className="w-full">
+              {faqItems.map((item) => (
+                <AccordionItem value={item.id} key={item.id}>
+                  <AccordionTrigger>{item.question}</AccordionTrigger>
+                  <AccordionContent>
+                    <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.content }} />
+                    {item.videoUrl && (
+                      <div className="mt-4">
+                        <iframe
+                          className="w-full aspect-video rounded-lg"
+                          src={item.videoUrl}
+                          title={item.question}
+                          frameBorder="0"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                          allowFullScreen
+                        ></iframe>
+                      </div>
+                    )}
+                    {item.pdfUrls && item.pdfUrls.length > 0 && (
+                      <div className="mt-4 space-y-2">
+                        <h4 className="font-semibold">Documents associés :</h4>
+                        <ul className="list-disc pl-5">
+                          {item.pdfUrls.map((pdf, index) => (
+                            <li key={index}>
+                              <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-2">
+                                <FileText className="h-4 w-4" />
+                                {pdf.name}
+                              </a>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                    <div className="mt-6 flex gap-2">
+                        <Button variant="outline" size="sm" onClick={() => handleEdit(item)}><Edit className="mr-2 h-4 w-4"/>Modifier</Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(item.id)}><Trash2 className="mr-2 h-4 w-4"/>Supprimer</Button>
+                    </div>
+                  </AccordionContent>
+                </AccordionItem>
+              ))}
+            </Accordion>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg text-center">
+                <BookOpen className="h-12 w-12 text-muted-foreground" />
+                <h3 className="mt-4 text-lg font-semibold">Aucune question dans la FAQ</h3>
+                <p className="mt-2 text-sm text-muted-foreground">Cliquez sur "Ajouter une question" pour commencer.</p>
+            </div>
+          )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function AgencyFaqViewer() {
     const firestore = useFirestore();
     const faqQuery = useMemoFirebase(() => {
-        return query(collection(firestore, 'faq_items'), where('scope', '==', scope));
-    }, [firestore, scope]);
+        return query(collection(firestore, 'faq_items'), where('scope', '==', 'agency'));
+    }, [firestore]);
 
     const { data: faqItems, isLoading } = useCollection<FaqItem>(faqQuery);
 
     if (isLoading) {
-        return (
-            <div className="space-y-2">
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-                <Skeleton className="h-12 w-full" />
-            </div>
-        );
+        return <div className="space-y-2"><Skeleton className="h-12 w-full" /><Skeleton className="h-12 w-full" /></div>;
     }
     
     if (!faqItems || faqItems.length === 0) {
         return (
-            <div className="flex flex-col items-center justify-center h-64 border-2 border-dashed rounded-lg text-center">
-                <BookOpen className="h-12 w-12 text-muted-foreground" />
-                <h3 className="mt-4 text-lg font-semibold">La FAQ est vide</h3>
-                <p className="mt-2 text-sm text-muted-foreground">Aucune question n'a été ajoutée à cette section pour le moment.</p>
+            <div className="text-center py-10 text-muted-foreground">
+                <p>Aucune question spécifique à l'agence n'a été ajoutée.</p>
             </div>
         );
     }
@@ -80,33 +319,6 @@ function FaqViewer({ scope }: { scope: 'general' | 'agency' }) {
                     <AccordionTrigger>{item.question}</AccordionTrigger>
                     <AccordionContent>
                         <div className="prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: item.content }} />
-                         {item.videoUrl && (
-                            <div className="mt-4">
-                                <iframe
-                                className="w-full aspect-video rounded-lg"
-                                src={item.videoUrl}
-                                title={item.question}
-                                frameBorder="0"
-                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                allowFullScreen
-                                ></iframe>
-                            </div>
-                        )}
-                        {item.pdfUrls && item.pdfUrls.length > 0 && (
-                            <div className="mt-4 space-y-2">
-                                <h4 className="font-semibold">Documents associés :</h4>
-                                <ul className="list-disc pl-5">
-                                {item.pdfUrls.map((pdf, index) => (
-                                    <li key={index}>
-                                    <a href={pdf.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline flex items-center gap-2">
-                                        <FileText className="h-4 w-4" />
-                                        {pdf.name}
-                                    </a>
-                                    </li>
-                                ))}
-                                </ul>
-                            </div>
-                        )}
                     </AccordionContent>
                 </AccordionItem>
             ))}
@@ -123,13 +335,20 @@ const supportFormSchema = z.object({
 type SupportFormData = z.infer<typeof supportFormSchema>;
 
 export default function SupportPage() {
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     
-    const userDocRef = useMemoFirebase(() => (user ? doc(firestore, 'users', user.id) : null), [user, firestore]);
+    const userDocRef = useMemoFirebase(() => {
+        // Ensure user and user.id are available before creating the doc reference
+        if (user?.id) {
+            return doc(firestore, 'users', user.id);
+        }
+        return null;
+    }, [user, firestore]);
+    
     const { data: userData, isLoading: isUserDataLoading } = useDoc(userDocRef);
 
     const supportForm = useForm<SupportFormData>({
@@ -141,6 +360,17 @@ export default function SupportPage() {
             message: '',
         }
     });
+    
+    useEffect(() => {
+        if(user) {
+            supportForm.reset({
+                name: userData?.firstName ? `${userData.firstName} ${userData.lastName}` : user.displayName || '',
+                email: user.email || '',
+                subject: '',
+                message: ''
+            })
+        }
+    }, [user, userData, supportForm])
 
     const handleSupportSubmit = async (data: SupportFormData) => {
         setIsSubmitting(true);
@@ -161,7 +391,12 @@ export default function SupportPage() {
         }
     };
 
-    const isMember = userData?.role === 'membre';
+    const isLoading = isUserLoading || isUserDataLoading;
+
+    if (isLoading) {
+        return <div className="p-8"><Skeleton className="h-64 w-full" /></div>;
+    }
+    
     const isConseiller = userData?.role === 'conseiller' || userData?.permissions?.includes('FULLACCESS');
 
     return (
@@ -172,21 +407,20 @@ export default function SupportPage() {
                     Accédez à la FAQ et contactez le support si besoin.
                 </p>
             </div>
-            <Tabs defaultValue={isMember ? "faq-agence" : "faq-generale"}>
-                {isConseiller && (
+            
+            {isConseiller ? (
+                 <Tabs defaultValue="faq-generale">
                     <TabsList>
                         <TabsTrigger value="faq-generale">FAQ Générale</TabsTrigger>
                         <TabsTrigger value="faq-agence">FAQ de l'Agence</TabsTrigger>
                     </TabsList>
-                )}
-                 {isConseiller && (
                     <TabsContent value="faq-generale">
                         <Card>
                             <CardHeader>
                                 <div className="flex justify-between items-start">
                                     <div>
                                         <CardTitle>FAQ Générale de la Plateforme</CardTitle>
-                                        <CardDescription>Retrouvez les réponses aux questions les plus fréquentes sur l'utilisation de la plateforme.</CardDescription>
+                                        <CardDescription>Retrouvez les réponses aux questions les plus fréquentes.</CardDescription>
                                     </div>
                                     <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                                         <DialogTrigger asChild>
@@ -207,20 +441,30 @@ export default function SupportPage() {
                                     </Dialog>
                                 </div>
                             </CardHeader>
-                            <CardContent><FaqViewer scope="general" /></CardContent>
+                            <CardContent><GeneralFaqManager /></CardContent>
                         </Card>
                     </TabsContent>
-                 )}
-                <TabsContent value="faq-agence">
-                    <Card>
-                        <CardHeader>
-                            <CardTitle>FAQ de l'Agence</CardTitle>
-                            <CardDescription>Retrouvez les réponses aux questions spécifiques à votre agence.</CardDescription>
-                        </CardHeader>
-                        <CardContent><FaqViewer scope="agency" /></CardContent>
-                    </Card>
-                </TabsContent>
-            </Tabs>
+                    <TabsContent value="faq-agence">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>FAQ de l'Agence</CardTitle>
+                                <CardDescription>Retrouvez les réponses aux questions spécifiques à votre agence.</CardDescription>
+                            </CardHeader>
+                            <CardContent><AgencyFaqViewer /></CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
+            ) : (
+                <Card>
+                    <CardHeader>
+                        <CardTitle>FAQ de l'Agence</CardTitle>
+                        <CardDescription>Retrouvez les réponses aux questions les plus fréquentes.</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <AgencyFaqViewer />
+                    </CardContent>
+                </Card>
+            )}
         </div>
     );
 }
