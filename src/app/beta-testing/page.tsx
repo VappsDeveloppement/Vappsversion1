@@ -144,9 +144,8 @@ export default function PublicBetaTestingPage() {
                 <Card>
                     <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
                         <div className="text-sm">
-                            <p className="font-semibold">Informations de connexion pour l'application de test :</p>
-                            <p><span className="text-muted-foreground">Identifiant :</span> demo</p>
-                            <p><span className="text-muted-foreground">Mot de passe :</span> demo</p>
+                            <p className="font-semibold">Informations de connexion :</p>
+                            <p>Il vous faudra créer un compte de test directement sur l'application de test.</p>
                         </div>
                          <Button asChild>
                             <Link href={personalization.betaTesting.testUrl} target="_blank">
