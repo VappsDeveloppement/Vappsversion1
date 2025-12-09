@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import React, { useEffect, useState, useMemo } from 'react';
@@ -9,7 +8,7 @@ import { doc, collection, query, where, getDocs, addDoc } from 'firebase/firesto
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Download, Check, Phone, Mail, X, Scale, FileText, FileSignature, BookCopy, Bot, Pyramid, BrainCog, FileQuestion } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Download, Check, Phone, Mail, X, Scale, FileText, FileSignature, BookCopy, Bot, Pyramid, BrainCog, FileQuestion, Select as SelectIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -598,8 +597,8 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                                          <div>
                                             <p className="font-semibold">{partner.name}</p>
                                             <div className="text-muted-foreground text-xs mt-1 space-y-0.5">
-                                                {partner.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</p>}
-                                                {partner.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</p>}
+                                                {partner.email && <div className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</div>}
+                                                {partner.phone && <div className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</div>}
                                                 {partner.specialties && partner.specialties.length > 0 && <p><strong>Spéc:</strong> {partner.specialties.join(', ')}</p>}
                                             </div>
                                         </div>
@@ -623,4 +622,3 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
         </Card>
     );
 }
-
