@@ -23,6 +23,7 @@ import 'jspdf-autotable';
 import { PdfPreviewModal } from '@/components/shared/suivi-pdf-preview';
 import { ResultDisplayBlock } from '@/components/shared/suivi-pdf-preview';
 import Image from 'next/image';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 // Types pour le suivi simple (formulaire)
 type FollowUp = {
@@ -98,7 +99,9 @@ export default function FollowUpPage() {
     }, [firestore, counselorId, followUpId]);
     const { data: pathEnrollment, isLoading: isPathEnrollmentLoading } = useDoc<PathEnrollment>(pathEnrollmentRef);
 
-    const modelOwnerId = followUp?.counselorId || pathEnrollment?.counselorId;
+    // If we are viewing, the model owner is the counselor who assigned the task.
+    // If we are editing, the model owner is the current user (who must be a counselor).
+    const modelOwnerId = isViewMode ? (followUp?.counselorId || pathEnrollment?.counselorId) : user?.uid;
 
     const modelRef = useMemoFirebase(() => {
         if (!modelOwnerId || !followUp?.modelId) return null;
@@ -112,7 +115,7 @@ export default function FollowUpPage() {
     }, [firestore, modelOwnerId, pathEnrollment]);
     const { data: learningPath, isLoading: isPathLoading } = useDoc<LearningPath>(learningPathRef);
 
-    const isLoading = isFollowUpLoading || isPathEnrollmentLoading;
+    const isLoading = isFollowUpLoading || isPathEnrollmentLoading || isModelLoading || isPathLoading;
 
     if (isLoading) {
         return <div className="p-8 space-y-4"><Skeleton className="h-8 w-64" /><Skeleton className="h-96 w-full" /></div>;
@@ -344,7 +347,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>{questionBlock.title}</CardTitle><CardDescription>Répondez aux questions suivantes.</CardDescription></CardHeader>
                                     <CardContent className="space-y-8">
-                                        {(questionBlock.questions || []).map(question => (
+                                        {(questionBlock.questions || []).map((question: any) => (
                                             <div key={question.id}>
                                                 <Label className="font-semibold">{question.text}</Label>
                                                 <RadioGroup value={blockAnswer?.[question.id]} onValueChange={(value) => handleAnswerChange(questionBlock.id, {...blockAnswer, [question.id]: value})} className="mt-2 space-y-2" disabled={isViewMode}>
@@ -366,7 +369,7 @@ function SingleFormFollowUpView({ followUp, model, isViewMode }: { followUp: Fol
                                 <Card key={questionBlock.id}>
                                     <CardHeader><CardTitle>{questionBlock.title}</CardTitle></CardHeader>
                                     <CardContent className="space-y-8">
-                                        {(questionBlock.questions || []).map(question => {
+                                        {(questionBlock.questions || []).map((question: any) => {
                                             const selectedAnswerId = qcmAnswers[question.id];
                                             const selectedAnswer = question.answers.find((a:any) => a.id === selectedAnswerId);
                                             return (
@@ -541,14 +544,14 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                     {!readOnly && (
                         <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
+                            <Select value={specialtyFilter} onValueChange={setSpecialtyFilter} disabled={readOnly}>
                                 <SelectTrigger><SelectValue placeholder="Filtrer par spécialité" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Toutes les spécialités</SelectItem>
                                     {allSpecialties.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={sectorFilter} onValueChange={setSectorFilter}>
+                            <Select value={sectorFilter} onValueChange={setSectorFilter} disabled={readOnly}>
                                 <SelectTrigger><SelectValue placeholder="Filtrer par secteur" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Tous les secteurs</SelectItem>
