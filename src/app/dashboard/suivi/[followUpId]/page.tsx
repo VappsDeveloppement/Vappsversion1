@@ -8,7 +8,7 @@ import { doc, collection, query, where, getDocs, addDoc } from 'firebase/firesto
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Download, Check, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Download, Check, Phone, Mail, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -544,14 +544,14 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                     {!readOnly && (
                         <>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <Select value={specialtyFilter} onValueChange={setSpecialtyFilter} disabled={readOnly}>
+                            <Select value={specialtyFilter} onValueChange={setSpecialtyFilter}>
                                 <SelectTrigger><SelectValue placeholder="Filtrer par spécialité" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Toutes les spécialités</SelectItem>
                                     {allSpecialties.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                 </SelectContent>
                             </Select>
-                            <Select value={sectorFilter} onValueChange={setSectorFilter} disabled={readOnly}>
+                            <Select value={sectorFilter} onValueChange={setSectorFilter}>
                                 <SelectTrigger><SelectValue placeholder="Filtrer par secteur" /></SelectTrigger>
                                 <SelectContent>
                                     <SelectItem value="all">Tous les secteurs</SelectItem>
@@ -592,7 +592,7 @@ function ReportBlock({ questionBlock, initialAnswer, onAnswerChange, onSaveBlock
                                     <div key={partner.id} className="flex justify-between items-start p-3 border rounded-lg bg-secondary/50">
                                          <div>
                                             <p className="font-semibold">{partner.name}</p>
-                                            <div className="text-xs text-muted-foreground space-y-1 mt-1">
+                                            <div className="text-muted-foreground text-xs mt-1 space-y-0.5">
                                                 {partner.email && <p className="flex items-center gap-1.5"><Mail className="h-3 w-3"/>{partner.email}</p>}
                                                 {partner.phone && <p className="flex items-center gap-1.5"><Phone className="h-3 w-3"/>{partner.phone}</p>}
                                                 {partner.specialties && partner.specialties.length > 0 && <p><strong>Spéc:</strong> {partner.specialties.join(', ')}</p>}
