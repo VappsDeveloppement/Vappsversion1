@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { signInWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, sendPasswordResetEmail } from 'firebase/auth';
 import { useAuth } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -48,14 +48,31 @@ export function LoginForm() {
     async function onLogin(values: z.infer<typeof loginSchema>) {
         setIsLoginLoading(true);
         try {
+            // Attempt to sign in first
             await signInWithEmailAndPassword(auth, values.email, values.password);
             router.push('/dashboard');
         } catch (error: any) {
-            let errorMessage = "Une erreur est survenue lors de la connexion.";
-            if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
-                errorMessage = "L'adresse e-mail ou le mot de passe est incorrect.";
+            // If sign in fails because the user doesn't exist, try to create an account
+            if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+                try {
+                    await createUserWithEmailAndPassword(auth, values.email, values.password);
+                    // The onAuthStateChanged listener in FirebaseProvider will handle routing
+                } catch (signUpError: any) {
+                    let errorMessage = "Une erreur est survenue lors de la création du compte.";
+                    if (signUpError.code === 'auth/weak-password') {
+                        errorMessage = "Le mot de passe est trop faible.";
+                    } else if (signUpError.code === 'auth/email-already-in-use') {
+                        errorMessage = "Cette adresse e-mail est déjà utilisée.";
+                    }
+                    toast({ variant: "destructive", title: "Erreur d'inscription", description: errorMessage });
+                }
+            } else {
+                 let errorMessage = "Une erreur est survenue lors de la connexion.";
+                if (error.code === 'auth/wrong-password') {
+                    errorMessage = "Le mot de passe est incorrect.";
+                }
+                toast({ variant: "destructive", title: "Erreur de connexion", description: errorMessage });
             }
-            toast({ variant: "destructive", title: "Erreur de connexion", description: errorMessage });
         } finally {
             setIsLoginLoading(false);
         }
