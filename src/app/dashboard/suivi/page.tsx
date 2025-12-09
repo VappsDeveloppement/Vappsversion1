@@ -11,7 +11,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from '@/components/ui/button';
 import { PlusCircle, Edit, Trash2, GripVertical, FilePlus, X, Send, Download, Image as ImageIcon, Copy, Power, PowerOff, Upload } from 'lucide-react';
 import { useUser, useCollection, useMemoFirebase, addDocumentNonBlocking, setDocumentNonBlocking, deleteDocumentNonBlocking, useDoc } from '@/firebase';
-import { collection, query, where, doc, getDocs, writeBatch, getDoc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, writeBatch } from 'firebase/firestore';
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -152,7 +152,7 @@ function MemberFollowUpView() {
 
     useEffect(() => {
         if (!user || !userData) {
-            setIsLoading(false);
+            if(!isUserDataLoading) setIsLoading(false);
             return;
         }
 
@@ -180,11 +180,15 @@ function MemberFollowUpView() {
                 followUpsSnapshot.forEach(doc => allFollowUps.push({ id: doc.id, ...doc.data() } as FollowUp));
                 enrollmentsSnapshot.forEach(doc => allEnrollments.push({ id: doc.id, ...doc.data() } as PathEnrollment));
             }
+            
+            // Filter out follow-ups that are part of an enrollment
+            const standaloneForms: CombinedFollowUp[] = allFollowUps
+                .filter(f => !f.pathEnrollmentId)
+                .map(f => ({ ...f, type: 'form' }));
 
-            const forms: CombinedFollowUp[] = allFollowUps.map(f => ({ ...f, type: 'form' }));
             const paths: CombinedFollowUp[] = allEnrollments.map(p => ({ ...p, type: 'path' }));
 
-            const combined = [...forms, ...paths].sort((a, b) => {
+            const combined = [...standaloneForms, ...paths].sort((a, b) => {
                 const dateA = a.createdAt || (a as PathEnrollment).enrolledAt;
                 const dateB = b.createdAt || (b as PathEnrollment).enrolledAt;
                 return new Date(dateB).getTime() - new Date(dateA).getTime();
@@ -195,7 +199,7 @@ function MemberFollowUpView() {
         };
 
         fetchAllData();
-    }, [user, userData, firestore]);
+    }, [user, userData, isUserDataLoading, firestore]);
 
     return (
         <div className="space-y-8">

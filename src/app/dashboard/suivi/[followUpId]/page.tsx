@@ -9,7 +9,7 @@ import { doc, collection, query, where, getDocs, addDoc } from 'firebase/firesto
 import { useFirestore } from '@/firebase/provider';
 import { useToast } from '@/hooks/use-toast';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Loader2, Save, Download } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Download, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -83,8 +83,7 @@ export default function FollowUpPage() {
 
     const isViewMode = searchParams.get('mode') === 'view';
     const counselorIdForFetch = searchParams.get('counselorId');
-    const counselorId = user?.uid || counselorIdForFetch;
-
+    const counselorId = isViewMode ? counselorIdForFetch : user?.uid;
 
     const followUpRef = useMemoFirebase(() => {
         if (!counselorId || !followUpId) return null;
@@ -98,18 +97,18 @@ export default function FollowUpPage() {
     }, [firestore, counselorId, followUpId]);
     const { data: pathEnrollment, isLoading: isPathEnrollmentLoading } = useDoc<PathEnrollment>(pathEnrollmentRef);
 
-    const counselorIdForModel = followUp?.counselorId || pathEnrollment?.counselorId;
+    const modelOwnerId = followUp?.counselorId || pathEnrollment?.counselorId;
 
     const modelRef = useMemoFirebase(() => {
-        if (!counselorIdForModel || !followUp?.modelId) return null;
-        return doc(firestore, `users/${counselorIdForModel}/question_models`, followUp.modelId);
-    }, [firestore, counselorIdForModel, followUp]);
+        if (!modelOwnerId || !followUp?.modelId) return null;
+        return doc(firestore, `users/${modelOwnerId}/question_models`, followUp.modelId);
+    }, [firestore, modelOwnerId, followUp]);
     const { data: model, isLoading: isModelLoading } = useDoc<QuestionModel>(modelRef);
     
     const learningPathRef = useMemoFirebase(() => {
-        if (!counselorIdForModel || !pathEnrollment?.pathId) return null;
-        return doc(firestore, `users/${counselorIdForModel}/learning_paths`, pathEnrollment.pathId);
-    }, [firestore, counselorIdForModel, pathEnrollment]);
+        if (!modelOwnerId || !pathEnrollment?.pathId) return null;
+        return doc(firestore, `users/${modelOwnerId}/learning_paths`, pathEnrollment.pathId);
+    }, [firestore, modelOwnerId, pathEnrollment]);
     const { data: learningPath, isLoading: isPathLoading } = useDoc<LearningPath>(learningPathRef);
 
     const isLoading = isFollowUpLoading || isPathEnrollmentLoading;
